@@ -1,11 +1,14 @@
 "use client";
 
+import { styleForConstraintType } from "@/modules/communications/advertising-mapper/geometry/constraint-styles";
 import { blockStyleForStatus } from "@/modules/communications/advertising-mapper/lib/block-styles";
+import type { ConstraintRegion } from "@/modules/communications/advertising-mapper/geometry/types";
 import type { FacilityWallPlan, InventoryBlock } from "@/modules/communications/advertising-mapper/types";
 
 type Props = {
   wall: FacilityWallPlan;
   blocks: InventoryBlock[];
+  constraints?: readonly ConstraintRegion[];
   viewportRect: { x: number; y: number; width: number; height: number } | null;
   onNavigate?: (wallX: number, wallY: number) => void;
 };
@@ -13,7 +16,7 @@ type Props = {
 const MAP_W = 140;
 const MAP_H = 48;
 
-export function PlannerMinimap({ wall, blocks, viewportRect, onNavigate }: Props) {
+export function PlannerMinimap({ wall, blocks, constraints = [], viewportRect, onNavigate }: Props) {
   const scaleX = MAP_W / wall.width_inches;
   const scaleY = MAP_H / wall.height_inches;
 
@@ -33,6 +36,38 @@ export function PlannerMinimap({ wall, blocks, viewportRect, onNavigate }: Props
         }}
         aria-label="Minimap — click to pan"
       >
+        {wall.backdropUrl ? (
+          <img src={wall.backdropUrl} alt="" className="absolute inset-0 h-full w-full object-cover opacity-80" />
+        ) : null}
+        {constraints.map((c) => {
+          const style = styleForConstraintType(c.constraintType);
+          const pts = c.points;
+          if (pts.length < 6) return null;
+          let minX = Infinity;
+          let minY = Infinity;
+          let maxX = -Infinity;
+          let maxY = -Infinity;
+          for (let i = 0; i < pts.length; i += 2) {
+            minX = Math.min(minX, pts[i]!);
+            minY = Math.min(minY, pts[i + 1]!);
+            maxX = Math.max(maxX, pts[i]!);
+            maxY = Math.max(maxY, pts[i + 1]!);
+          }
+          return (
+            <span
+              key={c.id}
+              className="absolute rounded-[1px] border"
+              style={{
+                left: minX * scaleX,
+                top: minY * scaleY,
+                width: Math.max(2, (maxX - minX) * scaleX),
+                height: Math.max(2, (maxY - minY) * scaleY),
+                backgroundColor: style.fill,
+                borderColor: style.stroke,
+              }}
+            />
+          );
+        })}
         {blocks.map((b) => {
           const style = blockStyleForStatus(b.status);
           return (

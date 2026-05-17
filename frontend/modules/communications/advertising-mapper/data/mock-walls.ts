@@ -1,4 +1,5 @@
 import type { FacilityWallPlan } from "@/modules/communications/advertising-mapper/types";
+import { seedAdvertisingMockStore } from "@/spatial-engine/persistence/advertising-adapter";
 
 /** 42′ × 10′ arena ribbon wall */
 const ARENA_W = 504;
@@ -12,6 +13,22 @@ export const MOCK_WALL_PLANS: FacilityWallPlan[] = [
     height_inches: ARENA_H,
     backdropKind: "arena",
     gridSnapInches: 6,
+    constraints: [
+      {
+        id: "constraint-pillar-n",
+        type: "polygon",
+        constraintType: "blocked",
+        points: [368, 6, 408, 6, 408, 58, 368, 58],
+        label: "Structural column",
+      },
+      {
+        id: "constraint-window-n",
+        type: "polygon",
+        constraintType: "restricted",
+        points: [200, 4, 260, 4, 260, 28, 200, 28],
+        label: "Press box glazing",
+      },
+    ],
     blocks: [
       {
         id: "n-1",
@@ -83,6 +100,7 @@ export const MOCK_WALL_PLANS: FacilityWallPlan[] = [
     height_inches: ARENA_H,
     backdropKind: "arena",
     gridSnapInches: 6,
+    constraints: [],
     blocks: [
       {
         id: "s-1",
@@ -123,6 +141,7 @@ export const MOCK_WALL_PLANS: FacilityWallPlan[] = [
     height_inches: 120,
     backdropKind: "concourse",
     gridSnapInches: 3,
+    constraints: [],
     blocks: [
       {
         id: "l-1",
@@ -172,3 +191,5 @@ export const MOCK_WALL_PLANS: FacilityWallPlan[] = [
 export function cloneWallPlans(): FacilityWallPlan[] {
   return JSON.parse(JSON.stringify(MOCK_WALL_PLANS)) as FacilityWallPlan[];
 }
+
+seedAdvertisingMockStore(MOCK_WALL_PLANS);

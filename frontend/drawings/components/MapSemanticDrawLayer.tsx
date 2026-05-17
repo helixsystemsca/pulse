@@ -7,18 +7,13 @@ import type { InfraAsset } from "../utils/graphHelpers";
 import { BUILDER_ALL_PRIMARY_MODES } from "../mapBuilderModes";
 import type { AnnotateKind, AssetDrawShape, ConnectFlow, PrimaryMode } from "../mapBuilderTypes";
 
-export type StageViewport = {
-  width: number;
-  height: number;
-  pos: { x: number; y: number };
-  scale: number;
-};
+import { konvaPointerToWorldFromStage, type KonvaStageViewport } from "@/spatial-engine/konva";
+
+export type StageViewport = KonvaStageViewport;
 
 function worldFromPointer(stage: Konva.Stage | null, viewport: StageViewport): { x: number; y: number } | null {
   if (!stage) return null;
-  const p = stage.getPointerPosition();
-  if (!p) return null;
-  return { x: (p.x - viewport.pos.x) / viewport.scale, y: (p.y - viewport.pos.y) / viewport.scale };
+  return konvaPointerToWorldFromStage(stage.getPointerPosition(), viewport);
 }
 
 function nearestAssetWithin(assets: InfraAsset[], x: number, y: number, maxWorld: number): string | null {

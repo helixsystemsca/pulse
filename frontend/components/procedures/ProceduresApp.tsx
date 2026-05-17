@@ -1,6 +1,6 @@
 "use client";
 
-import { ClipboardList, ImagePlus, Loader2, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, ClipboardList, ImagePlus, Loader2, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useId, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageBody } from "@/components/ui/PageBody";
@@ -48,6 +48,7 @@ import { proceduresToTrainingPrograms, workersToTrainingEmployees } from "@/lib/
 import { fetchWorkerList, fetchWorkerSettings } from "@/lib/workersService";
 import { cn } from "@/lib/cn";
 import { useMainScrollCompaction } from "@/hooks/useMainScrollCompaction";
+import { usePermissions } from "@/hooks/usePermissions";
 import { buttonVariants } from "@/styles/button-variants";
 import { ProcedureKnowledgeVerification } from "@/components/procedures/ProcedureKnowledgeVerification";
 import { ProcedureComplianceAcknowledgmentCard } from "@/components/procedures/ProcedureComplianceAcknowledgmentCard";
@@ -281,6 +282,7 @@ export function ProceduresApp() {
     return s;
   }, [session?.role, session?.roles]);
 
+  const { can } = usePermissions();
   const isCompanyAdmin = sessionHasAnyRole(session, "company_admin");
   const canAssign = sessionHasAnyRole(session, "lead", "supervisor", "manager", "company_admin");
 
@@ -454,6 +456,7 @@ export function ProceduresApp() {
   const canEditSelected = useMemo(() => {
     if (!selected) return false;
     if (isCompanyAdmin) return true;
+    if (can("procedures.edit")) return true;
     const allowedByRole = proceduresEditRoles.some((r) => sessionRoleSet.has(r));
     const createdById = selected.created_by_user_id && userId ? selected.created_by_user_id === userId : false;
     const meName = (session?.full_name?.trim() || "").toLowerCase();
@@ -461,7 +464,7 @@ export function ProceduresApp() {
     const createdByName = (selected.created_by_name?.trim() || "").toLowerCase();
     const createdByNameMatch = Boolean(createdByName && (createdByName === meName || createdByName === meEmail));
     return Boolean(allowedByRole || createdById || createdByNameMatch);
-  }, [selected, isCompanyAdmin, proceduresEditRoles, sessionRoleSet, userId, session?.full_name, session?.email]);
+  }, [selected, isCompanyAdmin, can, proceduresEditRoles, sessionRoleSet, userId, session?.full_name, session?.email]);
 
   const librarySortedRows = useMemo(
     () => [...rows].sort((a, b) => compareLibraryProcedureRows(a, b, libraryComplianceCtx)),
@@ -1097,12 +1100,7 @@ export function ProceduresApp() {
       ) : null}
 
       <div
-        className={cn(
-          "min-h-0 flex-1 overflow-hidden",
-          isCreating && "grid min-h-0 gap-6 lg:grid-cols-2",
-          !isCreating && selected && "flex min-h-0 flex-col gap-6 lg:flex-row lg:items-stretch",
-          !isCreating && !selected && "flex min-h-0 flex-col gap-6",
-        )}
+        className="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden"
       >
         {isCreating ? (
           <section className="ds-premium-panel min-h-0 overflow-y-auto p-6">
@@ -1246,12 +1244,15 @@ export function ProceduresApp() {
         ) : null}
 
         {!isCreating && selected ? (
-          <section
-            className={cn(
-              "ds-premium-panel min-h-0 min-w-0 overflow-y-auto p-6",
-              "flex-1 lg:min-h-0",
-            )}
-          >
+          <section className="ds-premium-panel min-h-0 min-w-0 flex-1 overflow-y-auto p-6">
+            <button
+              type="button"
+              onClick={() => setSelectedId(null)}
+              className="mb-4 inline-flex items-center gap-2 rounded-md border border-ds-border px-4 py-2 text-sm font-semibold text-ds-foreground hover:bg-ds-secondary"
+            >
+              <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
+              Back to library
+            </button>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <h2 className="text-base font-semibold text-ds-foreground">{editing ? "Edit" : "Procedure"}</h2>
               {canEditSelected ? (
@@ -1585,12 +1586,13 @@ export function ProceduresApp() {
                 ) : null}
 
                 <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ds-border pt-5">
-                  <div className="min-w-0 space-y-1">
+                  <div className="min-w-0 space-y-3">
                     <button
                       type="button"
                       onClick={() => setSelectedId(null)}
-                      className="rounded-md border border-ds-border px-4 py-2 text-sm font-semibold text-ds-foreground hover:bg-ds-secondary"
+                      className="inline-flex items-center gap-2 rounded-md border border-ds-border px-4 py-2 text-sm font-semibold text-ds-foreground hover:bg-ds-secondary"
                     >
+                      <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
                       Back to library
                     </button>
                     <p className="max-w-xl text-[11px] leading-snug text-ds-muted">
@@ -1651,15 +1653,8 @@ export function ProceduresApp() {
           </section>
         ) : null}
 
-        <section
-            className={cn(
-              "ds-premium-panel flex min-h-0 flex-col overflow-hidden",
-              !selected && !isCreating && "flex-1",
-              isCreating && "h-full min-h-0",
-              selected &&
-                "lg:sticky lg:top-20 lg:flex lg:w-72 lg:shrink-0 lg:flex-col lg:self-stretch xl:w-80",
-            )}
-          >
+        {!selected && !isCreating ? (
+          <section className="ds-premium-panel flex min-h-0 flex-1 flex-col overflow-hidden">
             <div className="shrink-0 space-y-2 border-b border-ds-border bg-ds-surface-secondary px-4 py-2.5">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-ds-foreground">Library</h2>
               <div>
@@ -1678,13 +1673,7 @@ export function ProceduresApp() {
                 <p className="mt-0.5 text-[10px] text-ds-muted">Uses saved procedure tags only — not step text.</p>
               </div>
             </div>
-            <div
-              className={cn(
-                "flex min-h-0 flex-1 flex-col overflow-hidden",
-                isCreating && "pointer-events-none opacity-50",
-              )}
-              aria-hidden={isCreating}
-            >
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
               <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3">
                 {loading ? (
                   <p className="text-sm text-ds-muted">Loading…</p>
@@ -1718,9 +1707,9 @@ export function ProceduresApp() {
                           )}
                         >
                           <div className="min-w-0">
-                            <span className={`font-medium ${selected ? "line-clamp-2" : ""}`}>{r.title}</span>
+                            <span className="font-medium">{r.title}</span>
                             <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[10px] font-semibold text-ds-muted">
-                              <span className={selected ? "line-clamp-1" : ""}>By {r.created_by_name?.trim() || "—"}</span>
+                              <span>By {r.created_by_name?.trim() || "—"}</span>
                               {r.review_required ? (
                                 <span className="rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-amber-900">
                                   Needs review
@@ -1753,6 +1742,7 @@ export function ProceduresApp() {
               </div>
             </div>
           </section>
+        ) : null}
       </div>
 
       {ackOpen && !editing && selected && ackForId === selected.id ? (

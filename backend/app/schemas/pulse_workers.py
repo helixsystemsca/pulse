@@ -146,6 +146,7 @@ class WorkerDetailOut(BaseModel):
     avatar_url: Optional[str] = None
     #: Add-on product modules (tenant contract subset) from company admin.
     feature_allow_extra: list[str] = []
+    rbac_permission_extra: list[str] = []
     is_active: bool
     account_status: str = "active"
     phone: Optional[str] = None
@@ -292,6 +293,7 @@ class WorkerPatchIn(BaseModel):
     skills: Optional[list[WorkerSkillIn]] = None
     training: Optional[list[WorkerTrainingIn]] = None
     feature_allow_extra: Optional[list[str]] = None
+    rbac_permission_extra: Optional[list[str]] = None
     tenant_role_id: Optional[str] = None
 
     @field_validator("email", mode="before")

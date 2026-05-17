@@ -1,62 +1,113 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type Konva from "konva";
-import { Group, Layer, Line, Rect, Stage, Text, Transformer } from "react-konva";
+import { Group, Layer, Stage } from "react-konva";
+import { BackdropLayer } from "@/modules/communications/advertising-mapper/components/layers/BackdropLayer";
+import { ConstraintLayer } from "@/modules/communications/advertising-mapper/components/layers/ConstraintLayer";
+import { InventoryLayer, InventoryTransformer } from "@/modules/communications/advertising-mapper/components/layers/InventoryLayer";
+import { AxisRulers } from "@/modules/communications/advertising-mapper/components/AxisRulers";
+import { PlannerMinimap } from "@/modules/communications/advertising-mapper/components/PlannerMinimap";
+import { createConstraintRegion, moveAnchorInPoints, removePolygonVertex } from "@/modules/communications/advertising-mapper/geometry/factory";
+import {
+  CLOSE_POLYGON_THRESHOLD_INCHES,
+  isNearPoint,
+  isValidClosedPolygon,
+} from "@/modules/communications/advertising-mapper/geometry/polygon-math";
+import { inventoryViolatesBlockedConstraints } from "@/modules/communications/advertising-mapper/geometry/collision";
+import type { ConstraintRegion, ConstraintType, PlannerToolMode } from "@/modules/communications/advertising-mapper/geometry/types";
+import { useBackdropImage } from "@/modules/communications/advertising-mapper/hooks/useBackdropImage";
 import {
   BASE_PX_PER_INCH,
   RULER_THICKNESS_PX,
   zoomViewportAtPoint,
   type PlannerViewport,
 } from "@/modules/communications/advertising-mapper/lib/coordinates";
-import { blockStyleForStatus } from "@/modules/communications/advertising-mapper/lib/block-styles";
-import { formatMeasurement } from "@/modules/communications/advertising-mapper/lib/measurements";
+import { pointerToWallInches } from "@/modules/communications/advertising-mapper/lib/pointer-to-wall";
 import { clampBlockSize, clampBlockToWall, snapInches } from "@/modules/communications/advertising-mapper/lib/snap";
-import { AxisRulers } from "@/modules/communications/advertising-mapper/components/AxisRulers";
-import { PlannerMinimap } from "@/modules/communications/advertising-mapper/components/PlannerMinimap";
 import type {
   DimensionEditTarget,
   FacilityWallPlan,
   InventoryBlock,
   MeasurementUnit,
 } from "@/modules/communications/advertising-mapper/types";
+import { cn } from "@/lib/cn";
 
 type Props = {
   wall: FacilityWallPlan;
   blocks: InventoryBlock[];
-  selectedId: string | null;
+  constraints: ConstraintRegion[];
+  toolMode: PlannerToolMode;
+  draftConstraintType: ConstraintType;
+  selectedInventoryId: string | null;
+  selectedConstraintId: string | null;
   unit: MeasurementUnit;
   viewport: PlannerViewport;
   onViewportChange: (v: PlannerViewport) => void;
   snapEnabled: boolean;
   showGrid: boolean;
-  onSelect: (id: string | null) => void;
+  onSelectInventory: (id: string | null) => void;
+  onSelectConstraint: (id: string | null) => void;
   onBlockChange: (id: string, patch: Partial<InventoryBlock>) => void;
+  onConstraintCreate: (region: ConstraintRegion) => void;
+  onConstraintPointsChange: (id: string, points: number[]) => void;
   onDimensionBadgeClick: (id: string, target: DimensionEditTarget) => void;
+  /** When false, status hints are rendered by SpatialWorkspaceShell. */
+  showFloatingHints?: boolean;
   className?: string;
+};
+
+const CURSOR_BY_MODE: Record<PlannerToolMode, string> = {
+  select: "default",
+  inventory: "grab",
+  constraint: "crosshair",
+  pan: "grab",
 };
 
 export function InventoryPlannerCanvas({
   wall,
   blocks,
-  selectedId,
+  constraints,
+  toolMode,
+  draftConstraintType,
+  selectedInventoryId,
+  selectedConstraintId,
   unit,
   viewport,
   onViewportChange,
   snapEnabled,
   showGrid,
-  onSelect,
+  onSelectInventory,
+  onSelectConstraint,
   onBlockChange,
+  onConstraintCreate,
+  onConstraintPointsChange,
   onDimensionBadgeClick,
+  showFloatingHints = true,
   className,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
   const transformerRef = useRef<Konva.Transformer>(null);
   const [stageSize, setStageSize] = useState({ width: 800, height: 520 });
+  const [draftPoints, setDraftPoints] = useState<number[]>([]);
+  const [cursorInches, setCursorInches] = useState<{ x: number; y: number } | null>(null);
   const panRef = useRef<{ active: boolean; startX: number; startY: number; panX: number; panY: number } | null>(null);
 
+  const backdropImage = useBackdropImage(wall.backdropUrl);
   const gridInches = wall.gridSnapInches ?? 6;
+  const wallWidthPx = wall.width_inches * BASE_PX_PER_INCH;
+  const wallHeightPx = wall.height_inches * BASE_PX_PER_INCH;
+
+  const violationIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const block of blocks) {
+      if (inventoryViolatesBlockedConstraints(block, constraints).length > 0) {
+        ids.add(block.id);
+      }
+    }
+    return ids;
+  }, [blocks, constraints]);
 
   useLayoutEffect(() => {
     const el = containerRef.current;
@@ -71,20 +122,70 @@ export function InventoryPlannerCanvas({
   }, []);
 
   useEffect(() => {
+    if (toolMode !== "constraint") setDraftPoints([]);
+  }, [toolMode]);
+
+  useEffect(() => {
     const tr = transformerRef.current;
     const stage = stageRef.current;
-    if (!tr || !stage) return;
-    if (!selectedId) {
+    if (!tr || !stage || toolMode === "pan" || toolMode === "constraint") {
+      tr?.nodes([]);
+      tr?.getLayer()?.batchDraw();
+      return;
+    }
+    if (!selectedInventoryId) {
       tr.nodes([]);
       tr.getLayer()?.batchDraw();
       return;
     }
-    const node = stage.findOne(`#block-${selectedId}`);
+    const node = stage.findOne(`#block-${selectedInventoryId}`);
     if (node) {
       tr.nodes([node]);
       tr.getLayer()?.batchDraw();
     }
-  }, [selectedId, blocks, viewport.scale]);
+  }, [selectedInventoryId, blocks, viewport.scale, toolMode]);
+
+  const wallPointFromEvent = useCallback(
+    (evt: { clientX: number; clientY: number }) => {
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (!rect) return null;
+      return pointerToWallInches(evt.clientX, evt.clientY, rect, viewport);
+    },
+    [viewport],
+  );
+
+  const finalizeDraft = useCallback(() => {
+    if (!isValidClosedPolygon(draftPoints)) return;
+    const region = createConstraintRegion(draftPoints, draftConstraintType);
+    if (region) {
+      onConstraintCreate(region);
+      setDraftPoints([]);
+    }
+  }, [draftPoints, draftConstraintType, onConstraintCreate]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (toolMode === "constraint") {
+        if (e.key === "Escape") {
+          setDraftPoints([]);
+          return;
+        }
+        if (e.key === "Enter") {
+          e.preventDefault();
+          finalizeDraft();
+          return;
+        }
+      }
+      if (toolMode === "select" && selectedConstraintId && e.key === "Delete") {
+        const region = constraints.find((c) => c.id === selectedConstraintId);
+        if (!region || region.points.length < 8) return;
+        const next = removePolygonVertex(region.points, 0);
+        if (next) onConstraintPointsChange(selectedConstraintId, next);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [constraints, finalizeDraft, onConstraintPointsChange, selectedConstraintId, toolMode]);
 
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {
@@ -92,24 +193,41 @@ export function InventoryPlannerCanvas({
       const rect = containerRef.current?.getBoundingClientRect();
       if (!rect) return;
       const factor = e.deltaY > 0 ? 0.92 : 1.08;
-      const next = zoomViewportAtPoint(
-        viewport,
-        e.clientX - rect.left,
-        e.clientY - rect.top,
-        RULER_THICKNESS_PX,
-        RULER_THICKNESS_PX,
-        factor,
+      onViewportChange(
+        zoomViewportAtPoint(viewport, e.clientX - rect.left, e.clientY - rect.top, RULER_THICKNESS_PX, RULER_THICKNESS_PX, factor),
       );
-      onViewportChange(next);
     },
     [viewport, onViewportChange],
   );
 
+  const handleStageClick = useCallback(
+    (e: Konva.KonvaEventObject<MouseEvent>) => {
+      if (e.target !== e.target.getStage()) return;
+      if (toolMode === "pan") return;
+      if (toolMode === "constraint") {
+        const pt = wallPointFromEvent(e.evt);
+        if (!pt) return;
+        if (draftPoints.length >= 6) {
+          const fx = draftPoints[0]!;
+          const fy = draftPoints[1]!;
+          if (isNearPoint(pt.x, pt.y, fx, fy, CLOSE_POLYGON_THRESHOLD_INCHES / viewport.scale)) {
+            finalizeDraft();
+            return;
+          }
+        }
+        setDraftPoints((prev) => [...prev, pt.x, pt.y]);
+        return;
+      }
+      onSelectInventory(null);
+      onSelectConstraint(null);
+    },
+    [draftPoints, finalizeDraft, onSelectConstraint, onSelectInventory, toolMode, viewport.scale, wallPointFromEvent],
+  );
+
   const finishBlockDrag = useCallback(
     (id: string, node: Konva.Group) => {
-      const grid = gridInches;
-      let x = snapInches(node.x() / BASE_PX_PER_INCH, grid, snapEnabled);
-      let y = snapInches(node.y() / BASE_PX_PER_INCH, grid, snapEnabled);
+      let x = snapInches(node.x() / BASE_PX_PER_INCH, gridInches, snapEnabled);
+      let y = snapInches(node.y() / BASE_PX_PER_INCH, gridInches, snapEnabled);
       const block = blocks.find((b) => b.id === id);
       if (!block) return;
       const clamped = clampBlockToWall(x, y, block.width_inches, block.height_inches, wall.width_inches, wall.height_inches);
@@ -150,8 +268,15 @@ export function InventoryPlannerCanvas({
     return { x: Math.max(0, x), y: Math.max(0, y), width: viewW, height: viewH };
   }, [stageSize, viewport]);
 
+  const inventoryDraggable = toolMode === "select" || toolMode === "inventory";
+
   return (
-    <div ref={containerRef} className={className ?? "relative min-h-0 flex-1 overflow-hidden bg-[#0f1419]"} onWheel={handleWheel}>
+    <div
+      ref={containerRef}
+      className={cn("relative min-h-0 flex-1 overflow-hidden bg-[#0f1419]", className)}
+      style={{ cursor: CURSOR_BY_MODE[toolMode] }}
+      onWheel={handleWheel}
+    >
       <AxisRulers
         wallWidthInches={wall.width_inches}
         wallHeightInches={wall.height_inches}
@@ -165,10 +290,7 @@ export function InventoryPlannerCanvas({
         width={stageSize.width}
         height={stageSize.height}
         onMouseDown={(e) => {
-          if (e.target === e.target.getStage()) {
-            onSelect(null);
-          }
-          if (e.evt.button === 1 || e.evt.button === 2 || e.evt.altKey) {
+          if (toolMode === "pan" || e.evt.button === 1 || e.evt.altKey) {
             panRef.current = {
               active: true,
               startX: e.evt.clientX,
@@ -179,47 +301,68 @@ export function InventoryPlannerCanvas({
           }
         }}
         onMouseMove={(e) => {
+          const pt = wallPointFromEvent(e.evt);
+          setCursorInches(pt);
           const p = panRef.current;
-          if (!p?.active) return;
-          onViewportChange({
-            ...viewport,
-            panX: p.panX + (e.evt.clientX - p.startX),
-            panY: p.panY + (e.evt.clientY - p.startY),
-          });
+          if (p?.active) {
+            onViewportChange({
+              ...viewport,
+              panX: p.panX + (e.evt.clientX - p.startX),
+              panY: p.panY + (e.evt.clientY - p.startY),
+            });
+          }
         }}
         onMouseUp={() => {
           if (panRef.current) panRef.current.active = false;
         }}
+        onClick={handleStageClick}
       >
         <Layer>
           <Group x={RULER_THICKNESS_PX + viewport.panX} y={RULER_THICKNESS_PX + viewport.panY} scaleX={viewport.scale} scaleY={viewport.scale}>
-            <WallBackdrop
-              widthPx={wall.width_inches * BASE_PX_PER_INCH}
-              heightPx={wall.height_inches * BASE_PX_PER_INCH}
-              kind={wall.backdropKind}
+            <BackdropLayer
+              wall={wall}
+              widthPx={wallWidthPx}
+              heightPx={wallHeightPx}
               showGrid={showGrid}
               gridInches={gridInches}
+              image={backdropImage}
             />
-            {blocks.map((block) => (
-              <InventoryBlockNode
-                key={block.id}
-                block={block}
-                unit={unit}
-                selected={block.id === selectedId}
-                onSelect={() => onSelect(block.id)}
-                onDragEnd={(node) => finishBlockDrag(block.id, node)}
-                onTransformEnd={(node) => finishBlockTransform(block.id, node)}
-                onBadgeClick={(target) => onDimensionBadgeClick(block.id, target)}
-              />
-            ))}
+            <ConstraintLayer
+              constraints={constraints}
+              draftPoints={draftPoints}
+              cursorInches={cursorInches}
+              selectedConstraintId={selectedConstraintId}
+              toolMode={toolMode}
+              onSelectConstraint={(id) => {
+                onSelectConstraint(id);
+                onSelectInventory(null);
+              }}
+              onAnchorDrag={(constraintId, vertexIndex, x, y) => {
+                const region = constraints.find((c) => c.id === constraintId);
+                if (!region) return;
+                const next = moveAnchorInPoints(region.points, vertexIndex, x, y);
+                onConstraintPointsChange(constraintId, next);
+              }}
+            />
+            <InventoryLayer
+              blocks={blocks}
+              unit={unit}
+              selectedId={selectedInventoryId}
+              draggable={inventoryDraggable}
+              violationIds={violationIds}
+              onSelect={(id) => {
+                onSelectInventory(id);
+                onSelectConstraint(null);
+              }}
+              onDragEnd={finishBlockDrag}
+              onTransformEnd={finishBlockTransform}
+              onDimensionBadgeClick={onDimensionBadgeClick}
+            />
           </Group>
-          <Transformer
+          <InventoryTransformer
             ref={transformerRef}
             rotateEnabled={false}
-            boundBoxFunc={(oldBox, newBox) => {
-              if (newBox.width < 24 || newBox.height < 24) return oldBox;
-              return newBox;
-            }}
+            boundBoxFunc={(oldBox, newBox) => (newBox.width < 24 || newBox.height < 24 ? oldBox : newBox)}
             anchorStroke="var(--ds-accent)"
             borderStroke="var(--ds-accent)"
             anchorFill="#fff"
@@ -230,6 +373,7 @@ export function InventoryPlannerCanvas({
       <PlannerMinimap
         wall={wall}
         blocks={blocks}
+        constraints={constraints}
         viewportRect={viewportWorld()}
         onNavigate={(wx, wy) => {
           onViewportChange({
@@ -239,167 +383,13 @@ export function InventoryPlannerCanvas({
           });
         }}
       />
-      <p className="pointer-events-none absolute bottom-3 left-[11rem] z-20 rounded-md bg-black/50 px-2 py-1 text-[10px] text-white/80">
-        Scroll to zoom · Alt-drag to pan · Click dimension badges to edit
-      </p>
+      {showFloatingHints ? (
+        <p className="pointer-events-none absolute bottom-3 left-[11rem] z-20 max-w-md rounded-md bg-black/55 px-2 py-1 text-[10px] text-white/85">
+          {toolMode === "constraint"
+            ? "Click to place points · click first point to close · Enter finalize · Esc cancel"
+            : "Scroll zoom · Pan mode or Alt-drag · V/I/C/H tool shortcuts"}
+        </p>
+      ) : null}
     </div>
-  );
-}
-
-function WallBackdrop({
-  widthPx,
-  heightPx,
-  kind,
-  showGrid,
-  gridInches,
-}: {
-  widthPx: number;
-  heightPx: number;
-  kind: FacilityWallPlan["backdropKind"];
-  showGrid: boolean;
-  gridInches: number;
-}) {
-  const gradient =
-    kind === "arena"
-      ? { top: "#3d4a5c", mid: "#2a3344", bottom: "#121820" }
-      : kind === "concourse"
-        ? { top: "#4a5568", mid: "#374151", bottom: "#1f2937" }
-        : { top: "#52525b", mid: "#3f3f46", bottom: "#27272a" };
-
-  const gridStep = gridInches * BASE_PX_PER_INCH;
-  const gridLines: ReactNode[] = [];
-  if (showGrid) {
-    for (let x = 0; x <= widthPx; x += gridStep) {
-      gridLines.push(<Line key={`gx-${x}`} points={[x, 0, x, heightPx]} stroke="rgba(255,255,255,0.06)" strokeWidth={1} listening={false} />);
-    }
-    for (let y = 0; y <= heightPx; y += gridStep) {
-      gridLines.push(<Line key={`gy-${y}`} points={[0, y, widthPx, y]} stroke="rgba(255,255,255,0.06)" strokeWidth={1} listening={false} />);
-    }
-  }
-
-  return (
-    <Group listening={false}>
-      <Rect
-        width={widthPx}
-        height={heightPx}
-        fillLinearGradientStartPoint={{ x: 0, y: 0 }}
-        fillLinearGradientEndPoint={{ x: 0, y: heightPx }}
-        fillLinearGradientColorStops={[0, gradient.top, 0.45, gradient.mid, 1, gradient.bottom]}
-        shadowColor="black"
-        shadowBlur={16}
-        shadowOpacity={0.35}
-      />
-      {kind === "arena" ? (
-        <Rect y={heightPx * 0.62} width={widthPx} height={heightPx * 0.38} fill="#0a0e14" opacity={0.85} listening={false} />
-      ) : null}
-      {gridLines}
-      <Rect width={widthPx} height={heightPx} stroke="rgba(255,255,255,0.2)" strokeWidth={2} listening={false} />
-    </Group>
-  );
-}
-
-function InventoryBlockNode({
-  block,
-  unit,
-  selected,
-  onSelect,
-  onDragEnd,
-  onTransformEnd,
-  onBadgeClick,
-}: {
-  block: InventoryBlock;
-  unit: MeasurementUnit;
-  selected: boolean;
-  onSelect: () => void;
-  onDragEnd: (node: Konva.Group) => void;
-  onTransformEnd: (node: Konva.Group) => void;
-  onBadgeClick: (target: DimensionEditTarget) => void;
-}) {
-  const style = blockStyleForStatus(block.status);
-  const w = block.width_inches * BASE_PX_PER_INCH;
-  const h = block.height_inches * BASE_PX_PER_INCH;
-  const widthLabel = formatMeasurement(block.width_inches, unit);
-  const heightLabel = formatMeasurement(block.height_inches, unit);
-
-  return (
-    <Group
-      id={`block-${block.id}`}
-      x={block.x * BASE_PX_PER_INCH}
-      y={block.y * BASE_PX_PER_INCH}
-      draggable
-      onClick={onSelect}
-      onTap={onSelect}
-      onDragEnd={(e) => onDragEnd(e.target as Konva.Group)}
-      onTransformEnd={(e) => onTransformEnd(e.target as Konva.Group)}
-    >
-      <Rect
-        width={w}
-        height={h}
-        fill={style.fill}
-        stroke={selected ? "var(--ds-accent)" : style.stroke}
-        strokeWidth={selected ? 2.5 : 1.5}
-        cornerRadius={2}
-        shadowColor="black"
-        shadowBlur={8}
-        shadowOpacity={0.35}
-      />
-      <Rect x={8} y={8} width={Math.min(w - 16, 90)} height={16} fill={style.chipBg} cornerRadius={3} listening={false} />
-      <Text x={12} y={10} text={style.label} fontSize={9} fontStyle="bold" fill="#fff" listening={false} />
-      <Text x={8} y={28} text={block.name} fontSize={11} fontStyle="bold" fill="#f8fafc" width={w - 16} ellipsis listening={false} />
-      {block.sponsor ? (
-        <Text x={8} y={h - 18} text={block.sponsor} fontSize={9} fill="#cbd5e1" width={w - 16} ellipsis listening={false} />
-      ) : null}
-      <DimensionBadge x={w / 2} y={-10} label={widthLabel} onClick={() => onBadgeClick("width")} />
-      <DimensionBadge x={-10} y={h / 2} label={heightLabel} vertical onClick={() => onBadgeClick("height")} />
-    </Group>
-  );
-}
-
-function DimensionBadge({
-  x,
-  y,
-  label,
-  vertical,
-  onClick,
-}: {
-  x: number;
-  y: number;
-  label: string;
-  vertical?: boolean;
-  onClick: () => void;
-}) {
-  const padX = 6;
-  const padY = 3;
-  const textW = label.length * 5.5 + padX * 2;
-  const textH = 14 + padY * 2;
-  const bw = vertical ? textH : textW;
-  const bh = vertical ? textW : textH;
-
-  return (
-    <Group
-      x={x - bw / 2}
-      y={y - bh / 2}
-      onClick={(e) => {
-        e.cancelBubble = true;
-        onClick();
-      }}
-      onTap={(e) => {
-        e.cancelBubble = true;
-        onClick();
-      }}
-    >
-      <Rect width={bw} height={bh} fill="rgba(15, 23, 42, 0.92)" stroke="var(--ds-accent)" strokeWidth={1} cornerRadius={4} />
-      <Text
-        x={padX}
-        y={padY}
-        text={label}
-        fontSize={10}
-        fontStyle="bold"
-        fill="#e2e8f0"
-        rotation={vertical ? -90 : 0}
-        offsetX={vertical ? 0 : 0}
-        offsetY={vertical ? textW / 2 - padX : 0}
-      />
-    </Group>
   );
 }

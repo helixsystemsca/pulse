@@ -1,36 +1,35 @@
+import type { SpatialViewport } from "@/spatial-engine/types/spatial";
+import { DEFAULT_INCH_BASE_PX_PER_INCH } from "@/spatial-engine/coordinates/inch-space";
+import {
+  canvasPxToInches as canvasPxToInchesEngine,
+  clampViewportScale as clampScaleEngine,
+  effectivePxPerInch,
+  inchesToCanvasPx,
+  screenToWorldInches as screenToWorldInchesEngine,
+  wallCanvasSizePx,
+  zoomInchViewportAtPoint,
+} from "@/spatial-engine/viewport/inch-planner";
+
 /** Base render scale: screen pixels per real-world inch at zoom 1. */
-export const BASE_PX_PER_INCH = 6;
+export const BASE_PX_PER_INCH = DEFAULT_INCH_BASE_PX_PER_INCH;
 
 export const RULER_THICKNESS_PX = 28;
 
-export type PlannerViewport = {
-  scale: number;
-  panX: number;
-  panY: number;
-};
+export type PlannerViewport = SpatialViewport;
 
 export const VIEWPORT_SCALE_MIN = 0.35;
 export const VIEWPORT_SCALE_MAX = 3.5;
 
 export function clampViewportScale(scale: number): number {
-  return Math.min(VIEWPORT_SCALE_MAX, Math.max(VIEWPORT_SCALE_MIN, scale));
+  return clampScaleEngine(scale, VIEWPORT_SCALE_MIN, VIEWPORT_SCALE_MAX);
 }
 
-export function effectivePxPerInch(viewport: PlannerViewport): number {
-  return BASE_PX_PER_INCH * viewport.scale;
-}
-
-export function inchesToCanvasPx(inches: number, viewport: PlannerViewport): number {
-  return inches * effectivePxPerInch(viewport);
-}
+export { effectivePxPerInch, inchesToCanvasPx, wallCanvasSizePx };
 
 export function canvasPxToInches(px: number, viewport: PlannerViewport): number {
-  const ppi = effectivePxPerInch(viewport);
-  if (ppi <= 0) return 0;
-  return px / ppi;
+  return canvasPxToInchesEngine(px, viewport, BASE_PX_PER_INCH);
 }
 
-/** Convert screen pointer position to wall inches (origin top-left). */
 export function screenToWorldInches(
   screenX: number,
   screenY: number,
@@ -38,15 +37,15 @@ export function screenToWorldInches(
   originX: number,
   originY: number,
 ): { x: number; y: number } {
-  const localX = screenX - originX - viewport.panX;
-  const localY = screenY - originY - viewport.panY;
-  return {
-    x: canvasPxToInches(localX, viewport),
-    y: canvasPxToInches(localY, viewport),
-  };
+  return screenToWorldInchesEngine(
+    screenX,
+    screenY,
+    viewport,
+    { x: originX, y: originY },
+    BASE_PX_PER_INCH,
+  );
 }
 
-/** Zoom toward a screen-space focal point (e.g. cursor). */
 export function zoomViewportAtPoint(
   viewport: PlannerViewport,
   focalScreenX: number,
@@ -55,26 +54,14 @@ export function zoomViewportAtPoint(
   originY: number,
   scaleFactor: number,
 ): PlannerViewport {
-  const nextScale = clampViewportScale(viewport.scale * scaleFactor);
-  if (nextScale === viewport.scale) return viewport;
-
-  const worldX = canvasPxToInches(focalScreenX - originX - viewport.panX, viewport);
-  const worldY = canvasPxToInches(focalScreenY - originY - viewport.panY, viewport);
-
-  const next: PlannerViewport = { scale: nextScale, panX: 0, panY: 0 };
-  const ppi = effectivePxPerInch(next);
-  next.panX = focalScreenX - originX - worldX * ppi;
-  next.panY = focalScreenY - originY - worldY * ppi;
-  return next;
-}
-
-export function wallCanvasSizePx(
-  wallWidthInches: number,
-  wallHeightInches: number,
-  viewport: PlannerViewport,
-): { width: number; height: number } {
-  return {
-    width: inchesToCanvasPx(wallWidthInches, viewport),
-    height: inchesToCanvasPx(wallHeightInches, viewport),
-  };
+  return zoomInchViewportAtPoint(
+    viewport,
+    focalScreenX,
+    focalScreenY,
+    { x: originX, y: originY },
+    scaleFactor,
+    BASE_PX_PER_INCH,
+    VIEWPORT_SCALE_MIN,
+    VIEWPORT_SCALE_MAX,
+  );
 }

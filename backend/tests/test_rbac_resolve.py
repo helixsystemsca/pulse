@@ -10,15 +10,19 @@ from app.core.rbac.resolve import effective_rbac_permission_keys
 from app.models.domain import User, UserRole
 
 
+class _QueryResult:
+    def all(self):
+        return []
+
+    def scalar_one_or_none(self):
+        return None
+
+
 class _DbEmpty:
     """Stub DB — matrix-primary resolver does not query grants."""
 
     async def execute(self, *_a, **_k):
-        class _R:
-            def all(self):
-                return []
-
-        return _R()
+        return _QueryResult()
 
 
 def _user(roles: list[str], **kwargs) -> User:
@@ -38,11 +42,7 @@ def _user(roles: list[str], **kwargs) -> User:
 async def _keys(**kwargs):
     class _Db:
         async def execute(self, *_a, **_k):
-            class _R:
-                def all(self):
-                    return []
-
-            return _R()
+            return _QueryResult()
 
     return await effective_rbac_permission_keys(_Db(), kwargs.pop("user"), **kwargs)
 
@@ -68,6 +68,37 @@ async def test_unassigned_user_bridges_contract() -> None:
     )
     assert "monitoring.view" in keys
     assert "work_requests.view" in keys
+    assert "work_requests.edit" not in keys
+
+
+@pytest.mark.asyncio
+async def test_operations_worker_gets_view_not_edit_from_matrix_feature() -> None:
+    user = _user([UserRole.worker.value])
+    keys = await _keys(
+        user=user,
+        contract_feature_names=["work_requests"],
+        effective_feature_names=["work_requests"],
+    )
+    assert "work_requests.view" in keys
+    assert "work_requests.edit" not in keys
+
+
+@pytest.mark.asyncio
+async def test_manager_gets_work_request_edit_when_configured() -> None:
+    user = _user([UserRole.manager.value])
+
+    class _DbWithWrRoles:
+        async def execute(self, *_a, **_k):
+            return _QueryResult()
+
+    keys = await effective_rbac_permission_keys(
+        _DbWithWrRoles(),
+        user,
+        contract_feature_names=["work_requests"],
+        effective_feature_names=["work_requests"],
+    )
+    assert "work_requests.view" in keys
+    assert "work_requests.edit" in keys
 
 
 @pytest.mark.asyncio

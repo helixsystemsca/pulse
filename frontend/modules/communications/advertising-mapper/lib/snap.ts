@@ -1,6 +1,7 @@
+import { clampPointToRect, clampSize, snapToGrid } from "@/spatial-engine/geometry/snap";
+
 export function snapInches(value: number, gridInches: number, enabled: boolean): number {
-  if (!enabled || gridInches <= 0) return value;
-  return Math.round(value / gridInches) * gridInches;
+  return snapToGrid(value, gridInches, enabled);
 }
 
 export function clampBlockToWall(
@@ -11,12 +12,7 @@ export function clampBlockToWall(
   wallWidth: number,
   wallHeight: number,
 ): { x: number; y: number } {
-  const maxX = Math.max(0, wallWidth - width);
-  const maxY = Math.max(0, wallHeight - height);
-  return {
-    x: Math.min(maxX, Math.max(0, x)),
-    y: Math.min(maxY, Math.max(0, y)),
-  };
+  return clampPointToRect(x, y, width, height, wallWidth, wallHeight);
 }
 
 export function clampBlockSize(
@@ -26,9 +22,5 @@ export function clampBlockSize(
   maxWidth?: number,
   maxHeight?: number,
 ): { width: number; height: number } {
-  let w = Math.max(minInches, width);
-  let h = Math.max(minInches, height);
-  if (maxWidth !== undefined) w = Math.min(w, maxWidth);
-  if (maxHeight !== undefined) h = Math.min(h, maxHeight);
-  return { width: w, height: h };
+  return clampSize(width, height, minInches, maxWidth, maxHeight);
 }

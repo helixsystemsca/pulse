@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.features.canonical_catalog import canonical_keys_from_contract, contract_keys_for_canonical
 from app.core.rbac.catalog import FEATURE_TO_RBAC_PERMISSIONS, RBAC_KEY_REQUIRES_COMPANY_FEATURE
+from app.core.tenant_feature_access import load_merged_workers_settings
 from app.core.user_roles import user_has_any_role, user_has_tenant_full_admin
 from app.models.domain import User, UserRole
 
@@ -49,6 +50,38 @@ def rbac_keys_from_legacy_effective_features(effective_features: Iterable[str]) 
     return keys
 
 
+def _work_request_edit_roles_from_settings(merged: dict) -> set[str]:
+    raw = merged.get("work_request_edit_roles")
+    if not isinstance(raw, list) or not raw:
+        return {"manager", "supervisor"}
+    out = {str(x).strip() for x in raw if str(x).strip()}
+    return out or {"manager", "supervisor"}
+
+
+async def _apply_rbac_extras_and_delegation(
+    db: AsyncSession,
+    user: User,
+    keys: set[str],
+    contract_feature_names: list[str],
+) -> set[str]:
+    """Union per-user bypass keys and tenant work-request edit delegation."""
+    keys = _filter_keys_by_contract(keys, contract_feature_names)
+
+    rbac_extra = getattr(user, "rbac_permission_extra", None) or []
+    if isinstance(rbac_extra, list):
+        keys |= {str(x) for x in rbac_extra if isinstance(x, str) and str(x).strip()}
+    keys = _filter_keys_by_contract(keys, contract_feature_names)
+
+    if user.company_id and "work_requests.view" in keys and "work_requests.edit" not in keys:
+        merged = await load_merged_workers_settings(db, str(user.company_id))
+        allow = _work_request_edit_roles_from_settings(merged)
+        if set(user.roles or []) & allow:
+            keys.add("work_requests.edit")
+        keys = _filter_keys_by_contract(keys, contract_feature_names)
+
+    return keys
+
+
 async def effective_rbac_permission_keys(
     db: AsyncSession,
     user: User,
@@ -61,17 +94,10 @@ async def effective_rbac_permission_keys(
 
     - System administrators: ``["*"]``.
     - Tenant full admins (``company_admin`` / ``facility_tenant_admin``): ``["*"]``.
-    - Else: bridge ``effective_feature_names`` ∪ ``feature_allow_extra`` duplicate merge (same as sidebar), ∩ contract.
-
-      ``effective_feature_names`` follows the department × matrix (or legacy buckets). ``tenant_role_grants``
-      synced from overlay rows intentionally do **not** expand this bridge (keeps API gates aligned with
-      ``enabled_features``).
-    - When ``effective_feature_names`` is empty and the user has no ``tenant_role_id``: bridge full contract as a
-      migration fallback.
-    - When ``effective_feature_names`` is empty and ``tenant_role_id`` is set: bridge only extras / empty (never the
-      full contract shortcut).
+    - Else: bridge ``effective_feature_names`` ∪ ``feature_allow_extra`` (view-level keys for modules).
+    - Plus ``rbac_permission_extra`` per-user bypass keys.
+    - ``work_requests.edit`` added when JWT role matches ``work_request_edit_roles`` in workers settings.
     """
-    _ = db  # async signature parity with callers
     if user.is_system_admin or user_has_any_role(user, UserRole.system_admin):
         return ["*"]
     if user.company_id is None:
@@ -88,9 +114,12 @@ async def effective_rbac_permission_keys(
 
     if not effective_feature_names:
         if getattr(user, "tenant_role_id", None):
-            return sorted(_filter_keys_by_contract(bridged_eff, contract_feature_names))
+            keys = await _apply_rbac_extras_and_delegation(db, user, bridged_eff, contract_feature_names)
+            return sorted(keys)
         contract_canonical = canonical_keys_from_contract(contract_feature_names)
         bridged = rbac_keys_from_legacy_effective_features(contract_canonical)
-        return sorted(_filter_keys_by_contract(bridged, contract_feature_names))
+        keys = await _apply_rbac_extras_and_delegation(db, user, bridged, contract_feature_names)
+        return sorted(keys)
 
-    return sorted(_filter_keys_by_contract(bridged_eff, contract_feature_names))
+    keys = await _apply_rbac_extras_and_delegation(db, user, bridged_eff, contract_feature_names)
+    return sorted(keys)

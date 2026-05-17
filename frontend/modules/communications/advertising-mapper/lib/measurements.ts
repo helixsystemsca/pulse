@@ -1,32 +1,28 @@
 import type { MeasurementUnit } from "@/modules/communications/advertising-mapper/types";
+import {
+  feetToInches,
+  formatLinearDistance,
+  inchesToFeet,
+  INCHES_PER_FOOT,
+  linearToDisplayValue,
+  parseLinearInput,
+  squareFeetFromRect,
+} from "@/spatial-engine/geometry/measurements";
 
-export const INCHES_PER_FOOT = 12;
-
-export function inchesToFeet(inches: number): number {
-  return inches / INCHES_PER_FOOT;
-}
-
-export function feetToInches(feet: number): number {
-  return feet * INCHES_PER_FOOT;
-}
+export { INCHES_PER_FOOT, inchesToFeet, feetToInches };
 
 export function squareFeetFromInches(widthInches: number, heightInches: number): number {
-  return (widthInches * heightInches) / (INCHES_PER_FOOT * INCHES_PER_FOOT);
+  return squareFeetFromRect(widthInches, heightInches, "in");
 }
 
 export function formatMeasurement(inches: number, unit: MeasurementUnit, digits = 1): string {
-  if (unit === "in") {
-    return `${inches.toFixed(digits)}"`;
-  }
-  return `${inchesToFeet(inches).toFixed(digits)}'`;
+  return formatLinearDistance(inches, unit, digits);
 }
 
 export function parseMeasurementInput(value: number, unit: MeasurementUnit): number {
-  if (unit === "in") return Math.max(0, value);
-  return feetToInches(Math.max(0, value));
+  return parseLinearInput(value, unit);
 }
 
 export function measurementToDisplayValue(inches: number, unit: MeasurementUnit): number {
-  if (unit === "in") return inches;
-  return inchesToFeet(inches);
+  return linearToDisplayValue(inches, unit);
 }

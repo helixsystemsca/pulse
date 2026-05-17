@@ -30,7 +30,12 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { PageBody } from "@/components/ui/PageBody";
 import { SegmentedControl } from "@/components/schedule/SegmentedControl";
 import { canAccessCompanyConfiguration, sessionHasAnyRole } from "@/lib/pulse-roles";
-import { canAccessClassicNavHref, hasRbacPermission } from "@/lib/rbac/session-access";
+import {
+  canAccessClassicNavHref,
+  hasRbacPermission,
+  isTenantFullAdminSession,
+} from "@/lib/rbac/session-access";
+import { isUserFeatureEnabled } from "@/lib/features/tenant-features";
 import type { PulseAuthSession } from "@/lib/pulse-session";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -289,11 +294,11 @@ export function WorkRequestsApp() {
     [session, wrEditAccessRoles],
   );
   const canAccessWorkRequests = useMemo(() => {
-    if (isSystemAdmin) return true;
-    if (!session) return false;
-    if (!sessionCompanyId) return false;
-    return canAccessClassicNavHref(session, "/dashboard/work-requests");
-  }, [isSystemAdmin, session, sessionCompanyId]);
+    if (isSystemAdmin || isTenantFullAdminSession(session)) return true;
+    if (!session || !sessionCompanyId) return false;
+    if (can("work_requests.view") || can("work_requests.edit")) return true;
+    return isUserFeatureEnabled(session, "work_requests");
+  }, [isSystemAdmin, session, sessionCompanyId, can]);
 
   const [companyPick, setCompanyPick] = useState<string | null>(null);
   const [companies, setCompanies] = useState<CompanyOption[]>([]);

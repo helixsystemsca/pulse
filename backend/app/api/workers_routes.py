@@ -200,6 +200,15 @@ def _sanitize_feature_key_list(v: object) -> list[str]:
     return sorted({str(x) for x in v if str(x) in cat})
 
 
+def _sanitize_rbac_permission_list(v: object) -> list[str]:
+    from app.core.rbac.catalog import RBAC_PERMISSION_SEED
+
+    allowed = {k for k, _ in RBAC_PERMISSION_SEED}
+    if not isinstance(v, list):
+        return []
+    return sorted({str(x) for x in v if str(x) in allowed})
+
+
 async def _contract_feature_names_for_company(db: AsyncSession, cid: str) -> list[str]:
     raw = await tenant_enabled_feature_names_with_legacy(db, cid)
     cat = set(GLOBAL_SYSTEM_FEATURES)
@@ -564,6 +573,11 @@ async def _build_detail(db: AsyncSession, cid: str, u: User, users_map: dict[str
         tenant_role_id=str(tr_id) if tr_id else None,
         avatar_url=co_worker_avatar_url(uid_s, u.avatar_url),
         feature_allow_extra=[str(x) for x in extras if isinstance(x, str)],
+        rbac_permission_extra=[
+            str(x)
+            for x in (list(u.rbac_permission_extra) if isinstance(getattr(u, "rbac_permission_extra", None), list) else [])
+            if isinstance(x, str)
+        ],
         is_active=u.is_active,
         account_status=u.account_status.value,
         phone=hr.phone if hr else None,
@@ -1534,6 +1548,24 @@ async def patch_worker(
             action="user.feature_allow_extra.updated",
             target_user_id=str(target.id),
             payload={"before": before_extras, "after": list(target.feature_allow_extra)},
+        )
+
+    if body.rbac_permission_extra is not None:
+        if not user_has_any_role(actor, UserRole.company_admin) and not user_has_facility_tenant_admin_flag(actor):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only company administrators may set per-feature permission bypasses.",
+            )
+        raw_perm = getattr(target, "rbac_permission_extra", None)
+        before_perm = list(raw_perm) if isinstance(raw_perm, list) else []
+        target.rbac_permission_extra = _sanitize_rbac_permission_list(body.rbac_permission_extra)
+        await record_rbac_audit_event(
+            db,
+            company_id=cid,
+            actor_user_id=str(actor.id),
+            action="user.rbac_permission_extra.updated",
+            target_user_id=str(target.id),
+            payload={"before": before_perm, "after": list(target.rbac_permission_extra)},
         )
 
     await db.commit()

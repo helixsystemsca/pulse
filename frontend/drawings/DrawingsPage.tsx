@@ -18,7 +18,11 @@ import type { BlueprintViewportHandle } from "@/components/zones-devices/Bluepri
 import { CanvasWrapper } from "./components/CanvasWrapper";
 import { DrawingCanvasToolbar } from "./components/DrawingCanvasToolbar";
 import { DrawingsTopBar } from "./components/DrawingsTopBar";
-import { MiniToolRail } from "./components/MiniToolRail";
+import {
+  getSpatialWorkspace,
+  SpatialWorkspaceShell,
+  useSpatialWorkspaceTools,
+} from "@/spatial-engine/workspace";
 import { RightPanel } from "./components/RightPanel";
 import { ToolPanel } from "./components/ToolPanel";
 import { PRIMARY_TO_TOOL, toolToPrimaryMode, type WorkspaceTool } from "./workspaceTools";
@@ -785,23 +789,64 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
 
   const toolsLocked = Boolean(isApiMode() && (!activeMapId.trim() || !mapDetail || !hasBaseImage));
 
+  const infrastructureWorkspace = getSpatialWorkspace("infrastructure");
+  const infrastructureTools = useMemo(
+    () =>
+      infrastructureWorkspace.tools.map((t) => {
+        if (t.id === "trace") {
+          return {
+            ...t,
+            disabled: !modeConfig.ui.showTraceRoute || !apiConnected || toolsLocked,
+            disabledReason: toolsLocked ? TOOLS_LOCKED_HINT : undefined,
+          };
+        }
+        if (t.id === "select" || t.id === "pan") {
+          return { ...t, disabled: toolsLocked, disabledReason: toolsLocked ? TOOLS_LOCKED_HINT : undefined };
+        }
+        if (t.group === "primary") {
+          return {
+            ...t,
+            disabled: toolsLocked || t.disabled,
+            disabledReason: toolsLocked ? TOOLS_LOCKED_HINT : t.disabledReason,
+          };
+        }
+        return t;
+      }),
+    [apiConnected, infrastructureWorkspace.tools, modeConfig.ui.showTraceRoute, toolsLocked],
+  );
+
+  const activeRailToolId = canvasNavMode === "pan" ? "pan" : activeTool;
+
+  const onInfrastructureToolChange = useCallback(
+    (toolId: string) => {
+      if (toolId === "pan") {
+        setCanvasNavMode("pan");
+        return;
+      }
+      setCanvasNavMode("select");
+      if (toolId === "select") {
+        applyWorkspaceTool("select");
+        return;
+      }
+      applyWorkspaceTool(toolId as WorkspaceTool);
+    },
+    [applyWorkspaceTool],
+  );
+
+  useSpatialWorkspaceTools(infrastructureTools, onInfrastructureToolChange, Boolean(mapDetail));
+
   const workspaceChrome = (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-row overflow-hidden bg-[#f4f6f8] dark:bg-ds-primary">
-      <span id="drawings-workspace-title" className="sr-only">
-        Infrastructure map workspace
-      </span>
-      <MiniToolRail
-        activeTool={activeTool}
-        onToolChange={applyWorkspaceTool}
-        traceAllowed={modeConfig.ui.showTraceRoute}
-        apiConnected={apiConnected}
-        toolsLocked={toolsLocked}
-        toolsLockedHint={TOOLS_LOCKED_HINT}
-        canvasNavMode={canvasNavMode}
-        onCanvasSelectMode={() => applyWorkspaceTool("select")}
-        onCanvasPanMode={() => setCanvasNavMode("pan")}
-      />
-      <ToolPanel
+    <SpatialWorkspaceShell
+      workspaceId="infrastructure"
+      title={mapDetail?.name ?? "Infrastructure map"}
+      subtitle={mapDetail?.category}
+      activeToolId={activeRailToolId}
+      onToolChange={onInfrastructureToolChange}
+      tools={infrastructureTools}
+      immersive={false}
+      className="min-h-0 flex-1"
+      leftPanel={
+        <ToolPanel
         activeTool={activeTool}
         apiConnected={apiConnected}
         toolsLocked={toolsLocked}
@@ -849,9 +894,12 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
         traceResult={traceResult}
         onTraceRoute={() => void onTraceRoute()}
       />
-
-      <div className="flex min-h-0 min-w-0 flex-1 flex-row overflow-hidden">
-        <main className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+      }
+      viewport={
+        <>
+          <span id="drawings-workspace-title" className="sr-only">
+            Infrastructure map workspace
+          </span>
           {mapListLoading ? (
             <div className="flex flex-1 items-center justify-center border-l border-[#e2e6ec] bg-[#f4f6f8] dark:border-ds-border/40 dark:bg-ds-primary">
               <p className="text-sm text-ds-muted">Loading maps…</p>
@@ -912,7 +960,6 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
               </div>
 
               <div className="relative flex min-h-0 flex-1 flex-col">
-                <DrawingCanvasToolbar disabled={toolsLocked} viewportRef={canvasViewportRef} />
                 {(() => {
                   const vis = getVisibleGraphElements(
                     { systems: activeSystems } satisfies GraphFilters,
@@ -1003,8 +1050,12 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
               </div>
             </>
           )}
-        </main>
-
+        </>
+      }
+      floatingControls={
+        mapDetail ? <DrawingCanvasToolbar disabled={toolsLocked} viewportRef={canvasViewportRef} /> : undefined
+      }
+      rightPanel={
         <RightPanel
           selectedAssets={selectedAssets}
           selectedConnections={selectedConnections}
@@ -1035,8 +1086,8 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
             await graph.upsertAttribute(opts);
           }}
         />
-      </div>
-    </div>
+      }
+    />
   );
 
   const errorBanner =

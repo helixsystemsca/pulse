@@ -1,0 +1,86 @@
+import {
+  Building2,
+  DoorClosed,
+  Hand,
+  MapPin,
+  MousePointer2,
+  PenLine,
+  Route,
+  Spline,
+} from "lucide-react";
+import type { SpatialWorkspaceDefinition } from "@/spatial-engine/workspace/types";
+
+export const INFRASTRUCTURE_WORKSPACE: SpatialWorkspaceDefinition = {
+  id: "infrastructure",
+  label: "Infrastructure map",
+  description: "Facility drawings — graph assets, connections, and annotations.",
+  permissions: ["drawings.access"],
+  sidePanels: ["left", "right"],
+  layers: [
+    { id: "backdrop", label: "Base image", zIndex: 0, defaultVisible: true, interactive: false },
+    { id: "graph", label: "Graph", zIndex: 20, defaultVisible: true, interactive: true },
+    { id: "annotations", label: "Annotations", zIndex: 30, defaultVisible: true, interactive: true },
+    { id: "interaction", label: "Interaction", zIndex: 90, defaultVisible: true, interactive: true },
+  ],
+  tools: [
+    {
+      id: "select",
+      label: "Select",
+      group: "navigation",
+      icon: MousePointer2,
+      hotkeys: [{ key: "v" }],
+      layerTargets: ["graph", "annotations"],
+    },
+    {
+      id: "pan",
+      label: "Pan",
+      group: "navigation",
+      icon: Hand,
+      layerTargets: ["backdrop"],
+      cursor: "grab",
+    },
+    {
+      id: "asset",
+      label: "Add asset",
+      group: "primary",
+      icon: Building2,
+      layerTargets: ["graph"],
+    },
+    {
+      id: "connect",
+      label: "Connect",
+      group: "primary",
+      icon: Spline,
+      layerTargets: ["graph"],
+    },
+    {
+      id: "zone",
+      label: "Zone",
+      group: "primary",
+      icon: MapPin,
+      layerTargets: ["annotations"],
+    },
+    {
+      id: "door",
+      label: "Door",
+      group: "primary",
+      icon: DoorClosed,
+      disabled: true,
+      disabledReason: "Coming soon",
+    },
+    {
+      id: "annotate",
+      label: "Annotate",
+      group: "primary",
+      icon: PenLine,
+      layerTargets: ["annotations"],
+    },
+    {
+      id: "trace",
+      label: "Trace route",
+      group: "primary",
+      icon: Route,
+      layerTargets: ["graph"],
+    },
+  ],
+};

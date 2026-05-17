@@ -238,6 +238,12 @@ class User(Base):
         nullable=False,
         server_default=text("'[]'::jsonb"),
     )
+    #: Additive flat RBAC keys (e.g. work_requests.edit, procedures.edit) beyond matrix/feature bridge.
+    rbac_permission_extra: Mapped[list[str]] = mapped_column(
+        JSONB,
+        nullable=False,
+        server_default=text("'[]'::jsonb"),
+    )
     #: Optional access overlay assignment (organizational label; does not widen product modules versus the matrix).
     tenant_role_id: Mapped[Optional[str]] = mapped_column(
         UUID(as_uuid=False),

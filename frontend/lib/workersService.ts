@@ -82,6 +82,8 @@ export type WorkerDetail = {
   avatar_url?: string | null;
   /** Add-on modules from company admin (subset of tenant contract). */
   feature_allow_extra?: string[];
+  /** Per-worker RBAC key overrides (e.g. procedures.edit beyond matrix role). */
+  rbac_permission_extra?: string[];
   is_active: boolean;
   account_status?: string;
   phone: string | null;

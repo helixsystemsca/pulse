@@ -1,4 +1,15 @@
 import type { AdSlotStatus } from "@/modules/communications/types";
+import type { CalibrationReference, ConstraintRegion } from "@/modules/communications/advertising-mapper/geometry/types";
+
+export type {
+  AnchorPoint,
+  CalibrationReference,
+  ConstraintRegion,
+  ConstraintType,
+  GeometryLayer,
+  GeometryLayerId,
+  PlannerToolMode,
+} from "@/modules/communications/advertising-mapper/geometry/types";
 
 export type MeasurementUnit = "ft" | "in";
 
@@ -36,8 +47,15 @@ export type FacilityWallPlan = {
   backdropKind: WallBackdropKind;
   /** Optional photo URL (arena/concourse overlays). */
   backdropUrl?: string;
+  /** Natural pixel size of uploaded backdrop (for aspect ratio). */
+  backdropNaturalWidth?: number;
+  backdropNaturalHeight?: number;
   gridSnapInches?: number;
   blocks: InventoryBlock[];
+  /** Physical constraint regions — canonical polygon geometry in wall inches. */
+  constraints: ConstraintRegion[];
+  /** Future image calibration (two-point reference). */
+  calibration?: CalibrationReference | null;
 };
 
 export type DimensionEditTarget = "width" | "height";
