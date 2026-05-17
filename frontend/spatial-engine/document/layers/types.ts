@@ -6,6 +6,8 @@ export type SpatialDocumentLayerType =
   | "constraints"
   | "graph"
   | "annotations"
+  | "zones"
+  | "devices"
   | "sensors";
 
 export type LayerPersistenceBinding = {
@@ -109,6 +111,33 @@ export type AnnotationLayerDocument = SpatialLayerBase & {
   features: AnnotationFeatureDocument[];
 };
 
+// —— Zones (facility / operational regions) ——
+
+export type ZoneFeatureDocument = {
+  id: string;
+  geometry: { kind: "polygon"; points: FlatPolygonPoints };
+  metadata: Record<string, unknown>;
+};
+
+export type ZoneLayerDocument = SpatialLayerBase & {
+  type: "zones";
+  features: ZoneFeatureDocument[];
+};
+
+// —— Devices (sensors, beacons, equipment on map) ——
+
+export type DeviceFeatureDocument = {
+  id: string;
+  position: WorldPoint;
+  deviceType: string;
+  metadata: Record<string, unknown>;
+};
+
+export type DeviceLayerDocument = SpatialLayerBase & {
+  type: "devices";
+  features: DeviceFeatureDocument[];
+};
+
 // —— Sensors (future overlays) ——
 
 export type SensorFeatureDocument = {
@@ -128,6 +157,8 @@ export type SpatialDocumentLayer =
   | ConstraintLayerDocument
   | GraphLayerDocument
   | AnnotationLayerDocument
+  | ZoneLayerDocument
+  | DeviceLayerDocument
   | SensorLayerDocument;
 
 export function isInventoryLayer(layer: SpatialDocumentLayer): layer is InventoryLayerDocument {
@@ -144,6 +175,14 @@ export function isGraphLayer(layer: SpatialDocumentLayer): layer is GraphLayerDo
 
 export function isAnnotationLayer(layer: SpatialDocumentLayer): layer is AnnotationLayerDocument {
   return layer.type === "annotations";
+}
+
+export function isZoneLayer(layer: SpatialDocumentLayer): layer is ZoneLayerDocument {
+  return layer.type === "zones";
+}
+
+export function isDeviceLayer(layer: SpatialDocumentLayer): layer is DeviceLayerDocument {
+  return layer.type === "devices";
 }
 
 export function isSensorLayer(layer: SpatialDocumentLayer): layer is SensorLayerDocument {

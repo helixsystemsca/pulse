@@ -1,11 +1,13 @@
 import type {
   AnnotationLayerDocument,
   ConstraintLayerDocument,
+  DeviceLayerDocument,
   GraphLayerDocument,
   InventoryLayerDocument,
   SensorLayerDocument,
   SpatialDocumentLayerType,
   SpatialLayerBase,
+  ZoneLayerDocument,
 } from "@/spatial-engine/document/layers/types";
 
 const DEFAULT_Z: Record<SpatialDocumentLayerType, number> = {
@@ -13,6 +15,8 @@ const DEFAULT_Z: Record<SpatialDocumentLayerType, number> = {
   constraints: 10,
   graph: 20,
   annotations: 30,
+  zones: 15,
+  devices: 25,
   sensors: 40,
 };
 
@@ -58,6 +62,22 @@ export function createAnnotationLayer(
 ): AnnotationLayerDocument {
   const s = shell("annotations", partial);
   return { ...s, type: "annotations", features };
+}
+
+export function createZoneLayer(
+  partial?: Partial<LayerShell>,
+  features: ZoneLayerDocument["features"] = [],
+): ZoneLayerDocument {
+  const s = shell("zones", partial);
+  return { ...s, type: "zones", features };
+}
+
+export function createDeviceLayer(
+  partial?: Partial<LayerShell>,
+  features: DeviceLayerDocument["features"] = [],
+): DeviceLayerDocument {
+  const s = shell("devices", partial);
+  return { ...s, type: "devices", features };
 }
 
 export function createSensorLayer(

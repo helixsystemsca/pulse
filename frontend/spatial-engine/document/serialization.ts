@@ -2,9 +2,11 @@ import type { AnnotationFeatureDocument, SpatialDocumentLayer } from "@/spatial-
 import {
   isAnnotationLayer,
   isConstraintLayer,
+  isDeviceLayer,
   isGraphLayer,
   isInventoryLayer,
   isSensorLayer,
+  isZoneLayer,
 } from "@/spatial-engine/document/layers/types";
 import type { SpatialDocument } from "@/spatial-engine/document/types";
 import { SPATIAL_DOCUMENT_VERSION } from "@/spatial-engine/document/types";
@@ -90,6 +92,27 @@ function stripLayerRuntime(layer: SpatialDocumentLayer): SpatialDocumentLayer {
       features: layer.features.map((f) => ({
         id: f.id,
         geometry: cloneAnnotationGeometry(f.geometry),
+        metadata: { ...f.metadata },
+      })),
+    };
+  }
+  if (isZoneLayer(layer)) {
+    return {
+      ...layer,
+      features: layer.features.map((f) => ({
+        id: f.id,
+        geometry: { kind: f.geometry.kind, points: [...f.geometry.points] },
+        metadata: { ...f.metadata },
+      })),
+    };
+  }
+  if (isDeviceLayer(layer)) {
+    return {
+      ...layer,
+      features: layer.features.map((f) => ({
+        id: f.id,
+        position: { ...f.position },
+        deviceType: f.deviceType,
         metadata: { ...f.metadata },
       })),
     };

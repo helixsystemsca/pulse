@@ -1,9 +1,11 @@
 import {
   isAnnotationLayer,
   isConstraintLayer,
+  isDeviceLayer,
   isGraphLayer,
   isInventoryLayer,
   isSensorLayer,
+  isZoneLayer,
   type SpatialDocumentLayer,
   type SpatialDocumentLayerType,
 } from "@/spatial-engine/document/layers/types";
@@ -33,4 +35,12 @@ export function visibleDocumentLayers(doc: SpatialDocument): SpatialDocumentLaye
   return sortedDocumentLayers(doc).filter((l) => l.visible);
 }
 
-export { isAnnotationLayer, isConstraintLayer, isGraphLayer, isInventoryLayer, isSensorLayer };
+export {
+  isAnnotationLayer,
+  isConstraintLayer,
+  isDeviceLayer,
+  isGraphLayer,
+  isInventoryLayer,
+  isSensorLayer,
+  isZoneLayer,
+};

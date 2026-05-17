@@ -8,6 +8,7 @@ import { InventoryDetailsPanel } from "@/modules/communications/advertising-mapp
 import { InventoryPlannerCanvas } from "@/modules/communications/advertising-mapper/components/InventoryPlannerCanvas";
 import { cloneWallPlans, MOCK_WALL_PLANS } from "@/modules/communications/advertising-mapper/data/mock-walls";
 import type { ConstraintRegion, ConstraintType, PlannerToolMode } from "@/modules/communications/advertising-mapper/geometry/types";
+import { useAdvertisingSpatialRuntime } from "@/modules/communications/advertising-mapper/hooks/useAdvertisingSpatialRuntime";
 import { usePlannerViewport } from "@/modules/communications/advertising-mapper/hooks/usePlannerViewport";
 import { RULER_THICKNESS_PX } from "@/modules/communications/advertising-mapper/components/AxisRulers";
 import type {
@@ -23,9 +24,23 @@ import {
   useSpatialWorkspaceTools,
 } from "@/spatial-engine/workspace";
 
+const INITIAL_WALLS = cloneWallPlans();
+
 export function AdvertisingMapperPage() {
-  const [walls, setWalls] = useState<FacilityWallPlan[]>(() => cloneWallPlans());
-  const [wallId, setWallId] = useState(MOCK_WALL_PLANS[0]!.id);
+  const {
+    walls,
+    wallId,
+    wall: wallDoc,
+    setWallId,
+    updateWall,
+    onBlockChange,
+    onConstraintChange,
+    onConstraintCreate,
+    onConstraintDelete,
+  } = useAdvertisingSpatialRuntime(INITIAL_WALLS, MOCK_WALL_PLANS[0]!.id);
+
+  const wall = wallDoc ?? INITIAL_WALLS[0]!;
+
   const [selectedInventoryId, setSelectedInventoryId] = useState<string | null>(null);
   const [selectedConstraintId, setSelectedConstraintId] = useState<string | null>(null);
   const [toolMode, setToolMode] = useState<PlannerToolMode>("select");
@@ -37,8 +52,6 @@ export function AdvertisingMapperPage() {
 
   const { viewport, setViewport, zoomBy, resetView } = usePlannerViewport();
   const workspace = getSpatialWorkspace("advertising");
-
-  const wall = useMemo(() => walls.find((w) => w.id === wallId) ?? walls[0]!, [walls, wallId]);
   const selectedInventory = useMemo(
     () => wall.blocks.find((b) => b.id === selectedInventoryId) ?? null,
     [wall.blocks, selectedInventoryId],
@@ -54,31 +67,6 @@ export function AdvertisingMapperPage() {
 
   useSpatialWorkspaceTools(workspace.tools, onToolChange);
 
-  const updateWall = useCallback(
-    (patch: Partial<FacilityWallPlan>) => {
-      setWalls((prev) => prev.map((w) => (w.id !== wallId ? w : { ...w, ...patch })));
-    },
-    [wallId],
-  );
-
-  const onBlockChange = useCallback(
-    (id: string, patch: Partial<InventoryBlock>) => {
-      updateWall({ blocks: wall.blocks.map((b) => (b.id === id ? { ...b, ...patch } : b)) });
-    },
-    [updateWall, wall.blocks],
-  );
-
-  const onConstraintChange = useCallback(
-    (id: string, patch: Partial<ConstraintRegion>) => {
-      updateWall({
-        constraints: wall.constraints.map((c) =>
-          c.id === id ? { ...c, ...patch, updatedAt: new Date().toISOString() } : c,
-        ),
-      });
-    },
-    [updateWall, wall.constraints],
-  );
-
   const onConstraintPointsChange = useCallback(
     (id: string, points: number[]) => {
       onConstraintChange(id, { points });
@@ -86,21 +74,21 @@ export function AdvertisingMapperPage() {
     [onConstraintChange],
   );
 
-  const onConstraintCreate = useCallback(
+  const handleConstraintCreate = useCallback(
     (region: ConstraintRegion) => {
-      updateWall({ constraints: [...wall.constraints, region] });
+      onConstraintCreate(region);
       setSelectedConstraintId(region.id);
       setSelectedInventoryId(null);
       setToolMode("select");
     },
-    [updateWall, wall.constraints],
+    [onConstraintCreate],
   );
 
-  const onConstraintDelete = useCallback(() => {
+  const handleConstraintDelete = useCallback(() => {
     if (!selectedConstraintId) return;
-    updateWall({ constraints: wall.constraints.filter((c) => c.id !== selectedConstraintId) });
+    onConstraintDelete(selectedConstraintId);
     setSelectedConstraintId(null);
-  }, [selectedConstraintId, updateWall, wall.constraints]);
+  }, [onConstraintDelete, selectedConstraintId]);
 
   const handleBackdropUpload = useCallback(
     (file: File) => {
@@ -202,7 +190,7 @@ export function AdvertisingMapperPage() {
             <ConstraintDetailsPanel
               constraint={selectedConstraint}
               onUpdate={(patch) => onConstraintChange(selectedConstraint.id, patch)}
-              onDelete={onConstraintDelete}
+              onDelete={handleConstraintDelete}
             />
           ) : (
             <InventoryDetailsPanel
@@ -231,7 +219,7 @@ export function AdvertisingMapperPage() {
             onSelectInventory={setSelectedInventoryId}
             onSelectConstraint={setSelectedConstraintId}
             onBlockChange={onBlockChange}
-            onConstraintCreate={onConstraintCreate}
+            onConstraintCreate={handleConstraintCreate}
             onConstraintPointsChange={onConstraintPointsChange}
             onDimensionBadgeClick={(id, focus) => setDimEdit({ id, focus })}
             showFloatingHints={false}

@@ -8,7 +8,7 @@ import { SYMBOL_DEFAULT, mapApiElement, parseApiBlueprintLayers, toApiPayload } 
 import { packInfraAssetNotes, parseInfraAssetFromNotes } from "./utils/infraSymbolNotes";
 import { packZoneMeta } from "./utils/overlayMeta";
 import { useActiveProject } from "./hooks/useActiveProject";
-import { useInfrastructureGraph } from "./hooks/useInfrastructureGraph";
+import { useDrawingsSpatialRuntime } from "./hooks/useDrawingsSpatialRuntime";
 import type { FilterRule, GraphFilters, SystemType, TraceRouteResult } from "./utils/graphHelpers";
 import { getVisibleGraphElements } from "./utils/graphHelpers";
 import { MODES } from "./mapBuilderModes";
@@ -30,6 +30,7 @@ import type { AnnotateKind, AssetDrawShape, ConnectFlow, PrimaryMode } from "./m
 import { bboxFromFlatPoly, uniqueLabel } from "./utils/mapBuilderHelpers";
 import type { StageViewport } from "./components/MapSemanticDrawLayer";
 import { DRAWINGS_BASE_IMAGE_SYMBOL } from "./mapConstants";
+import { ensureDrawingsSpatialRenderers } from "./lib/register-spatial-renderers";
 
 type MapSummary = {
   id: string;
@@ -96,6 +97,10 @@ function useDocumentDark(): boolean {
 }
 
 export default function DrawingsPage({ fullscreen = false }: { fullscreen?: boolean }) {
+  useEffect(() => {
+    ensureDrawingsSpatialRenderers();
+  }, []);
+
   const router = useRouter();
   const isDark = useDocumentDark();
   const theme = isDark ? ("dark" as const) : ("light" as const);
@@ -210,7 +215,20 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
     return p != null && String(p).trim() ? String(p).trim() : null;
   }, [activeMapId, mapDetail, maps]);
 
-  const graph = useInfrastructureGraph(graphProjectId, activeMapId.trim() || null);
+  const spatialLoadInput = useMemo(() => {
+    if (!activeMapId.trim() || !mapDetail) return null;
+    return {
+      mapId: activeMapId.trim(),
+      name: mapDetail.name,
+      category: mapDetail.category,
+      imageUrl: mapDetail.image_url?.trim() || null,
+      worldWidth: baseWorldSize?.w ?? MAX_BASE_IMAGE_WORLD,
+      worldHeight: baseWorldSize?.h ?? MAX_BASE_IMAGE_WORLD,
+      projectId: graphProjectId,
+    };
+  }, [activeMapId, mapDetail, baseWorldSize, graphProjectId]);
+
+  const graph = useDrawingsSpatialRuntime(graphProjectId, activeMapId.trim() || null, spatialLoadInput);
 
   useEffect(() => {
     if (!isApiMode()) {
@@ -310,20 +328,29 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
     };
   }, [activeMapId]);
 
+  useEffect(() => {
+    if (!mapDetail || !graph.activeDocument || graph.activeDocument.id !== mapDetail.id) return;
+    graph.hydrateBlueprintFromApi(mapDetail.elements, parseApiBlueprintLayers(mapDetail.layers));
+  }, [mapDetail, graph.activeDocument?.id, graph.hydrateBlueprintFromApi, graph.revision]);
+
   const mapLoading = mapListLoading || mapDetailLoading;
 
   const blueprintElements: BlueprintElement[] = useMemo(() => {
-    if (!mapDetail) return [];
-    const els = mapDetail.elements.map(mapApiElement);
-    const stripLegacyBase = Boolean(mapDetail.image_url?.trim());
+    const els = graph.blueprintElements.length > 0 || graph.activeDocument
+      ? graph.blueprintElements
+      : mapDetail
+        ? mapDetail.elements.map(mapApiElement)
+        : [];
+    const stripLegacyBase = Boolean(mapDetail?.image_url?.trim());
     return els
       .filter((e) => !(stripLegacyBase && e.type === "symbol" && e.symbol_type === DRAWINGS_BASE_IMAGE_SYMBOL))
       .filter((e) => !hiddenBlueprintElementIds.has(e.id));
-  }, [mapDetail, hiddenBlueprintElementIds]);
+  }, [graph.activeDocument, graph.blueprintElements, mapDetail, hiddenBlueprintElementIds]);
 
   const blueprintLayers: BlueprintLayer[] = useMemo(() => {
+    if (graph.blueprintLayers.length > 0 || graph.activeDocument) return graph.blueprintLayers;
     return mapDetail ? parseApiBlueprintLayers(mapDetail.layers) : [];
-  }, [mapDetail]);
+  }, [graph.activeDocument, graph.blueprintLayers, mapDetail]);
 
   const selectedBlueprintElement = useMemo(() => {
     if (!selectedBlueprintElementId) return null;
@@ -341,6 +368,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
   const persistMapElements = useCallback(
     async (next: BlueprintElement[]) => {
       if (!mapDetail || !isApiMode()) return;
+      graph.setBlueprintElements(next, blueprintLayers);
       const updated = await apiFetch<MapDetail>(`/api/maps/${encodeURIComponent(mapDetail.id)}`, {
         method: "PUT",
         json: {
@@ -354,7 +382,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
       });
       setMapDetail(updated);
     },
-    [mapDetail, blueprintLayers],
+    [blueprintLayers, graph, mapDetail],
   );
 
   function editableBlueprintElements(): BlueprintElement[] {
