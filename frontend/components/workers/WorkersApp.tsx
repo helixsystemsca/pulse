@@ -146,16 +146,16 @@ const SECTION_KICKER = "text-[11px] font-semibold uppercase tracking-wider text-
 const EMPTY_ROTATION_DAYS: boolean[] = [false, false, false, false, false, false, false];
 
 const ROTATION_PRESET_BUTTONS: { label: string; days: boolean[] }[] = [
-  { label: "Sun—Wed", days: [true, true, true, true, false, false, false] },
-  { label: "Tue—Sat", days: [false, false, true, true, true, true, true] },
-  { label: "Mon—Fri", days: [false, true, true, true, true, true, false] },
+  { label: "Sun-Wed", days: [true, true, true, true, false, false, false] },
+  { label: "Tue-Sat", days: [false, false, true, true, true, true, true] },
+  { label: "Mon-Fri", days: [false, true, true, true, true, true, false] },
   { label: "All week", days: [true, true, true, true, true, true, true] },
 ];
 
 const SETTINGS_TABS = ["Roles", "Shifts", "Skill categories", "Certification rules"] as const;
 type SettingsTab = (typeof SETTINGS_TABS)[number];
 
-/** Shown when the invite exists but email delivery is uncertain or disabled — share link manually. */
+/** Shown when the invite exists but email delivery is uncertain or disabled - share link manually. */
 type InviteLinkBanner = {
   inviteUrl: string;
   variant: "no_email" | "email_maybe" | "link_only";
@@ -234,11 +234,11 @@ function splitOperationsRowsByEmployment(items: WorkerRow[]): { key: EmploymentB
 
 function formatRotationReadOnly(profile: WorkerDetail): string {
   const rows = recurringRowsFromApi(profile.recurring_shifts ?? []);
-  if (!rows.length) return "—";
+  if (!rows.length) return "-";
   const days = rotationDaysFromRecurring(rows);
   const bits = ROTATION_WEEKDAY_SHORT.filter((_, i) => days[i]).join(", ");
   const w = rows[0];
-  return `${bits} (${w.start}—${w.end})`;
+  return `${bits} (${w.start}-${w.end})`;
 }
 
 type CreateFormState = {
@@ -269,7 +269,7 @@ const CREATE_FORM_EMPTY: CreateFormState = {
   supervisor_id: "",
 };
 
-/** Invite / roster create — HR `department` field (slug). Role options depend on this. */
+/** Invite / roster create - HR `department` field (slug). Role options depend on this. */
 const INVITE_DEPARTMENT_OPTIONS: { value: string; label: string }[] = [
   { value: "maintenance", label: "Maintenance" },
   { value: "reception", label: "Reception" },
@@ -283,7 +283,7 @@ function isMaintenanceInviteDepartment(department: string): boolean {
   return (department || "maintenance").trim() === "maintenance";
 }
 
-/** API has no `coordinator` role — non-maintenance coordinators use `worker` permissions. */
+/** API has no `coordinator` role - non-maintenance coordinators use `worker` permissions. */
 function effectiveInviteRole(department: string, role: string, createRoleLimited: boolean): string {
   if (!isMaintenanceInviteDepartment(department)) return "worker";
   const allowed = createRoleLimited
@@ -337,13 +337,13 @@ function shiftRosterLabel(
   shifts: { key: string; label: string }[] | undefined,
 ): string {
   const k = key?.trim();
-  if (!k) return "—";
+  if (!k) return "-";
   const row = shifts?.find((s) => s.key === k);
   if (row?.label) return row.label;
   return k.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-/** Roster shift column: soft sky / amber for day bands; deep violet for night (incl. `N*` keys). Legacy `gg_*` → neutral. */
+/** Roster shift column: soft sky / amber for day bands; deep violet for night (incl. `N*` keys). Legacy `gg_*` -> neutral. */
 function shiftRosterBadgeClass(shiftKey: string | null | undefined): string {
   const k = (shiftKey ?? "").trim().toLowerCase();
   if (!k) return "app-badge-slate";
@@ -362,7 +362,7 @@ function certBadge(status: string): string {
 }
 
 function formatLoginWhen(iso: string | null | undefined): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   try {
     return new Date(iso).toLocaleString();
   } catch {
@@ -422,13 +422,13 @@ function formatLoginPlace(row: WorkerRow): string {
   if (c && r) return `${c}, ${r}`;
   if (c) return c;
   if (r) return r;
-  return "—";
+  return "-";
 }
 
 function shortenUa(ua: string | null | undefined, max = 72): string {
   const s = (ua ?? "").trim();
-  if (!s) return "—";
-  return s.length > max ? `${s.slice(0, max)}…` : s;
+  if (!s) return "-";
+  return s.length > max ? `${s.slice(0, max)}...` : s;
 }
 
 const PERMISSION_ROLE_OPTIONS = ["manager", "supervisor", "lead", "worker"] as const;
@@ -923,7 +923,7 @@ export function WorkersApp() {
       if (filterColGeo.trim()) {
         const needle = filterColGeo.trim().toLowerCase();
         const place = formatLoginPlace(row).toLowerCase();
-        if (place === "—") return false;
+        if (place === "-") return false;
         if (!place.includes(needle)) return false;
       }
       if (filterColUa.trim()) {
@@ -968,7 +968,7 @@ export function WorkersApp() {
     ],
   );
 
-  /** Department (category) → role ladder (sub-category) → rows. Maintenance workers keep employment sub-buckets. */
+  /** Department (category) -> role ladder (sub-category) -> rows. Maintenance workers keep employment sub-buckets. */
   const groupedByDepartment = useMemo(() => {
     const byDept = new Map<string, Map<string, WorkerRow[]>>();
 
@@ -1005,7 +1005,7 @@ export function WorkersApp() {
 
   const canDeleteInvitedFromList = isTenantFullAdmin || isSystemAdmin;
 
-  /** People who can supervise others in the facility org chart — managers/supervisors only.
+  /** People who can supervise others in the facility org chart - managers/supervisors only.
    * `company_admin` is permission-tier only (not facility hierarchy); admins who are workers belong with workers. */
   const supervisors = useMemo(
     () =>
@@ -1282,7 +1282,7 @@ export function WorkersApp() {
     const rotationSelected = rotationDaysDraft.some(Boolean);
     const win = { start: padHm(shiftTimeDraft.start), end: padHm(shiftTimeDraft.end) };
     if (rotationSelected && parseTimeToMinutes(win.start) === parseTimeToMinutes(win.end)) {
-      window.alert("Shift start and end cannot be the same. For overnight shifts use a later start and earlier end (e.g. 22:00—06:00).");
+      window.alert("Shift start and end cannot be the same. For overnight shifts use a later start and earlier end (e.g. 22:00-06:00).");
       return;
     }
     const nextRotation = buildRecurringRowsForDays(rotationDaysDraft, win);
@@ -1521,7 +1521,7 @@ export function WorkersApp() {
               <div className="min-w-0 space-y-2">
                   <p className="text-base font-bold leading-snug tracking-tight text-ds-foreground">
                     {inviteNotice.variant === "no_email"
-                      ? "Invite created — email not sent from server"
+                      ? "Invite created - email not sent from server"
                       : inviteNotice.variant === "link_only"
                         ? "Join link ready"
                         : "Invite queued"}
@@ -1530,7 +1530,7 @@ export function WorkersApp() {
                     {inviteNotice.variant === "no_email"
                       ? "Outbound email is not configured. Copy the join link below and send it to the person directly."
                       : inviteNotice.variant === "link_only"
-                        ? "No invite email was sent for this action. Copy the URL below and send it yourself (personal email, SMS, etc.). This is a new activation link—any older link for this person no longer works."
+                        ? "No invite email was sent for this action. Copy the URL below and send it yourself (personal email, SMS, etc.). This is a new activation link-any older link for this person no longer works."
                         : "If outbound email is configured, they should receive the invite shortly. You can still share the link below as a backup."}
                   </p>
                   <div className="pt-1">
@@ -1587,7 +1587,7 @@ export function WorkersApp() {
             value={companyPick ?? ""}
             onChange={(e) => setCompanyPick(e.target.value || null)}
           >
-            <option value="">Select company…</option>
+            <option value="">Select company...</option>
             {companies.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -1678,11 +1678,11 @@ export function WorkersApp() {
               <Card variant="secondary" padding="md">
                 <h2 className="text-sm font-bold tracking-tight text-ds-foreground">Permissions</h2>
                 <p className="mt-1 text-xs text-ds-muted">
-                  Same module catalog for every workplace department — only the saved toggles differ. This matrix is
+                  Same module catalog for every workplace department - only the saved toggles differ. This matrix is
                   the default for sidebar and product access by HR{" "}
                   <span className="font-semibold text-ds-foreground">department</span> and workplace{" "}
                   <span className="font-semibold text-ds-foreground">role slot</span> (manager, coordination, supervisor,
-                  …).                   <span className="font-semibold text-ds-foreground">Access overlays</span> (below) are legacy labels/toggles
+                  ...).                   <span className="font-semibold text-ds-foreground">Access overlays</span> (below) are legacy labels/toggles
                   and{" "}
                   <span className="font-semibold text-ds-foreground">do not change</span> which modules appear in Pulse.
                   Modules outside your contract stay hidden everywhere.
@@ -1771,7 +1771,7 @@ export function WorkersApp() {
                   disabled={accessPolicySaving}
                   onClick={() => void saveAccessPolicy()}
                 >
-                  {accessPolicySaving ? "Saving…" : "Save permissions"}
+                  {accessPolicySaving ? "Saving..." : "Save permissions"}
                 </button>
               </Card>
             ) : null}
@@ -1954,7 +1954,7 @@ export function WorkersApp() {
                   disabled={accessPolicySaving}
                   onClick={() => void saveDelegatedRoleModules()}
                 >
-                  {accessPolicySaving ? "Saving…" : "Save team module access"}
+                  {accessPolicySaving ? "Saving..." : "Save team module access"}
                 </button>
               </Card>
             ) : null}
@@ -1972,7 +1972,7 @@ export function WorkersApp() {
                 <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ds-muted" />
                 <input
                   type="search"
-                  placeholder="Search workers or roles…"
+                  placeholder="Search workers or roles..."
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
                   className={`${dsInputClass} py-2 pl-9 pr-3`}
@@ -2043,7 +2043,7 @@ export function WorkersApp() {
             {listLoading ? (
               <div className="flex items-center gap-2 py-16 text-pulse-muted">
                 <Loader2 className="h-5 w-5 animate-spin" />
-                Loading roster…
+                Loading roster...
               </div>
             ) : listError ? (
               <p className="text-sm text-ds-danger">{listError}</p>
@@ -2081,7 +2081,7 @@ export function WorkersApp() {
                                   type="search"
                                   value={filterColName}
                                   onChange={(e) => setFilterColName(e.target.value)}
-                                  placeholder="Filter…"
+                                  placeholder="Filter..."
                                   className={cn(dsInputClass, "py-1.5 text-xs")}
                                   aria-label="Filter by name or email"
                                   autoComplete="off"
@@ -2107,7 +2107,7 @@ export function WorkersApp() {
                                   {(["company_admin", "manager", "supervisor", "lead", "worker"] as const).map((rk) => (
                                     <option key={rk} value={rk}>
                                       {rk === "worker"
-                                        ? "Workers (field roles: coordinator, operations, …)"
+                                        ? "Workers (field roles: coordinator, operations, ...)"
                                         : humanizeRole(rk)}
                                     </option>
                                   ))}
@@ -2124,7 +2124,7 @@ export function WorkersApp() {
                                   aria-label="Filter by shift"
                                 >
                                   <option value="">Any</option>
-                                  <option value="__none__">None / —</option>
+                                  <option value="__none__">None / -</option>
                                   {(fullSettings.shifts ?? []).map((s) => (
                                     <option key={s.key} value={s.key}>
                                       {s.label || s.key}
@@ -2177,7 +2177,7 @@ export function WorkersApp() {
                                   type="search"
                                   value={filterColGeo}
                                   onChange={(e) => setFilterColGeo(e.target.value)}
-                                  placeholder="City, region…"
+                                  placeholder="City, region..."
                                   className={cn(dsInputClass, "py-1.5 text-xs")}
                                   aria-label="Filter by last sign-in location"
                                   autoComplete="off"
@@ -2191,7 +2191,7 @@ export function WorkersApp() {
                                   type="search"
                                   value={filterColUa}
                                   onChange={(e) => setFilterColUa(e.target.value)}
-                                  placeholder="Contains…"
+                                  placeholder="Contains..."
                                   className={cn(dsInputClass, "py-1.5 text-xs")}
                                   aria-label="Filter by browser or device"
                                   autoComplete="off"
@@ -2300,7 +2300,7 @@ export function WorkersApp() {
                               {(() => {
                                 const shiftKey = rosterShiftKeyForDisplay(row);
                                 const hasGG = Boolean(row.gg_assignable);
-                                if (!shiftKey && !hasGG) return "—";
+                                if (!shiftKey && !hasGG) return "-";
                                 return (
                                   <div className="flex flex-wrap items-center gap-1">
                                     {shiftKey ? (
@@ -2438,7 +2438,7 @@ export function WorkersApp() {
               {createBusy === "link" ? (
                 <>
                   <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
-                  Generating…
+                  Generating...
                 </>
               ) : (
                 "Generate link"
@@ -2453,7 +2453,7 @@ export function WorkersApp() {
               {createBusy === "invite" ? (
                 <>
                   <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
-                  Sending…
+                  Sending...
                 </>
               ) : (
                 "Send invite"
@@ -2472,7 +2472,7 @@ export function WorkersApp() {
                 {createBusy === "profile" ? (
                   <>
                     <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
-                    Saving…
+                    Saving...
                   </>
                 ) : (
                   "Create profile"
@@ -2712,7 +2712,7 @@ export function WorkersApp() {
                 value={createForm.shift}
                 onChange={(e) => setCreateForm((f) => ({ ...f, shift: e.target.value }))}
               >
-                <option value="">—</option>
+                <option value="">-</option>
                 {(fullSettings.shifts ?? []).map((s) => (
                   <option key={s.key} value={s.key}>
                     {s.label}
@@ -2728,7 +2728,7 @@ export function WorkersApp() {
               value={createForm.supervisor_id}
               onChange={(e) => setCreateForm((f) => ({ ...f, supervisor_id: e.target.value }))}
             >
-              <option value="">—</option>
+              <option value="">-</option>
               {supervisors.map((s) => (
                 <option key={s.id} value={s.id}>
                   {(s.full_name ?? s.email) +
@@ -2798,7 +2798,7 @@ export function WorkersApp() {
                   {inviteLinkBusyId === profileId ? (
                     <span className="inline-flex items-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                      Working…
+                      Working...
                     </span>
                   ) : (
                     "Resend invite"
@@ -2826,11 +2826,11 @@ export function WorkersApp() {
                 disabled={profileBusy}
                 onClick={() => void saveProfileHr()}
               >
-                {profileBusy ? "Saving…" : "Save profile details"}
+                {profileBusy ? "Saving..." : "Save profile details"}
               </button>
             ) : null}
             <button type="button" className={PRIMARY_BTN} disabled={profileBusy} onClick={() => void saveProfileNotes()}>
-              {profileBusy ? "Saving…" : "Save notes"}
+              {profileBusy ? "Saving..." : "Save notes"}
             </button>
           </div>
         }
@@ -2838,7 +2838,7 @@ export function WorkersApp() {
         {profileLoading || !profile ? (
           <div className="flex items-center gap-2 text-pulse-muted">
             <Loader2 className="h-5 w-5 animate-spin" />
-            Loading…
+            Loading...
           </div>
         ) : (
           <div className="space-y-8" id="worker-profile-title">
@@ -3014,7 +3014,7 @@ export function WorkersApp() {
                           }
                         }}
                       >
-                        <option value="">— Not set —</option>
+                        <option value="">- Not set -</option>
                         <option value="full_time">Full time</option>
                         <option value="regular_part_time">Regular part time</option>
                         <option value="part_time">Auxiliary</option>
@@ -3032,11 +3032,11 @@ export function WorkersApp() {
                     </p>
                     <p>
                       <span className="text-pulse-muted">Phone: </span>
-                      {profile.phone ?? "—"}
+                      {profile.phone ?? "-"}
                     </p>
                     <p>
                       <span className="text-pulse-muted">Start date: </span>
-                      {profile.start_date ?? "–"}
+                      {profile.start_date ?? "-"}
                     </p>
                     <p className="sm:col-span-2">
                       <span className="text-pulse-muted">Employment: </span>
@@ -3046,7 +3046,7 @@ export function WorkersApp() {
                           ? "Regular part time"
                           : normalizeEmploymentDraft(profile.employment_type) === "part_time"
                             ? "Auxiliary"
-                            : "—"}
+                            : "-"}
                     </p>
                   </>
                 )}
@@ -3154,7 +3154,7 @@ export function WorkersApp() {
                           setShiftTimeDraft({ start: padHm(preset.start), end: padHm(preset.end) });
                         }}
                       >
-                        <option value="">—</option>
+                        <option value="">-</option>
                         {(fullSettings.shifts ?? []).map((s) => (
                           <option key={s.key} value={s.key}>
                             {s.label}
@@ -3176,7 +3176,7 @@ export function WorkersApp() {
                       value={positionDraft.supervisor_id}
                       onChange={(e) => setPositionDraft((d) => ({ ...d, supervisor_id: e.target.value }))}
                     >
-                      <option value="">—</option>
+                      <option value="">-</option>
                       {profile.supervisor_id &&
                       !profileSupervisorOptions.some((s) => s.id === profile.supervisor_id) ? (
                         <option value={profile.supervisor_id}>
@@ -3219,8 +3219,8 @@ export function WorkersApp() {
                       />
                     </div>
                     <p className="text-xs text-pulse-muted sm:col-span-2">
-                      Used for weekly rotation blocks and schedule labels (same clock times group as D1, D2, A1… on
-                      each day). Overnight: end earlier on the clock than start (e.g. 22:00 → 06:00).
+                      Used for weekly rotation blocks and schedule labels (same clock times group as D1, D2, A1... on
+                      each day). Overnight: end earlier on the clock than start (e.g. 22:00–06:00).
                     </p>
                   </div>
                   <div className="sm:col-span-2">
@@ -3293,7 +3293,7 @@ export function WorkersApp() {
                 <div className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
                   <p>
                     <span className="text-pulse-muted">Job title: </span>
-                    {profile.job_title ?? "—"}
+                    {profile.job_title ?? "-"}
                   </p>
                   <p className="flex flex-wrap items-center gap-2">
                     <span className="text-pulse-muted">Role: </span>
@@ -3312,19 +3312,19 @@ export function WorkersApp() {
                   </p>
                   <p>
                     <span className="text-pulse-muted">Department: </span>
-                    {profile.department ?? "—"}
+                    {profile.department ?? "-"}
                   </p>
                   <p className="sm:col-span-2">
                     <span className="text-pulse-muted">HR department tags: </span>
                     {(profile.department_slugs?.length ? profile.department_slugs : profile.department ? [profile.department] : [])
-                      .join(", ") || "—"}
+                      .join(", ") || "-"}
                   </p>
                   <p className="flex flex-wrap items-center gap-2">
                     <span className="text-pulse-muted">Shift: </span>
                     {(() => {
                       const sk = rosterShiftKeyForDisplay(profile);
                       const hasGG = Boolean(profile.gg_assignable);
-                      if (!sk && !hasGG) return "—";
+                      if (!sk && !hasGG) return "-";
                       return (
                         <span className="inline-flex flex-wrap items-center gap-1.5">
                           {sk ? (
@@ -3350,18 +3350,18 @@ export function WorkersApp() {
                     <span className="text-pulse-muted">Shift hours: </span>
                     {(() => {
                       const sk = rosterShiftKeyForDisplay(profile);
-                      if (!sk) return "—";
+                      if (!sk) return "-";
                       const rows = recurringRowsFromApi(profile.recurring_shifts ?? []);
                       if (rows.length && rows.every((r) => r.start === rows[0]!.start && r.end === rows[0]!.end)) {
-                        return `${padHm(rows[0]!.start)}—${padHm(rows[0]!.end)}`;
+                        return `${padHm(rows[0]!.start)}-${padHm(rows[0]!.end)}`;
                       }
                       const w = shiftWindowFromRosterKey(sk, fullSettings.shifts ?? []);
-                      return `${padHm(w.start)}—${padHm(w.end)} (preset from roster shift)`;
+                      return `${padHm(w.start)}-${padHm(w.end)} (preset from roster shift)`;
                     })()}
                   </p>
                   <p>
                     <span className="text-pulse-muted">Supervisor: </span>
-                    {profile.supervisor_name ?? "—"}
+                    {profile.supervisor_name ?? "-"}
                   </p>
                   <p className="sm:col-span-2">
                     <span className="text-pulse-muted">Weekly rotation: </span>
@@ -3457,7 +3457,7 @@ export function WorkersApp() {
                   Avg completion (h):{" "}
                   {profile.work_summary.avg_completion_hours != null
                     ? profile.work_summary.avg_completion_hours
-                    : "—"}
+                    : "-"}
                 </p>
               </div>
             </section>
@@ -3565,7 +3565,7 @@ export function WorkersApp() {
           {activityLoading ? (
             <div className="flex items-center gap-2 text-sm text-ds-muted">
               <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-              Loading…
+              Loading...
             </div>
           ) : null}
           {activityError ? <p className="text-sm text-ds-danger">{activityError}</p> : null}
@@ -3589,9 +3589,9 @@ export function WorkersApp() {
                       <td className="px-3 py-2 text-ds-foreground">{formatLoginWhen(ev.timestamp)}</td>
                       <td className="px-3 py-2 text-ds-muted">{ev.ip_address}</td>
                       <td className="px-3 py-2 text-ds-muted">
-                        {[ev.city, ev.region].filter(Boolean).join(", ") || "—"}
+                        {[ev.city, ev.region].filter(Boolean).join(", ") || "-"}
                       </td>
-                      <td className="max-w-[18rem] px-3 py-2 break-all text-ds-muted">{ev.user_agent || "—"}</td>
+                      <td className="max-w-[18rem] px-3 py-2 break-all text-ds-muted">{ev.user_agent || "-"}</td>
                     </tr>
                   ))}
                 </tbody>

@@ -66,7 +66,7 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
   const storeNotificationCount = useOperationalNotificationsStore((s) => notificationBadgeCount(s.items));
   const notificationCount = Math.max(notificationCountProp, storeNotificationCount);
   const adminInbox = Boolean(session && canAccessCompanyConfiguration(session));
-  const messagesCountDisplay = Math.max(messagesCount, feedbackInboxCount + storeNotificationCount);
+  const messagesCountDisplay = Math.max(messagesCount, adminInbox ? feedbackInboxCount : 0);
 
   const logoHref =
     authed && session ? pulseApp.to(firstAccessibleClassicTenantHref(session)) : pulseRoutes.login;
@@ -418,7 +418,7 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
               <div className="relative flex gap-2">
                 <p className="min-w-0 flex-1 text-[11px] leading-snug text-ds-foreground sm:text-xs">
                   <span className="font-semibold text-[var(--ds-accent)]">New:</span> tap the megaphone to send product
-                  feedback—admins can read it under Messages → Product feedback.
+                  feedback—admins can read it under Messages.
                 </p>
                 <button
                   type="button"
