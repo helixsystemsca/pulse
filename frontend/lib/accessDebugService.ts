@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/api";
+import type { AccessSnapshot } from "@/lib/access-snapshot";
 
 export type MissingFeatureExplanation = {
   feature_key: string;
@@ -71,6 +72,10 @@ export type AccessResolutionDebugPayload = {
 
 export async function fetchAccessResolutionDebug(userId: string): Promise<AccessResolutionDebugPayload> {
   return apiFetch<AccessResolutionDebugPayload>(`/api/v1/debug/access/${encodeURIComponent(userId)}`);
+}
+
+export async function fetchAccessSnapshotDebug(userId: string): Promise<AccessSnapshot> {
+  return apiFetch<AccessSnapshot>(`/api/v1/debug/access-snapshot/${encodeURIComponent(userId)}`);
 }
 
 export type { ResolvedAccessAudit, FeatureResolutionLogEntry } from "@/lib/rbac/debugResolvedAccess";

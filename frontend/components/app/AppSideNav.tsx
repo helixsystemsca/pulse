@@ -42,9 +42,8 @@ import { usePulseAuth } from "@/hooks/usePulseAuth";
 import type { PlatformIconKey } from "@/config/platform/types";
 import { pulseSystemSidebarNav, type PulseSidebarIcon } from "@/lib/pulse-app";
 import { isPulseNavActive } from "@/lib/pulse-nav-active";
-import { canAccessClassicNavHref } from "@/lib/rbac/session-access";
 import { logSidebarResolution } from "@/lib/rbac/debugResolvedAccess";
-import { tenantSidebarNavItemsForSession } from "@/lib/rbac/tenant-nav";
+import { tenantSidebarNavItemsForLiveApp } from "@/lib/rbac/session-access";
 import type { TenantNavIcon } from "@/config/platform/tenant-nav-registry";
 import { cn } from "@/lib/cn";
 
@@ -122,17 +121,13 @@ export function AppSideNav() {
   }, [session]);
 
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
-  let items: SidebarNavItem[] = isSystemAdmin
+  const items: SidebarNavItem[] = isSystemAdmin
     ? [...pulseSystemSidebarNav].map((i) => ({ href: i.href, label: i.label, icon: i.icon }))
-    : tenantSidebarNavItemsForSession(session).map((i) => ({
+    : tenantSidebarNavItemsForLiveApp(session).map((i) => ({
         href: i.href,
         label: i.label,
         icon: i.icon,
       }));
-  if (!isSystemAdmin && session) {
-    items = items.filter((i) => canAccessClassicNavHref(session, i.href));
-  }
-  items = items.filter((i) => i.href !== "/settings");
   const systemRail = isSystemAdmin;
 
   if (!authed || !session) return null;

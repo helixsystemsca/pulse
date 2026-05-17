@@ -10,6 +10,12 @@ import type { Metadata } from "next";
 
 type PageProps = { params: { department: string; module: string } };
 
+function normalizePath(path: string): string {
+  const base = path.split("?")[0] ?? path;
+  if (base.endsWith("/") && base.length > 1) return base.slice(0, -1);
+  return base;
+}
+
 export function generateMetadata({ params }: PageProps): Metadata {
   const dept = getDepartmentBySlug(params.department);
   const mod = getPlatformModuleByDepartmentRoute(params.department, params.module);
@@ -24,20 +30,24 @@ export default function PlatformModulePage({ params }: PageProps) {
   const mod = getPlatformModuleByDepartmentRoute(dSlug, mRoute);
   if (!dept || !mod) notFound();
 
+  const platformPath = normalizePath(`/${dSlug}/${mRoute}`);
   const canon = mod.canonicalPulseHref;
   const suppress = mod.suppressCanonicalForDepartments?.includes(dSlug) ?? false;
-  if (canon && !suppress) redirect(canon);
+  if (canon && !suppress) {
+    const target = normalizePath(canon);
+    if (target !== platformPath) redirect(canon);
+  }
 
-  if (mod.id === "mod_advertising_mapper") {
+  if (mod.id === "advertising_mapper") {
     return <AdvertisingMapperPage />;
   }
-  if (mod.id === "mod_publication_builder") {
+  if (mod.id === "comms_publication_builder") {
     return <PublicationBuilderPage />;
   }
-  if (mod.id === "mod_campaign_planner") {
+  if (mod.id === "comms_campaign_planner") {
     return <CampaignPlannerPage />;
   }
-  if (mod.id === "mod_indesign_pipeline") {
+  if (mod.id === "xplor_indesign") {
     return <CommunicationsIndesignPipelineTool />;
   }
 

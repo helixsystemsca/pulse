@@ -13,6 +13,7 @@ import type {
   ResolvedAccessAudit,
 } from "@/lib/accessDebugService";
 import { diagnoseAccessNav, formatMissingReason } from "@/lib/accessDebugNavDiagnosis";
+import type { AccessSnapshot } from "@/lib/access-snapshot";
 import type { PulseAuthSession } from "@/lib/pulse-session";
 import { toCanonicalFeatureKey } from "@/lib/features/canonical-features";
 import { isPolicySuppressedSlot, isUnresolvedMatrixSlot } from "@/lib/rbac/matrix-slot-policy";
@@ -83,24 +84,30 @@ function MissingFeatureCard({ row }: { row: MissingFeatureExplanation }) {
 }
 
 /** Session shape the sidebar resolves against for the worker being inspected. */
-function buildTargetPulseSession(debug: AccessResolutionDebugPayload, viewer: PulseAuthSession | null): PulseAuthSession {
+function buildTargetPulseSession(
+  debug: AccessResolutionDebugPayload,
+  viewer: PulseAuthSession | null,
+  accessSnapshot?: AccessSnapshot | null,
+): PulseAuthSession {
   const roles = debug.jwt_roles?.length ? [...debug.jwt_roles] : ["worker"];
   const now = Math.floor(Date.now() / 1000);
+  const snap = accessSnapshot ?? null;
   return {
     sub: debug.user_id,
     email: viewer?.email ?? "(target user)",
     role: roles[0],
     roles,
     company_id: debug.company_id ?? viewer?.company_id ?? null,
-    enabled_features: debug.effective_enabled_features,
-    rbac_permissions: debug.rbac_permission_keys,
-    contract_features: debug.contract_features,
+    enabled_features: snap?.features?.length ? snap.features : debug.effective_enabled_features,
+    rbac_permissions: snap?.capabilities?.length ? snap.capabilities : debug.rbac_permission_keys,
+    contract_features: snap?.contract_features?.length ? snap.contract_features : debug.contract_features,
     contract_enabled_features: viewer?.contract_enabled_features ?? debug.contract_features,
     feature_allow_extra: debug.feature_allow_extra,
     tenant_role_id: debug.tenant_role_id,
-    workers_roster_access: false,
+    workers_roster_access: snap?.workers_roster_access ?? false,
     facility_tenant_admin: false,
     is_system_admin: false,
+    access_snapshot: snap ?? undefined,
     iat: now,
     exp: now + 3600,
     remember: false,
@@ -114,12 +121,23 @@ type Props = {
   error: string | null;
   debug: AccessResolutionDebugPayload | null;
   resolvedAudit?: ResolvedAccessAudit | null;
+  /** Canonical `/auth/me` snapshot for the target user (matches live sidebar when session is fresh). */
+  accessSnapshot?: AccessSnapshot | null;
   /** Signed-in admin (or system) session — not the target user's JWT. */
   viewerSession: PulseAuthSession | null;
 };
 
-export function AccessDebugModal({ open, onClose, loading, error, debug, resolvedAudit, viewerSession }: Props) {
-  const targetNavSession = debug ? buildTargetPulseSession(debug, viewerSession) : null;
+export function AccessDebugModal({
+  open,
+  onClose,
+  loading,
+  error,
+  debug,
+  resolvedAudit,
+  accessSnapshot,
+  viewerSession,
+}: Props) {
+  const targetNavSession = debug ? buildTargetPulseSession(debug, viewerSession, accessSnapshot) : null;
 
   const navDiag = useMemo(() => {
     if (!debug || !targetNavSession) return null;
@@ -167,9 +185,10 @@ export function AccessDebugModal({ open, onClose, loading, error, debug, resolve
               Debug access resolution
             </h2>
             <p className="mt-1 max-w-[52ch] text-xs text-pulse-muted">
-              Server-side production resolver output for this user ID. Sidebar simulation uses{" "}
-              <code className="text-[11px]">tenant-nav</code> with a session synthesized from{" "}
-              <code className="text-[11px]">effective_enabled_features</code>.
+              Server-side production resolver output for this user ID. Sidebar simulation matches the live app:{" "}
+              <code className="text-[11px]">tenantSidebarNavItemsForLiveApp</code> with{" "}
+              <code className="text-[11px]">access_snapshot</code> when available (else{" "}
+              <code className="text-[11px]">effective_enabled_features</code>).
             </p>
           </div>
           <button

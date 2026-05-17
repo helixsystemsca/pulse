@@ -31,9 +31,11 @@ import { apiFetch, refreshPulseUserFromServer } from "@/lib/api";
 import {
   debugResolvedAccess,
   fetchAccessResolutionDebug,
+  fetchAccessSnapshotDebug,
   type AccessResolutionDebugPayload,
   type ResolvedAccessAudit,
 } from "@/lib/accessDebugService";
+import type { AccessSnapshot } from "@/lib/access-snapshot";
 import {
   formatMatrixSlotOperationalLabel,
   formatSlotSourceLabel,
@@ -597,6 +599,7 @@ export function WorkersApp() {
   const [accessDebugLoading, setAccessDebugLoading] = useState(false);
   const [accessDebugError, setAccessDebugError] = useState<string | null>(null);
   const [accessDebugPayload, setAccessDebugPayload] = useState<AccessResolutionDebugPayload | null>(null);
+  const [accessSnapshotDebug, setAccessSnapshotDebug] = useState<AccessSnapshot | null>(null);
   const [accessResolvedAudit, setAccessResolvedAudit] = useState<ResolvedAccessAudit | null>(null);
 
   const [createForm, setCreateForm] = useState<CreateFormState>({ ...CREATE_FORM_EMPTY });
@@ -728,17 +731,20 @@ export function WorkersApp() {
     setAccessDebugLoading(true);
     setAccessDebugError(null);
     setAccessDebugPayload(null);
+    setAccessSnapshotDebug(null);
     setAccessResolvedAudit(null);
     try {
       const dept =
         profile?.department_slugs?.[0] ??
         profile?.department ??
         "communications";
-      const [d, resolved] = await Promise.all([
+      const [d, resolved, snap] = await Promise.all([
         fetchAccessResolutionDebug(profileId),
         debugResolvedAccess(profileId, typeof dept === "string" ? dept : "communications"),
+        fetchAccessSnapshotDebug(profileId),
       ]);
       setAccessDebugPayload(d);
+      setAccessSnapshotDebug(snap);
       setAccessResolvedAudit(resolved);
     } catch (e: unknown) {
       setAccessDebugError(parseClientApiError(e).message);
@@ -3848,11 +3854,13 @@ export function WorkersApp() {
         loading={accessDebugLoading}
         error={accessDebugError}
         debug={accessDebugPayload}
+        accessSnapshot={accessSnapshotDebug}
         resolvedAudit={accessResolvedAudit}
         viewerSession={session}
         onClose={() => {
           setAccessDebugOpen(false);
           setAccessDebugPayload(null);
+          setAccessSnapshotDebug(null);
           setAccessResolvedAudit(null);
           setAccessDebugError(null);
         }}

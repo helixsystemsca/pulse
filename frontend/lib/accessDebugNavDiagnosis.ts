@@ -10,6 +10,7 @@ import {
 import type { AccessResolutionDebugPayload } from "@/lib/accessDebugService";
 import { toCanonicalFeatureKey } from "@/lib/features/canonical-features";
 import type { PulseAuthSession } from "@/lib/pulse-session";
+import { tenantSidebarNavItemsForLiveApp } from "@/lib/rbac/session-access";
 import {
   explainMasterFeatureVisibility,
   tenantSidebarNavItemsForSession,
@@ -44,7 +45,7 @@ export function diagnoseAccessNav(
   debug: AccessResolutionDebugPayload,
   targetSession: PulseAuthSession,
 ): AccessNavDiagnosis {
-  const simulatedSidebar = tenantSidebarNavItemsForSession(targetSession);
+  const simulatedSidebar = tenantSidebarNavItemsForLiveApp(targetSession);
   const sidebarKeys = new Set(simulatedSidebar.map((n) => n.key));
   const enabledCanonical = new Set(
     (debug.effective_enabled_features ?? []).map((k) => String(toCanonicalFeatureKey(k) ?? k)),

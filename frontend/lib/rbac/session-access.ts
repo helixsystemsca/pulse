@@ -46,13 +46,11 @@ export function tenantContractModuleSet(session: PulseAuthSession | null): Set<s
 }
 
 export function tenantHasAnyCompanyModule(session: PulseAuthSession | null, modules: readonly string[]): boolean {
-  const s = tenantContractModuleSet(session);
-  return modules.some((m) => s.has(m));
+  return modules.some((m) => isTenantFeatureOnContract(session, m));
 }
 
 export function tenantHasEveryCompanyModule(session: PulseAuthSession | null, modules: readonly string[]): boolean {
-  const s = tenantContractModuleSet(session);
-  return modules.length > 0 && modules.every((m) => s.has(m));
+  return modules.length > 0 && modules.every((m) => isTenantFeatureOnContract(session, m));
 }
 
 /** Flat RBAC keys from canonical snapshot (`*` = unrestricted within tenant). */
@@ -213,11 +211,22 @@ export function firstAccessibleClassicTenantHref(session: PulseAuthSession | nul
   if (isTenantFullAdminSession(session) && canAccessClassicNavHref(session, "/overview")) {
     return "/overview";
   }
-  for (const row of tenantSidebarNavItemsForSession(session)) {
-    if (row.href === "/settings") continue;
+  for (const row of tenantSidebarNavItemsForLiveApp(session)) {
     if (canShowClassicSidebarItem(session, row.href, sys)) return row.href;
   }
   return "/settings";
+}
+
+/** Production sidebar rows: registry visibility ∩ classic route gate (excludes Settings). */
+export function tenantSidebarNavItemsForLiveApp(
+  session: PulseAuthSession | null,
+): ReturnType<typeof tenantSidebarNavItemsForSession> {
+  const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
+  let items = tenantSidebarNavItemsForSession(session);
+  if (!isSystemAdmin && session) {
+    items = items.filter((i) => canAccessClassicNavHref(session, i.href));
+  }
+  return items.filter((i) => i.href !== "/settings");
 }
 
 /** Team Management row: roster delegation, tenant full admin, or contract + RBAC. */
