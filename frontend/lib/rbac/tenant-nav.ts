@@ -1,6 +1,7 @@
 /**
  * Tenant sidebar — master registry → contract → effective `enabled_features` (default deny).
  */
+import { normalizeModuleCategory } from "@/config/platform/module-categories";
 import {
   MASTER_FEATURES,
   NAV_VISIBLE_MASTER_FEATURES,
@@ -41,6 +42,8 @@ export type TenantSidebarNavItem = {
   href: string;
   label: string;
   icon: MasterFeatureIcon;
+  /** Copied from registry — presentation only; not used in visibility checks. */
+  moduleCategory?: string;
 };
 
 function normalizeHref(href: string): string {
@@ -129,6 +132,7 @@ export function isMasterFeatureVisibleForSession(
   feature: MasterFeatureDef,
   isSystemAdmin: boolean,
 ): boolean {
+  // Authorization only — `feature.moduleCategory` is never consulted here.
   if (!feature.navVisible) return false;
   if (feature.key === "settings") return Boolean(session);
   if (feature.key === "team_management") {
@@ -168,6 +172,7 @@ export function tenantSidebarNavItemsForSession(
       href: f.route,
       label: f.label,
       icon: f.icon,
+      moduleCategory: normalizeModuleCategory(f.moduleCategory),
     });
   }
   return out;

@@ -1,9 +1,10 @@
 /**
  * Master feature registry — single source of truth for tenant product modules.
  *
- * Sidebar, route guards, and platform metadata derive from this file.
- * Visibility: registry → tenant contract → `enabled_features` (matrix ∪ overlays) → RBAC.
+ * Authorization: registry → tenant contract → `enabled_features` (matrix ∪ overlays) → RBAC.
+ * `moduleCategory` is sidebar presentation metadata only — never used for access checks.
  */
+import type { ModuleCategory } from "@/config/platform/module-categories";
 import type { PlatformIconKey } from "@/config/platform/types";
 
 export type MasterFeatureIcon =
@@ -33,6 +34,11 @@ export type MasterFeatureDef = {
   platformDepartmentSlug?: string;
   platformRoute?: string;
   sortOrder: number;
+  /**
+   * Sidebar section label (presentation only). Omitted → {@link DEFAULT_MODULE_CATEGORY}.
+   * Must not be read by route guards, resolvers, or contract logic.
+   */
+  moduleCategory?: ModuleCategory;
 };
 
 /**
@@ -210,6 +216,7 @@ export const MASTER_FEATURES: readonly MasterFeatureDef[] = [
     platformDepartmentSlug: "communications",
     platformRoute: "advertising-mapper",
     sortOrder: 200,
+    moduleCategory: "Communications",
   },
   {
     key: "comms_publication_builder",
@@ -222,6 +229,7 @@ export const MASTER_FEATURES: readonly MasterFeatureDef[] = [
     platformDepartmentSlug: "communications",
     platformRoute: "publication-builder",
     sortOrder: 210,
+    moduleCategory: "Communications",
   },
   {
     key: "xplor_indesign",
@@ -234,6 +242,7 @@ export const MASTER_FEATURES: readonly MasterFeatureDef[] = [
     platformDepartmentSlug: "communications",
     platformRoute: "indesign-pipeline",
     sortOrder: 220,
+    moduleCategory: "Communications",
   },
   {
     key: "comms_campaign_planner",
@@ -246,6 +255,7 @@ export const MASTER_FEATURES: readonly MasterFeatureDef[] = [
     platformDepartmentSlug: "communications",
     platformRoute: "campaign-planner",
     sortOrder: 230,
+    moduleCategory: "Communications",
   },
   {
     key: "comms_assets",
@@ -258,6 +268,7 @@ export const MASTER_FEATURES: readonly MasterFeatureDef[] = [
     platformDepartmentSlug: "communications",
     platformRoute: "assets",
     sortOrder: 240,
+    moduleCategory: "Communications",
   },
 ] as const;
 

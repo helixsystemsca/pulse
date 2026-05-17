@@ -12,6 +12,7 @@ import {
 import { getMasterFeatureForPath, MASTER_FEATURES } from "@/config/platform/master-feature-registry";
 import { isTenantFeatureOnContract, isUserFeatureEnabled } from "@/lib/features/tenant-features";
 import { readAccessSnapshot, snapshotHasCapability } from "@/lib/access-snapshot";
+import { groupModulesByCategory, type TenantSidebarNavGroup } from "@/lib/rbac/sidebar-groups";
 import { tenantSidebarNavItemsForSession } from "@/lib/rbac/tenant-nav";
 import { sessionHasAnyRole } from "@/lib/pulse-roles";
 
@@ -228,6 +229,16 @@ export function tenantSidebarNavItemsForLiveApp(
   }
   return items.filter((i) => i.href !== "/settings");
 }
+
+/**
+ * Authorized sidebar modules grouped by registry `moduleCategory` (presentation only).
+ * Runs after {@link tenantSidebarNavItemsForLiveApp} — no additional access filtering.
+ */
+export function tenantSidebarNavGroupsForLiveApp(session: PulseAuthSession | null): TenantSidebarNavGroup[] {
+  return groupModulesByCategory(tenantSidebarNavItemsForLiveApp(session));
+}
+
+export type { TenantSidebarNavGroup };
 
 /** Team Management row: roster delegation, tenant full admin, or contract + RBAC. */
 export function canShowTeamManagementNavItem(session: PulseAuthSession | null, isSystemAdmin: boolean): boolean {

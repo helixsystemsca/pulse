@@ -1,184 +1,185 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { CommunicationsModuleShell } from "@/components/communications/CommunicationsModuleShell";
-import { CommunicationsPanel } from "@/components/communications/CommunicationsPanel";
-import { FacilityCanvas } from "@/components/communications/FacilityCanvas";
-import { AssetPreviewCard } from "@/components/communications/AssetPreviewCard";
-import { ExpiringSoonBadge, isExpiringSoon, StatusBadge } from "@/components/communications/StatusBadge";
-import { MOCK_FACILITY_WALLS } from "@/modules/communications/mock-data";
-import type { AdSlot, FacilityWallLayout } from "@/modules/communications/types";
-
-function cloneWalls(): FacilityWallLayout[] {
-  return JSON.parse(JSON.stringify(MOCK_FACILITY_WALLS)) as FacilityWallLayout[];
-}
+import { DimensionEditModal } from "@/modules/communications/advertising-mapper/components/DimensionEditModal";
+import { InventoryDetailsPanel } from "@/modules/communications/advertising-mapper/components/InventoryDetailsPanel";
+import { InventoryPlannerCanvas } from "@/modules/communications/advertising-mapper/components/InventoryPlannerCanvas";
+import { PlannerToolbar } from "@/modules/communications/advertising-mapper/components/PlannerToolbar";
+import { cloneWallPlans, MOCK_WALL_PLANS } from "@/modules/communications/advertising-mapper/data/mock-walls";
+import { usePlannerViewport } from "@/modules/communications/advertising-mapper/hooks/usePlannerViewport";
+import { RULER_THICKNESS_PX } from "@/modules/communications/advertising-mapper/components/AxisRulers";
+import type {
+  DimensionEditTarget,
+  FacilityWallPlan,
+  InventoryBlock,
+  MeasurementUnit,
+} from "@/modules/communications/advertising-mapper/types";
 
 export function AdvertisingMapperPage() {
-  const [walls, setWalls] = useState<FacilityWallLayout[]>(() => cloneWalls());
-  const [wallId, setWallId] = useState(MOCK_FACILITY_WALLS[0]!.id);
+  const [walls, setWalls] = useState<FacilityWallPlan[]>(() => cloneWallPlans());
+  const [wallId, setWallId] = useState(MOCK_WALL_PLANS[0]!.id);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [zoom, setZoom] = useState(100);
+  const [unit, setUnit] = useState<MeasurementUnit>("ft");
+  const [snapEnabled, setSnapEnabled] = useState(true);
+  const [showGrid, setShowGrid] = useState(true);
+  const [dimEdit, setDimEdit] = useState<{ id: string; focus: DimensionEditTarget } | null>(null);
+
+  const { viewport, setViewport, zoomBy, resetView } = usePlannerViewport();
 
   const wall = useMemo(() => walls.find((w) => w.id === wallId) ?? walls[0]!, [walls, wallId]);
-  const selected = useMemo(() => wall.slots.find((s) => s.id === selectedId) ?? null, [wall.slots, selectedId]);
+  const selected = useMemo(() => wall.blocks.find((b) => b.id === selectedId) ?? null, [wall.blocks, selectedId]);
 
-  const onSlotMove = useCallback((id: string, patch: Pick<AdSlot, "x" | "y">) => {
-    setWalls((prev) =>
-      prev.map((w) =>
-        w.id !== wallId
-          ? w
-          : {
-              ...w,
-              slots: w.slots.map((s) => (s.id === id ? { ...s, ...patch } : s)),
-            },
-      ),
-    );
-  }, [wallId]);
-
-  const updateSelected = useCallback(
-    (patch: Partial<AdSlot>) => {
-      if (!selectedId) return;
+  const updateWallBlocks = useCallback(
+    (updater: (blocks: InventoryBlock[]) => InventoryBlock[]) => {
       setWalls((prev) =>
-        prev.map((w) =>
-          w.id !== wallId
-            ? w
-            : {
-                ...w,
-                slots: w.slots.map((s) => (s.id === selectedId ? { ...s, ...patch } : s)),
-              },
-        ),
+        prev.map((w) => (w.id !== wallId ? w : { ...w, blocks: updater(w.blocks) })),
       );
     },
-    [selectedId, wallId],
+    [wallId],
   );
+
+  const onBlockChange = useCallback(
+    (id: string, patch: Partial<InventoryBlock>) => {
+      updateWallBlocks((blocks) => blocks.map((b) => (b.id === id ? { ...b, ...patch } : b)));
+    },
+    [updateWallBlocks],
+  );
+
+  const scalePercent = Math.round(viewport.scale * 100);
+
+  const handleZoomIn = useCallback(() => {
+    zoomBy(1.12, 400, 300, RULER_THICKNESS_PX, RULER_THICKNESS_PX);
+  }, [zoomBy]);
+
+  const handleZoomOut = useCallback(() => {
+    zoomBy(0.88, 400, 300, RULER_THICKNESS_PX, RULER_THICKNESS_PX);
+  }, [zoomBy]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!selectedId) return;
+      const step = e.shiftKey ? 12 : 6;
+      if (e.key === "Escape") {
+        setSelectedId(null);
+        return;
+      }
+      if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) {
+        e.preventDefault();
+        const block = wall.blocks.find((b) => b.id === selectedId);
+        if (!block) return;
+        const patch: Partial<InventoryBlock> = {};
+        if (e.key === "ArrowLeft") patch.x = block.x - step;
+        if (e.key === "ArrowRight") patch.x = block.x + step;
+        if (e.key === "ArrowUp") patch.y = block.y - step;
+        if (e.key === "ArrowDown") patch.y = block.y + step;
+        onBlockChange(selectedId, patch);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onBlockChange, selectedId, wall.blocks]);
 
   return (
     <CommunicationsModuleShell
-      title="Arena wall advertising mapper"
-      description="Visual inventory of arena and lobby placements — foundation for sponsor contracts, print proofs, and analytics."
+      title="Advertisement mapping"
+      description="Spatial inventory planner for arena walls, concourse signage, and sponsorship placements — dimensions, pricing, and contract-ready geometry."
     >
-      <div className="grid min-h-[560px] gap-4 xl:grid-cols-[240px_1fr_300px]">
-        <CommunicationsPanel
-          title="Layouts & assets"
-          description="Tooling for sponsor kits and scale references."
-          tone="muted"
-          className="min-h-[320px]"
-        >
-          <div className="space-y-3">
-            <label className="block text-[11px] font-bold uppercase tracking-wide text-ds-muted">Wall layout</label>
-            <select
-              className="w-full rounded-lg border border-ds-border bg-ds-primary px-3 py-2 text-sm text-ds-foreground"
-              value={wallId}
-              onChange={(e) => {
-                setWallId(e.target.value);
-                setSelectedId(null);
-              }}
-            >
-              {walls.map((w) => (
-                <option key={w.id} value={w.id}>
-                  {w.name}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs leading-relaxed text-ds-muted">
-              Future: import CAD / PDF overlays, versioned layouts, and sponsor contract links per wall revision.
-            </p>
-            <div className="mt-4 space-y-2 border-t border-ds-border/80 pt-4">
-              <p className="text-[11px] font-bold uppercase tracking-wide text-ds-muted">Asset drop (preview)</p>
-              <div className="rounded-xl border border-dashed border-ds-border bg-ds-secondary/30 p-4 text-center text-xs text-ds-muted transition-colors hover:border-[var(--ds-accent)]/40">
-                Drag sponsor artwork here (Supabase storage wiring later).
-              </div>
-            </div>
-          </div>
-        </CommunicationsPanel>
+      <div className="flex min-h-[640px] flex-col overflow-hidden rounded-2xl border border-ds-border bg-ds-primary/90 shadow-[var(--ds-shadow-card)]">
+        <PlannerToolbar
+          wallName={wall.name}
+          unit={unit}
+          onUnitChange={setUnit}
+          scalePercent={scalePercent}
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
+          onResetView={resetView}
+          snapEnabled={snapEnabled}
+          onSnapToggle={() => setSnapEnabled((v) => !v)}
+          showGrid={showGrid}
+          onGridToggle={() => setShowGrid((v) => !v)}
+        />
 
-        <div className="flex min-h-[320px] flex-col rounded-2xl border border-ds-border bg-ds-primary/90 p-4 shadow-[var(--ds-shadow-card)]">
-          <FacilityCanvas
-            wallName={wall.name}
-            aspectRatio={wall.aspectRatio}
-            slots={wall.slots}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-            zoom={zoom}
-            onZoomChange={setZoom}
-            onSlotMove={onSlotMove}
-            className="min-h-0 flex-1"
+        <PlannerGridLayout>
+          <WallLayoutPicker
+            walls={walls}
+            wallId={wallId}
+            onWallChange={(id: string) => {
+              setWallId(id);
+              setSelectedId(null);
+              resetView();
+            }}
           />
-        </div>
-
-        <CommunicationsPanel title="Slot details" description="Selection drives export and contract rows later." className="min-h-[320px]">
-          {selected ? (
-            <div className="space-y-4">
-              <div className="flex flex-wrap items-center gap-2">
-                <StatusBadge variant="ad" status={selected.status} size="md" />
-                {selected.status === "occupied" && isExpiringSoon(selected.expiryDate) ? <ExpiringSoonBadge /> : null}
-              </div>
-              <div>
-                <label className="text-[11px] font-bold uppercase tracking-wide text-ds-muted">Name</label>
-                <input
-                  className="mt-1 w-full rounded-lg border border-ds-border bg-ds-primary px-3 py-2 text-sm"
-                  value={selected.name}
-                  onChange={(e) => updateSelected({ name: e.target.value })}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[11px] font-bold uppercase tracking-wide text-ds-muted">W %</label>
-                  <input
-                    type="number"
-                    className="mt-1 w-full rounded-lg border border-ds-border bg-ds-primary px-2 py-1.5 text-sm"
-                    value={Math.round(selected.width)}
-                    onChange={(e) => updateSelected({ width: Number(e.target.value) || 0 })}
-                  />
-                </div>
-                <div>
-                  <label className="text-[11px] font-bold uppercase tracking-wide text-ds-muted">H %</label>
-                  <input
-                    type="number"
-                    className="mt-1 w-full rounded-lg border border-ds-border bg-ds-primary px-2 py-1.5 text-sm"
-                    value={Math.round(selected.height)}
-                    onChange={(e) => updateSelected({ height: Number(e.target.value) || 0 })}
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="text-[11px] font-bold uppercase tracking-wide text-ds-muted">Sponsor</label>
-                <input
-                  className="mt-1 w-full rounded-lg border border-ds-border bg-ds-primary px-3 py-2 text-sm"
-                  value={selected.sponsorName ?? ""}
-                  placeholder="—"
-                  onChange={(e) => updateSelected({ sponsorName: e.target.value || undefined })}
-                />
-              </div>
-              <div>
-                <label className="text-[11px] font-bold uppercase tracking-wide text-ds-muted">Status</label>
-                <select
-                  className="mt-1 w-full rounded-lg border border-ds-border bg-ds-primary px-3 py-2 text-sm"
-                  value={selected.status}
-                  onChange={(e) => updateSelected({ status: e.target.value as AdSlot["status"] })}
-                >
-                  <option value="available">Available</option>
-                  <option value="reserved">Reserved</option>
-                  <option value="occupied">Occupied</option>
-                  <option value="expired">Expired</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-[11px] font-bold uppercase tracking-wide text-ds-muted">Expiry</label>
-                <input
-                  type="date"
-                  className="mt-1 w-full rounded-lg border border-ds-border bg-ds-primary px-3 py-2 text-sm"
-                  value={selected.expiryDate?.slice(0, 10) ?? ""}
-                  onChange={(e) => updateSelected({ expiryDate: e.target.value ? `${e.target.value}T12:00:00.000Z` : undefined })}
-                />
-              </div>
-              <AssetPreviewCard title="Sponsor creative" subtitle="Signed URL + crop meta (future)" className="mt-2" />
-            </div>
-          ) : (
-            <p className="text-sm text-ds-muted">Select a slot on the canvas to edit details and attach assets.</p>
-          )}
-        </CommunicationsPanel>
+          <InventoryPlannerCanvas
+            wall={wall}
+            blocks={wall.blocks}
+            selectedId={selectedId}
+            unit={unit}
+            viewport={viewport}
+            onViewportChange={setViewport}
+            snapEnabled={snapEnabled}
+            showGrid={showGrid}
+            onSelect={setSelectedId}
+            onBlockChange={onBlockChange}
+            onDimensionBadgeClick={(id, focus) => setDimEdit({ id, focus })}
+            className="min-h-[480px] flex-1"
+          />
+          <InventoryDetailsPanel
+            block={selected}
+            unit={unit}
+            onUpdate={(patch) => {
+              if (selectedId) onBlockChange(selectedId, patch);
+            }}
+          />
+        </PlannerGridLayout>
       </div>
+
+      {selected && dimEdit?.id === selected.id ? (
+        <DimensionEditModal
+          open
+          blockName={selected.name}
+          widthInches={selected.width_inches}
+          heightInches={selected.height_inches}
+          unit={unit}
+          initialFocus={dimEdit.focus}
+          onClose={() => setDimEdit(null)}
+          onApply={(width_inches, height_inches) => onBlockChange(selected.id, { width_inches, height_inches })}
+        />
+      ) : null}
     </CommunicationsModuleShell>
+  );
+}
+
+function PlannerGridLayout({ children }: { children: React.ReactNode }) {
+  return <div className="grid min-h-0 flex-1 gap-0 lg:grid-cols-[200px_1fr_300px]">{children}</div>;
+}
+
+function WallLayoutPicker({
+  walls,
+  wallId,
+  onWallChange,
+}: {
+  walls: FacilityWallPlan[];
+  wallId: string;
+  onWallChange: (id: string) => void;
+}) {
+  return (
+    <div className="hidden border-r border-ds-border/80 bg-ds-secondary/20 p-3 lg:block">
+      <label className="text-[11px] font-bold uppercase tracking-wide text-ds-muted">Wall layout</label>
+      <select
+        className="mt-2 w-full rounded-lg border border-ds-border bg-ds-primary px-3 py-2 text-sm text-ds-foreground"
+        value={wallId}
+        onChange={(e) => onWallChange(e.target.value)}
+      >
+        {walls.map((w) => (
+          <option key={w.id} value={w.id}>
+            {w.name}
+          </option>
+        ))}
+      </select>
+      <p className="mt-3 text-[11px] leading-relaxed text-ds-muted">
+        Photo backdrops and CAD imports will attach per wall revision. Geometry is stored in inches.
+      </p>
+    </div>
   );
 }
