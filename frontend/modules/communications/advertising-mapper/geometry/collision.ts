@@ -1,9 +1,11 @@
 /**
- * Advertisement-mapper collision rules — uses shared spatial-engine geometry.
+ * Advertisement-mapper collision rules — delegates to spatial-engine intelligence + geometry.
  */
+import { validateInventoryPlacement } from "@/spatial-engine/intelligence/collision";
 import { rectIntersectsPolygon } from "@/spatial-engine/geometry/collision";
+import { facilityWallToSpatialDocument } from "@/modules/communications/advertising-mapper/lib/spatial-document";
 import type { ConstraintRegion } from "@/modules/communications/advertising-mapper/geometry/types";
-import type { InventoryBlock } from "@/modules/communications/advertising-mapper/types";
+import type { FacilityWallPlan, InventoryBlock } from "@/modules/communications/advertising-mapper/types";
 
 export type InventoryRectInches = {
   x: number;
@@ -36,5 +38,20 @@ export function inventoryViolatesBlockedConstraints(
 ): ConstraintRegion[] {
   return constraints.filter(
     (c) => c.constraintType === "blocked" && inventoryIntersectsConstraint(inventory, c),
+  );
+}
+
+/** Full placement validation via canonical SpatialDocument (Phase 4 collision engine). */
+export function validateWallInventoryPlacement(
+  wall: FacilityWallPlan,
+  inventory: InventoryBlock | InventoryRectInches,
+  options?: { excludeInventoryId?: string },
+) {
+  const doc = facilityWallToSpatialDocument(wall);
+  const rect = "width_inches" in inventory ? inventoryToRectInches(inventory) : inventory;
+  return validateInventoryPlacement(
+    doc,
+    { ...rect, id: "width_inches" in inventory ? inventory.id : options?.excludeInventoryId },
+    { excludeInventoryId: options?.excludeInventoryId, treatRestrictedAsWarning: true },
   );
 }

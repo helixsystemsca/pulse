@@ -6,6 +6,7 @@ export {
   sortedDocumentLayers,
   visibleDocumentLayers,
 } from "@/spatial-engine/document/query";
+export { extentHeight, extentSize, extentWidth } from "@/spatial-engine/document/extent";
 export {
   deserializeSpatialDocument,
   parseSpatialDocumentObject,

@@ -73,6 +73,8 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
   const isDemoViewer = session?.role === "demo_viewer";
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
   const canOpenOrgSettings = session ? isSystemAdmin || canAccessCompanyConfiguration(session) : false;
+  /** Operations/frontline roles only get profile from the cog — profile is in the account menu. */
+  const showHeaderSettingsCog = canOpenOrgSettings;
   const settingsActive =
     pathname === "/settings" ||
     pathname.startsWith("/settings/") ||
@@ -305,14 +307,16 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
                 <IconBadgeCount count={messagesCountDisplay} />
               </Link>
 
-              <Link
-                href={pulseApp.to(canOpenOrgSettings ? "/settings" : "/dashboard/profile-settings")}
-                className={cn(chromeIconBtn, settingsActive && "bg-ds-chrome-active text-white")}
-                aria-label={canOpenOrgSettings ? "Organization settings" : "Profile"}
-                title="Settings"
-              >
-                <Settings className="h-[1.125rem] w-[1.125rem]" strokeWidth={1.75} aria-hidden />
-              </Link>
+              {showHeaderSettingsCog ? (
+                <Link
+                  href={pulseApp.to("/settings")}
+                  className={cn(chromeIconBtn, settingsActive && "bg-ds-chrome-active text-white")}
+                  aria-label="Organization settings"
+                  title="Settings"
+                >
+                  <Settings className="h-[1.125rem] w-[1.125rem]" strokeWidth={1.75} aria-hidden />
+                </Link>
+              ) : null}
 
               <div className="relative pl-0.5" ref={userMenuRef}>
                 <button

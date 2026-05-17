@@ -44,7 +44,7 @@ import {
   VehicleInspectionSheet,
   type VehicleInspectionArchivePayload,
 } from "@/components/inspections/VehicleInspectionSheet";
-import { HarnessInspectionForm } from "@/components/compliance/HarnessInspectionForm";
+import { HarnessInspectionSheet } from "@/components/inspections/HarnessInspectionSheet";
 
 const TH = "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ds-muted";
 const TD = "px-4 py-3 text-sm text-ds-foreground";
@@ -369,7 +369,7 @@ export function InspectionsLogsApp() {
             <InspectionQuickInspectionCard
               icon={Shield}
               title="Harness inspection"
-              description="Fall-protection harness walkthrough tuned for gloved hands and bright sunlight — capture now, route to Work Items later."
+              description="Same tablet-first inspection layout as vehicle DVIR — pass/fail checklist, photos, and sign-off for fall-protection harnesses."
               meta={
                 <>
                   <StatusBadge variant="neutral">Safety</StatusBadge>
@@ -378,9 +378,9 @@ export function InspectionsLogsApp() {
               }
               expanded={showHarnessInspection}
               onToggle={() => setShowHarnessInspection((v) => !v)}
-              actionLabel={showHarnessInspection ? "Hide harness form" : "Open harness form"}
+              actionLabel={showHarnessInspection ? "Hide inspection sheet" : "Open inspection sheet"}
             >
-              <HarnessInspectionForm
+              <HarnessInspectionSheet
                 onSubmit={(payload) => {
                   // eslint-disable-next-line no-console
                   console.log("Harness inspection submit", payload);
