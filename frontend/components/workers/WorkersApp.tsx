@@ -175,7 +175,7 @@ function jwtRolesForMatrixSlot(slot: string, preserveDemoViewer: boolean): strin
     normalized && (PERMISSION_MATRIX_ROLE_SLOTS as readonly string[]).includes(normalized)
       ? legacyRoleBucketForSlot(normalized as PermissionMatrixRoleSlot)
       : "worker";
-  const roles = [bucket];
+  const roles: string[] = [bucket];
   if (preserveDemoViewer) roles.push("demo_viewer");
   return sortRolesForDisplay([...new Set(roles)]);
 }

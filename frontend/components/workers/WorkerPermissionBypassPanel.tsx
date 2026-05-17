@@ -9,7 +9,7 @@ import {
   type RbacBypassFeature,
 } from "@/config/platform/rbac-bypass-options";
 import { cn } from "@/lib/cn";
-import { dsCheckboxClass } from "@/styles/form-controls";
+import { dsCheckboxClass } from "@/components/ui/ds-form-classes";
 
 const LABEL = "text-[11px] font-bold uppercase tracking-wide text-ds-muted";
 const FIELD =
