@@ -68,6 +68,23 @@ describe("buildNavigationTree", () => {
     expect(operationsKeys).toContain("logs_inspections");
   });
 
+  it("places work requests under Operations flyout", () => {
+    const tree = buildNavigationTree(
+      session({
+        contract_features: ["work_requests", "compliance"],
+        enabled_features: ["work_requests", "logs_inspections"],
+        rbac_permissions: ["work_requests.view", "compliance.view"],
+      }),
+    );
+    const operations = tree.find((d) => d.domain === "Operations");
+    expect(operations).toBeDefined();
+    const keys = operations!.groups.flatMap((g) => g.items.map((i) => i.key));
+    expect(keys).toContain("work_requests");
+    const dashboardKeys =
+      tree.find((d) => d.domain === "Dashboards")?.groups.flatMap((g) => g.items.map((i) => i.key)) ?? [];
+    expect(dashboardKeys).not.toContain("work_requests");
+  });
+
   it("attachRegistryMetadata copies navDomain and label from registry", () => {
     const enriched = attachRegistryMetadata([
       row({ key: "schedule", label: "Schedule", navDomain: "Planning", navGroup: "Scheduling", navOrder: 10 }),
