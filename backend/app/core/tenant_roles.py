@@ -12,6 +12,7 @@ from app.core.features.canonical_catalog import (
     CANONICAL_PRODUCT_FEATURES,
     canonicalize_feature_keys,
     contract_keys_for_canonical,
+    to_canonical_feature_key,
 )
 from app.core.rbac.catalog import FEATURE_TO_RBAC_PERMISSIONS, RBAC_KEY_REQUIRES_COMPANY_FEATURE
 from app.core.rbac.catalog_sync import sync_rbac_catalog_permissions
@@ -29,6 +30,19 @@ def normalize_role_slug(raw: str) -> str:
     return s
 
 
+def _canonical_feature_on_contract(feat: str, contract_names: set[str]) -> bool:
+    contract_canonical = set(canonicalize_feature_keys(contract_names))
+    if feat in contract_canonical:
+        return True
+    for contract_key in contract_keys_for_canonical([feat]):
+        if contract_key in contract_names:
+            return True
+        mapped = to_canonical_feature_key(contract_key)
+        if mapped and mapped in contract_canonical:
+            return True
+    return False
+
+
 def rbac_keys_for_canonical_features(
     feature_keys: list[str],
     *,
@@ -36,9 +50,8 @@ def rbac_keys_for_canonical_features(
 ) -> set[str]:
     """Map canonical role features → flat RBAC keys, filtered by tenant contract."""
     keys: set[str] = set()
-    contract_canonical = set(canonicalize_feature_keys(contract_names))
     for feat in canonicalize_feature_keys(feature_keys):
-        if feat not in contract_canonical:
+        if not _canonical_feature_on_contract(feat, contract_names):
             continue
         for contract_key in contract_keys_for_canonical([feat]):
             mapped = FEATURE_TO_RBAC_PERMISSIONS.get(contract_key) or FEATURE_TO_RBAC_PERMISSIONS.get(feat)

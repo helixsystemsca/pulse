@@ -19,15 +19,19 @@ const ROLE_DEFAULT_DASHBOARD_ID: Record<string, string> = {
   demo_viewer: "dashboard",
 };
 
+/** Department module homes outside the dashboard flyout catalog. */
+const DEPARTMENT_MODULE_HOME_ROUTES: Record<string, string> = {
+  maintenance: "/dashboard/maintenance",
+};
+
 /** Department slug → default department-scoped dashboard. */
 const DEPARTMENT_DEFAULT_DASHBOARD_ID: Record<string, string> = {
-  maintenance: "work_requests",
-  communications: "dashboard",
-  aquatics: "dashboard",
-  reception: "dashboard",
-  fitness: "dashboard",
-  racquets: "dashboard",
-  admin: "dashboard",
+  communications: "dashboard_dept_communications",
+  aquatics: "dashboard_dept_aquatics",
+  reception: "dashboard_dept_reception",
+  fitness: "dashboard_dept_fitness",
+  racquets: "dashboard_dept_racquets",
+  admin: "dashboard_dept_admin",
 };
 
 export type DashboardHomepagePreference = {
@@ -113,6 +117,10 @@ export function resolveAssignedDashboardHomepage(session: PulseAuthSession | nul
 
   const dept = (session.hr_department ?? "").trim().toLowerCase();
   if (dept) {
+    const moduleHome = DEPARTMENT_MODULE_HOME_ROUTES[dept];
+    if (moduleHome && canAccessClassicNavHref(session, moduleHome)) {
+      return moduleHome;
+    }
     const deptId = DEPARTMENT_DEFAULT_DASHBOARD_ID[dept];
     if (deptId) {
       const route = resolveCatalogId(session, deptId);

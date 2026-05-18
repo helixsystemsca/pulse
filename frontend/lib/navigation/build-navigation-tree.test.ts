@@ -68,6 +68,77 @@ describe("buildNavigationTree", () => {
     expect(operationsKeys).toContain("logs_inspections");
   });
 
+  it("hides PM tools without projects.pm.view", () => {
+    const withPm = buildNavigationTree(
+      session({
+        contract_features: ["projects", "schedule"],
+        enabled_features: ["projects", "schedule"],
+        rbac_permissions: ["projects.view", "projects.pm.view", "schedule.view"],
+      }),
+    );
+    const planningPm = withPm
+      .find((d) => d.domain === "Planning")
+      ?.groups.flatMap((g) => g.items.map((i) => i.key)) ?? [];
+    expect(planningPm).toContain("pm_workspace");
+    expect(planningPm).toContain("pm_planning");
+
+    const projectsOnly = buildNavigationTree(
+      session({
+        contract_features: ["projects", "schedule"],
+        enabled_features: ["projects", "schedule"],
+        rbac_permissions: ["projects.view", "schedule.view"],
+      }),
+    );
+    const planningLimited =
+      projectsOnly.find((d) => d.domain === "Planning")?.groups.flatMap((g) => g.items.map((i) => i.key)) ?? [];
+    expect(planningLimited).toContain("projects");
+    expect(planningLimited).not.toContain("pm_workspace");
+    expect(planningLimited).not.toContain("pm_planning");
+  });
+
+  it("filters dashboard flyout by granular dashboard permissions", () => {
+    const opsOnly = buildNavigationTree(
+      session({
+        contract_features: ["dashboard"],
+        enabled_features: ["dashboard_operations"],
+        rbac_permissions: ["dashboard.operations.view"],
+      }),
+    );
+    const dashboardKeys =
+      opsOnly.find((d) => d.domain === "Dashboards")?.groups.flatMap((g) => g.items.map((i) => i.key)) ?? [];
+    expect(dashboardKeys).toEqual(["dashboard_worker"]);
+
+    const leadership = buildNavigationTree(
+      session({
+        contract_features: ["dashboard", "projects"],
+        enabled_features: ["dashboard_operations", "dashboard_leadership", "dashboard_project"],
+        rbac_permissions: [
+          "dashboard.operations.view",
+          "dashboard.leadership.view",
+          "dashboard.project.view",
+          "projects.view",
+        ],
+      }),
+    );
+    const leadershipKeys =
+      leadership.find((d) => d.domain === "Dashboards")?.groups.flatMap((g) => g.items.map((i) => i.key)) ?? [];
+    expect(leadershipKeys).toEqual(
+      expect.arrayContaining(["dashboard_worker", "dashboard", "dashboard_project"]),
+    );
+    expect(leadershipKeys).not.toContain("kiosk_overview");
+
+    const comms = buildNavigationTree(
+      session({
+        contract_features: ["dashboard"],
+        enabled_features: ["dashboard_dept_communications"],
+        rbac_permissions: ["dashboard.dept.communications.view"],
+      }),
+    );
+    const commsKeys =
+      comms.find((d) => d.domain === "Dashboards")?.groups.flatMap((g) => g.items.map((i) => i.key)) ?? [];
+    expect(commsKeys).toEqual(["dashboard_dept_communications"]);
+  });
+
   it("places work requests under Operations flyout", () => {
     const tree = buildNavigationTree(
       session({

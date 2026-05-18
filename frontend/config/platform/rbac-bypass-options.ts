@@ -78,7 +78,23 @@ export const RBAC_BYPASS_FEATURES: readonly RbacBypassFeature[] = [
   {
     featureKey: "projects",
     label: "Projects",
-    levels: [{ id: "view", label: "View", keys: ["projects.view"] }],
+    levels: [
+      { id: "view", label: "View projects", keys: ["projects.view"] },
+      { id: "pm", label: "PM tools", keys: ["projects.pm.view"] },
+    ],
+  },
+  {
+    featureKey: "dashboard",
+    label: "Dashboard surfaces",
+    levels: [
+      { id: "operations", label: "Operations dashboard", keys: ["dashboard.operations.view"] },
+      { id: "leadership", label: "Leadership dashboard", keys: ["dashboard.leadership.view"] },
+      { id: "project", label: "Project dashboard", keys: ["dashboard.project.view"] },
+      { id: "inspections", label: "Inspections & logs", keys: ["dashboard.inspections.view"] },
+      { id: "team_insights", label: "Team insights", keys: ["dashboard.team_insights.view"] },
+      { id: "kiosk", label: "Kiosk displays", keys: ["dashboard.kiosk.view"] },
+      { id: "all", label: "All dashboards (legacy)", keys: ["dashboard.view"] },
+    ],
   },
   {
     featureKey: "comms_advertising_mapper",

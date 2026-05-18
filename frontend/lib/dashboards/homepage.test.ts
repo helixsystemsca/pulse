@@ -35,8 +35,8 @@ describe("resolveAssignedDashboardHomepage", () => {
         session({
           role: "worker",
           contract_features: ["dashboard"],
-          enabled_features: ["dashboard"],
-          rbac_permissions: ["dashboard.view"],
+          enabled_features: ["dashboard_operations"],
+          rbac_permissions: ["dashboard.operations.view"],
         }),
       ),
     ).toBe("/worker");

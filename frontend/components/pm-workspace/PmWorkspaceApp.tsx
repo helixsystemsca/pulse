@@ -80,7 +80,8 @@ export function PmWorkspaceApp() {
       <div className="mx-auto max-w-lg rounded-lg border border-ds-border bg-ds-secondary/40 p-6 text-center">
         <h1 className="text-lg font-semibold text-ds-foreground">PM workspace</h1>
         <p className="mt-2 text-sm text-ds-muted">
-          This area is for internal planning only. Your account does not have the PM coordination flag enabled.
+          This area is for internal planning only. Your role needs the PM tools permission (
+          <code className="text-xs">projects.pm.view</code>).
         </p>
       </div>
     );

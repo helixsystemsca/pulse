@@ -10,6 +10,10 @@ import {
   LEGACY_PLATFORM_ROUTE_ALIASES,
 } from "@/config/platform/legacy-platform-routes";
 import { getMasterFeatureForPath, MASTER_FEATURES } from "@/config/platform/master-feature-registry";
+import {
+  LEGACY_DASHBOARD_VIEW_PERMISSION,
+  rbacKeyGrantedByLegacyDashboardView,
+} from "@/lib/dashboards/dashboard-permissions";
 import { isTenantFeatureOnContract, isUserFeatureEnabled } from "@/lib/features/tenant-features";
 import { readAccessSnapshot, snapshotHasCapability } from "@/lib/access-snapshot";
 import { groupModulesByCategory, type TenantSidebarNavGroup } from "@/lib/rbac/sidebar-groups";
@@ -60,7 +64,14 @@ export function hasRbacPermission(session: PulseAuthSession | null, permissionKe
   if (snap) return snapshotHasCapability(snap, permissionKey);
   const rbac = session?.rbac_permissions;
   if (!rbac?.length) return false;
-  return rbac.includes("*") || rbac.includes(permissionKey);
+  if (rbac.includes("*") || rbac.includes(permissionKey)) return true;
+  if (
+    rbac.includes(LEGACY_DASHBOARD_VIEW_PERMISSION) &&
+    rbacKeyGrantedByLegacyDashboardView(permissionKey)
+  ) {
+    return true;
+  }
+  return false;
 }
 
 /** Central permission check for UI — use instead of workspace or department-slug branching. */
@@ -99,21 +110,33 @@ function classicNavGate(href: string): NavGate {
       companyModules: ["dashboard", "projects"],
       rbacAnyOf: [],
       requireAllContractModules: true,
-      rbacAllOf: ["dashboard.view", "projects.view"],
+      rbacAllOf: ["dashboard.project.view", "projects.view"],
     };
   }
   if (h === "/overview" || h.startsWith("/overview/")) {
-    return { kind: "module", companyModules: ["dashboard"], rbacAnyOf: ["dashboard.view"] };
+    return { kind: "module", companyModules: ["dashboard"], rbacAnyOf: ["dashboard.leadership.view", "dashboard.view"] };
   }
 
   if (h === "/worker" || h.startsWith("/worker/")) {
-    return { kind: "module", companyModules: ["dashboard"], rbacAnyOf: ["dashboard.view"] };
+    return { kind: "module", companyModules: ["dashboard"], rbacAnyOf: ["dashboard.operations.view", "dashboard.view"] };
+  }
+  const deptDash = /^\/dashboard\/department\/([a-z_]+)(?:\/|$)/.exec(h);
+  if (deptDash) {
+    const slug = deptDash[1]!;
+    return {
+      kind: "module",
+      companyModules: ["dashboard"],
+      rbacAnyOf: [`dashboard.dept.${slug}.view`, "dashboard.view"],
+    };
+  }
+  if (h.startsWith("/kiosk/")) {
+    return { kind: "module", companyModules: ["dashboard"], rbacAnyOf: ["dashboard.kiosk.view", "dashboard.view"] };
   }
   if (h === "/dashboard/pm-workspace" || h.startsWith("/dashboard/pm-workspace/")) {
-    return { kind: "module", companyModules: ["projects"], rbacAnyOf: ["projects.view"] };
+    return { kind: "module", companyModules: ["projects"], rbacAnyOf: ["projects.pm.view"] };
   }
   if (h === "/pm/planning" || h.startsWith("/pm/planning/")) {
-    return { kind: "module", companyModules: ["projects"], rbacAnyOf: ["projects.view"] };
+    return { kind: "module", companyModules: ["projects"], rbacAnyOf: ["projects.pm.view"] };
   }
   if (h === "/schedule/availability" || h.startsWith("/schedule/availability/")) {
     return { kind: "module", companyModules: ["schedule"], rbacAnyOf: ["schedule.view"] };

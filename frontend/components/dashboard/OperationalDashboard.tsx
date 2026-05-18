@@ -1137,7 +1137,7 @@ function DashboardBody({
 }: {
   model: DashboardViewModel;
   session: PulseAuthSession | null | undefined;
-  dashboardContext: "operations" | "admin";
+  dashboardContext: string;
   workOrdersHref: string;
   readOnly?: boolean;
 }) {
@@ -1900,7 +1900,8 @@ export function OperationalDashboard({
   readOnly?: boolean;
   /** Optional bearer token for kiosk links (`?token=`) when no session exists. */
   tokenOverride?: string | null;
-  dashboardContext?: "operations" | "admin";
+  /** Storage namespace for layout/widgets (`operations`, `admin`, or `dept_{slug}`). */
+  dashboardContext?: string;
 }) {
   const { session } = usePulseAuth();
   const [liveModel, setLiveModel] = useState<DashboardViewModel | null>(null);

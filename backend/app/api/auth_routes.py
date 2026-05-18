@@ -403,7 +403,11 @@ async def me(
         is_impersonating=is_imp,
         is_system_admin=bool(user.is_system_admin or user_has_any_role(user, UserRole.system_admin)),
         company=company_summary,
-        can_use_pm_features=bool(getattr(user, "can_use_pm_features", False)),
+        can_use_pm_features=(
+            bool(getattr(user, "can_use_pm_features", False))
+            or "projects.pm.view" in (rbac_keys or [])
+            or "*" in (rbac_keys or [])
+        ),
         facility_tenant_admin=bool(getattr(user, "facility_tenant_admin", False)),
         role_display_label=tenant_role_display_label(user),
         permissions=perm_out,

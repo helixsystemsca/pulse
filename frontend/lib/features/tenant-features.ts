@@ -6,6 +6,7 @@
 import {
   canonicalizeFeatureKeys,
   contractKeyForCanonical,
+  contractKeysForCanonical,
   toCanonicalFeatureKey,
   type CanonicalFeatureKey,
 } from "@/lib/features/canonical-features";
@@ -57,6 +58,16 @@ function legacyStandardsBundleEnabled(session: PulseAuthSession | null, enabled:
   return enabled.has("procedures") || enabled.has("standards");
 }
 
+function canonicalFeatureOnContract(session: PulseAuthSession | null, featureKey: string): boolean {
+  if (isTenantFeatureOnContract(session, featureKey)) return true;
+  const canonical = toCanonicalFeatureKey(featureKey);
+  if (!canonical) return false;
+  for (const contractKey of contractKeysForCanonical([canonical])) {
+    if (isTenantFeatureOnContract(session, contractKey)) return true;
+  }
+  return false;
+}
+
 /** Sidebar / route visibility: canonical snapshot features (already ∩ contract). */
 export function isUserFeatureEnabled(session: PulseAuthSession | null, featureKey: string): boolean {
   if (!session) return false;
@@ -69,9 +80,10 @@ export function isUserFeatureEnabled(session: PulseAuthSession | null, featureKe
     return false;
   }
   const canonical = toCanonicalFeatureKey(featureKey) ?? (featureKey as CanonicalFeatureKey);
-  if (!isTenantFeatureOnContract(session, featureKey)) return false;
+  if (!canonicalFeatureOnContract(session, featureKey)) return false;
   const enabled = userEnabledFeatureSet(session);
   if (enabled.has(canonical)) return true;
+  if (featureKey.startsWith("dashboard_") && enabled.has("dashboard")) return true;
   if ((STANDARDS_SUB_FEATURES as readonly string[]).includes(featureKey) && legacyStandardsBundleEnabled(session, enabled)) {
     return true;
   }

@@ -7,6 +7,18 @@ from typing import Iterable
 # Stable keys for role `feature_keys[]` and Team Management toggles (order = UI sort).
 CANONICAL_PRODUCT_FEATURES: tuple[str, ...] = (
     "dashboard",
+    "dashboard_operations",
+    "dashboard_leadership",
+    "dashboard_project",
+    "dashboard_inspections",
+    "dashboard_team_insights",
+    "dashboard_kiosk",
+    "dashboard_dept_communications",
+    "dashboard_dept_aquatics",
+    "dashboard_dept_reception",
+    "dashboard_dept_fitness",
+    "dashboard_dept_racquets",
+    "dashboard_dept_admin",
     "monitoring",
     "logs_inspections",
     "inventory",
@@ -44,6 +56,18 @@ _LEGACY_TO_CANONICAL: dict[str, str] = {
 
 # Canonical → legacy contract key stored in `company_features` until catalog migration completes.
 _CANONICAL_TO_CONTRACT: dict[str, str] = {
+    "dashboard_operations": "dashboard",
+    "dashboard_leadership": "dashboard",
+    "dashboard_project": "dashboard",
+    "dashboard_inspections": "dashboard",
+    "dashboard_team_insights": "dashboard",
+    "dashboard_kiosk": "dashboard",
+    "dashboard_dept_communications": "dashboard",
+    "dashboard_dept_aquatics": "dashboard",
+    "dashboard_dept_reception": "dashboard",
+    "dashboard_dept_fitness": "dashboard",
+    "dashboard_dept_racquets": "dashboard",
+    "dashboard_dept_admin": "dashboard",
     "logs_inspections": "compliance",
     "advertising_mapper": "comms_advertising_mapper",
     "xplor_indesign": "comms_indesign_pipeline",

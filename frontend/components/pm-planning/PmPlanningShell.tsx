@@ -76,7 +76,9 @@ export function PmPlanningShell(props: PmPlanningShellProps = {}) {
   if (!allowed) {
     return (
       <div className="ds-premium-panel mx-auto max-w-md p-6 text-center">
-        <p className="text-sm text-ds-muted">PM planning requires the PM features flag on your account.</p>
+        <p className="text-sm text-ds-muted">
+          PM planning requires the <span className="font-medium">PM tools</span> permission on your role.
+        </p>
       </div>
     );
   }

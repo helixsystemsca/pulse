@@ -4,6 +4,18 @@
  */
 export const CANONICAL_PRODUCT_FEATURES = [
   "dashboard",
+  "dashboard_operations",
+  "dashboard_leadership",
+  "dashboard_project",
+  "dashboard_inspections",
+  "dashboard_team_insights",
+  "dashboard_kiosk",
+  "dashboard_dept_communications",
+  "dashboard_dept_aquatics",
+  "dashboard_dept_reception",
+  "dashboard_dept_fitness",
+  "dashboard_dept_racquets",
+  "dashboard_dept_admin",
   "monitoring",
   "logs_inspections",
   "inventory",
@@ -40,6 +52,18 @@ export const LEGACY_CONTRACT_TO_CANONICAL: Record<string, CanonicalFeatureKey> =
 
 /** Canonical → legacy contract key in `company_features` / `contract_features`. */
 export const CANONICAL_TO_CONTRACT: Partial<Record<CanonicalFeatureKey, string>> = {
+  dashboard_operations: "dashboard",
+  dashboard_leadership: "dashboard",
+  dashboard_project: "dashboard",
+  dashboard_inspections: "dashboard",
+  dashboard_team_insights: "dashboard",
+  dashboard_kiosk: "dashboard",
+  dashboard_dept_communications: "dashboard",
+  dashboard_dept_aquatics: "dashboard",
+  dashboard_dept_reception: "dashboard",
+  dashboard_dept_fitness: "dashboard",
+  dashboard_dept_racquets: "dashboard",
+  dashboard_dept_admin: "dashboard",
   logs_inspections: "compliance",
   advertising_mapper: "comms_advertising_mapper",
   xplor_indesign: "comms_indesign_pipeline",
@@ -66,6 +90,16 @@ export function toCanonicalFeatureKey(name: string): CanonicalFeatureKey | null 
 
 export function contractKeyForCanonical(key: CanonicalFeatureKey): string {
   return CANONICAL_TO_CONTRACT[key] ?? key;
+}
+
+export function contractKeysForCanonical(keys: Iterable<CanonicalFeatureKey | string>): string[] {
+  const out = new Set<string>();
+  for (const raw of keys) {
+    const c = toCanonicalFeatureKey(String(raw));
+    if (!c) continue;
+    out.add(contractKeyForCanonical(c));
+  }
+  return [...out].sort();
 }
 
 export function canonicalizeFeatureKeys(names: Iterable<string>): CanonicalFeatureKey[] {

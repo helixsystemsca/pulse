@@ -108,6 +108,22 @@ const COMMS_TOOLS_KEYS = [
 
 const LEADERSHIP_KEYS = ["dashboard"] as const;
 
+/** Per-surface dashboard toggles (Team Management matrix; contract module remains `dashboard`). */
+const DASHBOARD_ACCESS_KEYS = [
+  "dashboard_operations",
+  "dashboard_leadership",
+  "dashboard_project",
+  "dashboard_inspections",
+  "dashboard_team_insights",
+  "dashboard_kiosk",
+  "dashboard_dept_communications",
+  "dashboard_dept_aquatics",
+  "dashboard_dept_reception",
+  "dashboard_dept_fitness",
+  "dashboard_dept_racquets",
+  "dashboard_dept_admin",
+] as const;
+
 const SHARED_PROGRAM_KEYS = [
   "schedule",
   "team_management",
@@ -128,6 +144,12 @@ export const MASTER_PERMISSION_FEATURE_GROUPS: PermissionFeatureGroup[] = [
     label: "Leadership dashboard",
     description: "Main operations / leadership overview (/overview).",
     keys: [...LEADERSHIP_KEYS],
+  },
+  {
+    id: "dashboard_access",
+    label: "Dashboard surfaces",
+    description: "Which dashboard routes appear in the Dashboards flyout.",
+    keys: [...DASHBOARD_ACCESS_KEYS],
   },
   {
     id: "ops",
@@ -169,6 +191,12 @@ export function permissionFeatureGroupsForDepartment(dept: PermissionMatrixDepar
         description: "Main operations / leadership overview (/overview).",
         keys: [...leadership],
       },
+      {
+        id: "dashboard_access",
+        label: "Dashboard surfaces",
+        description: "Operations, leadership, maintenance dashboards, and kiosk displays.",
+        keys: [...DASHBOARD_ACCESS_KEYS],
+      },
       { id: "ops", label: "Maintenance & operations", description: "Classic Pulse modules for this department.", keys: [...maintenanceOps] },
       { id: "shared", label: "Scheduling, people & standards", keys: [...sharedProgram] },
       { id: "maps", label: "Maps, drawings & devices", keys: [...maps] },
@@ -181,6 +209,12 @@ export function permissionFeatureGroupsForDepartment(dept: PermissionMatrixDepar
         label: "Leadership dashboard",
         description: "Main operations / leadership overview (/overview).",
         keys: [...leadership],
+      },
+      {
+        id: "dashboard_access",
+        label: "Dashboard surfaces",
+        description: "Department blank dashboard and shared leadership views.",
+        keys: ["dashboard_dept_communications", "dashboard_leadership", "dashboard_operations", "dashboard_project"],
       },
       { id: "comms", label: "Communications tools", description: "Publication, campaigns, assets, and related tools.", keys: [...commsTools] },
       { id: "shared", label: "Scheduling, people & standards", keys: [...sharedProgram] },
@@ -195,6 +229,11 @@ export function permissionFeatureGroupsForDepartment(dept: PermissionMatrixDepar
         description: "Main operations / leadership overview (/overview).",
         keys: [...leadership],
       },
+      {
+        id: "dashboard_access",
+        label: "Dashboard surfaces",
+        keys: ["dashboard_dept_aquatics", "dashboard_leadership", "dashboard_operations"],
+      },
       { id: "pool", label: "Aquatics programs", description: "Scheduling and pool-facing tools.", keys: ["schedule"] },
       { id: "shared", label: "People & standards", keys: ["team_management", "team_insights", "procedures", "messaging"] },
       { id: "maps", label: "Maps, drawings & devices", keys: [...maps] },
@@ -207,17 +246,44 @@ export function permissionFeatureGroupsForDepartment(dept: PermissionMatrixDepar
         label: "Leadership dashboard",
         keys: [...leadership],
       },
+      {
+        id: "dashboard_access",
+        label: "Dashboard surfaces",
+        keys: ["dashboard_dept_reception", "dashboard_leadership", "dashboard_operations"],
+      },
       { id: "comms", label: "Communications tools", keys: [...commsTools] },
       { id: "shared", label: "Scheduling, people & standards", keys: [...sharedProgram] },
       { id: "maps", label: "Maps, drawings & devices", keys: [...maps] },
     ];
   }
-  if (dept === "fitness" || dept === "racquets") {
+  if (dept === "fitness") {
     return [
       {
         id: "dashboard",
         label: "Leadership dashboard",
         keys: [...leadership],
+      },
+      {
+        id: "dashboard_access",
+        label: "Dashboard surfaces",
+        keys: ["dashboard_dept_fitness", "dashboard_leadership", "dashboard_operations"],
+      },
+      { id: "program", label: "Program scheduling", keys: ["schedule"] },
+      { id: "shared", label: "People & standards", keys: ["team_management", "team_insights", "procedures", "messaging"] },
+      { id: "maps", label: "Maps, drawings & devices", keys: [...maps] },
+    ];
+  }
+  if (dept === "racquets") {
+    return [
+      {
+        id: "dashboard",
+        label: "Leadership dashboard",
+        keys: [...leadership],
+      },
+      {
+        id: "dashboard_access",
+        label: "Dashboard surfaces",
+        keys: ["dashboard_dept_racquets", "dashboard_leadership", "dashboard_operations"],
       },
       { id: "program", label: "Program scheduling", keys: ["schedule"] },
       { id: "shared", label: "People & standards", keys: ["team_management", "team_insights", "procedures", "messaging"] },
@@ -230,6 +296,11 @@ export function permissionFeatureGroupsForDepartment(dept: PermissionMatrixDepar
         id: "dashboard",
         label: "Leadership dashboard",
         keys: [...leadership],
+      },
+      {
+        id: "dashboard_access",
+        label: "Dashboard surfaces",
+        keys: ["dashboard_dept_admin", "dashboard_leadership", "dashboard_operations", "dashboard_project"],
       },
       { id: "shared", label: "Scheduling, people & standards", keys: [...sharedProgram] },
       { id: "maps", label: "Maps, drawings & devices", keys: [...maps] },
