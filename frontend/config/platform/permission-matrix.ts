@@ -108,7 +108,16 @@ const COMMS_TOOLS_KEYS = [
 
 const LEADERSHIP_KEYS = ["dashboard"] as const;
 
-const SHARED_PROGRAM_KEYS = ["schedule", "team_management", "team_insights", "procedures", "messaging"] as const;
+const SHARED_PROGRAM_KEYS = [
+  "schedule",
+  "team_management",
+  "team_insights",
+  "procedures",
+  "standards_training",
+  "standards_certifications",
+  "standards_compliance",
+  "messaging",
+] as const;
 
 const MAP_KEYS = ["drawings", "zones_devices", "live_map"] as const;
 

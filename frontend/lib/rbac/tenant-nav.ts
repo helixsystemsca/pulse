@@ -2,9 +2,12 @@
  * Tenant sidebar — master registry → contract → effective `enabled_features` (default deny).
  */
 import { normalizeModuleCategory } from "@/config/platform/module-categories";
+import type { NavDomain } from "@/config/platform/nav-domains";
+import type { DashboardScope } from "@/config/platform/dashboard-scope";
 import {
   MASTER_FEATURES,
   NAV_VISIBLE_MASTER_FEATURES,
+  normalizeNavHref,
   type MasterFeatureDef,
   type MasterFeatureIcon,
 } from "@/config/platform/master-feature-registry";
@@ -44,12 +47,16 @@ export type TenantSidebarNavItem = {
   icon: MasterFeatureIcon;
   /** Copied from registry — presentation only; not used in visibility checks. */
   moduleCategory?: string;
+  /** Workflow domain — presentation only; never used in visibility checks. */
+  navDomain?: NavDomain;
+  navGroup?: string;
+  navOrder?: number;
+  dashboardScope?: DashboardScope;
+  ownershipDepartment?: string;
 };
 
 function normalizeHref(href: string): string {
-  const path = href.split("?")[0] ?? href;
-  if (path.endsWith("/") && path.length > 1) return path.slice(0, -1);
-  return path;
+  return normalizeNavHref(href);
 }
 
 export type MasterFeatureVisibilityExplain = {
@@ -150,29 +157,33 @@ export function isMasterFeatureVisibleForSession(
 }
 
 /**
- * Deduplicated tenant left rail: one entry per `route` and per `feature` contract key.
+ * Deduplicated tenant left rail: one entry per canonical `route` (query-aware).
+ * Multiple rows may share a permission-matrix `feature` key (navigation aliases).
  */
 export function tenantSidebarNavItemsForSession(
   session: PulseAuthSession | null,
 ): TenantSidebarNavItem[] {
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
   const seenRoute = new Set<string>();
-  const seenFeature = new Set<string>();
   const out: TenantSidebarNavItem[] = [];
 
   const sorted = [...NAV_VISIBLE_MASTER_FEATURES].sort((a, b) => a.sortOrder - b.sortOrder);
   for (const f of sorted) {
     if (!isMasterFeatureVisibleForSession(session, f, isSystemAdmin)) continue;
     const href = normalizeHref(f.route);
-    if (seenRoute.has(href) || seenFeature.has(f.feature)) continue;
+    if (seenRoute.has(href)) continue;
     seenRoute.add(href);
-    seenFeature.add(f.feature);
     out.push({
       key: f.key,
       href: f.route,
-      label: f.label,
+      label: f.navLabelOverride?.trim() || f.label,
       icon: f.icon,
       moduleCategory: normalizeModuleCategory(f.moduleCategory),
+      navDomain: f.navDomain,
+      navGroup: f.navGroup,
+      navOrder: f.navOrder ?? f.sortOrder,
+      dashboardScope: f.dashboardScope,
+      ownershipDepartment: f.ownershipDepartment,
     });
   }
   return out;

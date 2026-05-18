@@ -23,6 +23,9 @@ CANONICAL_PRODUCT_FEATURES: tuple[str, ...] = (
     "projects",
     "work_requests",
     "procedures",
+    "standards_training",
+    "standards_certifications",
+    "standards_compliance",
     # Communications extras (system-admin contract; included in role toggles when on contract).
     "messaging",
     "comms_assets",
@@ -45,6 +48,9 @@ _CANONICAL_TO_CONTRACT: dict[str, str] = {
     "advertising_mapper": "comms_advertising_mapper",
     "xplor_indesign": "comms_indesign_pipeline",
     "standards": "procedures",
+    "standards_training": "procedures",
+    "standards_certifications": "procedures",
+    "standards_compliance": "procedures",
 }
 
 

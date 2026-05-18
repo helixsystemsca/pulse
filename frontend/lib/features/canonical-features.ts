@@ -20,6 +20,9 @@ export const CANONICAL_PRODUCT_FEATURES = [
   "projects",
   "work_requests",
   "procedures",
+  "standards_training",
+  "standards_certifications",
+  "standards_compliance",
   "messaging",
   "comms_assets",
   "comms_publication_builder",
@@ -41,7 +44,16 @@ export const CANONICAL_TO_CONTRACT: Partial<Record<CanonicalFeatureKey, string>>
   advertising_mapper: "comms_advertising_mapper",
   xplor_indesign: "comms_indesign_pipeline",
   standards: "procedures",
+  standards_training: "procedures",
+  standards_certifications: "procedures",
+  standards_compliance: "procedures",
 };
+
+const STANDARDS_SUB_FEATURES: readonly CanonicalFeatureKey[] = [
+  "standards_training",
+  "standards_certifications",
+  "standards_compliance",
+];
 
 export function toCanonicalFeatureKey(name: string): CanonicalFeatureKey | null {
   const n = name.trim();

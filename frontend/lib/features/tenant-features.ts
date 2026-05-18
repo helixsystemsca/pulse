@@ -51,14 +51,29 @@ export function userEnabledFeatureSet(session: PulseAuthSession | null): Set<Can
   return new Set(userEnabledCanonicalFeatures(session));
 }
 
+const STANDARDS_SUB_FEATURES = ["standards_training", "standards_certifications", "standards_compliance"] as const;
+
+function legacyStandardsBundleEnabled(session: PulseAuthSession | null, enabled: Set<CanonicalFeatureKey>): boolean {
+  return enabled.has("procedures") || enabled.has("standards");
+}
+
 /** Sidebar / route visibility: canonical snapshot features (already ∩ contract). */
 export function isUserFeatureEnabled(session: PulseAuthSession | null, featureKey: string): boolean {
   if (!session) return false;
   const snap = readAccessSnapshot(session);
-  if (snap) return snapshotHasFeature(snap, featureKey);
+  if (snap) {
+    if (snapshotHasFeature(snap, featureKey)) return true;
+    if ((STANDARDS_SUB_FEATURES as readonly string[]).includes(featureKey)) {
+      return snapshotHasFeature(snap, "procedures") || snapshotHasFeature(snap, "standards");
+    }
+    return false;
+  }
   const canonical = toCanonicalFeatureKey(featureKey) ?? (featureKey as CanonicalFeatureKey);
   if (!isTenantFeatureOnContract(session, featureKey)) return false;
   const enabled = userEnabledFeatureSet(session);
   if (enabled.has(canonical)) return true;
+  if ((STANDARDS_SUB_FEATURES as readonly string[]).includes(featureKey) && legacyStandardsBundleEnabled(session, enabled)) {
+    return true;
+  }
   return enabled.has(featureKey as CanonicalFeatureKey);
 }

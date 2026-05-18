@@ -118,7 +118,7 @@ export const DASHBOARD_PAGE_WIDGET_CATALOG: DashboardPageDefinition[] = [
   {
     id: "training",
     label: "Training",
-    href: "/standards/training",
+    href: "/standards/compliance",
     description: "Compliance roll-up for routines training programs.",
     slices: [{ id: "training_compliance", label: "Training compliance" }],
   },

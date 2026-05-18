@@ -7,7 +7,9 @@
  * Override with `NEXT_PUBLIC_PULSE_APP_URL`.
  */
 import { NAV_VISIBLE_MASTER_FEATURES } from "@/config/platform/master-feature-registry";
+import { resolveAssignedDashboardHomepage } from "@/lib/dashboards/homepage";
 import { isPulseAppHost } from "@/lib/pulse-host";
+import { readSession } from "@/lib/pulse-session";
 import { isProductPath } from "@/lib/route-split-buckets";
 
 function pulseAppOrigin(): string {
@@ -182,7 +184,9 @@ export function pulsePostLoginPath(user: PulsePostLoginIdentity): "/system" | "/
 /** Same-origin navigation after successful login / invite / password reset. */
 export function navigateAfterPulseLogin(user: PulsePostLoginIdentity): void {
   if (typeof window === "undefined") return;
-  window.location.assign(pulseAppHref(pulsePostLoginPath(user)));
+  const session = readSession();
+  const path = session ? resolveAssignedDashboardHomepage(session) : pulsePostLoginPath(user);
+  window.location.assign(pulseAppHref(path));
 }
 
 /** Marketing site URL with path and/or hash (e.g. `"/#contact"`). */
@@ -212,6 +216,6 @@ export const pulseApp = {
   },
 
   workRequests(): string {
-    return pulseAppHref("/work-requests");
+    return pulseAppHref("/dashboard/maintenance");
   },
 };

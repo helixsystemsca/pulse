@@ -23,7 +23,16 @@ export const PRODUCT_MODULE_PERMISSION_SECTIONS: readonly {
   {
     id: "people",
     label: "People & scheduling",
-    keys: ["schedule", "team_management", "standards", "procedures", "messaging"],
+    keys: [
+      "schedule",
+      "team_management",
+      "standards",
+      "procedures",
+      "standards_training",
+      "standards_certifications",
+      "standards_compliance",
+      "messaging",
+    ],
   },
   {
     id: "maps",
@@ -64,6 +73,9 @@ export const MODULE_LABEL: Record<CanonicalFeatureKey, string> = {
   projects: "Projects",
   work_requests: "Work Requests",
   procedures: "Procedures",
+  standards_training: "Standards · Training",
+  standards_certifications: "Standards · Certifications",
+  standards_compliance: "Standards · Compliance",
   messaging: "Messaging",
   comms_assets: "Communications · Assets",
   comms_publication_builder: "Communications · Publication pipeline",

@@ -29,6 +29,14 @@ export function featureKeyForTenantNavHref(href: string): string | undefined {
   if (href === "/pm/planning" || href.startsWith("/pm/")) return "projects";
   if (href === "/dashboard/work-requests" || href.startsWith("/dashboard/work-requests")) return "work_requests";
   if (href === "/dashboard/maintenance" || href.startsWith("/dashboard/maintenance")) return "work_requests";
+  if (href === "/standards/training" || href.startsWith("/standards/training/")) return "standards_training";
+  if (href === "/standards/certifications" || href.startsWith("/standards/certifications/")) {
+    return "standards_certifications";
+  }
+  if (href === "/standards/compliance" || href.startsWith("/standards/compliance/")) return "standards_compliance";
+  if (href === "/standards/acknowledgments" || href.startsWith("/standards/acknowledgments")) {
+    return "standards_compliance";
+  }
   if (href === "/standards" || href.startsWith("/standards")) return "procedures";
   if (href === "/dashboard/procedures" || href.startsWith("/dashboard/procedures")) return "procedures";
   if (href === "/dashboard/team-insights" || href.startsWith("/dashboard/team-insights")) return "team_insights";

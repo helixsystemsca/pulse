@@ -109,6 +109,21 @@ function classicNavGate(href: string): NavGate {
   if (h === "/worker" || h.startsWith("/worker/")) {
     return { kind: "module", companyModules: ["dashboard"], rbacAnyOf: ["dashboard.view"] };
   }
+  if (h === "/dashboard/pm-workspace" || h.startsWith("/dashboard/pm-workspace/")) {
+    return { kind: "module", companyModules: ["projects"], rbacAnyOf: ["projects.view"] };
+  }
+  if (h === "/pm/planning" || h.startsWith("/pm/planning/")) {
+    return { kind: "module", companyModules: ["projects"], rbacAnyOf: ["projects.view"] };
+  }
+  if (h === "/schedule/availability" || h.startsWith("/schedule/availability/")) {
+    return { kind: "module", companyModules: ["schedule"], rbacAnyOf: ["schedule.view"] };
+  }
+  if (h === "/schedule/availability-grid" || h.startsWith("/schedule/availability-grid/")) {
+    return { kind: "module", companyModules: ["schedule"], rbacAnyOf: ["schedule.view"] };
+  }
+  if (h === "/schedule/shift-definitions" || h.startsWith("/schedule/shift-definitions/")) {
+    return { kind: "module", companyModules: ["schedule"], rbacAnyOf: ["schedule.view"] };
+  }
   if (h === "/dashboard/organization" || h.startsWith("/dashboard/organization/")) {
     return { kind: "session_roles_any", roles: ["company_admin"] };
   }
@@ -202,20 +217,11 @@ export function flatPlatformNavSidebarItemsForSession(
 }
 
 /**
- * First classic-tenant sidebar destination the user may open (excluding Settings).
- * Used when `/overview` is disabled or there is no workspace hub.
+ * Assigned dashboard homepage — personal override, role/department defaults, then first accessible dashboard.
  */
 export function firstAccessibleClassicTenantHref(session: PulseAuthSession | null): string {
-  if (!session) return "/login";
-  const sys = Boolean(session.is_system_admin || session.role === "system_admin");
-  if (sys) return "/system";
-  if (isTenantFullAdminSession(session) && canAccessClassicNavHref(session, "/overview")) {
-    return "/overview";
-  }
-  for (const row of tenantSidebarNavItemsForLiveApp(session)) {
-    if (canShowClassicSidebarItem(session, row.href, sys)) return row.href;
-  }
-  return "/settings";
+  const { resolveAssignedDashboardHomepage } = require("@/lib/dashboards/homepage") as typeof import("@/lib/dashboards/homepage");
+  return resolveAssignedDashboardHomepage(session);
 }
 
 /** Production sidebar rows: registry visibility ∩ classic route gate (excludes Settings). */
@@ -237,6 +243,9 @@ export function tenantSidebarNavItemsForLiveApp(
 export function tenantSidebarNavGroupsForLiveApp(session: PulseAuthSession | null): TenantSidebarNavGroup[] {
   return groupModulesByCategory(tenantSidebarNavItemsForLiveApp(session));
 }
+
+/** Domain flyout tree — presentation only; authorization resolved in {@link tenantSidebarNavItemsForLiveApp}. */
+export { buildNavigationTree } from "@/lib/navigation/build-navigation-tree";
 
 export type { TenantSidebarNavGroup };
 
