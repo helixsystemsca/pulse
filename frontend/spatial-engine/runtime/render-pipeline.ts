@@ -4,6 +4,7 @@ import type { SpatialDocumentLayer, SpatialDocumentLayerType } from "@/spatial-e
 import type { SpatialViewport } from "@/spatial-engine/types/spatial";
 import type { SpatialSelectionState } from "@/spatial-engine/selection/types";
 import { visibleDocumentLayers } from "@/spatial-engine/document/query";
+import type { SpatialOperationalOverlay } from "@/spatial-engine/operations/types";
 
 export type SpatialLayerRenderContext = {
   document: SpatialDocument;
@@ -51,4 +52,34 @@ export function renderSpatialDocumentLayers(
 
 export function clearSpatialLayerRenderers(): void {
   registry.clear();
+}
+
+/** Transient operational overlay renderer (WO pins, telemetry heatmaps, …). */
+export type SpatialOperationalOverlayRenderer = {
+  render: (ctx: {
+    document: SpatialDocument;
+    overlay: SpatialOperationalOverlay;
+    viewport: SpatialViewport;
+    selection: SpatialSelectionState;
+  }) => ReactNode;
+};
+
+let operationalRenderer: SpatialOperationalOverlayRenderer | null = null;
+
+export function registerOperationalOverlayRenderer(renderer: SpatialOperationalOverlayRenderer): void {
+  operationalRenderer = renderer;
+}
+
+export function renderOperationalOverlays(
+  doc: SpatialDocument,
+  overlays: SpatialOperationalOverlay[],
+  viewport: SpatialViewport,
+  selection: SpatialSelectionState,
+): ReactNode[] {
+  if (!operationalRenderer) return [];
+  return overlays
+    .filter((o) => o.visible)
+    .map((overlay) =>
+      operationalRenderer!.render({ document: doc, overlay, viewport, selection }),
+    );
 }

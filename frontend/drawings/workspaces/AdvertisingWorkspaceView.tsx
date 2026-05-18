@@ -8,6 +8,7 @@ import { InventoryDetailsPanel } from "@/modules/communications/advertising-mapp
 import { InventoryPlannerCanvas } from "@/modules/communications/advertising-mapper/components/InventoryPlannerCanvas";
 import { cloneWallPlans, MOCK_WALL_PLANS } from "@/modules/communications/advertising-mapper/data/mock-walls";
 import type { ConstraintRegion, ConstraintType, PlannerToolMode } from "@/modules/communications/advertising-mapper/geometry/types";
+import { useAdvertisingOperationalContext } from "@/modules/communications/advertising-mapper/hooks/useAdvertisingOperationalContext";
 import { useAdvertisingSpatialRuntime } from "@/modules/communications/advertising-mapper/hooks/useAdvertisingSpatialRuntime";
 import { usePlannerViewport } from "@/modules/communications/advertising-mapper/hooks/usePlannerViewport";
 import { RULER_THICKNESS_PX } from "@/modules/communications/advertising-mapper/components/AxisRulers";
@@ -46,6 +47,8 @@ export function AdvertisingWorkspaceView({
   } = useAdvertisingSpatialRuntime(INITIAL_WALLS, MOCK_WALL_PLANS[0]!.id);
 
   const wall = wallDoc ?? INITIAL_WALLS[0]!;
+
+  useAdvertisingOperationalContext(wall);
 
   const [selectedInventoryId, setSelectedInventoryId] = useState<string | null>(null);
   const [selectedConstraintId, setSelectedConstraintId] = useState<string | null>(null);

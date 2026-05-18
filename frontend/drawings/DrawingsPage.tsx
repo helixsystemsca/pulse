@@ -9,6 +9,7 @@ import { packInfraAssetNotes, parseInfraAssetFromNotes } from "./utils/infraSymb
 import { packZoneMeta } from "./utils/overlayMeta";
 import { useActiveProject } from "./hooks/useActiveProject";
 import { useDrawingsSpatialRuntime } from "./hooks/useDrawingsSpatialRuntime";
+import { useInfrastructureOperationalContext } from "./hooks/useInfrastructureOperationalContext";
 import type { FilterRule, GraphFilters, SystemType, TraceRouteResult } from "./utils/graphHelpers";
 import { getVisibleGraphElements } from "./utils/graphHelpers";
 import { MODES } from "./mapBuilderModes";
@@ -237,6 +238,7 @@ export function InfrastructureWorkspaceView({
   }, [activeMapId, mapDetail, baseWorldSize, graphProjectId]);
 
   const graph = useDrawingsSpatialRuntime(graphProjectId, activeMapId.trim() || null, spatialLoadInput);
+  useInfrastructureOperationalContext(activeMapId.trim() || null);
 
   useEffect(() => {
     if (!isApiMode()) {

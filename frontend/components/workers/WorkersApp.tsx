@@ -188,6 +188,11 @@ function normalizeEmploymentDraft(raw: string | null | undefined): EmploymentTyp
   return (EMPLOYMENT_TYPE_KEYS as readonly string[]).includes(s) ? (s as EmploymentTypeKey) : "";
 }
 
+/** Full-time and regular part-time use roster shift + weekly rotation; auxiliaries use explicit schedule assignments only. */
+function employmentShowsRotationScheduling(employment: EmploymentTypeKey): boolean {
+  return employment === "full_time" || employment === "regular_part_time";
+}
+
 type EmploymentBucketKey = "full_time" | "regular_part_time" | "part_time" | "unset";
 
 const WORKER_EMPLOYMENT_BUCKET_ORDER: EmploymentBucketKey[] = [
@@ -565,7 +570,6 @@ export function WorkersApp() {
   });
   const [rotationDaysDraft, setRotationDaysDraft] = useState<boolean[]>(() => [...EMPTY_ROTATION_DAYS]);
   const [shiftTimeDraft, setShiftTimeDraft] = useState({ start: "07:00", end: "15:00" });
-  const [ggAssignableDraft, setGgAssignableDraft] = useState(false);
 
   const [inviteNotice, setInviteNotice] = useState<InviteLinkBanner | null>(null);
   const [inviteLinkCopied, setInviteLinkCopied] = useState(false);
@@ -804,7 +808,6 @@ export function WorkersApp() {
     });
     setRotationDaysDraft(rotationDaysFromRecurring(recurringRowsFromApi(profile.recurring_shifts ?? [])));
     setShiftTimeDraft(editableShiftWindowFromProfile(profile, fullSettings.shifts ?? []));
-    setGgAssignableDraft(Boolean(profile.gg_assignable));
   }, [profile, fullSettings.shifts]);
 
   /** HR fields (not roles/modules): company admin, or manager/supervisor for non-admin profiles, or lead for workers. */
@@ -1267,32 +1270,39 @@ export function WorkersApp() {
       payload.department_slugs = wsNorm.length ? wsNorm : null;
     }
     const auxiliaryEmployment = basicDraft.employment_type === "part_time";
+    const rotationScheduling = employmentShowsRotationScheduling(basicDraft.employment_type);
     if (auxiliaryEmployment) {
       if ((profile.shift ?? "").trim()) {
         payload.shift = null;
       }
-    } else if (trim(positionDraft.shift) !== (profile.shift ?? "").trim()) {
-      payload.shift = trim(positionDraft.shift) || null;
+      const prevRotation = recurringRowsFromApi(profile.recurring_shifts ?? []);
+      if (prevRotation.length > 0) {
+        payload.recurring_shifts = [];
+      }
+    } else {
+      if (trim(positionDraft.shift) !== (profile.shift ?? "").trim()) {
+        payload.shift = trim(positionDraft.shift) || null;
+      }
+      if (rotationScheduling) {
+        const rotationSelected = rotationDaysDraft.some(Boolean);
+        const win = { start: padHm(shiftTimeDraft.start), end: padHm(shiftTimeDraft.end) };
+        if (rotationSelected && parseTimeToMinutes(win.start) === parseTimeToMinutes(win.end)) {
+          window.alert(
+            "Shift start and end cannot be the same. For overnight shifts use a later start and earlier end (e.g. 22:00-06:00).",
+          );
+          return;
+        }
+        const nextRotation = buildRecurringRowsForDays(rotationDaysDraft, win);
+        const prevRotation = recurringRowsFromApi(profile.recurring_shifts ?? []);
+        if (canonicalRecurringJson(prevRotation) !== canonicalRecurringJson(nextRotation)) {
+          payload.recurring_shifts = nextRotation;
+        }
+      }
     }
     const sid = trim(positionDraft.supervisor_id);
     const curSid = profile.supervisor_id ?? "";
     if (sid !== curSid) {
       payload.supervisor_id = sid || null;
-    }
-    const rotationSelected = rotationDaysDraft.some(Boolean);
-    const win = { start: padHm(shiftTimeDraft.start), end: padHm(shiftTimeDraft.end) };
-    if (rotationSelected && parseTimeToMinutes(win.start) === parseTimeToMinutes(win.end)) {
-      window.alert("Shift start and end cannot be the same. For overnight shifts use a later start and earlier end (e.g. 22:00-06:00).");
-      return;
-    }
-    const nextRotation = buildRecurringRowsForDays(rotationDaysDraft, win);
-    const prevRotation = recurringRowsFromApi(profile.recurring_shifts ?? []);
-    if (canonicalRecurringJson(prevRotation) !== canonicalRecurringJson(nextRotation)) {
-      payload.recurring_shifts = nextRotation;
-    }
-    const curGg = Boolean(profile.gg_assignable);
-    if (ggAssignableDraft !== curGg) {
-      payload.gg_assignable = ggAssignableDraft;
     }
     const preserveDemo = Boolean(profile.roles?.includes("demo_viewer"));
     const nextRoles = jwtRolesForMatrixSlot(effectiveRoleKey, preserveDemo);
@@ -3193,6 +3203,8 @@ export function WorkersApp() {
                       ))}
                     </select>
                   </div>
+                  {employmentShowsRotationScheduling(basicDraft.employment_type) ? (
+                    <>
                   <div className="grid gap-3 sm:col-span-2 sm:grid-cols-2">
                     <div>
                       <label className={LABEL} htmlFor="worker-profile-shift-start">
@@ -3222,23 +3234,6 @@ export function WorkersApp() {
                       Used for weekly rotation blocks and schedule labels (same clock times group as D1, D2, A1... on
                       each day). Overnight: end earlier on the clock than start (e.g. 22:00–06:00).
                     </p>
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className="flex cursor-pointer items-start gap-2 text-sm text-ds-foreground">
-                      <input
-                        type="checkbox"
-                        className={dsCheckboxClass}
-                        checked={ggAssignableDraft}
-                        onChange={(e) => setGgAssignableDraft(e.target.checked)}
-                      />
-                      <span>
-                        <span className="font-medium">GG assignable</span>
-                        <span className="mt-0.5 block text-[11px] text-pulse-muted">
-                          Eligible for GG-style assignments. This is separate from day / afternoon / night roster
-                          shifts.
-                        </span>
-                      </span>
-                    </label>
                   </div>
                   <div className="sm:col-span-2">
                     <span className={LABEL}>Weekly rotation (schedule)</span>
@@ -3288,6 +3283,13 @@ export function WorkersApp() {
                       ))}
                     </div>
                   </div>
+                    </>
+                  ) : basicDraft.employment_type === "part_time" ? (
+                    <p className="text-xs text-pulse-muted sm:col-span-2">
+                      Auxiliary workers are scheduled per shift in the scheduler. Weekly rotation and default shift
+                      times here are for full-time and RPT only.
+                    </p>
+                  ) : null}
                 </div>
               ) : (
                 <div className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
@@ -3346,26 +3348,39 @@ export function WorkersApp() {
                       );
                     })()}
                   </p>
-                  <p className="sm:col-span-2">
-                    <span className="text-pulse-muted">Shift hours: </span>
-                    {(() => {
-                      const sk = rosterShiftKeyForDisplay(profile);
-                      if (!sk) return "-";
-                      const rows = recurringRowsFromApi(profile.recurring_shifts ?? []);
-                      if (rows.length && rows.every((r) => r.start === rows[0]!.start && r.end === rows[0]!.end)) {
-                        return `${padHm(rows[0]!.start)}-${padHm(rows[0]!.end)}`;
-                      }
-                      const w = shiftWindowFromRosterKey(sk, fullSettings.shifts ?? []);
-                      return `${padHm(w.start)}-${padHm(w.end)} (preset from roster shift)`;
-                    })()}
-                  </p>
+                  {employmentShowsRotationScheduling(
+                    normalizeEmploymentDraft(profile.employment_type),
+                  ) ? (
+                    <>
+                      <p className="sm:col-span-2">
+                        <span className="text-pulse-muted">Shift hours: </span>
+                        {(() => {
+                          const sk = rosterShiftKeyForDisplay(profile);
+                          if (!sk) return "-";
+                          const rows = recurringRowsFromApi(profile.recurring_shifts ?? []);
+                          if (
+                            rows.length &&
+                            rows.every((r) => r.start === rows[0]!.start && r.end === rows[0]!.end)
+                          ) {
+                            return `${padHm(rows[0]!.start)}-${padHm(rows[0]!.end)}`;
+                          }
+                          const w = shiftWindowFromRosterKey(sk, fullSettings.shifts ?? []);
+                          return `${padHm(w.start)}-${padHm(w.end)} (preset from roster shift)`;
+                        })()}
+                      </p>
+                      <p className="sm:col-span-2">
+                        <span className="text-pulse-muted">Weekly rotation: </span>
+                        {formatRotationReadOnly(profile)}
+                      </p>
+                    </>
+                  ) : normalizeEmploymentDraft(profile.employment_type) === "part_time" ? (
+                    <p className="sm:col-span-2 text-xs text-ds-muted">
+                      Shift times and weekly rotation are managed in the scheduler for auxiliary workers.
+                    </p>
+                  ) : null}
                   <p>
                     <span className="text-pulse-muted">Supervisor: </span>
                     {profile.supervisor_name ?? "-"}
-                  </p>
-                  <p className="sm:col-span-2">
-                    <span className="text-pulse-muted">Weekly rotation: </span>
-                    {formatRotationReadOnly(profile)}
                   </p>
                 </div>
               )}

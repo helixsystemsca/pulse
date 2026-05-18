@@ -8,6 +8,13 @@ import { SpatialRevisionStack } from "@/spatial-engine/intelligence/history";
 import { EMPTY_SPATIAL_SELECTION, type SpatialSelectionState } from "@/spatial-engine/selection/types";
 import type { SpatialViewport } from "@/spatial-engine/types/spatial";
 import {
+  DEFAULT_OPERATIONAL_LAYER_TOGGLES,
+  type SpatialOperationalLayerToggles,
+  type SpatialOperationalOverlay,
+} from "@/spatial-engine/operations/types";
+import { createEmptyCollaborationBundle } from "@/spatial-engine/operations/collaboration";
+import { SpatialSnapshotRegistry } from "@/spatial-engine/operations/snapshots";
+import {
   DEFAULT_SPATIAL_VIEWPORT,
   type SpatialRuntimeDocumentEntry,
   type SpatialRuntimeSession,
@@ -17,6 +24,7 @@ export type SpatialRuntimeStoreState = {
   documents: Record<string, SpatialRuntimeDocumentEntry>;
   session: SpatialRuntimeSession;
   revisionStack: SpatialRevisionStack;
+  snapshotRegistry: SpatialSnapshotRegistry;
 };
 
 export type SpatialRuntimeStoreActions = {
@@ -43,6 +51,9 @@ export type SpatialRuntimeStoreActions = {
   undo: () => void;
   redo: () => void;
   pushHistory: (label?: string) => void;
+  setOperationalOverlays: (overlays: SpatialOperationalOverlay[]) => void;
+  setOperationalLayerToggles: (toggles: Partial<SpatialOperationalLayerToggles>) => void;
+  setOverlayVisible: (overlayId: string, visible: boolean) => void;
 };
 
 function bumpEntry(doc: SpatialDocument, prev?: SpatialRuntimeDocumentEntry): SpatialRuntimeDocumentEntry {
@@ -56,6 +67,10 @@ const initialSession = (workspaceId: SpatialWorkspaceKind = "infrastructure"): S
   viewport: { ...DEFAULT_SPATIAL_VIEWPORT },
   activeToolId: "select",
   toolState: {},
+  operationalOverlays: [],
+  operationalLayerToggles: { ...DEFAULT_OPERATIONAL_LAYER_TOGGLES },
+  overlayVisibility: {},
+  collaboration: createEmptyCollaborationBundle(),
 });
 
 export const useSpatialRuntimeStore = create<SpatialRuntimeStoreState & SpatialRuntimeStoreActions>()(
@@ -63,12 +78,14 @@ export const useSpatialRuntimeStore = create<SpatialRuntimeStoreState & SpatialR
     documents: {},
     session: initialSession(),
     revisionStack: new SpatialRevisionStack({ maxDepth: 50 }),
+    snapshotRegistry: new SpatialSnapshotRegistry(),
 
     resetSession: (workspaceId) => {
       set({
         documents: {},
         session: initialSession(workspaceId),
         revisionStack: new SpatialRevisionStack({ maxDepth: 50 }),
+        snapshotRegistry: new SpatialSnapshotRegistry(),
       });
     },
 
@@ -180,6 +197,33 @@ export const useSpatialRuntimeStore = create<SpatialRuntimeStoreState & SpatialR
       if (!restored || !id) return;
       set((state) => ({
         documents: { ...state.documents, [id]: bumpEntry(restored, state.documents[id]) },
+      }));
+    },
+
+    setOperationalOverlays: (overlays) => {
+      set((state) => ({
+        session: { ...state.session, operationalOverlays: overlays },
+      }));
+    },
+
+    setOperationalLayerToggles: (toggles) => {
+      set((state) => ({
+        session: {
+          ...state.session,
+          operationalLayerToggles: { ...state.session.operationalLayerToggles, ...toggles },
+        },
+      }));
+    },
+
+    setOverlayVisible: (overlayId, visible) => {
+      set((state) => ({
+        session: {
+          ...state.session,
+          overlayVisibility: { ...state.session.overlayVisibility, [overlayId]: visible },
+          operationalOverlays: state.session.operationalOverlays.map((o) =>
+            o.id === overlayId ? { ...o, visible } : o,
+          ),
+        },
       }));
     },
   })),

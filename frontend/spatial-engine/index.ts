@@ -6,6 +6,7 @@
 export * from "@/spatial-engine/document";
 export * from "@/spatial-engine/runtime";
 export * from "@/spatial-engine/intelligence";
+export * from "@/spatial-engine/operations";
 export * from "@/spatial-engine/persistence";
 export * from "@/spatial-engine/workspace";
 export * from "@/spatial-engine/coordinates";
