@@ -46,7 +46,13 @@ function SpatialAppPageInner({ fullscreen = false }: { fullscreen?: boolean }) {
   }
 
   if (activeWorkspaceId === "advertising") {
-    return <AdvertisingWorkspaceView workspaceSwitcher={workspaceSwitcher} immersive={!fullscreen} />;
+    return (
+      <AdvertisingWorkspaceView
+        workspaceSwitcher={workspaceSwitcher}
+        immersive={!fullscreen}
+        editorFullscreen={fullscreen}
+      />
+    );
   }
 
   if (activeWorkspaceId === "facilities" || activeWorkspaceId === "sensors") {

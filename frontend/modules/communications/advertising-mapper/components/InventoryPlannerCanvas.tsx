@@ -52,16 +52,24 @@ type Props = {
   onConstraintCreate: (region: ConstraintRegion) => void;
   onConstraintPointsChange: (id: string, points: number[]) => void;
   onDimensionBadgeClick: (id: string, target: DimensionEditTarget) => void;
+  onInventoryPlace?: (x: number, y: number) => void;
+  showBackdrop?: boolean;
+  showConstraints?: boolean;
+  showInventory?: boolean;
   /** When false, status hints are rendered by SpatialWorkspaceShell. */
   showFloatingHints?: boolean;
+  /** When false, minimap is rendered by SpatialWorkspaceShell. */
+  showMinimap?: boolean;
+  editorLightMode?: boolean;
   className?: string;
 };
 
 const CURSOR_BY_MODE: Record<PlannerToolMode, string> = {
   select: "default",
-  inventory: "grab",
+  inventory: "crosshair",
   constraint: "crosshair",
   pan: "grab",
+  measure: "crosshair",
 };
 
 export function InventoryPlannerCanvas({
@@ -83,7 +91,13 @@ export function InventoryPlannerCanvas({
   onConstraintCreate,
   onConstraintPointsChange,
   onDimensionBadgeClick,
+  onInventoryPlace,
+  showBackdrop = true,
+  showConstraints = true,
+  showInventory = true,
   showFloatingHints = true,
+  showMinimap = true,
+  editorLightMode = false,
   className,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -218,10 +232,16 @@ export function InventoryPlannerCanvas({
         setDraftPoints((prev) => [...prev, pt.x, pt.y]);
         return;
       }
+      if (toolMode === "inventory" && onInventoryPlace) {
+        const pt = wallPointFromEvent(e.evt);
+        if (!pt) return;
+        onInventoryPlace(pt.x, pt.y);
+        return;
+      }
       onSelectInventory(null);
       onSelectConstraint(null);
     },
-    [draftPoints, finalizeDraft, onSelectConstraint, onSelectInventory, toolMode, viewport.scale, wallPointFromEvent],
+    [draftPoints, finalizeDraft, onInventoryPlace, onSelectConstraint, onSelectInventory, toolMode, viewport.scale, wallPointFromEvent],
   );
 
   const finishBlockDrag = useCallback(
@@ -273,7 +293,11 @@ export function InventoryPlannerCanvas({
   return (
     <div
       ref={containerRef}
-      className={cn("relative min-h-0 flex-1 overflow-hidden bg-[#0f1419]", className)}
+      className={cn(
+        "relative min-h-0 flex-1 overflow-hidden",
+        editorLightMode ? "bg-[#dce3eb]" : "bg-[#0f1419]",
+        className,
+      )}
       style={{ cursor: CURSOR_BY_MODE[toolMode] }}
       onWheel={handleWheel}
     >
@@ -319,45 +343,51 @@ export function InventoryPlannerCanvas({
       >
         <Layer>
           <Group x={RULER_THICKNESS_PX + viewport.panX} y={RULER_THICKNESS_PX + viewport.panY} scaleX={viewport.scale} scaleY={viewport.scale}>
-            <BackdropLayer
-              wall={wall}
-              widthPx={wallWidthPx}
-              heightPx={wallHeightPx}
-              showGrid={showGrid}
-              gridInches={gridInches}
-              image={backdropImage}
-            />
-            <ConstraintLayer
-              constraints={constraints}
-              draftPoints={draftPoints}
-              cursorInches={cursorInches}
-              selectedConstraintId={selectedConstraintId}
-              toolMode={toolMode}
-              onSelectConstraint={(id) => {
-                onSelectConstraint(id);
-                onSelectInventory(null);
-              }}
-              onAnchorDrag={(constraintId, vertexIndex, x, y) => {
-                const region = constraints.find((c) => c.id === constraintId);
-                if (!region) return;
-                const next = moveAnchorInPoints(region.points, vertexIndex, x, y);
-                onConstraintPointsChange(constraintId, next);
-              }}
-            />
-            <InventoryLayer
-              blocks={blocks}
-              unit={unit}
-              selectedId={selectedInventoryId}
-              draggable={inventoryDraggable}
-              violationIds={violationIds}
-              onSelect={(id) => {
-                onSelectInventory(id);
-                onSelectConstraint(null);
-              }}
-              onDragEnd={finishBlockDrag}
-              onTransformEnd={finishBlockTransform}
-              onDimensionBadgeClick={onDimensionBadgeClick}
-            />
+            {showBackdrop ? (
+              <BackdropLayer
+                wall={wall}
+                widthPx={wallWidthPx}
+                heightPx={wallHeightPx}
+                showGrid={showGrid}
+                gridInches={gridInches}
+                image={backdropImage}
+              />
+            ) : null}
+            {showConstraints ? (
+              <ConstraintLayer
+                constraints={constraints}
+                draftPoints={draftPoints}
+                cursorInches={cursorInches}
+                selectedConstraintId={selectedConstraintId}
+                toolMode={toolMode}
+                onSelectConstraint={(id) => {
+                  onSelectConstraint(id);
+                  onSelectInventory(null);
+                }}
+                onAnchorDrag={(constraintId, vertexIndex, x, y) => {
+                  const region = constraints.find((c) => c.id === constraintId);
+                  if (!region) return;
+                  const next = moveAnchorInPoints(region.points, vertexIndex, x, y);
+                  onConstraintPointsChange(constraintId, next);
+                }}
+              />
+            ) : null}
+            {showInventory ? (
+              <InventoryLayer
+                blocks={blocks}
+                unit={unit}
+                selectedId={selectedInventoryId}
+                draggable={inventoryDraggable}
+                violationIds={violationIds}
+                onSelect={(id) => {
+                  onSelectInventory(id);
+                  onSelectConstraint(null);
+                }}
+                onDragEnd={finishBlockDrag}
+                onTransformEnd={finishBlockTransform}
+                onDimensionBadgeClick={onDimensionBadgeClick}
+              />
+            ) : null}
           </Group>
           <InventoryTransformer
             ref={transformerRef}
@@ -370,19 +400,21 @@ export function InventoryPlannerCanvas({
           />
         </Layer>
       </Stage>
-      <PlannerMinimap
-        wall={wall}
-        blocks={blocks}
-        constraints={constraints}
-        viewportRect={viewportWorld()}
-        onNavigate={(wx, wy) => {
-          onViewportChange({
-            ...viewport,
-            panX: -(wx * BASE_PX_PER_INCH * viewport.scale) + (stageSize.width - RULER_THICKNESS_PX) / 4,
-            panY: -(wy * BASE_PX_PER_INCH * viewport.scale) + (stageSize.height - RULER_THICKNESS_PX) / 4,
-          });
-        }}
-      />
+      {showMinimap ? (
+        <PlannerMinimap
+          wall={wall}
+          blocks={blocks}
+          constraints={constraints}
+          viewportRect={viewportWorld()}
+          onNavigate={(wx, wy) => {
+            onViewportChange({
+              ...viewport,
+              panX: -(wx * BASE_PX_PER_INCH * viewport.scale) + (stageSize.width - RULER_THICKNESS_PX) / 4,
+              panY: -(wy * BASE_PX_PER_INCH * viewport.scale) + (stageSize.height - RULER_THICKNESS_PX) / 4,
+            });
+          }}
+        />
+      ) : null}
       {showFloatingHints ? (
         <p className="pointer-events-none absolute bottom-3 left-[11rem] z-20 max-w-md rounded-md bg-black/55 px-2 py-1 text-[10px] text-white/85">
           {toolMode === "constraint"

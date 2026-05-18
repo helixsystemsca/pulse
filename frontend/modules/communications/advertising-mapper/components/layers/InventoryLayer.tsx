@@ -56,9 +56,13 @@ function InventoryLayerInner({
               width={w}
               height={h}
               fill={style.fill}
-              stroke={violated ? "#ef4444" : selected ? "var(--ds-accent)" : style.stroke}
+              stroke={violated ? "#ef4444" : selected ? "#0ea5e9" : style.stroke}
               strokeWidth={violated ? 3 : selected ? 2.5 : 1.5}
-              cornerRadius={2}
+              cornerRadius={3}
+              shadowColor="rgba(15,23,42,0.35)"
+              shadowBlur={selected ? 14 : 8}
+              shadowOffset={{ x: 0, y: 3 }}
+              shadowOpacity={0.45}
             />
             <Rect x={8} y={8} width={Math.min(w - 16, 90)} height={16} fill={style.chipBg} cornerRadius={3} listening={false} />
             <Text x={12} y={10} text={style.label} fontSize={9} fontStyle="bold" fill="#fff" listening={false} />

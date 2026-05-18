@@ -1,66 +1,86 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { AdvertisingWorkspaceHeader } from "@/modules/communications/advertising-mapper/components/AdvertisingWorkspaceHeader";
-import { ConstraintDetailsPanel } from "@/modules/communications/advertising-mapper/components/ConstraintDetailsPanel";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { DimensionEditModal } from "@/modules/communications/advertising-mapper/components/DimensionEditModal";
-import { InventoryDetailsPanel } from "@/modules/communications/advertising-mapper/components/InventoryDetailsPanel";
 import { InventoryPlannerCanvas } from "@/modules/communications/advertising-mapper/components/InventoryPlannerCanvas";
+import { PlannerMinimap } from "@/modules/communications/advertising-mapper/components/PlannerMinimap";
+import { AdvertisingEditorHeader } from "@/modules/communications/advertising-mapper/components/editor/AdvertisingEditorHeader";
+import { AdvertisingFloatingToolbar } from "@/modules/communications/advertising-mapper/components/editor/AdvertisingFloatingToolbar";
+import {
+  AdvertisingInspectorPanel,
+  type AdvertisingLayerVisibility,
+} from "@/modules/communications/advertising-mapper/components/editor/AdvertisingInspectorPanel";
+import { AdvertisingWallStrip } from "@/modules/communications/advertising-mapper/components/editor/AdvertisingWallStrip";
 import { cloneWallPlans, MOCK_WALL_PLANS } from "@/modules/communications/advertising-mapper/data/mock-walls";
 import type { ConstraintRegion, ConstraintType, PlannerToolMode } from "@/modules/communications/advertising-mapper/geometry/types";
 import { useAdvertisingOperationalContext } from "@/modules/communications/advertising-mapper/hooks/useAdvertisingOperationalContext";
 import { useAdvertisingSpatialRuntime } from "@/modules/communications/advertising-mapper/hooks/useAdvertisingSpatialRuntime";
 import { usePlannerViewport } from "@/modules/communications/advertising-mapper/hooks/usePlannerViewport";
-import { RULER_THICKNESS_PX } from "@/modules/communications/advertising-mapper/components/AxisRulers";
+import { RULER_THICKNESS_PX } from "@/modules/communications/advertising-mapper/lib/coordinates";
+import { fitWallViewport } from "@/modules/communications/advertising-mapper/lib/fit-wall-viewport";
 import type {
   DimensionEditTarget,
   FacilityWallPlan,
   InventoryBlock,
   MeasurementUnit,
 } from "@/modules/communications/advertising-mapper/types";
+import { BASE_PX_PER_INCH } from "@/modules/communications/advertising-mapper/lib/coordinates";
 import {
   getSpatialWorkspace,
   SpatialViewportControls,
   SpatialWorkspaceShell,
   useSpatialWorkspaceTools,
 } from "@/spatial-engine/workspace";
+import { useSpatialRuntimeStore } from "@/spatial-engine/runtime/spatial-runtime-store";
 
 const INITIAL_WALLS = cloneWallPlans();
 
 export function AdvertisingWorkspaceView({
   workspaceSwitcher,
   immersive = true,
+  editorFullscreen = false,
 }: {
   workspaceSwitcher?: ReactNode;
   immersive?: boolean;
+  /** True when mounted under `/drawings/fullscreen` — fills viewport without app chrome offset. */
+  editorFullscreen?: boolean;
 }) {
   const {
     walls,
     wallId,
     wall: wallDoc,
     setWallId,
-    updateWall,
     onBlockChange,
     onConstraintChange,
     onConstraintCreate,
     onConstraintDelete,
+    addBlock,
   } = useAdvertisingSpatialRuntime(INITIAL_WALLS, MOCK_WALL_PLANS[0]!.id);
 
   const wall = wallDoc ?? INITIAL_WALLS[0]!;
+  const undo = useSpatialRuntimeStore((s) => s.undo);
+  const redo = useSpatialRuntimeStore((s) => s.redo);
 
   useAdvertisingOperationalContext(wall);
 
   const [selectedInventoryId, setSelectedInventoryId] = useState<string | null>(null);
   const [selectedConstraintId, setSelectedConstraintId] = useState<string | null>(null);
   const [toolMode, setToolMode] = useState<PlannerToolMode>("select");
-  const [draftConstraintType, setDraftConstraintType] = useState<ConstraintType>("blocked");
+  const [draftConstraintType] = useState<ConstraintType>("blocked");
   const [unit, setUnit] = useState<MeasurementUnit>("ft");
   const [snapEnabled, setSnapEnabled] = useState(true);
   const [showGrid, setShowGrid] = useState(true);
   const [dimEdit, setDimEdit] = useState<{ id: string; focus: DimensionEditTarget } | null>(null);
+  const [layerVisibility, setLayerVisibility] = useState<AdvertisingLayerVisibility>({
+    backdrop: true,
+    constraints: true,
+    inventory: true,
+  });
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
 
   const { viewport, setViewport, zoomBy, resetView } = usePlannerViewport();
   const workspace = getSpatialWorkspace("advertising");
+
   const selectedInventory = useMemo(
     () => wall.blocks.find((b) => b.id === selectedInventoryId) ?? null,
     [wall.blocks, selectedInventoryId],
@@ -75,6 +95,17 @@ export function AdvertisingWorkspaceView({
   }, []);
 
   useSpatialWorkspaceTools(workspace.tools, onToolChange);
+
+  const fitToWall = useCallback(() => {
+    const el = canvasContainerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    setViewport(fitWallViewport(wall, Math.floor(rect.width), Math.floor(rect.height)));
+  }, [setViewport, wall]);
+
+  useEffect(() => {
+    fitToWall();
+  }, [wallId, fitToWall]);
 
   const onConstraintPointsChange = useCallback(
     (id: string, points: number[]) => {
@@ -99,25 +130,29 @@ export function AdvertisingWorkspaceView({
     setSelectedConstraintId(null);
   }, [onConstraintDelete, selectedConstraintId]);
 
-  const handleBackdropUpload = useCallback(
-    (file: File) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const url = typeof reader.result === "string" ? reader.result : undefined;
-        if (!url) return;
-        const img = new window.Image();
-        img.onload = () => {
-          updateWall({
-            backdropUrl: url,
-            backdropNaturalWidth: img.naturalWidth,
-            backdropNaturalHeight: img.naturalHeight,
-          });
-        };
-        img.src = url;
+  const handleInventoryPlace = useCallback(
+    (x: number, y: number) => {
+      const id = `inv-${Date.now()}`;
+      const nextIndex = wall.blocks.length + 1;
+      const block: InventoryBlock = {
+        id,
+        name: `Signage ${nextIndex}`,
+        x: Math.max(0, x - 40),
+        y: Math.max(0, y - 24),
+        width_inches: 80,
+        height_inches: 48,
+        status: "available",
+        zone: wall.name,
+        visibilityTier: "standard",
+        priceTier: "tier_b",
+        inventoryId: `S-${String(100 + nextIndex)}`,
+        mountingType: "Wall mount",
       };
-      reader.readAsDataURL(file);
+      addBlock(block);
+      setSelectedInventoryId(id);
+      setToolMode("select");
     },
-    [updateWall],
+    [addBlock, wall.blocks.length, wall.name],
   );
 
   const scalePercent = Math.round(viewport.scale * 100);
@@ -128,6 +163,17 @@ export function AdvertisingWorkspaceView({
     },
     [zoomBy],
   );
+
+  const viewportWorld = useMemo(() => {
+    const el = canvasContainerRef.current;
+    const w = el?.clientWidth ?? 800;
+    const h = el?.clientHeight ?? 520;
+    const viewW = (w - RULER_THICKNESS_PX) / (BASE_PX_PER_INCH * viewport.scale);
+    const viewH = (h - RULER_THICKNESS_PX) / (BASE_PX_PER_INCH * viewport.scale);
+    const x = -viewport.panX / (BASE_PX_PER_INCH * viewport.scale);
+    const y = -viewport.panY / (BASE_PX_PER_INCH * viewport.scale);
+    return { x: Math.max(0, x), y: Math.max(0, y), width: viewW, height: viewH };
+  }, [viewport]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -157,84 +203,113 @@ export function AdvertisingWorkspaceView({
     return () => window.removeEventListener("keydown", onKey);
   }, [onBlockChange, selectedInventoryId, toolMode, wall.blocks]);
 
-  const statusHint = (
-    <p className="rounded-md bg-black/55 px-3 py-1.5 text-center text-[10px] text-white/90">
-      {toolMode === "constraint"
-        ? "Click to place points · click first point to close · Enter finalize · Esc cancel"
-        : "Scroll zoom · Pan (H) · V select · I inventory · C constraint"}
-    </p>
-  );
+  const wallMeta = useMemo(() => {
+    const total = wall.blocks.length;
+    const available = wall.blocks.filter((b) => b.status === "available").length;
+    const occupied = wall.blocks.filter((b) => b.status === "occupied" || b.status === "reserved").length;
+    return { total, available, occupied };
+  }, [wall.blocks]);
 
   return (
     <>
       <SpatialWorkspaceShell
         workspaceId="advertising"
         title={wall.name}
-        subtitle={`${wall.width_inches}" × ${wall.height_inches}" wall`}
+        subtitle={`${wallMeta.total} inventory · ${wallMeta.available} available · ${wallMeta.occupied} occupied`}
         activeToolId={toolMode}
         onToolChange={onToolChange}
         workspaceSwitcher={workspaceSwitcher}
         immersive={immersive}
-        className="min-h-0 flex-1"
-        headerActions={<AdvertisingWorkspaceHeader unit={unit} onUnitChange={setUnit} />}
-        leftPanel={
-          <WallLayoutPicker
-            walls={walls}
-            wallId={wallId}
-            hasBackdrop={Boolean(wall.backdropUrl)}
-            draftConstraintType={draftConstraintType}
-            onDraftConstraintTypeChange={setDraftConstraintType}
-            onWallChange={(id) => {
-              setWallId(id);
-              setSelectedInventoryId(null);
-              setSelectedConstraintId(null);
-              resetView();
+        fullscreen={editorFullscreen}
+        className={editorFullscreen ? "h-[100dvh]" : "min-h-0 flex-1"}
+        headerActions={
+          <AdvertisingEditorHeader
+            unit={unit}
+            onUnitChange={setUnit}
+            onSave={() => {
+              /* persistence adapter hook — API phase */
             }}
-            onBackdropUpload={handleBackdropUpload}
-            onClearBackdrop={() =>
-              updateWall({ backdropUrl: undefined, backdropNaturalWidth: undefined, backdropNaturalHeight: undefined })
-            }
+            onPublish={() => {
+              /* proposal export — API phase */
+            }}
+          />
+        }
+        floatingToolbar={
+          <AdvertisingFloatingToolbar
+            tools={workspace.tools}
+            activeToolId={toolMode}
+            onToolChange={onToolChange}
+            snapEnabled={snapEnabled}
+            onSnapToggle={() => setSnapEnabled((v) => !v)}
+            onUndo={undo}
+            onRedo={redo}
           />
         }
         rightPanel={
-          selectedConstraint ? (
-            <ConstraintDetailsPanel
-              constraint={selectedConstraint}
-              onUpdate={(patch) => onConstraintChange(selectedConstraint.id, patch)}
-              onDelete={handleConstraintDelete}
-            />
-          ) : (
-            <InventoryDetailsPanel
-              block={selectedInventory}
-              unit={unit}
-              onUpdate={(patch) => {
-                if (selectedInventoryId) onBlockChange(selectedInventoryId, patch);
-              }}
-            />
-          )
+          <AdvertisingInspectorPanel
+            wall={wall}
+            unit={unit}
+            selectedInventoryId={selectedInventoryId}
+            selectedConstraint={selectedConstraint}
+            layerVisibility={layerVisibility}
+            onLayerVisibilityChange={(patch) => setLayerVisibility((v) => ({ ...v, ...patch }))}
+            onSelectInventory={(id) => {
+              setSelectedInventoryId(id);
+              setSelectedConstraintId(null);
+            }}
+            onBlockChange={onBlockChange}
+            onConstraintUpdate={onConstraintChange}
+            onConstraintDelete={handleConstraintDelete}
+          />
         }
         viewport={
-          <InventoryPlannerCanvas
+          <div ref={canvasContainerRef} className="h-full w-full">
+            <InventoryPlannerCanvas
+              wall={wall}
+              blocks={wall.blocks}
+              constraints={wall.constraints}
+              toolMode={toolMode}
+              draftConstraintType={draftConstraintType}
+              selectedInventoryId={selectedInventoryId}
+              selectedConstraintId={selectedConstraintId}
+              unit={unit}
+              viewport={viewport}
+              onViewportChange={setViewport}
+              snapEnabled={snapEnabled}
+              showGrid={showGrid}
+              showBackdrop={layerVisibility.backdrop}
+              showConstraints={layerVisibility.constraints}
+              showInventory={layerVisibility.inventory}
+              onSelectInventory={setSelectedInventoryId}
+              onSelectConstraint={setSelectedConstraintId}
+              onBlockChange={onBlockChange}
+              onConstraintCreate={handleConstraintCreate}
+              onConstraintPointsChange={onConstraintPointsChange}
+              onDimensionBadgeClick={(id, focus) => setDimEdit({ id, focus })}
+              onInventoryPlace={handleInventoryPlace}
+              showFloatingHints={false}
+              showMinimap={false}
+              editorLightMode
+              className="h-full w-full"
+            />
+          </div>
+        }
+        minimap={
+          <PlannerMinimap
             wall={wall}
             blocks={wall.blocks}
             constraints={wall.constraints}
-            toolMode={toolMode}
-            draftConstraintType={draftConstraintType}
-            selectedInventoryId={selectedInventoryId}
-            selectedConstraintId={selectedConstraintId}
-            unit={unit}
-            viewport={viewport}
-            onViewportChange={setViewport}
-            snapEnabled={snapEnabled}
-            showGrid={showGrid}
-            onSelectInventory={setSelectedInventoryId}
-            onSelectConstraint={setSelectedConstraintId}
-            onBlockChange={onBlockChange}
-            onConstraintCreate={handleConstraintCreate}
-            onConstraintPointsChange={onConstraintPointsChange}
-            onDimensionBadgeClick={(id, focus) => setDimEdit({ id, focus })}
-            showFloatingHints={false}
-            className="h-full w-full"
+            viewportRect={viewportWorld}
+            onNavigate={(wx, wy) => {
+              const el = canvasContainerRef.current;
+              const w = el?.clientWidth ?? 800;
+              const h = el?.clientHeight ?? 520;
+              setViewport({
+                ...viewport,
+                panX: -(wx * BASE_PX_PER_INCH * viewport.scale) + (w - RULER_THICKNESS_PX) / 4,
+                panY: -(wy * BASE_PX_PER_INCH * viewport.scale) + (h - RULER_THICKNESS_PX) / 4,
+              });
+            }}
           />
         }
         floatingControls={
@@ -242,14 +317,26 @@ export function AdvertisingWorkspaceView({
             scalePercent={scalePercent}
             onZoomIn={() => zoomFocal(1.12)}
             onZoomOut={() => zoomFocal(0.88)}
-            onResetView={resetView}
+            onResetView={fitToWall}
             snapEnabled={snapEnabled}
             onSnapToggle={() => setSnapEnabled((v) => !v)}
             showGrid={showGrid}
             onGridToggle={() => setShowGrid((v) => !v)}
+            className="shadow-lg"
           />
         }
-        statusHint={statusHint}
+        bottomBar={
+          <AdvertisingWallStrip
+            walls={walls}
+            activeWallId={wallId}
+            unit={unit}
+            onWallChange={(id) => {
+              setWallId(id);
+              setSelectedInventoryId(null);
+              setSelectedConstraintId(null);
+            }}
+          />
+        }
       />
 
       {selectedInventory && dimEdit?.id === selectedInventory.id ? (
@@ -265,83 +352,5 @@ export function AdvertisingWorkspaceView({
         />
       ) : null}
     </>
-  );
-}
-
-function WallLayoutPicker({
-  walls,
-  wallId,
-  hasBackdrop,
-  draftConstraintType,
-  onDraftConstraintTypeChange,
-  onWallChange,
-  onBackdropUpload,
-  onClearBackdrop,
-}: {
-  walls: FacilityWallPlan[];
-  wallId: string;
-  hasBackdrop: boolean;
-  draftConstraintType: ConstraintType;
-  onDraftConstraintTypeChange: (t: ConstraintType) => void;
-  onWallChange: (id: string) => void;
-  onBackdropUpload: (file: File) => void;
-  onClearBackdrop: () => void;
-}) {
-  return (
-    <div className="p-3">
-      <label className="text-[11px] font-bold uppercase tracking-wide text-ds-muted">Wall layout</label>
-      <select
-        className="mt-2 w-full rounded-lg border border-ds-border bg-ds-primary px-3 py-2 text-sm text-ds-foreground"
-        value={wallId}
-        onChange={(e) => onWallChange(e.target.value)}
-      >
-        {walls.map((w) => (
-          <option key={w.id} value={w.id}>
-            {w.name}
-          </option>
-        ))}
-      </select>
-
-      <div className="mt-4 border-t border-ds-border/80 pt-4">
-        <p className="text-[11px] font-bold uppercase tracking-wide text-ds-muted">Backdrop photo</p>
-        <label className="mt-2 flex cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-ds-border bg-ds-primary/80 px-3 py-4 text-center text-xs text-ds-muted hover:border-[var(--ds-accent)]/50">
-          <span>Upload venue wall image</span>
-          <input
-            type="file"
-            accept="image/*"
-            className="sr-only"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) onBackdropUpload(f);
-            }}
-          />
-        </label>
-        {hasBackdrop ? (
-          <button type="button" className="mt-2 w-full text-xs text-ds-muted underline hover:text-ds-foreground" onClick={onClearBackdrop}>
-            Remove backdrop
-          </button>
-        ) : null}
-      </div>
-
-      <div className="mt-4 border-t border-ds-border/80 pt-4">
-        <label className="text-[11px] font-bold uppercase tracking-wide text-ds-muted">New constraint type</label>
-        <select
-          className="mt-2 w-full rounded-lg border border-ds-border bg-ds-primary px-3 py-2 text-sm"
-          value={draftConstraintType}
-          onChange={(e) => onDraftConstraintTypeChange(e.target.value as ConstraintType)}
-        >
-          <option value="blocked">Blocked</option>
-          <option value="mountable">Mountable</option>
-          <option value="restricted">Restricted</option>
-          <option value="premium_visibility">Premium visibility</option>
-          <option value="curved_surface">Curved surface</option>
-          <option value="electrical_access">Electrical access</option>
-        </select>
-      </div>
-
-      <p className="mt-3 text-[11px] leading-relaxed text-ds-muted">
-        Constraints and inventory use wall inches. Calibration references can be attached when the calibration tool ships.
-      </p>
-    </div>
   );
 }

@@ -38,6 +38,16 @@ export type SpatialWorkspaceLayerEntry = {
 
 export type SpatialWorkspaceSidePanel = "left" | "right";
 
+/** Workspace chrome — `editor` hides tool rail and uses immersive canvas layout. */
+export type SpatialWorkspaceChrome = "default" | "editor";
+
+export type SpatialWorkspaceLayout = {
+  chrome?: SpatialWorkspaceChrome;
+  /** When true, tools render in `floatingToolbar` slot instead of left rail. */
+  hideToolRail?: boolean;
+  rightPanelWidthPx?: number;
+};
+
 export type SpatialWorkspaceDefinition = {
   id: SpatialWorkspaceId;
   label: string;
@@ -46,6 +56,7 @@ export type SpatialWorkspaceDefinition = {
   tools: readonly SpatialWorkspaceToolEntry[];
   layers: readonly SpatialWorkspaceLayerEntry[];
   sidePanels: readonly SpatialWorkspaceSidePanel[];
+  layout?: SpatialWorkspaceLayout;
   /** Persistence adapter registry key (domain slice). */
   persistenceAdapterKey?: string;
   /** Role-aware access — host must not branch on department slugs. */

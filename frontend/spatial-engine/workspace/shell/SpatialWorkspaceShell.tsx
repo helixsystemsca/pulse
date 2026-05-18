@@ -26,6 +26,10 @@ export type SpatialWorkspaceShellProps = {
   minimap?: ReactNode;
   statusHint?: ReactNode;
   banner?: ReactNode;
+  /** Centered toolbar above the canvas (editor workspaces). */
+  floatingToolbar?: ReactNode;
+  /** Footer strip (e.g. wall switcher). */
+  bottomBar?: ReactNode;
   fullscreen?: boolean;
   onToggleFullscreen?: () => void;
   immersive?: boolean;
@@ -50,6 +54,8 @@ export function SpatialWorkspaceShell({
   minimap,
   statusHint,
   banner,
+  floatingToolbar,
+  bottomBar,
   fullscreen = false,
   onToggleFullscreen,
   immersive = true,
@@ -57,24 +63,38 @@ export function SpatialWorkspaceShell({
 }: SpatialWorkspaceShellProps) {
   const workspace = getSpatialWorkspace(workspaceId);
   const tools = toolsOverride ?? workspace.tools;
+  const layout = workspace.layout;
+  const editorChrome = layout?.chrome === "editor";
+  const hideToolRail = layout?.hideToolRail ?? false;
+  const rightWidth = layout?.rightPanelWidthPx ?? 300;
   const showLeft = workspace.sidePanels.includes("left") && leftPanel;
   const showRight = workspace.sidePanels.includes("right") && rightPanel;
 
   return (
     <div
       className={cn(
-        "flex min-h-0 w-full flex-col overflow-hidden bg-ds-bg font-manrope",
+        "flex min-h-0 w-full flex-col overflow-hidden font-manrope",
+        editorChrome ? "bg-[#f4f6f9]" : "bg-ds-bg",
         immersive && "h-[calc(100dvh-3.5rem)]",
         fullscreen && "h-full",
         className,
       )}
     >
-      <header className="flex shrink-0 items-center gap-3 border-b border-ds-border/80 bg-ds-primary/90 px-3 py-2 backdrop-blur-sm">
+      <header
+        className={cn(
+          "flex shrink-0 items-center gap-3 border-b px-3 backdrop-blur-sm",
+          editorChrome
+            ? "border-slate-200/90 bg-white/95 py-1.5 shadow-sm"
+            : "border-ds-border/80 bg-ds-primary/90 py-2",
+        )}
+      >
         {workspaceSwitcher ? <div className="shrink-0">{workspaceSwitcher}</div> : null}
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[10px] font-bold uppercase tracking-wide text-ds-muted">{workspace.label}</p>
+          {!editorChrome ? (
+            <p className="truncate text-[10px] font-bold uppercase tracking-wide text-ds-muted">{workspace.label}</p>
+          ) : null}
           <h1 className="truncate text-sm font-semibold text-ds-foreground">{title}</h1>
-          {subtitle ? <p className="truncate text-xs text-ds-muted">{subtitle}</p> : null}
+          {subtitle && !editorChrome ? <p className="truncate text-xs text-ds-muted">{subtitle}</p> : null}
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {headerActions}
@@ -94,14 +114,16 @@ export function SpatialWorkspaceShell({
       {banner}
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-row overflow-hidden">
-        <SpatialToolRail
-          tools={tools}
-          activeToolId={activeToolId}
-          onToolChange={onToolChange}
-          disabled={toolsDisabled}
-          disabledReason={toolsDisabledReason}
-          ariaLabel={`${workspace.label} tools`}
-        />
+        {!hideToolRail ? (
+          <SpatialToolRail
+            tools={tools}
+            activeToolId={activeToolId}
+            onToolChange={onToolChange}
+            disabled={toolsDisabled}
+            disabledReason={toolsDisabledReason}
+            ariaLabel={`${workspace.label} tools`}
+          />
+        ) : null}
 
         {showLeft ? (
           <aside className="flex w-[220px] shrink-0 flex-col overflow-y-auto border-r border-ds-border/80 bg-ds-secondary/20">
@@ -109,19 +131,50 @@ export function SpatialWorkspaceShell({
           </aside>
         ) : null}
 
-        <main className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#eef1f5] dark:bg-ds-primary">
+        <main
+          className={cn(
+            "relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden",
+            editorChrome ? "bg-[#e8ecf1]" : "bg-[#eef1f5] dark:bg-ds-primary",
+          )}
+        >
+          {floatingToolbar ? (
+            <div className="pointer-events-none absolute left-1/2 top-3 z-40 -translate-x-1/2">{floatingToolbar}</div>
+          ) : null}
           <div className="relative min-h-0 flex-1">{viewport}</div>
           {floatingControls ? (
-            <div className="pointer-events-none absolute right-3 top-3 z-30">{floatingControls}</div>
+            <div
+              className={cn(
+                "pointer-events-none absolute z-30",
+                editorChrome ? "bottom-3 right-3" : "right-3 top-3",
+              )}
+            >
+              {floatingControls}
+            </div>
           ) : null}
-          {minimap ? <div className="pointer-events-none absolute bottom-3 left-3 z-30">{minimap}</div> : null}
+          {minimap ? (
+            <div
+              className={cn(
+                "pointer-events-none absolute z-30",
+                editorChrome ? "bottom-14 left-3" : "bottom-3 left-3",
+              )}
+            >
+              {minimap}
+            </div>
+          ) : null}
           {statusHint ? (
             <div className="pointer-events-none absolute bottom-3 left-1/2 z-20 max-w-lg -translate-x-1/2 px-3">{statusHint}</div>
           ) : null}
+          {bottomBar ? <div className="shrink-0 border-t border-slate-200/90 bg-white/95">{bottomBar}</div> : null}
         </main>
 
         {showRight ? (
-          <aside className="flex w-[300px] shrink-0 flex-col overflow-y-auto border-l border-ds-border/80 bg-ds-primary/95">
+          <aside
+            style={{ width: rightWidth }}
+            className={cn(
+              "flex shrink-0 flex-col overflow-hidden border-l",
+              editorChrome ? "border-slate-200/90 bg-white" : "border-ds-border/80 bg-ds-primary/95",
+            )}
+          >
             {rightPanel}
           </aside>
         ) : null}

@@ -30,7 +30,7 @@ export function InventoryDetailsPanel({ block, unit, onUpdate }: Props) {
   const pricing = computeInventoryPricing(block);
 
   return (
-    <div className="flex h-full min-h-[320px] flex-col overflow-hidden rounded-2xl border border-ds-border bg-ds-primary/90 shadow-[var(--ds-shadow-card)]">
+    <div className="flex flex-col overflow-hidden">
       <div className="border-b border-ds-border/80 px-4 py-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">

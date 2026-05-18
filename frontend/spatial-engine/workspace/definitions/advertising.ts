@@ -1,4 +1,4 @@
-import { Hand, MousePointer2, Package, Pentagon } from "lucide-react";
+import { Hand, MousePointer2, Package, Pentagon, Ruler } from "lucide-react";
 import type { SpatialWorkspaceDefinition } from "@/spatial-engine/workspace/types";
 
 export const ADVERTISING_WORKSPACE: SpatialWorkspaceDefinition = {
@@ -11,7 +11,12 @@ export const ADVERTISING_WORKSPACE: SpatialWorkspaceDefinition = {
     featureKey: "advertising_mapper",
     rbacAnyOf: ["arena_advertising.view"],
   },
-  sidePanels: ["left", "right"],
+  layout: {
+    chrome: "editor",
+    hideToolRail: true,
+    rightPanelWidthPx: 360,
+  },
+  sidePanels: ["right"],
   layers: [
     { id: "backdrop", label: "Backdrop", zIndex: 0, defaultVisible: true, interactive: false },
     { id: "constraints", label: "Constraints", zIndex: 10, defaultVisible: true, interactive: true },
@@ -52,6 +57,14 @@ export const ADVERTISING_WORKSPACE: SpatialWorkspaceDefinition = {
       icon: Pentagon,
       hotkeys: [{ key: "c" }],
       layerTargets: ["constraints"],
+      cursor: "crosshair",
+    },
+    {
+      id: "measure",
+      label: "Measure",
+      group: "utility",
+      icon: Ruler,
+      hotkeys: [{ key: "m" }],
       cursor: "crosshair",
     },
   ],
