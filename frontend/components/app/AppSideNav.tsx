@@ -102,6 +102,8 @@ const SIDENAV_ROW_ACTIVE_HOVER = "bg-[var(--ds-accent)]";
 const SIDENAV_ROW_ACTIVE_HOVER_HOVER = "hover:bg-[var(--ds-accent)]";
 const SIDENAV_ROW_BASE =
   "box-border flex min-h-11 h-11 w-full shrink-0 items-stretch rounded-none outline-none transition-colors duration-200 ease-out motion-reduce:transition-none";
+/** Flyout rows — solid tile on the panel (not transparent). */
+const FLYOUT_NAV_ROW_IDLE = "bg-white text-[var(--ds-text-primary)] dark:bg-ds-primary";
 
 type SidebarNavItem = { href: string; label: string; icon: TenantNavIcon | PulseSidebarIcon | PlatformIconKey };
 
@@ -333,7 +335,7 @@ function NavFlyoutPanel({
       aria-label={`${domain.label} modules`}
       className={cn(
         "absolute top-0 z-50 flex max-h-[min(70vh,calc(100vh-var(--pulse-header-height)-1rem))] w-[min(280px,calc(100vw-var(--pulse-sidebar-expanded-width)-1rem))] flex-col overflow-y-auto",
-        "border border-ds-border bg-ds-card shadow-[var(--ds-shadow-card)]",
+        "border border-ds-border bg-ds-secondary shadow-[var(--ds-shadow-card)]",
         railExpanded ? "left-[var(--pulse-sidebar-expanded-width)]" : "left-[var(--pulse-sidebar-collapsed-width)]",
       )}
       onMouseDown={(e) => e.stopPropagation()}
@@ -390,14 +392,14 @@ function FlyoutNavLink({ item, pathname }: { item: NavigationTreeItem; pathname:
       className={cn(
         SIDENAV_ROW_BASE,
         "group/flyout items-center px-3",
-        active ? SIDENAV_ROW_ACTIVE_HOVER : cn("bg-transparent", SIDENAV_ROW_ACTIVE_HOVER_HOVER),
+        active ? SIDENAV_ROW_ACTIVE_HOVER : cn(FLYOUT_NAV_ROW_IDLE, SIDENAV_ROW_ACTIVE_HOVER_HOVER),
         "focus-visible:ring-2 focus-visible:ring-[var(--ds-focus-ring)] focus-visible:ring-offset-0",
       )}
     >
       <span
         className={cn(
           "min-w-0 flex-1 truncate text-left text-[13px] font-semibold",
-          active ? "text-white" : "text-[var(--ds-text-primary)] group-hover/flyout:text-white",
+          active ? "text-white" : "group-hover/flyout:text-white",
         )}
       >
         {item.label}
