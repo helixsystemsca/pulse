@@ -1,10 +1,8 @@
 "use client";
 
 import { X } from "lucide-react";
-import {
-  OPERATIONAL_BADGE_REGISTRY,
-  operationalBadgeChipLabel,
-} from "@/lib/schedule/operational-scheduling-model";
+import { operationalBadgeChipLabel, type OperationalBadgeDefinition } from "@/lib/schedule/operational-scheduling-model";
+import { getActivePaletteBadgeRegistry } from "@/lib/schedule/palette-config";
 import { operationalBadgeClasses } from "@/lib/schedule/schedule-semantic-styles";
 
 const MAX_VISIBLE = 3;
@@ -13,12 +11,15 @@ export function OperationalBadgeStack({
   codes,
   maxVisible = MAX_VISIBLE,
   onRemove,
+  badgeRegistry,
 }: {
   codes: string[];
   maxVisible?: number;
   /** When set, each chip is a button that removes this badge (caller handles persistence). */
   onRemove?: (code: string) => void;
+  badgeRegistry?: Record<string, OperationalBadgeDefinition>;
 }) {
+  const registry = badgeRegistry ?? getActivePaletteBadgeRegistry();
   const uniq = [...new Set(codes.map((c) => c.trim().toUpperCase()).filter(Boolean))];
   if (uniq.length === 0) return null;
   const show = uniq.slice(0, maxVisible);
@@ -27,11 +28,11 @@ export function OperationalBadgeStack({
   return (
     <span className="flex min-w-0 flex-wrap items-center gap-0.5">
       {show.map((code) => {
-        const def = OPERATIONAL_BADGE_REGISTRY[code];
+        const def = registry[code];
         const label = def?.label ?? code;
         const detail = def?.detail ?? "";
         const group = def?.group ?? "special";
-        const chipText = operationalBadgeChipLabel(code);
+        const chipText = operationalBadgeChipLabel(code, registry);
         const tip = detail ? `${code} — ${label}. ${detail}` : `${code} — ${label}`;
         const cls = `inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-px text-[9px] font-extrabold uppercase tracking-wide ${operationalBadgeClasses(group)}`;
         if (onRemove) {

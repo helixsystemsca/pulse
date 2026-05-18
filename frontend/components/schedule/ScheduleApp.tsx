@@ -32,6 +32,15 @@ import {
 } from "@/lib/schedule/recurring";
 import { logScheduleAuditEvent } from "@/lib/schedule/schedule-audit-log";
 import { inferStandardShiftCode, standardShiftByCode } from "@/lib/schedule/shift-definition-catalog";
+import {
+  buildPaletteBadgeRegistry,
+  loadPaletteBadgeConfig,
+  savePaletteBadgeConfig,
+  setActivePaletteBadgeRegistry,
+  shiftDefinitionsToPalette,
+  type PaletteBadgeConfig,
+  type ScheduleShiftDefinitionRow,
+} from "@/lib/schedule/palette-config";
 import { placementBandDropdownOptions, resolvePlacementRoles } from "@/lib/schedule/placement-panel-options";
 import { suggestReplacementLabel } from "@/lib/schedule/suggest-replacement";
 import { buildWorkerDragHighlightMap, evaluateWorkerDrop } from "@/lib/schedule/worker-drag-highlights";
@@ -126,6 +135,7 @@ export function ScheduleApp() {
   const currentUserId = session?.sub ?? null;
   const canPublishSchedule = sessionHasAnyRole(session, "manager", "supervisor", "company_admin", "system_admin");
   const canEdit = canPublishSchedule;
+  const companyId = session?.company_id ?? "default";
 
   const scheduleMod = useModuleSettings("schedule");
   const scheduleFlags = scheduleMod.settings as { allowShiftOverrides?: boolean };
@@ -147,7 +157,33 @@ export function ScheduleApp() {
   const [employeeAvailabilityOpen, setEmployeeAvailabilityOpen] = useState(false);
   const [availabilityMatrixVersion, setAvailabilityMatrixVersion] = useState(0);
   const [publishBusy, setPublishBusy] = useState(false);
-  const [shiftDefinitions, setShiftDefinitions] = useState<{ id: string; code: string; name?: string | null }[]>([]);
+  const [shiftDefinitions, setShiftDefinitions] = useState<ScheduleShiftDefinitionRow[]>([]);
+  const [paletteBadgeConfig, setPaletteBadgeConfig] = useState<PaletteBadgeConfig>({
+    hiddenBuiltinCodes: [],
+    customBadges: [],
+  });
+
+  useEffect(() => {
+    setPaletteBadgeConfig(loadPaletteBadgeConfig(companyId));
+  }, [companyId]);
+
+  useEffect(() => {
+    setActivePaletteBadgeRegistry(buildPaletteBadgeRegistry(paletteBadgeConfig));
+  }, [paletteBadgeConfig]);
+
+  const paletteShiftCatalog = useMemo(
+    () => shiftDefinitionsToPalette(shiftDefinitions),
+    [shiftDefinitions],
+  );
+
+  const handlePaletteBadgeConfigChange = useCallback(
+    (next: PaletteBadgeConfig) => {
+      setPaletteBadgeConfig(next);
+      savePaletteBadgeConfig(companyId, next);
+    },
+    [companyId],
+  );
+
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [timeOffOpen, setTimeOffOpen] = useState(false);
   const [dragSession, setDragSession] = useState<ScheduleDragSession | null>(null);
@@ -271,7 +307,7 @@ export function ScheduleApp() {
     const [w, z, defs] = await Promise.all([
       apiFetch<PulseWorkerApi[]>("/api/v1/pulse/workers"),
       apiFetch<PulseZoneApi[]>("/api/v1/pulse/schedule-facilities"),
-      apiFetch<{ id: string; code: string; name?: string | null }[]>("/api/v1/pulse/schedule/shift-definitions"),
+      apiFetch<ScheduleShiftDefinitionRow[]>("/api/v1/pulse/schedule/shift-definitions"),
     ]);
     let sh: PulseShiftApi[] = [];
     try {
@@ -1361,6 +1397,12 @@ export function ScheduleApp() {
                       </div>
                       <ScheduleAssignmentPalette
                         disabled={scheduleDragLock && dragSession?.kind !== "palette"}
+                        companyId={companyId}
+                        badgeConfig={paletteBadgeConfig}
+                        onBadgeConfigChange={handlePaletteBadgeConfigChange}
+                        shiftCatalog={paletteShiftCatalog}
+                        shiftDefinitions={shiftDefinitions}
+                        onShiftDefinitionsChange={setShiftDefinitions}
                         onDragSessionStart={(p) => setDragSession({ kind: "palette", ...p })}
                         onDragSessionEnd={() => {
                           setDragSession(null);
