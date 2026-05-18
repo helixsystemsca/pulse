@@ -56,7 +56,19 @@ export const TENANT_PRODUCT_MODULES: readonly CanonicalFeatureKey[] =
   PRODUCT_MODULE_PERMISSION_SECTIONS.flatMap((s) => [...s.keys]);
 
 export const MODULE_LABEL: Record<CanonicalFeatureKey, string> = {
-  dashboard: "Dashboard",
+  dashboard: "Dashboard (legacy)",
+  dashboard_operations: "Operations dashboard",
+  dashboard_leadership: "Leadership dashboard",
+  dashboard_project: "Project dashboard",
+  dashboard_inspections: "Inspections & logs dashboard",
+  dashboard_team_insights: "Team insights dashboard",
+  dashboard_kiosk: "Kiosk displays",
+  dashboard_dept_communications: "Communications dashboard",
+  dashboard_dept_aquatics: "Aquatics dashboard",
+  dashboard_dept_reception: "Reception dashboard",
+  dashboard_dept_fitness: "Fitness dashboard",
+  dashboard_dept_racquets: "Racquets dashboard",
+  dashboard_dept_admin: "Administration dashboard",
   monitoring: "Monitoring",
   logs_inspections: "Inspections & Logs",
   inventory: "Inventory",
