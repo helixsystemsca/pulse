@@ -283,15 +283,16 @@ export function TrainingLeadershipDashboard() {
     }
   }, [api, matrixBundle, employeesLive, procedures, procConfig]);
 
-  const employees = matrixBundle?.employees ?? employeesLive ?? MOCK_TRAINING_EMPLOYEES;
+  const employees =
+    matrixBundle?.employees ?? employeesLive ?? (api ? [] : MOCK_TRAINING_EMPLOYEES);
 
   const programs = useMemo(() => {
     if (matrixBundle) return matrixBundle.programs;
     if (procedures && procedures.length) {
       return proceduresToTrainingPrograms(procedures, procConfig);
     }
-    return MOCK_TRAINING_PROGRAMS;
-  }, [matrixBundle, procedures, procConfig]);
+    return api ? [] : MOCK_TRAINING_PROGRAMS;
+  }, [api, matrixBundle, procedures, procConfig]);
 
   const trustServerStatus = Boolean(matrixBundle);
 
@@ -321,8 +322,9 @@ export function TrainingLeadershipDashboard() {
 
       return { assignments: merged, acknowledgements: base.acknowledgements };
     }
+    if (api) return { assignments: [] as TrainingAssignment[], acknowledgements: [] as TrainingAcknowledgement[] };
     return { assignments: MOCK_RESOLVED_ASSIGNMENTS, acknowledgements: MOCK_TRAINING_ACKNOWLEDGEMENTS };
-  }, [matrixBundle, employees, employeesLive, procedures, programs]);
+  }, [api, matrixBundle, employees, employeesLive, procedures, programs]);
 
   const assignmentsForMatrix = useMemo(() => {
     if (trustServerStatus) return generated.assignments;

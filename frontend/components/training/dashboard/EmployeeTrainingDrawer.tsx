@@ -109,7 +109,7 @@ export function EmployeeTrainingDrawer({
   if (!open || !row) return null;
 
   return (
-    <div className="fixed inset-0 z-[150] flex justify-end">
+    <div className="fixed left-0 right-0 top-16 bottom-0 z-[150] flex justify-end">
       <button
         type="button"
         className="absolute inset-0 bg-black/35 backdrop-blur-[1px] transition-opacity"

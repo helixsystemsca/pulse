@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { apiFetch, isApiMode } from "@/lib/api";
 import type { BlueprintElement, BlueprintLayer } from "@/components/zones-devices/blueprint-types";
 import { SYMBOL_DEFAULT, mapApiElement, parseApiBlueprintLayers, toApiPayload } from "@/lib/blueprint-layout";
@@ -96,12 +96,20 @@ function useDocumentDark(): boolean {
   return dark;
 }
 
-export default function DrawingsPage({ fullscreen = false }: { fullscreen?: boolean }) {
+export function InfrastructureWorkspaceView({
+  fullscreen = false,
+  workspaceSwitcher,
+}: {
+  fullscreen?: boolean;
+  workspaceSwitcher?: ReactNode;
+}) {
   useEffect(() => {
     ensureDrawingsSpatialRenderers();
   }, []);
 
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const workspaceQuery = searchParams.get("workspace");
   const isDark = useDocumentDark();
   const theme = isDark ? ("dark" as const) : ("light" as const);
   const { activeMode, setActiveMode, modeConfig } = useBuilderMode();
@@ -871,7 +879,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
       activeToolId={activeRailToolId}
       onToolChange={onInfrastructureToolChange}
       tools={infrastructureTools}
-      immersive={false}
+      immersive
       className="min-h-0 flex-1"
       leftPanel={
         <ToolPanel
@@ -1128,7 +1136,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
       className={
         fullscreen
           ? "flex h-full min-h-0 w-full flex-col overflow-hidden bg-background font-manrope font-normal"
-          : "flex min-h-0 min-h-[calc(100dvh-7rem)] w-full flex-1 flex-col overflow-hidden font-manrope font-normal"
+          : "flex min-h-0 min-h-[calc(100dvh-4.5rem)] w-full flex-1 flex-col overflow-hidden font-manrope font-normal"
       }
     >
       <input
@@ -1141,6 +1149,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
         onChange={onMapImageInputChange}
       />
       <DrawingsTopBar
+        workspaceSwitcher={workspaceSwitcher}
         mapsToolbarDisabled={!apiConnected || mapListLoading || uploadBusy}
         activeProjectId={activeProjectId}
         setActiveProjectId={setActiveProjectId}
@@ -1153,8 +1162,14 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
         onSaveMap={() => void handleSaveMap()}
         saveDisabled={!mapDetail || mapLoading || uploadBusy}
         fullscreen={fullscreen}
-        onEnterFullscreen={() => router.push("/drawings/fullscreen")}
-        onExitFullscreen={() => router.push("/drawings")}
+        onEnterFullscreen={() => {
+          const qs = workspaceQuery ? `?workspace=${workspaceQuery}` : "";
+          router.push(`/drawings/fullscreen${qs}`);
+        }}
+        onExitFullscreen={() => {
+          const qs = workspaceQuery ? `?workspace=${workspaceQuery}` : "";
+          router.push(`/drawings${qs}`);
+        }}
       />
       {errorBanner}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{workspaceChrome}</div>

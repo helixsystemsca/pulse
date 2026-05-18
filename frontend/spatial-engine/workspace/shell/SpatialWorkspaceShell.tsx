@@ -18,6 +18,7 @@ export type SpatialWorkspaceShellProps = {
   /** Override registry tools (e.g. per-tool disabled flags from domain state). */
   tools?: ReturnType<typeof getSpatialWorkspace>["tools"];
   headerActions?: ReactNode;
+  workspaceSwitcher?: ReactNode;
   leftPanel?: ReactNode;
   rightPanel?: ReactNode;
   viewport: ReactNode;
@@ -41,6 +42,7 @@ export function SpatialWorkspaceShell({
   toolsDisabledReason,
   tools: toolsOverride,
   headerActions,
+  workspaceSwitcher,
   leftPanel,
   rightPanel,
   viewport,
@@ -68,6 +70,7 @@ export function SpatialWorkspaceShell({
       )}
     >
       <header className="flex shrink-0 items-center gap-3 border-b border-ds-border/80 bg-ds-primary/90 px-3 py-2 backdrop-blur-sm">
+        {workspaceSwitcher ? <div className="shrink-0">{workspaceSwitcher}</div> : null}
         <div className="min-w-0 flex-1">
           <p className="truncate text-[10px] font-bold uppercase tracking-wide text-ds-muted">{workspace.label}</p>
           <h1 className="truncate text-sm font-semibold text-ds-foreground">{title}</h1>

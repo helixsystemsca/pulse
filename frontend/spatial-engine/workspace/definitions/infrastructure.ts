@@ -12,9 +12,14 @@ import type { SpatialWorkspaceDefinition } from "@/spatial-engine/workspace/type
 
 export const INFRASTRUCTURE_WORKSPACE: SpatialWorkspaceDefinition = {
   id: "infrastructure",
-  label: "Infrastructure map",
+  label: "Infrastructure",
   description: "Facility drawings — graph assets, connections, and annotations.",
-  permissions: ["drawings.access"],
+  status: "active",
+  persistenceAdapterKey: "infrastructure",
+  access: {
+    featureKey: "drawings",
+    rbacAnyOf: ["drawings.view"],
+  },
   sidePanels: ["left", "right"],
   layers: [
     { id: "backdrop", label: "Base image", zIndex: 0, defaultVisible: true, interactive: false },

@@ -1,11 +1,11 @@
 import dynamic from "next/dynamic";
 import type { ComponentType } from "react";
 
-const loadDrawingsPage = (): Promise<ComponentType<object>> =>
-  import("@/drawings/DrawingsPage").then((mod) => mod.default);
+const loadSpatialAppPage = (): Promise<ComponentType<object>> =>
+  import("@/drawings/SpatialAppPage").then((mod) => mod.default);
 
-const DrawingsPage = dynamic(loadDrawingsPage, { ssr: false });
+const SpatialAppPage = dynamic(loadSpatialAppPage, { ssr: false });
 
 export default function Page() {
-  return <DrawingsPage />;
+  return <SpatialAppPage />;
 }

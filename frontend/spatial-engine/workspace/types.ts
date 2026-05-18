@@ -2,7 +2,17 @@ import type { ComponentType, ReactNode } from "react";
 import type { SpatialLayerId } from "@/spatial-engine/layers/types";
 import type { SpatialToolHotkey } from "@/spatial-engine/tools/types";
 
-export type SpatialWorkspaceId = "advertising" | "infrastructure";
+export type SpatialWorkspaceId = "advertising" | "infrastructure" | "facilities" | "sensors";
+
+/** RBAC + contract gate — uses existing `/auth/me` snapshot only. */
+export type SpatialWorkspaceAccessGate = {
+  /** Tenant feature key from master registry (`drawings`, `advertising_mapper`, …). */
+  featureKey: string;
+  /** Flat RBAC keys; any match grants access (same as sidebar `rbacAnyOf`). */
+  rbacAnyOf: readonly string[];
+};
+
+export type SpatialWorkspaceStatus = "active" | "coming_soon";
 
 export type SpatialWorkspaceToolGroup = "navigation" | "primary" | "utility";
 
@@ -32,10 +42,15 @@ export type SpatialWorkspaceDefinition = {
   id: SpatialWorkspaceId;
   label: string;
   description?: string;
+  status?: SpatialWorkspaceStatus;
   tools: readonly SpatialWorkspaceToolEntry[];
   layers: readonly SpatialWorkspaceLayerEntry[];
   sidePanels: readonly SpatialWorkspaceSidePanel[];
-  /** RBAC permission keys — checked by host app when wiring workspace. */
+  /** Persistence adapter registry key (domain slice). */
+  persistenceAdapterKey?: string;
+  /** Role-aware access — host must not branch on department slugs. */
+  access: SpatialWorkspaceAccessGate;
+  /** @deprecated Use `access.rbacAnyOf` */
   permissions?: readonly string[];
 };
 

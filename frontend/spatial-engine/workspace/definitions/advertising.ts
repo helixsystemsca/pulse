@@ -3,9 +3,14 @@ import type { SpatialWorkspaceDefinition } from "@/spatial-engine/workspace/type
 
 export const ADVERTISING_WORKSPACE: SpatialWorkspaceDefinition = {
   id: "advertising",
-  label: "Advertisement mapping",
+  label: "Advertising",
   description: "Venue surface planner — inch geometry, constraints, and inventory.",
-  permissions: ["communications.advertising_mapper"],
+  status: "active",
+  persistenceAdapterKey: "advertising",
+  access: {
+    featureKey: "advertising_mapper",
+    rbacAnyOf: ["arena_advertising.view"],
+  },
   sidePanels: ["left", "right"],
   layers: [
     { id: "backdrop", label: "Backdrop", zIndex: 0, defaultVisible: true, interactive: false },
