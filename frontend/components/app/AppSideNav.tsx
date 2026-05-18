@@ -37,7 +37,7 @@ import {
   Waves,
   Wrench,
 } from "lucide-react";
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import type { NavDomain } from "@/config/platform/nav-domains";
 import type { PlatformIconKey } from "@/config/platform/types";
@@ -197,17 +197,33 @@ function TenantDomainFlyoutNav({
 }) {
   const flyoutId = useId();
   const shellRef = useRef<HTMLDivElement | null>(null);
+  const domainButtonRefs = useRef<Partial<Record<NavDomain, HTMLButtonElement>>>({});
   const [hoverDomain, setHoverDomain] = useState<NavDomain | null>(null);
   const [pinnedDomain, setPinnedDomain] = useState<NavDomain | null>(null);
+  const [flyoutAnchorTop, setFlyoutAnchorTop] = useState(0);
+  const [shellHeight, setShellHeight] = useState(0);
 
   const routeActiveDomain = useMemo(() => domainForPathname(tree, pathname), [tree, pathname]);
   const openDomain = pinnedDomain ?? hoverDomain;
   const openDomainNode = openDomain ? tree.find((d) => d.domain === openDomain) : undefined;
 
+  const syncFlyoutAnchor = useCallback((domain: NavDomain) => {
+    const btn = domainButtonRefs.current[domain];
+    const shell = shellRef.current;
+    if (!btn || !shell) return;
+    setFlyoutAnchorTop(btn.offsetTop);
+    setShellHeight(shell.clientHeight);
+  }, []);
+
   const closeFlyout = useCallback(() => {
     setHoverDomain(null);
     setPinnedDomain(null);
   }, []);
+
+  useLayoutEffect(() => {
+    if (!openDomain) return;
+    syncFlyoutAnchor(openDomain);
+  }, [openDomain, syncFlyoutAnchor, tree.length, railExpanded]);
 
   useEffect(() => {
     closeFlyout();
@@ -223,9 +239,15 @@ function TenantDomainFlyoutNav({
   }, [openDomain, closeFlyout]);
 
   const handleShellMouseLeave = (e: React.MouseEvent) => {
+    if (pinnedDomain) return;
     const next = e.relatedTarget;
     if (next instanceof Node && shellRef.current?.contains(next)) return;
     setHoverDomain(null);
+  };
+
+  const openFlyoutForDomain = (domain: NavDomain) => {
+    setHoverDomain(domain);
+    syncFlyoutAnchor(domain);
   };
 
   const togglePin = (domain: NavDomain) => {
@@ -254,6 +276,10 @@ function TenantDomainFlyoutNav({
         return (
           <button
             key={domainNode.domain}
+            ref={(el) => {
+              if (el) domainButtonRefs.current[domainNode.domain] = el;
+              else delete domainButtonRefs.current[domainNode.domain];
+            }}
             type="button"
             className={cn(
               SIDENAV_ROW_BASE,
@@ -266,13 +292,13 @@ function TenantDomainFlyoutNav({
             aria-haspopup="menu"
             aria-expanded={flyoutOpen}
             aria-controls={flyoutOpen ? `${flyoutId}-${domainNode.domain}` : undefined}
-            onMouseEnter={() => setHoverDomain(domainNode.domain)}
-            onFocus={() => setHoverDomain(domainNode.domain)}
+            onMouseEnter={() => openFlyoutForDomain(domainNode.domain)}
+            onFocus={() => openFlyoutForDomain(domainNode.domain)}
             onClick={() => togglePin(domainNode.domain)}
             onKeyDown={(e) => {
               if (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
-                setHoverDomain(domainNode.domain);
+                openFlyoutForDomain(domainNode.domain);
                 setPinnedDomain(domainNode.domain);
               }
             }}
@@ -306,6 +332,9 @@ function TenantDomainFlyoutNav({
           pathname={pathname}
           pinned={pinnedDomain === openDomainNode.domain}
           railExpanded={railExpanded}
+          anchorTop={flyoutAnchorTop}
+          shellHeight={shellHeight}
+          onPanelEnter={() => openFlyoutForDomain(openDomainNode.domain)}
           onClose={closeFlyout}
         />
       ) : null}
@@ -319,6 +348,9 @@ function NavFlyoutPanel({
   pathname,
   pinned,
   railExpanded,
+  anchorTop,
+  shellHeight,
+  onPanelEnter,
   onClose,
 }: {
   id: string;
@@ -326,23 +358,42 @@ function NavFlyoutPanel({
   pathname: string;
   pinned: boolean;
   railExpanded: boolean;
+  anchorTop: number;
+  shellHeight: number;
+  onPanelEnter: () => void;
   onClose: () => void;
 }) {
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const [panelTop, setPanelTop] = useState(anchorTop);
+
+  useLayoutEffect(() => {
+    const panel = panelRef.current;
+    if (!panel) {
+      setPanelTop(anchorTop);
+      return;
+    }
+    const edgePadding = 8;
+    const maxTop = Math.max(0, shellHeight - panel.offsetHeight - edgePadding);
+    setPanelTop(Math.min(anchorTop, maxTop));
+  }, [anchorTop, shellHeight, domain, pinned]);
+
   return (
     <div
+      ref={panelRef}
       id={id}
       role="menu"
       aria-label={`${domain.label} modules`}
+      style={{ top: panelTop }}
       className={cn(
-        "absolute top-0 z-50 flex max-h-[min(70vh,calc(100vh-var(--pulse-header-height)-1rem))] w-[min(280px,calc(100vw-var(--pulse-sidebar-expanded-width)-1rem))] flex-col overflow-y-auto",
+        "absolute z-50 flex max-h-[min(70vh,calc(100vh-var(--pulse-header-height)-1rem))] w-[min(280px,calc(100vw-var(--pulse-sidebar-expanded-width)-1rem))] flex-col overflow-y-auto",
         "border border-ds-border bg-ds-secondary shadow-[var(--ds-shadow-card)]",
         railExpanded ? "left-[var(--pulse-sidebar-expanded-width)]" : "left-[var(--pulse-sidebar-collapsed-width)]",
       )}
+      onMouseEnter={onPanelEnter}
       onMouseDown={(e) => e.stopPropagation()}
     >
-      <div className="flex items-center justify-between gap-2 border-b border-ds-border px-3 py-2">
-        <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-ds-muted">{domain.label}</p>
-        {pinned ? (
+      {pinned ? (
+        <div className="flex justify-end border-b border-ds-border px-2 py-1">
           <button
             type="button"
             className="text-[10px] font-semibold uppercase tracking-wide text-ds-muted hover:text-ds-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ds-focus-ring)]"
@@ -350,16 +401,11 @@ function NavFlyoutPanel({
           >
             Unpin
           </button>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
       <div className="flex flex-col">
         {domain.groups.map((group) => (
           <div key={group.group} role="presentation">
-            {domain.groups.length > 1 ? (
-              <p className="px-3 pb-0.5 pt-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-ds-muted">
-                {group.group}
-              </p>
-            ) : null}
             <ul className="flex flex-col" role="none">
               {group.items.map((item) => (
                 <li key={item.key} role="none">
