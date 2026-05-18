@@ -100,6 +100,8 @@ const ICON_COL = `h-11 ${COLLAPSED_RAIL_W} shrink-0`;
 
 const SIDENAV_ROW_ACTIVE_HOVER = "bg-[var(--ds-accent)]";
 const SIDENAV_ROW_ACTIVE_HOVER_HOVER = "hover:bg-[var(--ds-accent)]";
+const SIDENAV_ROW_BASE =
+  "box-border flex min-h-11 h-11 w-full shrink-0 items-stretch rounded-none outline-none transition-colors duration-200 ease-out motion-reduce:transition-none";
 
 type SidebarNavItem = { href: string; label: string; icon: TenantNavIcon | PulseSidebarIcon | PlatformIconKey };
 
@@ -252,7 +254,8 @@ function TenantDomainFlyoutNav({
             key={domainNode.domain}
             type="button"
             className={cn(
-              "group/domain box-border flex min-h-11 h-11 w-full shrink-0 items-stretch rounded-none border-0 bg-transparent text-left outline-none transition-colors duration-200 ease-out motion-reduce:transition-none",
+              SIDENAV_ROW_BASE,
+              "group/domain bg-transparent text-left",
               domainActive || flyoutOpen
                 ? SIDENAV_ROW_ACTIVE_HOVER
                 : cn("bg-transparent", SIDENAV_ROW_ACTIVE_HOVER_HOVER),
@@ -347,11 +350,11 @@ function NavFlyoutPanel({
           </button>
         ) : null}
       </div>
-      <div className="flex flex-col py-1">
+      <div className="flex flex-col">
         {domain.groups.map((group) => (
           <div key={group.group} role="presentation">
             {domain.groups.length > 1 ? (
-              <p className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-[0.1em] text-ds-muted">
+              <p className="px-3 pb-0.5 pt-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-ds-muted">
                 {group.group}
               </p>
             ) : null}
@@ -369,32 +372,35 @@ function NavFlyoutPanel({
   );
 }
 
+function flyoutItemTitle(item: NavigationTreeItem): string {
+  if (!item.dashboardScope) return item.label;
+  const scope = DASHBOARD_SCOPE_LABEL[item.dashboardScope];
+  const dept = item.ownershipDepartment ? ` · ${item.ownershipDepartment}` : "";
+  return `${item.label} (${scope}${dept})`;
+}
+
 function FlyoutNavLink({ item, pathname }: { item: NavigationTreeItem; pathname: string }) {
   const active = isPulseNavActive(item.href, pathname);
-  const Icon = railIcon(item.icon);
   return (
     <Link
       href={item.href}
       role="menuitem"
-      title={item.label}
+      title={flyoutItemTitle(item)}
       data-guided-tour-anchor={item.href === "/dashboard/maintenance" ? "sidebar-work-requests" : undefined}
       className={cn(
-        "flex min-h-10 items-center gap-2.5 px-3 text-sm font-medium transition-colors",
-        active
-          ? "bg-[var(--ds-accent)] text-white"
-          : "text-ds-foreground hover:bg-ds-muted/40 hover:text-ds-foreground",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ds-focus-ring)]",
+        SIDENAV_ROW_BASE,
+        "group/flyout items-center px-3",
+        active ? SIDENAV_ROW_ACTIVE_HOVER : cn("bg-transparent", SIDENAV_ROW_ACTIVE_HOVER_HOVER),
+        "focus-visible:ring-2 focus-visible:ring-[var(--ds-focus-ring)] focus-visible:ring-offset-0",
       )}
     >
-      <Icon className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
-      <span className="flex min-w-0 flex-col">
-        <span className="truncate">{item.label}</span>
-        {item.dashboardScope ? (
-          <span className="truncate text-[10px] font-medium uppercase tracking-wide text-ds-muted">
-            {DASHBOARD_SCOPE_LABEL[item.dashboardScope]}
-            {item.ownershipDepartment ? ` · ${item.ownershipDepartment}` : null}
-          </span>
-        ) : null}
+      <span
+        className={cn(
+          "min-w-0 flex-1 truncate text-left text-[13px] font-semibold",
+          active ? "text-white" : "text-[var(--ds-text-primary)] group-hover/flyout:text-white",
+        )}
+      >
+        {item.label}
       </span>
     </Link>
   );
@@ -416,7 +422,8 @@ function SidebarNavLink({
       href={item.href}
       title={item.label}
       className={cn(
-        "group/nav box-border flex min-h-11 h-11 w-full shrink-0 items-stretch rounded-none border-0 outline-none transition-colors duration-200 ease-out motion-reduce:transition-none",
+        SIDENAV_ROW_BASE,
+        "group/nav",
         active ? SIDENAV_ROW_ACTIVE_HOVER : cn("bg-transparent", SIDENAV_ROW_ACTIVE_HOVER_HOVER),
         "focus-visible:ring-2 focus-visible:ring-[var(--ds-focus-ring)] focus-visible:ring-offset-0",
       )}

@@ -81,7 +81,7 @@ export const DASHBOARD_CATALOG: readonly DashboardCatalogEntry[] = [
   },
   {
     id: "logs_inspections",
-    label: "Inspections & Logs",
+    label: "Logs & Inspections",
     route: "/dashboard/compliance",
     icon: "scroll-text",
     scope: "department",

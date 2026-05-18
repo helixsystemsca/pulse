@@ -164,15 +164,16 @@ export function tenantSidebarNavItemsForSession(
   session: PulseAuthSession | null,
 ): TenantSidebarNavItem[] {
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
-  const seenRoute = new Set<string>();
+  const seenNavSlot = new Set<string>();
   const out: TenantSidebarNavItem[] = [];
 
   const sorted = [...NAV_VISIBLE_MASTER_FEATURES].sort((a, b) => a.sortOrder - b.sortOrder);
   for (const f of sorted) {
     if (!isMasterFeatureVisibleForSession(session, f, isSystemAdmin)) continue;
     const href = normalizeHref(f.route);
-    if (seenRoute.has(href)) continue;
-    seenRoute.add(href);
+    const slot = `${href}|${f.navDomain}`;
+    if (seenNavSlot.has(slot)) continue;
+    seenNavSlot.add(slot);
     out.push({
       key: f.key,
       href: f.route,

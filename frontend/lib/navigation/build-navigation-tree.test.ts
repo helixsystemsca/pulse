@@ -56,11 +56,16 @@ describe("buildNavigationTree", () => {
     expect(items.map((i) => i.key)).toEqual(expect.arrayContaining(["logs_inspections", "schedule", "standards_procedures"]));
     const domainNames = tree.map((d) => d.domain);
     expect(domainNames).toContain("Dashboards");
+    expect(domainNames).toContain("Operations");
     expect(domainNames).toContain("Planning");
     expect(domainNames).toContain("Standards");
     expect(domainNames).not.toContain("Administration");
-    const dashboardGroupLabels = tree.find((d) => d.domain === "Dashboards")?.groups.flatMap((g) => g.items.map((i) => i.key)) ?? [];
-    expect(dashboardGroupLabels).toContain("logs_inspections");
+    const dashboardKeys =
+      tree.find((d) => d.domain === "Dashboards")?.groups.flatMap((g) => g.items.map((i) => i.key)) ?? [];
+    expect(dashboardKeys).toContain("logs_inspections_dashboard");
+    const operationsKeys =
+      tree.find((d) => d.domain === "Operations")?.groups.flatMap((g) => g.items.map((i) => i.key)) ?? [];
+    expect(operationsKeys).toContain("logs_inspections");
   });
 
   it("attachRegistryMetadata copies navDomain and label from registry", () => {
