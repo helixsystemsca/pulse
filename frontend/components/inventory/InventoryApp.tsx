@@ -1100,7 +1100,6 @@ export function InventoryApp() {
             {[
               { id: "", label: "All" },
               { id: "in_stock", label: "In stock" },
-              { id: "assigned", label: "Assigned" },
               { id: "low_stock", label: "Low stock" },
             ].map((t) => (
               <button

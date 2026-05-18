@@ -541,17 +541,6 @@ export function EquipmentApp() {
                 </Card>
               </section>
 
-              <div className="flex flex-wrap gap-3">
-                {canMutate ? (
-                  <button type="button" className={PRIMARY_BTN} onClick={openCreate}>
-                    Add equipment
-                  </button>
-                ) : null}
-                <button type="button" className={SECONDARY_BTN} onClick={() => setTab("list")}>
-                  View all
-                </button>
-              </div>
-
               <section className="space-y-3">
                 <h2 className="text-sm font-bold uppercase tracking-wide text-ds-muted">Recent updates</h2>
                 <Card padding="md" className="!p-0 overflow-hidden">

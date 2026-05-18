@@ -119,16 +119,6 @@ export const DASHBOARD_ACCESS_REGISTRY: readonly DashboardAccessDef[] = [
     sortOrder: 30,
   },
   {
-    id: "monitoring",
-    label: "Monitoring",
-    route: "/monitoring",
-    icon: "activity",
-    navGroup: "Shared Dashboards",
-    viewPermission: "monitoring.view",
-    contractFeature: "monitoring",
-    sortOrder: 40,
-  },
-  {
     id: "team_insights",
     label: "Team Insights",
     route: "/dashboard/team-insights",

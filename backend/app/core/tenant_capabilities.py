@@ -11,6 +11,7 @@ from typing import Any, Literal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.dashboard_matrix_grants import augment_canonical_dashboard_grants
 from app.core.features.canonical_catalog import canonical_keys_from_contract, canonicalize_feature_keys
 from app.core.permission_feature_matrix import matrix_cell_features
 from app.core.rbac.resolve import effective_rbac_permission_keys
@@ -73,6 +74,12 @@ def resolve_tenant_feature_list(
     if _department_role_matrix_is_configured(matrix) and isinstance(matrix, dict):
         raw = matrix_cell_features(matrix, department=assignment.department_slug, slot=assignment.role_key)
         matrix_feats = sorted(set(canonicalize_feature_keys(raw)) & set(contract_canonical))
+        matrix_feats = augment_canonical_dashboard_grants(
+            assignment.department_slug,
+            assignment.role_key,
+            matrix_feats,
+            contract_canonical=set(contract_canonical),
+        )
 
     overlay_feats: list[str] = []
     if tenant_role is not None and tenant_role.slug != "no_access":

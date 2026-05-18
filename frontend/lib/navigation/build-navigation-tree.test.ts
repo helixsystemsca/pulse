@@ -55,14 +55,11 @@ describe("buildNavigationTree", () => {
     );
     expect(items.map((i) => i.key)).toEqual(expect.arrayContaining(["logs_inspections", "schedule", "standards_procedures"]));
     const domainNames = tree.map((d) => d.domain);
-    expect(domainNames).toContain("Dashboards");
+    expect(domainNames).not.toContain("Dashboards");
     expect(domainNames).toContain("Operations");
     expect(domainNames).toContain("Planning");
     expect(domainNames).toContain("Standards");
     expect(domainNames).not.toContain("Administration");
-    const dashboardKeys =
-      tree.find((d) => d.domain === "Dashboards")?.groups.flatMap((g) => g.items.map((i) => i.key)) ?? [];
-    expect(dashboardKeys).toContain("logs_inspections_dashboard");
     const operationsKeys =
       tree.find((d) => d.domain === "Operations")?.groups.flatMap((g) => g.items.map((i) => i.key)) ?? [];
     expect(operationsKeys).toContain("logs_inspections");
@@ -137,6 +134,22 @@ describe("buildNavigationTree", () => {
     const commsKeys =
       comms.find((d) => d.domain === "Dashboards")?.groups.flatMap((g) => g.items.map((i) => i.key)) ?? [];
     expect(commsKeys).toEqual(["dashboard_dept_communications"]);
+  });
+
+  it("lists monitoring under Operations, not Dashboards", () => {
+    const tree = buildNavigationTree(
+      session({
+        contract_features: ["monitoring", "dashboard"],
+        enabled_features: ["monitoring", "dashboard_operations"],
+        rbac_permissions: ["monitoring.view", "dashboard.operations.view"],
+      }),
+    );
+    const dashboardKeys =
+      tree.find((d) => d.domain === "Dashboards")?.groups.flatMap((g) => g.items.map((i) => i.key)) ?? [];
+    expect(dashboardKeys).not.toContain("monitoring");
+    const operationsKeys =
+      tree.find((d) => d.domain === "Operations")?.groups.flatMap((g) => g.items.map((i) => i.key)) ?? [];
+    expect(operationsKeys).toContain("monitoring");
   });
 
   it("places work requests under Operations flyout", () => {

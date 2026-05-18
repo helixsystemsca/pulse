@@ -11,6 +11,7 @@ from app.core.department_matrix_baselines import (
     UNRESOLVED_MATRIX_SLOT,
     department_baseline_slot,
 )
+from app.core.dashboard_matrix_grants import matrix_feature_keys_allowed_in_settings
 from app.core.features.system_catalog import GLOBAL_SYSTEM_FEATURES
 from app.core.user_roles import user_has_any_role
 from app.core.workspace_departments import normalize_workspace_department_slug, normalize_workspace_department_slug_list
@@ -44,7 +45,7 @@ MatrixSlotSource = Literal[
     "explicit_required_policy",
 ]
 
-_FEATURE_CAT = frozenset(GLOBAL_SYSTEM_FEATURES)
+_FEATURE_CAT = matrix_feature_keys_allowed_in_settings()
 
 
 def normalize_matrix_slot(raw: object | None) -> str | None:
