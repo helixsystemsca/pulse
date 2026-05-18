@@ -8,7 +8,26 @@ import {
   constraintWarningsToOverlay,
   mergeOperationalOverlayVisibility,
 } from "@/spatial-engine/operations";
-import type { SpatialOperationalContext } from "@/spatial-engine/operations/types";
+import type {
+  SpatialOperationalContext,
+  SpatialOperationalOverlay,
+} from "@/spatial-engine/operations/types";
+
+function operationalOverlaysEqual(
+  a: readonly SpatialOperationalOverlay[],
+  b: readonly SpatialOperationalOverlay[],
+): boolean {
+  if (a === b) return true;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    const left = a[i]!;
+    const right = b[i]!;
+    if (left.id !== right.id || left.visible !== right.visible || left.points.length !== right.points.length) {
+      return false;
+    }
+  }
+  return true;
+}
 import {
   selectActiveDocument,
   selectActiveDocumentRevision,
@@ -45,8 +64,9 @@ export function useSpatialOperationalLayer(context: SpatialOperationalContext = 
   }, [activeDocument, revision, context, toggles, visibility]);
 
   useEffect(() => {
+    if (operationalOverlaysEqual(overlays, computed)) return;
     setOperationalOverlays(computed);
-  }, [computed, setOperationalOverlays]);
+  }, [computed, overlays, setOperationalOverlays]);
 
   return {
     overlays,

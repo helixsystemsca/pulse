@@ -341,7 +341,8 @@ export function InfrastructureWorkspaceView({
   useEffect(() => {
     if (!mapDetail || !graph.activeDocument || graph.activeDocument.id !== mapDetail.id) return;
     graph.hydrateBlueprintFromApi(mapDetail.elements, parseApiBlueprintLayers(mapDetail.layers));
-  }, [mapDetail, graph.activeDocument?.id, graph.hydrateBlueprintFromApi, graph.revision]);
+    // Do not depend on graph.revision — hydrateBlueprintFromApi bumps revision and would loop.
+  }, [mapDetail, graph.activeDocument?.id, graph.hydrateBlueprintFromApi]);
 
   const mapLoading = mapListLoading || mapDetailLoading;
 
