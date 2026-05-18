@@ -142,7 +142,7 @@ function classicNavGate(href: string): NavGate {
     };
   }
 
-  const master = getMasterFeatureForPath(h);
+  const master = getMasterFeatureForPath(href) ?? getMasterFeatureForPath(h);
   if (master) {
     if (master.key === "equipment") {
       return {
@@ -181,7 +181,7 @@ export function canAccessClassicNavHref(session: PulseAuthSession | null, href: 
   if (gate.kind === "deny") return false;
   if (gate.kind === "authenticated_shell") return true;
   if (gate.kind === "session_roles_any") return sessionHasAnyRole(session, ...gate.roles);
-  const master = getMasterFeatureForPath(h);
+  const master = getMasterFeatureForPath(href) ?? getMasterFeatureForPath(h);
   if (master && !isUserFeatureEnabled(session, master.feature)) return false;
 
   const modsOk = gate.requireAllContractModules

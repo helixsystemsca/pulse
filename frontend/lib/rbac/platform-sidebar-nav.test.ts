@@ -10,8 +10,10 @@ describe("resolveUnifiedPlatformSidebarItem", () => {
     expect(resolveUnifiedPlatformSidebarItem("maintenance", workOrders)).toBeNull();
   });
 
-  it("keeps communications-native modules on platform routes", () => {
+  it("routes arena advertising through the drawings spatial workspace", () => {
     const mapper = MASTER_FEATURES.find((m) => m.key === "advertising_mapper")!;
-    expect(mapper.route).toBe("/communications/advertising-mapper");
+    expect(mapper.route).toBe("/drawings?workspace=advertising");
+    expect(mapper.platformDepartmentSlug).toBe("communications");
+    expect(mapper.platformRoute).toBe("advertising-mapper");
   });
 });

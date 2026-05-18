@@ -34,7 +34,7 @@ describe("canAccessClassicNavHref", () => {
       enabled_features: ["advertising_mapper", "comms_publication_builder"],
       rbac_permissions: ["arena_advertising.view", "publication_pipeline.view"],
     });
-    expect(canAccessClassicNavHref(s, "/communications/advertising-mapper")).toBe(true);
+    expect(canAccessClassicNavHref(s, "/drawings?workspace=advertising")).toBe(true);
     expect(canAccessClassicNavHref(s, "/communications/publication-builder")).toBe(true);
   });
 });
@@ -48,6 +48,6 @@ describe("tenantSidebarNavItemsForLiveApp", () => {
         rbac_permissions: ["arena_advertising.view", "schedule.view"],
       }),
     );
-    expect(items.some((i) => i.href === "/communications/advertising-mapper")).toBe(true);
+    expect(items.some((i) => i.href === "/drawings?workspace=advertising")).toBe(true);
   });
 });
