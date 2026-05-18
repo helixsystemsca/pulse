@@ -11,6 +11,7 @@ import {
   type AdvertisingLayerVisibility,
 } from "@/modules/communications/advertising-mapper/components/editor/AdvertisingInspectorPanel";
 import { AdvertisingWallStrip } from "@/modules/communications/advertising-mapper/components/editor/AdvertisingWallStrip";
+import { AdvertisingZoomControl } from "@/modules/communications/advertising-mapper/components/editor/AdvertisingZoomControl";
 import { cloneWallPlans, MOCK_WALL_PLANS } from "@/modules/communications/advertising-mapper/data/mock-walls";
 import type { ConstraintRegion, ConstraintType, PlannerToolMode } from "@/modules/communications/advertising-mapper/geometry/types";
 import { useAdvertisingOperationalContext } from "@/modules/communications/advertising-mapper/hooks/useAdvertisingOperationalContext";
@@ -234,6 +235,7 @@ export function AdvertisingWorkspaceView({
             }}
           />
         }
+        floatingToolbarInsetTop={RULER_THICKNESS_PX + 12}
         floatingToolbar={
           <AdvertisingFloatingToolbar
             tools={workspace.tools}
@@ -263,7 +265,17 @@ export function AdvertisingWorkspaceView({
           />
         }
         viewport={
-          <div ref={canvasContainerRef} className="h-full w-full">
+          <div ref={canvasContainerRef} className="relative h-full w-full">
+            <AdvertisingZoomControl
+              className="absolute z-20"
+              style={{
+                left: RULER_THICKNESS_PX + 8,
+                top: RULER_THICKNESS_PX + 8,
+              }}
+              scalePercent={scalePercent}
+              onZoomIn={() => zoomFocal(1.12)}
+              onZoomOut={() => zoomFocal(0.88)}
+            />
             <InventoryPlannerCanvas
               wall={wall}
               blocks={wall.blocks}
@@ -290,6 +302,7 @@ export function AdvertisingWorkspaceView({
               showFloatingHints={false}
               showMinimap={false}
               editorLightMode
+              wheelZoomRequiresModifier
               className="h-full w-full"
             />
           </div>
@@ -322,6 +335,7 @@ export function AdvertisingWorkspaceView({
             onSnapToggle={() => setSnapEnabled((v) => !v)}
             showGrid={showGrid}
             onGridToggle={() => setShowGrid((v) => !v)}
+            showZoom={false}
             className="shadow-lg"
           />
         }

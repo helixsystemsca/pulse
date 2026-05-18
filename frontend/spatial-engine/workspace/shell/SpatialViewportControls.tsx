@@ -1,7 +1,7 @@
 "use client";
 
 import type { ComponentType } from "react";
-import { Grid3x3, Magnet, Minus, Plus, RotateCcw } from "lucide-react";
+import { Grid3x3, Magnet, Maximize2, Minus, Plus, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 export type SpatialViewportControlsProps = {
@@ -13,6 +13,8 @@ export type SpatialViewportControlsProps = {
   onSnapToggle?: () => void;
   showGrid?: boolean;
   onGridToggle?: () => void;
+  /** When false, zoom cluster is hidden (use a dedicated zoom control elsewhere). */
+  showZoom?: boolean;
   className?: string;
 };
 
@@ -25,6 +27,7 @@ export function SpatialViewportControls({
   onSnapToggle,
   showGrid,
   onGridToggle,
+  showZoom = true,
   className,
 }: SpatialViewportControlsProps) {
   return (
@@ -40,7 +43,18 @@ export function SpatialViewportControls({
       {onSnapToggle ? (
         <ToggleChip active={Boolean(snapEnabled)} onClick={onSnapToggle} label="Snap" icon={Magnet} />
       ) : null}
-      <ZoomCluster percent={scalePercent} onIn={onZoomIn} onOut={onZoomOut} onReset={onResetView} />
+      {showZoom ? <ZoomCluster percent={scalePercent} onIn={onZoomIn} onOut={onZoomOut} onReset={onResetView} /> : null}
+      {!showZoom ? (
+        <button
+          type="button"
+          className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-ds-muted hover:bg-ds-secondary"
+          onClick={onResetView}
+          aria-label="Fit to view"
+        >
+          <Maximize2 className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Fit</span>
+        </button>
+      ) : null}
     </div>
   );
 }

@@ -61,6 +61,8 @@ type Props = {
   /** When false, minimap is rendered by SpatialWorkspaceShell. */
   showMinimap?: boolean;
   editorLightMode?: boolean;
+  /** When true, scroll wheel pans; zoom only with Ctrl/Cmd+wheel. */
+  wheelZoomRequiresModifier?: boolean;
   className?: string;
 };
 
@@ -98,6 +100,7 @@ export function InventoryPlannerCanvas({
   showFloatingHints = true,
   showMinimap = true,
   editorLightMode = false,
+  wheelZoomRequiresModifier = false,
   className,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -204,14 +207,25 @@ export function InventoryPlannerCanvas({
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {
       e.preventDefault();
-      const rect = containerRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      const factor = e.deltaY > 0 ? 0.92 : 1.08;
-      onViewportChange(
-        zoomViewportAtPoint(viewport, e.clientX - rect.left, e.clientY - rect.top, RULER_THICKNESS_PX, RULER_THICKNESS_PX, factor),
-      );
+      const zoomWithWheel = !wheelZoomRequiresModifier || e.ctrlKey || e.metaKey;
+
+      if (zoomWithWheel) {
+        const rect = containerRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        const factor = e.deltaY > 0 ? 0.92 : 1.08;
+        onViewportChange(
+          zoomViewportAtPoint(viewport, e.clientX - rect.left, e.clientY - rect.top, RULER_THICKNESS_PX, RULER_THICKNESS_PX, factor),
+        );
+        return;
+      }
+
+      onViewportChange({
+        ...viewport,
+        panX: viewport.panX - e.deltaX,
+        panY: viewport.panY - e.deltaY,
+      });
     },
-    [viewport, onViewportChange],
+    [viewport, onViewportChange, wheelZoomRequiresModifier],
   );
 
   const handleStageClick = useCallback(

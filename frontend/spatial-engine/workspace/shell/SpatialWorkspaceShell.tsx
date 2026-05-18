@@ -28,6 +28,8 @@ export type SpatialWorkspaceShellProps = {
   banner?: ReactNode;
   /** Centered toolbar above the canvas (editor workspaces). */
   floatingToolbar?: ReactNode;
+  /** Distance from top of main viewport to floating toolbar (clears rulers). */
+  floatingToolbarInsetTop?: number;
   /** Footer strip (e.g. wall switcher). */
   bottomBar?: ReactNode;
   fullscreen?: boolean;
@@ -55,6 +57,7 @@ export function SpatialWorkspaceShell({
   statusHint,
   banner,
   floatingToolbar,
+  floatingToolbarInsetTop,
   bottomBar,
   fullscreen = false,
   onToggleFullscreen,
@@ -138,7 +141,12 @@ export function SpatialWorkspaceShell({
           )}
         >
           {floatingToolbar ? (
-            <div className="pointer-events-none absolute left-1/2 top-3 z-40 -translate-x-1/2">{floatingToolbar}</div>
+            <div
+              className="pointer-events-none absolute left-1/2 z-40 -translate-x-1/2"
+              style={{ top: floatingToolbarInsetTop ?? (editorChrome ? 44 : 12) }}
+            >
+              {floatingToolbar}
+            </div>
           ) : null}
           <div className="relative min-h-0 flex-1">{viewport}</div>
           {floatingControls ? (
