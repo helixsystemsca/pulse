@@ -42,6 +42,20 @@ describe("resolveAssignedDashboardHomepage", () => {
     ).toBe("/worker");
   });
 
+  it("prefers department blank dashboard over worker operations default", () => {
+    expect(
+      resolveAssignedDashboardHomepage(
+        session({
+          role: "worker",
+          hr_department: "communications",
+          contract_features: ["dashboard"],
+          enabled_features: ["dashboard_dept_communications", "dashboard_operations"],
+          rbac_permissions: ["dashboard.dept.communications.view", "dashboard.operations.view"],
+        }),
+      ),
+    ).toBe("/dashboard/department/communications");
+  });
+
   it("uses department default when role default is not accessible", () => {
     expect(
       resolveAssignedDashboardHomepage(

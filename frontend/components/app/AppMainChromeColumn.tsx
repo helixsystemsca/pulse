@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import { TenantRbacRouteGuard } from "@/components/app/TenantRbacRouteGuard";
 import { useSidebarState } from "@/components/app/SidebarState";
 
@@ -39,7 +39,9 @@ export function AppMainChromeColumn({
             .filter(Boolean)
             .join(" ")}
         >
-          <TenantRbacRouteGuard>{children}</TenantRbacRouteGuard>
+          <Suspense fallback={children}>
+            <TenantRbacRouteGuard>{children}</TenantRbacRouteGuard>
+          </Suspense>
         </div>
       </main>
     </div>

@@ -136,6 +136,53 @@ describe("buildNavigationTree", () => {
     expect(commsKeys).toEqual(["dashboard_dept_communications"]);
   });
 
+  it("groups communications tools under the Communications domain", () => {
+    const tree = buildNavigationTree(
+      session({
+        hr_department: "communications",
+        contract_features: [
+          "comms_advertising_mapper",
+          "comms_publication_builder",
+          "comms_indesign_pipeline",
+        ],
+        enabled_features: ["advertising_mapper", "comms_publication_builder", "xplor_indesign"],
+        rbac_permissions: ["arena_advertising.view", "publication_pipeline.view", "xplor_indesign.view"],
+      }),
+    );
+    const commsDomain = tree.find((d) => d.domain === "Communications");
+    expect(commsDomain).toBeDefined();
+    const keys = commsDomain!.groups.flatMap((g) => g.items.map((i) => i.key));
+    expect(keys).toEqual(
+      expect.arrayContaining([
+        "advertising_mapper",
+        "comms_publication_builder",
+        "xplor_indesign",
+      ]),
+    );
+    const visualsKeys =
+      tree.find((d) => d.domain === "Visuals")?.groups.flatMap((g) => g.items.map((i) => i.key)) ?? [];
+    expect(visualsKeys).not.toContain("advertising_mapper");
+    expect(visualsKeys).not.toContain("comms_publication_builder");
+  });
+
+  it("hides maintenance-owned team insights from communications users", () => {
+    const tree = buildNavigationTree(
+      session({
+        hr_department: "communications",
+        contract_features: ["dashboard", "team_insights"],
+        enabled_features: ["dashboard_dept_communications", "team_insights"],
+        rbac_permissions: ["dashboard.dept.communications.view", "team_insights.view", "dashboard.team_insights.view"],
+      }),
+    );
+    const dashboardKeys =
+      tree.find((d) => d.domain === "Dashboards")?.groups.flatMap((g) => g.items.map((i) => i.key)) ?? [];
+    expect(dashboardKeys).not.toContain("team_insights");
+    expect(dashboardKeys).toContain("dashboard_dept_communications");
+    const standardsKeys =
+      tree.find((d) => d.domain === "Standards")?.groups.flatMap((g) => g.items.map((i) => i.key)) ?? [];
+    expect(standardsKeys).not.toContain("team_insights");
+  });
+
   it("lists monitoring under Operations, not Dashboards", () => {
     const tree = buildNavigationTree(
       session({

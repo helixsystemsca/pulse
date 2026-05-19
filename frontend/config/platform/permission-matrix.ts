@@ -135,6 +135,9 @@ const SHARED_PROGRAM_KEYS = [
   "messaging",
 ] as const;
 
+/** Communications coordination — no maintenance-owned team insights surface. */
+const COMMS_SHARED_PROGRAM_KEYS = SHARED_PROGRAM_KEYS.filter((k) => k !== "team_insights");
+
 const MAP_KEYS = ["drawings", "zones_devices", "live_map"] as const;
 
 /** Single catalog for company admins — underlying rows are duplicated per workspace department on save. */
@@ -217,7 +220,7 @@ export function permissionFeatureGroupsForDepartment(dept: PermissionMatrixDepar
         keys: ["dashboard_dept_communications", "dashboard_leadership", "dashboard_operations", "dashboard_project"],
       },
       { id: "comms", label: "Communications tools", description: "Publication, campaigns, assets, and related tools.", keys: [...commsTools] },
-      { id: "shared", label: "Scheduling, people & standards", keys: [...sharedProgram] },
+      { id: "shared", label: "Scheduling, people & standards", keys: [...COMMS_SHARED_PROGRAM_KEYS] },
       { id: "maps", label: "Maps, drawings & devices", keys: [...maps] },
     ];
   }

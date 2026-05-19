@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { PERMISSION_MATRIX_DEPARTMENTS } from "@/config/platform/permission-matrix";
+import { readSession } from "@/lib/pulse-session";
+import { canAccessClassicNavHref } from "@/lib/rbac/session-access";
 import { ChevronDown, Download, Flame, Sparkles, Trophy } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageBody } from "@/components/ui/PageBody";
@@ -44,8 +48,22 @@ function ActivityRow({ row }: { row: TeamInsightsActivity }) {
 }
 
 export function TeamInsightsApp() {
+  const router = useRouter();
   const headerCompact = useMainScrollCompaction(28);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const s = readSession();
+    if (!s) return;
+    const dept = (s.hr_department ?? "").trim().toLowerCase();
+    if (!dept || dept === "maintenance" || !PERMISSION_MATRIX_DEPARTMENTS.includes(dept as (typeof PERMISSION_MATRIX_DEPARTMENTS)[number])) {
+      return;
+    }
+    const route = `/dashboard/department/${dept}`;
+    if (canAccessClassicNavHref(s, route)) {
+      router.replace(route);
+    }
+  }, [router]);
   const [err, setErr] = useState<string | null>(null);
   const [workers, setWorkers] = useState<TeamInsightsWorker[]>([]);
   const [activity, setActivity] = useState<TeamInsightsActivity[]>([]);

@@ -6,6 +6,8 @@
 import type { CSSProperties } from "react";
 
 import type { DashboardAccentPreset } from "@/lib/dashboardAccentPresets";
+import { isUserFeatureEnabled } from "@/lib/features/tenant-features";
+import type { PulseAuthSession } from "@/lib/pulse-session";
 
 export type WidgetFieldType = "boolean" | "number";
 
@@ -32,6 +34,14 @@ export type DashboardPageDefinition = {
   href: string;
   description: string;
   slices: DashboardWidgetSlice[];
+  /** Canonical feature keys — page is offered when any key is enabled for the session. */
+  requiredFeatures?: readonly string[];
+};
+
+const QUICK_OPEN_SLICE: DashboardWidgetSlice = {
+  id: "quick_open",
+  label: "Open module",
+  description: "Shortcut link to open the full page.",
 };
 
 export const DASHBOARD_PAGE_WIDGET_CATALOG: DashboardPageDefinition[] = [
@@ -40,6 +50,7 @@ export const DASHBOARD_PAGE_WIDGET_CATALOG: DashboardPageDefinition[] = [
     label: "Monitoring",
     href: "/monitoring",
     description: "Pools, CO₂, and other system signals (demo data matches the Monitoring page until live feeds are wired).",
+    requiredFeatures: ["monitoring"],
     slices: [
       {
         id: "pool_controllers",
@@ -76,6 +87,7 @@ export const DASHBOARD_PAGE_WIDGET_CATALOG: DashboardPageDefinition[] = [
     label: "Inventory",
     href: "/dashboard/inventory",
     description: "Stock posture from the same signals as the Inventory module.",
+    requiredFeatures: ["inventory"],
     slices: [
       {
         id: "consumables_status",
@@ -97,6 +109,7 @@ export const DASHBOARD_PAGE_WIDGET_CATALOG: DashboardPageDefinition[] = [
     label: "Work requests",
     href: "/dashboard/work-requests",
     description: "Triage snapshot from maintenance / work requests.",
+    requiredFeatures: ["work_requests"],
     slices: [
       { id: "wr_queue", label: "Awaiting assignment & newest item" },
       {
@@ -113,6 +126,7 @@ export const DASHBOARD_PAGE_WIDGET_CATALOG: DashboardPageDefinition[] = [
     label: "Equipment",
     href: "/equipment",
     description: "Beacon / tool health counts from the dashboard model.",
+    requiredFeatures: ["equipment"],
     slices: [{ id: "equipment_counts", label: "Active, missing, out of service" }],
   },
   {
@@ -120,6 +134,7 @@ export const DASHBOARD_PAGE_WIDGET_CATALOG: DashboardPageDefinition[] = [
     label: "Training",
     href: "/standards/compliance",
     description: "Compliance roll-up for routines training programs.",
+    requiredFeatures: ["procedures", "standards_training", "standards_compliance"],
     slices: [{ id: "training_compliance", label: "Training compliance" }],
   },
   {
@@ -127,6 +142,7 @@ export const DASHBOARD_PAGE_WIDGET_CATALOG: DashboardPageDefinition[] = [
     label: "Facility schedule",
     href: "/schedule",
     description: "Public program blocks from the same feed as the break-room board (`/api/schedule`).",
+    requiredFeatures: ["schedule"],
     slices: [
       {
         id: "today_program_blocks",
@@ -140,6 +156,7 @@ export const DASHBOARD_PAGE_WIDGET_CATALOG: DashboardPageDefinition[] = [
     label: "Routines",
     href: "/standards/routines",
     description: "Shift routine handoffs and the published routine library for this tenant.",
+    requiredFeatures: ["procedures"],
     slices: [
       { id: "my_assignments", label: "Your routine assignments" },
       {
@@ -151,7 +168,77 @@ export const DASHBOARD_PAGE_WIDGET_CATALOG: DashboardPageDefinition[] = [
       },
     ],
   },
+  {
+    id: "comms_campaign_planner",
+    label: "Campaign planner",
+    href: "/communications/campaign-planner",
+    description: "Social and campaign planning workspace.",
+    requiredFeatures: ["comms_campaign_planner"],
+    slices: [QUICK_OPEN_SLICE],
+  },
+  {
+    id: "comms_publication_builder",
+    label: "Publication builder",
+    href: "/communications/publication-builder",
+    description: "Build and manage publications.",
+    requiredFeatures: ["comms_publication_builder"],
+    slices: [QUICK_OPEN_SLICE],
+  },
+  {
+    id: "comms_indesign_pipeline",
+    label: "InDesign pipeline",
+    href: "/communications/indesign-pipeline",
+    description: "Xplor → InDesign export pipeline.",
+    requiredFeatures: ["xplor_indesign", "comms_indesign_pipeline"],
+    slices: [QUICK_OPEN_SLICE],
+  },
+  {
+    id: "comms_assets",
+    label: "Communications assets",
+    href: "/communications/assets",
+    description: "Shared communications asset library.",
+    requiredFeatures: ["comms_assets"],
+    slices: [QUICK_OPEN_SLICE],
+  },
+  {
+    id: "advertising_mapper",
+    label: "Arena advertising",
+    href: "/drawings?workspace=advertising",
+    description: "Arena advertising mapper on the drawings canvas.",
+    requiredFeatures: ["advertising_mapper", "comms_advertising_mapper"],
+    slices: [QUICK_OPEN_SLICE],
+  },
+  {
+    id: "messaging",
+    label: "Messaging",
+    href: "/messaging",
+    description: "Team messaging and announcements.",
+    requiredFeatures: ["messaging"],
+    slices: [QUICK_OPEN_SLICE],
+  },
+  {
+    id: "drawings",
+    label: "Drawings",
+    href: "/drawings",
+    description: "Facility drawings and spatial workspaces.",
+    requiredFeatures: ["drawings"],
+    slices: [QUICK_OPEN_SLICE],
+  },
 ];
+
+export function catalogPageAccessible(
+  session: PulseAuthSession | null,
+  page: DashboardPageDefinition,
+): boolean {
+  if (!session) return false;
+  if (!page.requiredFeatures?.length) return true;
+  return page.requiredFeatures.some((key) => isUserFeatureEnabled(session, key));
+}
+
+/** Pages the user may add as custom peek widgets (unlocked features only). */
+export function catalogPagesForSession(session: PulseAuthSession | null): DashboardPageDefinition[] {
+  return DASHBOARD_PAGE_WIDGET_CATALOG.filter((page) => catalogPageAccessible(session, page));
+}
 
 export type CustomWidgetSliceOptions = Record<string, Record<string, boolean | number>>;
 

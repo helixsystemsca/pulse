@@ -156,6 +156,10 @@ export function ProjectsApp() {
   const [formOwner, setFormOwner] = useState("");
   const [formStatus, setFormStatus] = useState<"active" | "future" | "on_hold" | "completed">("active");
   const [formRepop, setFormRepop] = useState<string>("Once");
+  const [formShowOnSchedule, setFormShowOnSchedule] = useState(true);
+  const [formOverlayColor, setFormOverlayColor] = useState("");
+  const [formImpact, setFormImpact] = useState<"low" | "medium" | "high" | "critical">("medium");
+  const [formStaffingPriority, setFormStaffingPriority] = useState<"low" | "normal" | "high" | "critical">("normal");
   const [templates, setTemplates] = useState<ProjectTemplateRow[]>([]);
   const [templateId, setTemplateId] = useState("");
   const [categories, setCategories] = useState<CategoryRow[]>([]);
@@ -413,6 +417,10 @@ export function ProjectsApp() {
         template_id: templateId.trim() || null,
         category_id: categoryId || null,
         repopulation_frequency: formRepop || "Once",
+        show_on_schedule: formShowOnSchedule,
+        overlay_color: formOverlayColor.trim() || null,
+        operational_impact_level: formImpact,
+        staffing_priority: formStaffingPriority,
       });
       setRows((prev) => (prev ? [created, ...prev] : prev));
       setCreateOpen(false);
@@ -425,6 +433,10 @@ export function ProjectsApp() {
       setCategoryId("");
       setCategoryQuery("");
       setFormRepop("Once");
+      setFormShowOnSchedule(true);
+      setFormOverlayColor("");
+      setFormImpact("medium");
+      setFormStaffingPriority("normal");
       setToast("Project created.");
     } catch {
       setToast("Could not create project.");
@@ -453,6 +465,10 @@ export function ProjectsApp() {
             : "active",
     );
     setFormRepop((p.repopulation_frequency as string) || "Once");
+    setFormShowOnSchedule(p.show_on_schedule !== false);
+    setFormOverlayColor(p.overlay_color ?? "");
+    setFormImpact((p.operational_impact_level as typeof formImpact) ?? "medium");
+    setFormStaffingPriority((p.staffing_priority as typeof formStaffingPriority) ?? "normal");
     setEditOpen(true);
   }
 
@@ -522,6 +538,10 @@ export function ProjectsApp() {
         status: nextStatus,
         category_id: categoryId || null,
         repopulation_frequency: formRepop || "Once",
+        show_on_schedule: formShowOnSchedule,
+        overlay_color: formOverlayColor.trim() || null,
+        operational_impact_level: formImpact,
+        staffing_priority: formStaffingPriority,
       });
       setRows((prev) =>
         prev?.map((r) =>

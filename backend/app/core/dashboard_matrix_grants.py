@@ -11,7 +11,7 @@ _DASHBOARD_SURFACE_KEYS = frozenset(
 # Department baseline slot → dashboard flyout keys granted when `dashboard` is on contract.
 _BASELINE_SLOT_DASHBOARD_GRANTS: dict[tuple[str, str], tuple[str, ...]] = {
     ("maintenance", "operations"): ("dashboard_operations",),
-    ("communications", "coordination"): ("dashboard_dept_communications", "dashboard_operations"),
+    ("communications", "coordination"): ("dashboard_dept_communications",),
     ("reception", "coordination"): ("dashboard_dept_reception", "dashboard_operations"),
     ("aquatics", "aquatics_staff"): ("dashboard_dept_aquatics", "dashboard_operations"),
     ("fitness", "fitness_staff"): ("dashboard_dept_fitness", "dashboard_operations"),

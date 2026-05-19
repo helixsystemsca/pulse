@@ -7,6 +7,7 @@ import {
   recurringWindowLegendFromWorkers,
   shiftCodesLegendBlurb,
 } from "@/lib/schedule/shift-codes";
+import { normalizeOverlayColor } from "@/lib/schedule/project-overlay-styles";
 import type { Shift, ShiftTypeConfig, Worker } from "@/lib/schedule/types";
 
 /** Stable pseudo-color from string (fallback when no project id tint). */
@@ -26,6 +27,7 @@ export type ScheduleProjectLegendItem = {
   name: string;
   /** Tailwind classes for the legend swatch (same as month/week top bar). */
   tintClass: string;
+  overlayColor?: string | null;
 };
 
 type Props = {
@@ -142,17 +144,21 @@ export function ScheduleLegendPanel({
           <section>
             <h3 className="text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">Projects</h3>
             <ul className="mt-2 max-h-36 space-y-1.5 overflow-y-auto pr-1">
-              {projectLegendItems.map((p) => (
-                <li key={p.id} className="flex min-w-0 items-center gap-2 text-xs text-gray-900 dark:text-gray-100">
-                  <span
-                    className={`h-3 w-3 shrink-0 rounded-sm border border-black/10 dark:border-white/10 ${p.tintClass}`}
-                    aria-hidden
-                  />
-                  <span className="truncate" title={p.name}>
-                    {p.name}
-                  </span>
-                </li>
-              ))}
+              {projectLegendItems.map((p) => {
+                const hex = normalizeOverlayColor(p.overlayColor);
+                return (
+                  <li key={p.id} className="flex min-w-0 items-center gap-2 text-xs text-gray-900 dark:text-gray-100">
+                    <span
+                      className={`h-3 w-3 shrink-0 rounded-sm border border-black/10 dark:border-white/10 ${hex ? "" : p.tintClass}`}
+                      style={hex ? { backgroundColor: `${hex}55`, borderColor: `${hex}99` } : undefined}
+                      aria-hidden
+                    />
+                    <span className="truncate" title={p.name}>
+                      {p.name}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           </section>
         ) : (contentFilter === "projects" || contentFilter === "combined") && projectsFromShifts.length > 0 ? (

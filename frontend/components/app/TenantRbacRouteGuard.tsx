@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useEffect, useMemo } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { TENANT_RBAC_GUARD_BYPASS_PREFIXES } from "@/lib/rbac/tenant-route-bypass";
 import { canAccessClassicNavHref, firstAccessibleClassicTenantHref } from "@/lib/rbac/session-access";
@@ -17,8 +17,14 @@ function isUnguardedPath(pathname: string): boolean {
  */
 export function TenantRbacRouteGuard({ children }: { children: ReactNode }) {
   const pathname = usePathname() || "";
+  const searchParams = useSearchParams();
   const router = useRouter();
   const { authed, session } = usePulseAuth();
+
+  const hrefForGate = useMemo(() => {
+    const qs = searchParams.toString();
+    return qs ? `${pathname}?${qs}` : pathname;
+  }, [pathname, searchParams]);
 
   const skip = useMemo(() => {
     if (!authed || !session) return true;
@@ -32,7 +38,7 @@ export function TenantRbacRouteGuard({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (skip || !session || allowed) return;
     router.replace(firstAccessibleClassicTenantHref(session));
-  }, [skip, allowed, session, router, pathname]);
+  }, [skip, allowed, session, router, hrefForGate]);
 
   if (!authed) return <>{children}</>;
   if (skip) return <>{children}</>;

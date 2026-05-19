@@ -150,6 +150,20 @@ export const RBAC_PERMISSION_CATALOG: readonly RbacPermissionMeta[] = [
   { key: "team_management.view", label: "Team management", description: "Workers, roles, and HR roster tools.", module: "team_management", category: "People & Quality" },
   { key: "messaging.view", label: "View messaging", description: "Internal messaging and notifications hub.", module: "messaging", category: "Communications" },
   { key: "schedule.view", label: "View schedule", description: "Scheduling and classes.", module: "schedule", category: "Operations" },
+  {
+    key: "scheduling.project_overlays.view",
+    label: "Project schedule overlays",
+    description: "Timeline project bars on the schedule calendar.",
+    module: "schedule",
+    category: "Operations",
+  },
+  {
+    key: "scheduling.pto_conflict_visibility.view",
+    label: "PTO project conflict hints",
+    description: "Staffing warnings when PTO overlaps active projects.",
+    module: "schedule",
+    category: "Operations",
+  },
   { key: "monitoring.view", label: "View monitoring", description: "Live operations and monitoring views.", module: "monitoring", category: "Operations" },
   { key: "projects.view", label: "View projects", description: "Project list and project dashboards.", module: "projects", category: "Operations" },
   {

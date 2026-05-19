@@ -28,6 +28,16 @@ describe("tenantHasAnyCompanyModule", () => {
 });
 
 describe("canAccessClassicNavHref", () => {
+  it("allows /drawings when only arena advertising is granted", () => {
+    const s = session({
+      contract_features: ["comms_advertising_mapper"],
+      enabled_features: ["comms_advertising_mapper"],
+      rbac_permissions: ["arena_advertising.view"],
+    });
+    expect(canAccessClassicNavHref(s, "/drawings")).toBe(true);
+    expect(canAccessClassicNavHref(s, "/drawings?workspace=advertising")).toBe(true);
+  });
+
   it("allows communications modules when contract uses legacy keys", () => {
     const s = session({
       contract_features: ["comms_advertising_mapper", "comms_publication_builder"],

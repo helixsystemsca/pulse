@@ -164,6 +164,13 @@ function classicNavGate(href: string): NavGate {
       rbacAnyOf: ["equipment.view"],
     };
   }
+  if (h === "/drawings" || h.startsWith("/drawings/")) {
+    return {
+      kind: "module",
+      companyModules: ["drawings", "comms_advertising_mapper", "advertising_mapper"],
+      rbacAnyOf: ["drawings.view", "arena_advertising.view"],
+    };
+  }
 
   const master = getMasterFeatureForPath(href) ?? getMasterFeatureForPath(h);
   if (master) {
@@ -204,8 +211,17 @@ export function canAccessClassicNavHref(session: PulseAuthSession | null, href: 
   if (gate.kind === "deny") return false;
   if (gate.kind === "authenticated_shell") return true;
   if (gate.kind === "session_roles_any") return sessionHasAnyRole(session, ...gate.roles);
-  const master = getMasterFeatureForPath(href) ?? getMasterFeatureForPath(h);
-  if (master && !isUserFeatureEnabled(session, master.feature)) return false;
+  if (gate.kind === "module") {
+    const master = getMasterFeatureForPath(href) ?? getMasterFeatureForPath(h);
+    if (
+      master &&
+      gate.companyModules.length === 1 &&
+      gate.companyModules[0] === master.feature &&
+      !isUserFeatureEnabled(session, master.feature)
+    ) {
+      return false;
+    }
+  }
 
   const modsOk = gate.requireAllContractModules
     ? tenantHasEveryCompanyModule(session, gate.companyModules)

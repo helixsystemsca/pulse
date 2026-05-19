@@ -108,13 +108,6 @@ export function resolveAssignedDashboardHomepage(session: PulseAuthSession | nul
     }
   }
 
-  const role = sessionPrimaryRole(session);
-  const roleId = ROLE_DEFAULT_DASHBOARD_ID[role];
-  if (roleId) {
-    const route = resolveCatalogId(session, roleId);
-    if (route) return route;
-  }
-
   const dept = (session.hr_department ?? "").trim().toLowerCase();
   if (dept) {
     const moduleHome = DEPARTMENT_MODULE_HOME_ROUTES[dept];
@@ -126,6 +119,13 @@ export function resolveAssignedDashboardHomepage(session: PulseAuthSession | nul
       const route = resolveCatalogId(session, deptId);
       if (route) return route;
     }
+  }
+
+  const role = sessionPrimaryRole(session);
+  const roleId = ROLE_DEFAULT_DASHBOARD_ID[role];
+  if (roleId) {
+    const route = resolveCatalogId(session, roleId);
+    if (route) return route;
   }
 
   for (const d of DASHBOARD_CATALOG) {

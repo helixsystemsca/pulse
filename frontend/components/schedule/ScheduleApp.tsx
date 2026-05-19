@@ -9,7 +9,15 @@ import { apiFetch, isApiMode } from "@/lib/api";
 import { getServerDate } from "@/lib/serverTime";
 import { listProjects, type ProjectRow } from "@/lib/projectsService";
 import { getOrAssignProjectTintClass } from "@/lib/schedule/project-overlay-tints";
+import {
+  readOverlayTogglePreference,
+  SCHEDULE_OVERLAY_STATUSES,
+  writeOverlayTogglePreference,
+  type ProjectScheduleOverlayMeta,
+} from "@/lib/schedule/project-overlay-styles";
 import type { ProjectBarItem } from "@/lib/schedule/project-schedule-bars";
+import { pendingPtoCountForRange } from "@/lib/schedule/project-pto-conflicts";
+import { can } from "@/lib/rbac/session-access";
 import {
   addDaysToIso,
   formatLocalDate,
@@ -197,7 +205,7 @@ export function ScheduleApp() {
   const [activePeriod, setActivePeriod] = useState<SchedulePeriodLite | null>(null);
   const [showPeriodModal, setShowPeriodModal] = useState(false);
   const [scheduleProjects, setScheduleProjects] = useState<ProjectRow[] | null>(null);
-  const [showProjectOverlay, setShowProjectOverlay] = useState(true);
+  const [showProjectOverlay, setShowProjectOverlay] = useState(() => readOverlayTogglePreference());
   const schedulePath = usePathname() ?? "";
   const [shiftModal, setShiftModal] = useState<{
     shift: Shift | null;
@@ -1128,33 +1136,67 @@ export function ScheduleApp() {
     setCursor({ y: td.getFullYear(), m: td.getMonth() });
   }
 
+  const session = readSession();
+  const canViewProjectOverlays =
+    Boolean(session) &&
+    (can(session, "scheduling.project_overlays.view") || can(session, "schedule.view"));
+  const canViewPtoProjectConflicts =
+    Boolean(session) &&
+    (can(session, "scheduling.pto_conflict_visibility.view") || can(session, "schedule.view"));
+
+  const scheduleOverlayProjects = useMemo((): ProjectScheduleOverlayMeta[] => {
+    if (!scheduleProjects?.length) return [];
+    return scheduleProjects
+      .filter(
+        (p) =>
+          p.show_on_schedule !== false &&
+          SCHEDULE_OVERLAY_STATUSES.has(p.status) &&
+          p.start_date &&
+          p.end_date,
+      )
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((p) => ({
+        id: p.id,
+        name: p.name,
+        start_date: p.start_date,
+        end_date: p.end_date,
+        status: p.status,
+        show_on_schedule: p.show_on_schedule,
+        overlay_color: p.overlay_color,
+        operational_impact_level: p.operational_impact_level ?? "medium",
+        staffing_priority: p.staffing_priority ?? "normal",
+        blackout_windows: p.blackout_windows ?? null,
+        tintClass: getOrAssignProjectTintClass(p.id),
+        assigned_team_label:
+          (p.assignee_user_ids?.length ?? 0) > 0
+            ? `${p.assignee_user_ids!.length} assignee${p.assignee_user_ids!.length === 1 ? "" : "s"}`
+            : null,
+        pending_pto_count: pendingPtoCountForRange(timeOffBlocks, p.start_date, p.end_date),
+      }));
+  }, [scheduleProjects, timeOffBlocks]);
+
   const projectLegendItems: ScheduleProjectLegendItem[] | null = useMemo(() => {
-    if (!scheduleProjects || scheduleProjects.length === 0) return null;
-    const active = scheduleProjects
-      .filter((p) => p.status !== "completed")
-      .sort((a, b) => a.name.localeCompare(b.name));
-    if (active.length === 0) return null;
-    return active.map((p) => ({
+    if (!canViewProjectOverlays || scheduleOverlayProjects.length === 0) return null;
+    return scheduleOverlayProjects.map((p) => ({
       id: p.id,
       name: p.name,
-      tintClass: getOrAssignProjectTintClass(p.id),
+      tintClass: p.tintClass,
+      overlayColor: p.overlay_color,
     }));
-  }, [scheduleProjects]);
+  }, [canViewProjectOverlays, scheduleOverlayProjects]);
 
   const projectBarItems: ProjectBarItem[] | null = useMemo(() => {
-    if (!scheduleProjects || scheduleProjects.length === 0) return null;
-    const active = scheduleProjects
-      .filter((p) => p.status !== "completed")
-      .sort((a, b) => a.name.localeCompare(b.name));
-    if (active.length === 0) return null;
-    return active.map((p) => ({
-      id: p.id,
-      name: p.name,
-      start_date: p.start_date,
-      end_date: p.end_date,
-      tintClass: getOrAssignProjectTintClass(p.id),
-    }));
-  }, [scheduleProjects]);
+    if (!canViewProjectOverlays || scheduleOverlayProjects.length === 0) return null;
+    return scheduleOverlayProjects;
+  }, [canViewProjectOverlays, scheduleOverlayProjects]);
+
+  const onToggleProjectOverlay = useCallback(() => {
+    setShowProjectOverlay((v) => {
+      const next = !v;
+      writeOverlayTogglePreference(next);
+      return next;
+    });
+  }, []);
 
   const dayProjectBar = useMemo(() => {
     if (timeScale !== "day" || !projectBarItems) return null;
@@ -1314,7 +1356,8 @@ export function ScheduleApp() {
                 contentFilter={contentFilter}
                 onContentFilterChange={setContentFilter}
                 showProjectOverlay={showProjectOverlay}
-                onToggleProjectOverlay={() => setShowProjectOverlay((v) => !v)}
+                onToggleProjectOverlay={onToggleProjectOverlay}
+                projectOverlayAvailable={canViewProjectOverlays}
                 disabled={scheduleDragLock}
               />
             }
@@ -1693,6 +1736,11 @@ export function ScheduleApp() {
       <TimeOffRequestModal
         open={timeOffOpen}
         workers={workers}
+        projects={canViewPtoProjectConflicts ? scheduleOverlayProjects : []}
+        shifts={shifts}
+        settings={settings}
+        timeOffBlocks={timeOffBlocks}
+        showConflictHints={canViewPtoProjectConflicts}
         onClose={() => setTimeOffOpen(false)}
         onSubmit={(p) => addTimeOffBlock(p)}
       />

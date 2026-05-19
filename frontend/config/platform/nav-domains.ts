@@ -3,6 +3,8 @@
  *
  * NEVER use `NavDomain` or domain labels for RBAC, contracts, route guards, or feature visibility.
  * Authorization flows exclusively through the universal permission matrix → session envelope.
+ *
+ * Department workflow domains mirror org names (Maintenance uses `Operations` historically).
  */
 import type { MasterFeatureIcon } from "@/config/platform/master-feature-registry";
 
@@ -10,6 +12,11 @@ export const NAV_DOMAINS = [
   "Dashboards",
   "Planning",
   "Operations",
+  "Communications",
+  "Aquatics",
+  "Reception",
+  "Fitness",
+  "Racquets",
   "Standards",
   "Assets",
   "Visuals",
@@ -32,6 +39,11 @@ export const NAV_DOMAIN_META: Record<NavDomain, NavDomainMeta> = {
   Dashboards: { domain: "Dashboards", label: "Dashboards", icon: "layout" },
   Planning: { domain: "Planning", label: "Planning", icon: "calendar" },
   Operations: { domain: "Operations", label: "Operations", icon: "clipboard" },
+  Communications: { domain: "Communications", label: "Communications", icon: "megaphone" },
+  Aquatics: { domain: "Aquatics", label: "Aquatics", icon: "waves" },
+  Reception: { domain: "Reception", label: "Reception", icon: "building" },
+  Fitness: { domain: "Fitness", label: "Fitness", icon: "dumbbell" },
+  Racquets: { domain: "Racquets", label: "Racquets", icon: "scroll-text" },
   Standards: { domain: "Standards", label: "Standards", icon: "list-checks" },
   Assets: { domain: "Assets", label: "Assets", icon: "package" },
   Visuals: { domain: "Visuals", label: "Visuals", icon: "layers" },

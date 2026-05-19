@@ -148,6 +148,20 @@ def _norm_task_skill_names(raw: list[str] | None) -> list[str]:
     return out
 
 
+def _serialize_blackout_windows(raw: object | None) -> list | None:
+    if raw is None:
+        return None
+    if not isinstance(raw, list):
+        return None
+    out: list[dict] = []
+    for item in raw:
+        if hasattr(item, "model_dump"):
+            out.append(item.model_dump(mode="json"))
+        elif isinstance(item, dict):
+            out.append(item)
+    return out or None
+
+
 def _project_out(p: PulseProject) -> ProjectOut:
     st = p.status.value if hasattr(p.status, "value") else str(p.status)
     return ProjectOut(
@@ -180,6 +194,11 @@ def _project_out(p: PulseProject) -> ProjectOut:
         notification_to_supervision=bool(getattr(p, "notification_to_supervision", False)),
         notification_to_lead=bool(getattr(p, "notification_to_lead", False)),
         notification_to_owner=bool(getattr(p, "notification_to_owner", True)),
+        show_on_schedule=bool(getattr(p, "show_on_schedule", True)),
+        overlay_color=getattr(p, "overlay_color", None),
+        operational_impact_level=str(getattr(p, "operational_impact_level", "medium") or "medium"),
+        staffing_priority=str(getattr(p, "staffing_priority", "normal") or "normal"),
+        blackout_windows=getattr(p, "blackout_windows", None),
         created_at=p.created_at,
         updated_at=p.updated_at,
     )
@@ -703,6 +722,11 @@ async def create_project(
         goal=getattr(template, "default_goal", None) if template else None,
         notes=getattr(template, "default_notes", None) if template else None,
         success_definition=getattr(template, "default_success_definition", None) if template else None,
+        show_on_schedule=bool(getattr(body, "show_on_schedule", True)),
+        overlay_color=(getattr(body, "overlay_color", None) or "").strip() or None,
+        operational_impact_level=str(getattr(body, "operational_impact_level", None) or "medium"),
+        staffing_priority=str(getattr(body, "staffing_priority", None) or "normal"),
+        blackout_windows=_serialize_blackout_windows(getattr(body, "blackout_windows", None)),
     )
     db.add(p)
     await db.flush()
@@ -1058,6 +1082,22 @@ async def patch_project(
                 p.current_phase = PulseProjectPhase(v)
             except ValueError:
                 raise HTTPException(status_code=400, detail="invalid current_phase")
+    if "overlay_color" in data:
+        raw = data.pop("overlay_color")
+        v = str(raw).strip() if raw is not None else ""
+        p.overlay_color = v or None
+    if "blackout_windows" in data:
+        p.blackout_windows = _serialize_blackout_windows(data.pop("blackout_windows"))
+    if "operational_impact_level" in data:
+        v = str(data.pop("operational_impact_level") or "medium").strip().lower()
+        if v not in ("low", "medium", "high", "critical"):
+            raise HTTPException(status_code=400, detail="invalid operational_impact_level")
+        p.operational_impact_level = v
+    if "staffing_priority" in data:
+        v = str(data.pop("staffing_priority") or "normal").strip().lower()
+        if v not in ("low", "normal", "high", "critical"):
+            raise HTTPException(status_code=400, detail="invalid staffing_priority")
+        p.staffing_priority = v
     for k, v in data.items():
         if v is not None:
             setattr(p, k, v)

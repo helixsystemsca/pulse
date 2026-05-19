@@ -42,6 +42,11 @@ export type ProjectRow = {
   assignee_user_ids?: string[];
   last_activity_at?: string | null;
   health_status?: string;
+  show_on_schedule?: boolean;
+  overlay_color?: string | null;
+  operational_impact_level?: "low" | "medium" | "high" | "critical";
+  staffing_priority?: "low" | "normal" | "high" | "critical";
+  blackout_windows?: { start_date: string; end_date: string; label?: string | null }[] | null;
 };
 
 export type TaskRow = {

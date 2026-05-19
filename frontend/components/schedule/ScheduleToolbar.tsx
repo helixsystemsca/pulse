@@ -17,6 +17,8 @@ type Props = {
   onContentFilterChange: (v: ScheduleContentFilter) => void;
   showProjectOverlay: boolean;
   onToggleProjectOverlay: () => void;
+  /** When false, overlay toggle is hidden (RBAC). */
+  projectOverlayAvailable?: boolean;
   disabled?: boolean;
 };
 
@@ -63,6 +65,7 @@ export function ScheduleToolbar({
   onContentFilterChange,
   showProjectOverlay,
   onToggleProjectOverlay,
+  projectOverlayAvailable = true,
   disabled,
 }: Props) {
   const navShell =
@@ -132,20 +135,22 @@ export function ScheduleToolbar({
                 </Seg>
               ))}
             </nav>
-            <button
-              type="button"
-              onClick={onToggleProjectOverlay}
-              className={cn(
-                "rounded-lg border font-semibold transition-colors",
-                compact ? "px-2.5 py-1.5 text-[11px]" : "px-3 py-2 text-xs",
-                showProjectOverlay
-                  ? "border-[color-mix(in_srgb,var(--ds-accent)_35%,var(--ds-border))] bg-[color-mix(in_srgb,var(--ds-accent)_10%,transparent)] text-[var(--ds-accent)]"
-                  : "border-pulseShell-border bg-white/80 text-ds-muted hover:text-ds-foreground dark:bg-slate-900/50",
-              )}
-              title={showProjectOverlay ? "Hide project timeline overlay" : "Show project timeline overlay"}
-            >
-              Project overlay
-            </button>
+            {projectOverlayAvailable ? (
+              <button
+                type="button"
+                onClick={onToggleProjectOverlay}
+                className={cn(
+                  "rounded-lg border font-semibold transition-colors",
+                  compact ? "px-2.5 py-1.5 text-[11px]" : "px-3 py-2 text-xs",
+                  showProjectOverlay
+                    ? "border-[color-mix(in_srgb,var(--ds-accent)_35%,var(--ds-border))] bg-[color-mix(in_srgb,var(--ds-accent)_10%,transparent)] text-[var(--ds-accent)]"
+                    : "border-pulseShell-border bg-white/80 text-ds-muted hover:text-ds-foreground dark:bg-slate-900/50",
+                )}
+                title={showProjectOverlay ? "Hide project timeline overlay" : "Show project timeline overlay"}
+              >
+                Project overlay
+              </button>
+            ) : null}
           </div>
         </div>
       </div>

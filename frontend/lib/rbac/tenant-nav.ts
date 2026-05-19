@@ -124,6 +124,12 @@ export function explainMasterFeatureVisibility(
         : `effective enabled_features does not include ${feature.feature} (canonical/legacy normalization may apply).`,
     };
   }
+  if (!passesOwnershipDepartmentGate(session, feature)) {
+    return {
+      visible: false,
+      reason: `Module is owned by "${feature.ownershipDepartment}"; session hr_department does not match.`,
+    };
+  }
   if (!feature.rbacAnyOf.length) return { visible: true };
   const ok = feature.rbacAnyOf.some((k) => hasRbacPermission(session, k));
   return ok
@@ -132,6 +138,21 @@ export function explainMasterFeatureVisibility(
         visible: false,
         reason: `Missing RBAC: need any of ${feature.rbacAnyOf.join(", ")}.`,
       };
+}
+
+/** Maintenance-owned analytics — not shown to other departments even when the feature is enabled. */
+const HR_DEPARTMENT_OWNERSHIP_KEYS = new Set(["team_insights"]);
+
+function passesOwnershipDepartmentGate(
+  session: PulseAuthSession,
+  feature: MasterFeatureDef,
+): boolean {
+  if (!HR_DEPARTMENT_OWNERSHIP_KEYS.has(feature.key)) return true;
+  const owner = feature.ownershipDepartment?.trim().toLowerCase();
+  if (!owner) return true;
+  if (isTenantFullAdminSession(session)) return true;
+  const userDept = (session.hr_department ?? "").trim().toLowerCase();
+  return userDept === owner;
 }
 
 export function isMasterFeatureVisibleForSession(
@@ -152,6 +173,7 @@ export function isMasterFeatureVisibleForSession(
   const snap = readAccessSnapshot(session);
   const featureOk = snap ? snapshotHasFeature(snap, feature.feature) : isUserFeatureEnabled(session, feature.feature);
   if (!featureOk) return false;
+  if (!passesOwnershipDepartmentGate(session, feature)) return false;
   if (!feature.rbacAnyOf.length) return true;
   return feature.rbacAnyOf.some((k) => hasRbacPermission(session, k));
 }
