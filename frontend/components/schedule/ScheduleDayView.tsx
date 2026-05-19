@@ -21,6 +21,7 @@ import {
 import { flushSync } from "react-dom";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
+import type { EmployeeDailyAvailabilityEntry } from "@/lib/schedule/employee-availability-types";
 import { evaluateWorkerDrop, type WorkerDayHighlight } from "@/lib/schedule/worker-drag-highlights";
 import { formatTimeRange } from "@/lib/schedule/time-format";
 import type {
@@ -72,6 +73,10 @@ type Props = {
   onShiftDragSessionEnd: () => void;
   /** Projects that cover this calendar day (coloured top strip, same tints as month view). */
   dayProjectBar?: { id: string; name: string; tintClass: string }[] | null;
+  dropAvailabilityOpts?: {
+    employeeAvailabilityIndex?: Record<string, EmployeeDailyAvailabilityEntry[]>;
+    useDailyAvailability?: boolean;
+  };
 };
 
 /**
@@ -102,6 +107,7 @@ export function ScheduleDayView({
   onShiftDragSessionStart,
   onShiftDragSessionEnd,
   dayProjectBar = null,
+  dropAvailabilityOpts,
 }: Props) {
   const [shake, setShake] = useState(false);
   const shakeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -275,7 +281,15 @@ export function ScheduleDayView({
             if (!wp) return;
             const w = workers.find((x) => x.id === wp.workerId);
             if (w) {
-              const ev = evaluateWorkerDrop(w, date, contextShifts, settings, timeOffBlocks, workerDropPlacementWindow);
+              const ev = evaluateWorkerDrop(
+                w,
+                date,
+                contextShifts,
+                settings,
+                timeOffBlocks,
+                workerDropPlacementWindow,
+                dropAvailabilityOpts,
+              );
               if (!ev.ok) {
                 if (ev.needsManagerOverride) {
                   onWorkerDrop(wp.workerId);

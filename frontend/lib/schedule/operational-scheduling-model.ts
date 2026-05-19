@@ -94,7 +94,7 @@ export function operationalBadgeChipLabel(
   return u.length > 5 ? u.slice(0, 4) : u;
 }
 
-export type AvailabilityCellKind = "available" | "unavailable" | "restricted";
+export type AvailabilityCellKind = "available" | "unavailable" | "restricted" | "open_pickup";
 
 export type AvailabilityCellOverlay = "none" | "stripe-diagonal" | "edge-morning" | "edge-afternoon";
 

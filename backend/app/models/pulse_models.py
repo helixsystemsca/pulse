@@ -1,7 +1,7 @@
 """Pulse product domain: CMMS work requests, scheduling, worker profiles, beacons."""
 
 import enum
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time, timezone
 from typing import Any, Optional
 from uuid import uuid4
 
@@ -16,6 +16,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    Time,
     UniqueConstraint,
     text,
 )
@@ -1813,6 +1814,44 @@ class NotificationLog(Base):
     sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     recipients_resolved: Mapped[list[Any]] = mapped_column(
         JSONB, nullable=False, server_default=text("'[]'::jsonb")
+    )
+
+
+class EmployeeAvailability(Base):
+    """
+    Per-day auxiliary availability for the manual schedule builder.
+    Blank days (no row) mean potentially eligible for pickup — not unavailable.
+    """
+
+    __tablename__ = "employee_availability"
+    __table_args__ = (
+        UniqueConstraint(
+            "company_id",
+            "employee_id",
+            "date",
+            "status",
+            "restriction_type",
+            name="uq_employee_availability_day_slot",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    employee_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    start_time: Mapped[Optional[time]] = mapped_column(Time, nullable=True)
+    end_time: Mapped[Optional[time]] = mapped_column(Time, nullable=True)
+    restriction_type: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    source: Mapped[str] = mapped_column(String(64), nullable=False, server_default="manual")
+    imported_from: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
     )
 
 

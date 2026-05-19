@@ -58,6 +58,11 @@ import {
 } from "@/lib/schedule/palette-config";
 import { placementBandDropdownOptions, resolvePlacementRoles } from "@/lib/schedule/placement-panel-options";
 import { suggestReplacementLabel } from "@/lib/schedule/suggest-replacement";
+import {
+  buildEmployeeAvailabilityIndex,
+  fetchEmployeeAvailability,
+} from "@/lib/schedule/employee-availability-api";
+import type { EmployeeDailyAvailabilityEntry } from "@/lib/schedule/employee-availability-types";
 import { buildWorkerDragHighlightMap, evaluateWorkerDrop } from "@/lib/schedule/worker-drag-highlights";
 import {
   isPulseApiShiftId,
@@ -171,6 +176,10 @@ export function ScheduleApp() {
   const [availabilitySupervisorOpen, setAvailabilitySupervisorOpen] = useState(false);
   const [employeeAvailabilityOpen, setEmployeeAvailabilityOpen] = useState(false);
   const [availabilityMatrixVersion, setAvailabilityMatrixVersion] = useState(0);
+  const [employeeAvailabilityIndex, setEmployeeAvailabilityIndex] = useState<
+    Record<string, EmployeeDailyAvailabilityEntry[]>
+  >({});
+  const [showAvailabilityOverlay, setShowAvailabilityOverlay] = useState(true);
   const [publishBusy, setPublishBusy] = useState(false);
   const [shiftDefinitions, setShiftDefinitions] = useState<ScheduleShiftDefinitionRow[]>([]);
   const [paletteBadgeConfig, setPaletteBadgeConfig] = useState<PaletteBadgeConfig>({
@@ -358,6 +367,14 @@ export function ScheduleApp() {
     const shiftsMapped = pulseShiftsToSchedule(sh, fallbackZ);
     applyPulseScheduleSnapshot(workersMapped, zonesMapped, shiftsMapped);
     setShiftDefinitions(defs);
+    try {
+      const fromIso = formatLocalDate(from);
+      const toIso = formatLocalDate(to);
+      const availRows = await fetchEmployeeAvailability(fromIso, toIso);
+      setEmployeeAvailabilityIndex(buildEmployeeAvailabilityIndex(availRows));
+    } catch {
+      setEmployeeAvailabilityIndex({});
+    }
   }, [applyPulseScheduleSnapshot, timeScale, cursor.m, cursor.y, focusDate, scheduleDepartmentSlug]);
 
   const handleScheduleDepartmentChange = useCallback(
@@ -567,7 +584,16 @@ export function ScheduleApp() {
         : timeScale === "month"
           ? monthGrid(cursor.y, cursor.m).map((c) => c.date)
           : [focusDate];
-    return buildWorkerDragHighlightMap(w, dates, shiftsForView, settings, timeOffBlocks, placementDropWindow);
+    return buildWorkerDragHighlightMap(
+      w,
+      dates,
+      shiftsForView,
+      settings,
+      timeOffBlocks,
+      placementDropWindow,
+      employeeAvailabilityIndex,
+      showAvailabilityOverlay,
+    );
   }, [
     dragSession,
     workers,
@@ -579,7 +605,17 @@ export function ScheduleApp() {
     cursor.m,
     focusDate,
     placementDropWindow,
+    employeeAvailabilityIndex,
+    showAvailabilityOverlay,
   ]);
+
+  const dropAvailabilityOpts = useMemo(
+    () => ({
+      employeeAvailabilityIndex,
+      useDailyAvailability: showAvailabilityOverlay,
+    }),
+    [employeeAvailabilityIndex, showAvailabilityOverlay],
+  );
 
   const weekDates = useMemo(() => weekDatesFromSunday(focusDate), [focusDate]);
 
@@ -865,6 +901,7 @@ export function ScheduleApp() {
 
       const ev = evaluateWorkerDrop(w, targetDate, shiftsForView, settings, timeOffBlocks, placementDropWindow, {
         treatRestrictionsAsSatisfied: Boolean(trimmedOverride),
+        ...dropAvailabilityOpts,
       });
       if (!ev.ok) {
         if (!trimmedOverride && ev.needsManagerOverride && canPublishSchedule) {
@@ -938,6 +975,7 @@ export function ScheduleApp() {
       canPublishSchedule,
       placementBand,
       placementDutyRole,
+      dropAvailabilityOpts,
       placementDropWindow,
       session?.email,
       session?.full_name,
@@ -966,6 +1004,7 @@ export function ScheduleApp() {
 
       const ev = evaluateWorkerDrop(w, targetDate, shiftsForView, settings, timeOffBlocks, placementDropWindow, {
         treatRestrictionsAsSatisfied: Boolean(trimmedOverride),
+        ...dropAvailabilityOpts,
       });
       if (!ev.ok) {
         setScheduleToast(ev.tooltip ?? "Cannot assign this shift.");
@@ -1116,6 +1155,7 @@ export function ScheduleApp() {
 
       const ev = evaluateWorkerDrop(w, targetDate, shiftsForView, settings, timeOffBlocks, placementDropWindow, {
         treatRestrictionsAsSatisfied: false,
+        ...dropAvailabilityOpts,
       });
       if (!ev.ok) {
         if (ev.needsManagerOverride && canPublishSchedule) {
@@ -1390,6 +1430,8 @@ export function ScheduleApp() {
                 showProjectOverlay={showProjectOverlay}
                 onToggleProjectOverlay={onToggleProjectOverlay}
                 projectOverlayAvailable={canViewProjectOverlays}
+                showAvailabilityOverlay={showAvailabilityOverlay}
+                onToggleAvailabilityOverlay={() => setShowAvailabilityOverlay((v) => !v)}
                 disabled={scheduleDragLock}
               />
             }
@@ -1548,6 +1590,7 @@ export function ScheduleApp() {
                       shiftDragEnabled={shiftDragEnabled}
                       workerDayHighlight={workerHighlightMap?.[focusDate] ?? null}
                       workerDropPlacementWindow={placementDropWindow}
+                      dropAvailabilityOpts={dropAvailabilityOpts}
                       onWorkerDropRejected={(msg) => setScheduleToast(msg)}
                       onWorkerDrop={(workerId) => handleWorkerDrop(workerId, focusDate)}
                       onShiftDragSessionStart={setDragSession}
@@ -1587,6 +1630,7 @@ export function ScheduleApp() {
                     shiftDragEnabled={shiftDragEnabled}
                     workerHighlightByDate={workerHighlightMap}
                     workerDropPlacementWindow={placementDropWindow}
+                    dropAvailabilityOpts={dropAvailabilityOpts}
                     onWorkerDropRejected={(msg) => setScheduleToast(msg)}
                     onShiftDragSessionStart={setDragSession}
                     onShiftDragSessionEnd={() => {
@@ -1628,6 +1672,7 @@ export function ScheduleApp() {
                     shiftDragEnabled={shiftDragEnabled}
                     workerHighlightByDate={workerHighlightMap}
                     workerDropPlacementWindow={placementDropWindow}
+                    dropAvailabilityOpts={dropAvailabilityOpts}
                     onWorkerDropRejected={(msg) => setScheduleToast(msg)}
                     onShiftDragSessionStart={setDragSession}
                     onShiftDragSessionEnd={() => {
@@ -1718,7 +1763,11 @@ export function ScheduleApp() {
         }
       />
 
-      <ScheduleSettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <ScheduleSettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        onAvailabilitySeeded={() => void reloadPulseSchedule()}
+      />
 
       <ScheduleTrashDropZone
         active={scheduleDragLock && shiftDragEnabled && dragSession?.kind === "shift"}

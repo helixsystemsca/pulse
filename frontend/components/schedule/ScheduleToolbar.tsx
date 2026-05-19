@@ -22,6 +22,8 @@ type Props = {
   onToggleProjectOverlay: () => void;
   /** When false, overlay toggle is hidden (RBAC). */
   projectOverlayAvailable?: boolean;
+  showAvailabilityOverlay?: boolean;
+  onToggleAvailabilityOverlay?: () => void;
   disabled?: boolean;
 };
 
@@ -72,6 +74,8 @@ export function ScheduleToolbar({
   showProjectOverlay,
   onToggleProjectOverlay,
   projectOverlayAvailable = true,
+  showAvailabilityOverlay = true,
+  onToggleAvailabilityOverlay,
   disabled,
 }: Props) {
   const navShell =
@@ -173,6 +177,26 @@ export function ScheduleToolbar({
                 title={showProjectOverlay ? "Hide project timeline overlay" : "Show project timeline overlay"}
               >
                 Project overlay
+              </button>
+            ) : null}
+            {onToggleAvailabilityOverlay ? (
+              <button
+                type="button"
+                onClick={onToggleAvailabilityOverlay}
+                className={cn(
+                  "rounded-lg border font-semibold transition-colors",
+                  compact ? "px-2.5 py-1.5 text-[11px]" : "px-3 py-2 text-xs",
+                  showAvailabilityOverlay
+                    ? "border-emerald-500/35 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200"
+                    : "border-pulseShell-border bg-white/80 text-ds-muted hover:text-ds-foreground dark:bg-slate-900/50",
+                )}
+                title={
+                  showAvailabilityOverlay
+                    ? "Hide per-day availability highlights while dragging"
+                    : "Show per-day availability highlights while dragging"
+                }
+              >
+                Show availability
               </button>
             ) : null}
           </div>

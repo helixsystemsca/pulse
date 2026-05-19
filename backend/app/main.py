@@ -60,6 +60,7 @@ from app.api.pm_task_routes import internal_router as pm_internal_router
 from app.api.pm_task_routes import router as pm_task_router
 from app.api.pm_task_routes import tools_router as pm_tools_router
 from app.api.pm_plans_routes import router as pm_plans_router
+from app.api.schedule_employee_availability_routes import router as schedule_employee_availability_router
 from app.api.schedule_internal_routes import router as schedule_internal_router
 from app.api.notification_internal_routes import router as notification_internal_router
 from app.api.gamification_routes import router as gamification_router
@@ -215,6 +216,7 @@ app.include_router(access_debug_router, prefix="/api/v1")
 app.include_router(core_router, prefix="/api/v1")
 app.include_router(realtime_router, prefix="/api/v1")
 app.include_router(pulse_router, prefix="/api/v1")
+app.include_router(schedule_employee_availability_router, prefix="/api/v1")
 app.include_router(maintenance_hub_router, prefix="/api/v1")
 app.include_router(routines_router, prefix="/api/v1")
 app.include_router(training_router, prefix="/api/v1")

@@ -1,0 +1,97 @@
+{
+  "period": { "year": 2026, "month": 6 },
+  "workers": [
+    {
+      "name": "Richard Trerice",
+      "recurring": [
+        { "weekday": 5, "status": "available", "start_time": "08:00", "end_time": "16:00", "notes": "Saturday day window" },
+        { "weekday": 6, "status": "conditional", "restriction_type": "days_only", "notes": "Sunday days only" }
+      ]
+    },
+    {
+      "name": "Douglas Smith",
+      "entries": [
+        { "date": "2026-06-05", "status": "available", "restriction_type": "overnight_only" },
+        { "date": "2026-06-11", "status": "available", "restriction_type": "overnight_only" },
+        { "date": "2026-06-12", "status": "available", "restriction_type": "overnight_only" },
+        { "date": "2026-06-20", "status": "available", "restriction_type": "overnight_only" },
+        { "date": "2026-06-26", "status": "available", "restriction_type": "overnight_only" }
+      ],
+      "unavailable_dates": ["2026-06-07", "2026-06-14"]
+    },
+    {
+      "name": "Dean Cristante",
+      "entries": [
+        { "date": "2026-06-04", "status": "conditional", "restriction_type": "gg_only" },
+        { "date": "2026-06-05", "status": "conditional", "restriction_type": "gg_only" },
+        { "date": "2026-06-12", "status": "conditional", "restriction_type": "gg_only" },
+        { "date": "2026-06-18", "status": "conditional", "restriction_type": "gg_only" },
+        { "date": "2026-06-25", "status": "conditional", "restriction_type": "gg_only" },
+        { "date": "2026-06-26", "status": "conditional", "restriction_type": "gg_only" }
+      ]
+    },
+    {
+      "name": "Charles Detheridge",
+      "recurring": [
+        { "weekday": 0, "status": "conditional", "restriction_type": "afternoons_only" },
+        { "weekday": 1, "status": "conditional", "restriction_type": "afternoons_only" },
+        { "weekday": 2, "status": "conditional", "restriction_type": "afternoons_only" },
+        { "weekday": 3, "status": "conditional", "restriction_type": "afternoons_only" },
+        { "weekday": 4, "status": "conditional", "restriction_type": "afternoons_only" }
+      ],
+      "entries": [
+        { "date": "2026-06-06", "status": "available", "restriction_type": "overnight_only" },
+        { "date": "2026-06-13", "status": "available", "restriction_type": "overnight_only" },
+        { "date": "2026-06-19", "status": "available", "restriction_type": "overnight_only" },
+        { "date": "2026-06-27", "status": "available", "restriction_type": "overnight_only" }
+      ],
+      "unavailable_dates": ["2026-06-21", "2026-06-22"]
+    },
+    {
+      "name": "Sebastien Latrille",
+      "recurring": [
+        { "weekday": 2, "status": "conditional", "restriction_type": "gg_only" },
+        { "weekday": 4, "status": "conditional", "restriction_type": "gg_only" },
+        { "weekday": 6, "status": "conditional", "restriction_type": "afternoons_only", "notes": "Sunday afternoons only" }
+      ],
+      "entries": [
+        { "date": "2026-06-09", "status": "conditional", "restriction_type": "gg_only" },
+        { "date": "2026-06-16", "status": "conditional", "restriction_type": "gg_only" },
+        { "date": "2026-06-23", "status": "conditional", "restriction_type": "gg_only" }
+      ]
+    },
+    {
+      "name": "Allen Lee",
+      "recurring": [
+        { "weekday": 1, "status": "available", "restriction_type": "overnight_only" },
+        { "weekday": 3, "status": "available", "restriction_type": "overnight_only" },
+        { "weekday": 5, "status": "available", "restriction_type": "overnight_only" }
+      ],
+      "unavailable_dates": ["2026-06-01", "2026-06-15", "2026-06-29"]
+    },
+    {
+      "name": "Terry Shuster",
+      "recurring": [
+        { "weekday": 0, "status": "available", "start_time": "08:00", "end_time": "16:00" },
+        { "weekday": 1, "status": "available", "start_time": "08:00", "end_time": "16:00" },
+        { "weekday": 2, "status": "available", "start_time": "08:00", "end_time": "16:00" },
+        { "weekday": 3, "status": "available", "start_time": "08:00", "end_time": "16:00" },
+        { "weekday": 4, "status": "available", "start_time": "08:00", "end_time": "16:00" }
+      ],
+      "unavailable_dates": ["2026-06-06", "2026-06-07"]
+    },
+    {
+      "name": "Josh Collins",
+      "open_pickup_all_june": true
+    },
+    {
+      "name": "Lisa Anderson",
+      "entries": [
+        { "date": "2026-06-02", "status": "open_pickup" },
+        { "date": "2026-06-10", "status": "open_pickup" },
+        { "date": "2026-06-17", "status": "open_pickup" }
+      ],
+      "unavailable_dates": ["2026-06-28", "2026-06-29", "2026-06-30"]
+    }
+  ]
+}
