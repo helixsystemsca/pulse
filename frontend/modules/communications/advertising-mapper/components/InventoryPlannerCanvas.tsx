@@ -61,8 +61,6 @@ type Props = {
   /** When false, minimap is rendered by SpatialWorkspaceShell. */
   showMinimap?: boolean;
   editorLightMode?: boolean;
-  /** When true, scroll wheel pans; zoom only with Ctrl/Cmd+wheel. */
-  wheelZoomRequiresModifier?: boolean;
   className?: string;
 };
 
@@ -71,6 +69,7 @@ const CURSOR_BY_MODE: Record<PlannerToolMode, string> = {
   inventory: "crosshair",
   constraint: "crosshair",
   pan: "grab",
+  zoom: "zoom-in",
   measure: "crosshair",
 };
 
@@ -100,7 +99,6 @@ export function InventoryPlannerCanvas({
   showFloatingHints = true,
   showMinimap = true,
   editorLightMode = false,
-  wheelZoomRequiresModifier = false,
   className,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -145,7 +143,7 @@ export function InventoryPlannerCanvas({
   useEffect(() => {
     const tr = transformerRef.current;
     const stage = stageRef.current;
-    if (!tr || !stage || toolMode === "pan" || toolMode === "constraint") {
+    if (!tr || !stage || toolMode === "pan" || toolMode === "zoom" || toolMode === "constraint") {
       tr?.nodes([]);
       tr?.getLayer()?.batchDraw();
       return;
@@ -206,10 +204,10 @@ export function InventoryPlannerCanvas({
 
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {
+      if (toolMode !== "pan" && toolMode !== "zoom") return;
       e.preventDefault();
-      const zoomWithWheel = !wheelZoomRequiresModifier || e.ctrlKey || e.metaKey;
 
-      if (zoomWithWheel) {
+      if (toolMode === "zoom") {
         const rect = containerRef.current?.getBoundingClientRect();
         if (!rect) return;
         const factor = e.deltaY > 0 ? 0.92 : 1.08;
@@ -225,13 +223,13 @@ export function InventoryPlannerCanvas({
         panY: viewport.panY - e.deltaY,
       });
     },
-    [viewport, onViewportChange, wheelZoomRequiresModifier],
+    [toolMode, viewport, onViewportChange],
   );
 
   const handleStageClick = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>) => {
       if (e.target !== e.target.getStage()) return;
-      if (toolMode === "pan") return;
+      if (toolMode === "pan" || toolMode === "zoom") return;
       if (toolMode === "constraint") {
         const pt = wallPointFromEvent(e.evt);
         if (!pt) return;
@@ -328,7 +326,7 @@ export function InventoryPlannerCanvas({
         width={stageSize.width}
         height={stageSize.height}
         onMouseDown={(e) => {
-          if (toolMode === "pan" || e.evt.button === 1 || e.evt.altKey) {
+          if (toolMode === "pan" && e.evt.button === 0) {
             panRef.current = {
               active: true,
               startX: e.evt.clientX,
@@ -433,7 +431,7 @@ export function InventoryPlannerCanvas({
         <p className="pointer-events-none absolute bottom-3 left-[11rem] z-20 max-w-md rounded-md bg-black/55 px-2 py-1 text-[10px] text-white/85">
           {toolMode === "constraint"
             ? "Click to place points · click first point to close · Enter finalize · Esc cancel"
-            : "Scroll zoom · Pan mode or Alt-drag · V/I/C/H tool shortcuts"}
+            : "Select Pan (H) or Zoom (Z) from toolbar · scroll/drag only when active · V/I/C shortcuts"}
         </p>
       ) : null}
     </div>

@@ -56,7 +56,7 @@ export function AdvertisingWallStrip({ walls, activeWallId, unit, onWallChange }
 }
 
 function shortWallName(name: string): string {
-  return name.replace(/\s+wall$/i, "").replace(/\s+end$/i, " End").replace(/\s+bowl$/i, " Bowl");
+  return name.trim();
 }
 
 function WallThumb({ wall }: { wall: FacilityWallPlan }) {

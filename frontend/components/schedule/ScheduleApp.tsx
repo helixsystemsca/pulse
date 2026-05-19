@@ -731,34 +731,16 @@ export function ScheduleApp() {
     if (!visibleDatesForScheduleMerge.length) return;
     setBuildingDraft(true);
     try {
-      const toMin = (t: string) => {
-        const [h, m] = t.split(":").map(Number);
-        return h * 60 + m;
-      };
-      const startMin = toMin(settings.workDayStart || "07:00");
-      const endMin = toMin(settings.workDayEnd || "15:00");
-
-      const slots = visibleDatesForScheduleMerge.map((date) => ({
-        date,
-        start_min: startMin,
-        end_min: endMin,
-        shift_type: "shift",
-        shift_definition_id: null,
-        shift_code: null,
-        required_certs: [] as string[],
-        facility_id: zones[0]?.id ?? null,
-      }));
-
-      const url = "/api/v1/pulse/schedule/draft";
-
+      const url = "/api/v1/pulse/schedule/draft/generate";
       const result = await apiFetch<DraftResult>(url, {
         method: "POST",
         json: {
-          slots,
           period_start: visibleDatesForScheduleMerge[0],
           period_end: visibleDatesForScheduleMerge[visibleDatesForScheduleMerge.length - 1],
           max_hours_per_worker: settings.staffing.maxHoursPerWorkerPerWeek || 160,
           fairness_enabled: true,
+          respect_locked: true,
+          default_facility_id: zones[0]?.id ?? null,
         },
       });
       setDraftResult(result);

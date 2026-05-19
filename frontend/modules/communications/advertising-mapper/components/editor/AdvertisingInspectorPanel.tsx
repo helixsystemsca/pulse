@@ -10,6 +10,7 @@ import { computeInventoryPricing } from "@/modules/communications/advertising-ma
 import { formatMeasurement, squareFeetFromInches } from "@/modules/communications/advertising-mapper/lib/measurements";
 import type { ConstraintRegion } from "@/modules/communications/advertising-mapper/geometry/types";
 import type { FacilityWallPlan, InventoryBlock, MeasurementUnit } from "@/modules/communications/advertising-mapper/types";
+import { WallBackdropUpload } from "@/modules/communications/advertising-mapper/components/editor/WallBackdropUpload";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
 
@@ -32,6 +33,11 @@ type Props = {
   onBlockChange: (id: string, patch: Partial<InventoryBlock>) => void;
   onConstraintUpdate: (id: string, patch: Partial<ConstraintRegion>) => void;
   onConstraintDelete: () => void;
+  onBackdropChange?: (patch: {
+    backdropUrl?: string;
+    backdropNaturalWidth?: number;
+    backdropNaturalHeight?: number;
+  }) => void;
 };
 
 export function AdvertisingInspectorPanel({
@@ -45,6 +51,7 @@ export function AdvertisingInspectorPanel({
   onBlockChange,
   onConstraintUpdate,
   onConstraintDelete,
+  onBackdropChange,
 }: Props) {
   const [tab, setTab] = useState<InspectorTab>("inventory");
   const [query, setQuery] = useState("");
@@ -144,7 +151,10 @@ export function AdvertisingInspectorPanel({
         ) : null}
 
         {tab === "layers" ? (
-          <div className="space-y-1 p-3">
+          <div className="space-y-3 p-3">
+            {onBackdropChange ? (
+              <WallBackdropUpload wall={wall} onBackdropChange={onBackdropChange} />
+            ) : null}
             <LayerToggle
               label="Backdrop"
               checked={layerVisibility.backdrop}

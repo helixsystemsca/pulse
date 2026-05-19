@@ -1,4 +1,4 @@
-import { Hand, MousePointer2, Package, Pentagon, Ruler } from "lucide-react";
+import { Hand, MousePointer2, Package, Pentagon, Ruler, ZoomIn } from "lucide-react";
 import type { SpatialWorkspaceDefinition } from "@/spatial-engine/workspace/types";
 
 export const ADVERTISING_WORKSPACE: SpatialWorkspaceDefinition = {
@@ -40,6 +40,14 @@ export const ADVERTISING_WORKSPACE: SpatialWorkspaceDefinition = {
       icon: Hand,
       hotkeys: [{ key: "h" }],
       cursor: "grab",
+    },
+    {
+      id: "zoom",
+      label: "Zoom",
+      group: "navigation",
+      icon: ZoomIn,
+      hotkeys: [{ key: "z" }],
+      cursor: "zoom-in",
     },
     {
       id: "inventory",

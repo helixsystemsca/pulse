@@ -56,6 +56,7 @@ export function AdvertisingWorkspaceView({
     onConstraintCreate,
     onConstraintDelete,
     addBlock,
+    updateWall,
   } = useAdvertisingSpatialRuntime(INITIAL_WALLS, MOCK_WALL_PLANS[0]!.id);
 
   const wall = wallDoc ?? INITIAL_WALLS[0]!;
@@ -158,11 +159,15 @@ export function AdvertisingWorkspaceView({
 
   const scalePercent = Math.round(viewport.scale * 100);
 
+  const canPanViewport = toolMode === "pan";
+  const canZoomViewport = toolMode === "zoom";
+
   const zoomFocal = useCallback(
     (factor: number) => {
+      if (!canZoomViewport) return;
       zoomBy(factor, 400, 300, RULER_THICKNESS_PX, RULER_THICKNESS_PX);
     },
-    [zoomBy],
+    [canZoomViewport, zoomBy],
   );
 
   const viewportWorld = useMemo(() => {
@@ -262,6 +267,7 @@ export function AdvertisingWorkspaceView({
             onBlockChange={onBlockChange}
             onConstraintUpdate={onConstraintChange}
             onConstraintDelete={handleConstraintDelete}
+            onBackdropChange={(patch) => updateWall(patch)}
           />
         }
         viewport={
@@ -273,6 +279,7 @@ export function AdvertisingWorkspaceView({
                 top: RULER_THICKNESS_PX + 8,
               }}
               scalePercent={scalePercent}
+              disabled={!canZoomViewport}
               onZoomIn={() => zoomFocal(1.12)}
               onZoomOut={() => zoomFocal(0.88)}
             />
@@ -302,7 +309,6 @@ export function AdvertisingWorkspaceView({
               showFloatingHints={false}
               showMinimap={false}
               editorLightMode
-              wheelZoomRequiresModifier
               className="h-full w-full"
             />
           </div>
@@ -313,16 +319,20 @@ export function AdvertisingWorkspaceView({
             blocks={wall.blocks}
             constraints={wall.constraints}
             viewportRect={viewportWorld}
-            onNavigate={(wx, wy) => {
-              const el = canvasContainerRef.current;
-              const w = el?.clientWidth ?? 800;
-              const h = el?.clientHeight ?? 520;
-              setViewport({
-                ...viewport,
-                panX: -(wx * BASE_PX_PER_INCH * viewport.scale) + (w - RULER_THICKNESS_PX) / 4,
-                panY: -(wy * BASE_PX_PER_INCH * viewport.scale) + (h - RULER_THICKNESS_PX) / 4,
-              });
-            }}
+            onNavigate={
+              canPanViewport
+                ? (wx, wy) => {
+                    const el = canvasContainerRef.current;
+                    const w = el?.clientWidth ?? 800;
+                    const h = el?.clientHeight ?? 520;
+                    setViewport({
+                      ...viewport,
+                      panX: -(wx * BASE_PX_PER_INCH * viewport.scale) + (w - RULER_THICKNESS_PX) / 4,
+                      panY: -(wy * BASE_PX_PER_INCH * viewport.scale) + (h - RULER_THICKNESS_PX) / 4,
+                    });
+                  }
+                : undefined
+            }
           />
         }
         floatingControls={
@@ -330,7 +340,9 @@ export function AdvertisingWorkspaceView({
             scalePercent={scalePercent}
             onZoomIn={() => zoomFocal(1.12)}
             onZoomOut={() => zoomFocal(0.88)}
-            onResetView={fitToWall}
+            onResetView={canPanViewport || canZoomViewport ? fitToWall : () => {}}
+            zoomDisabled={!canZoomViewport}
+            fitDisabled={!canPanViewport && !canZoomViewport}
             snapEnabled={snapEnabled}
             onSnapToggle={() => setSnapEnabled((v) => !v)}
             showGrid={showGrid}

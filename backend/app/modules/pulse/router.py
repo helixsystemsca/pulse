@@ -265,6 +265,10 @@ def _shift_to_out(
         task_priority=tp,
         routine_shift_band=routine_shift_band,
         department_slug=getattr(sh, "department_slug", None),
+        locked=bool(getattr(sh, "locked", False)),
+        generated_by=getattr(sh, "generated_by", None),
+        confidence_score=getattr(sh, "confidence_score", None),
+        recommendation_reason=getattr(sh, "recommendation_reason", None),
     )
 
 
@@ -981,7 +985,9 @@ class DraftAssignmentOut(BaseModel):
     user_id: str
     user_name: str
     score: float
-    warnings: list[str]
+    warnings: list[str] = []
+    confidence_score: float | None = None
+    recommendation_reason: str | None = None
 
 
 class DraftConflictOut(BaseModel):
@@ -991,10 +997,42 @@ class DraftConflictOut(BaseModel):
     reason: str
 
 
+class StaffingGapOut(BaseModel):
+    date: str
+    shift_type: str
+    message: str
+    shortfall: int
+    missing_certifications: list[str] = []
+
+
+class StaffingRequirementOut(BaseModel):
+    id: str
+    date: str
+    shift_type: str
+    required_count: int
+    required_certifications: list[str]
+    source: str
+    confidence_score: float
+
+
 class DraftResultOut(BaseModel):
     assignments: list[DraftAssignmentOut]
     conflicts: list[DraftConflictOut]
     total_slots: int
+    gaps: list[StaffingGapOut] = []
+    staffing_requirements: list[StaffingRequirementOut] = []
+    patterns_summary: dict = {}
+
+
+class GenerateDraftIn(BaseModel):
+    period_start: str
+    period_end: str
+    max_hours_per_worker: float = 160
+    fairness_enabled: bool = True
+    historical_lookback_days: int = 84
+    regenerate_dates: list[str] | None = None
+    respect_locked: bool = True
+    default_facility_id: str | None = None
 
 
 class BuildDraftIn(BaseModel):
@@ -1003,6 +1041,98 @@ class BuildDraftIn(BaseModel):
     period_end: str  # YYYY-MM-DD
     max_hours_per_worker: float = 160
     fairness_enabled: bool = True
+
+
+def _assignment_to_out(a) -> DraftAssignmentOut:
+    return DraftAssignmentOut(
+        slot_date=str(a.slot.date),
+        slot_start_min=a.slot.start_min,
+        slot_end_min=a.slot.end_min,
+        slot_shift_type=a.slot.shift_type,
+        shift_definition_id=a.slot.shift_definition_id,
+        shift_code=a.slot.shift_code,
+        facility_id=a.slot.facility_id,
+        user_id=a.user_id,
+        user_name=a.user_name,
+        score=round(a.score, 2),
+        warnings=a.warnings,
+        confidence_score=round(a.confidence_score, 3) if getattr(a, "confidence_score", None) else None,
+        recommendation_reason=getattr(a, "recommendation_reason", None),
+    )
+
+
+def _draft_result_to_out(result) -> DraftResultOut:
+    return DraftResultOut(
+        total_slots=result.total_slots,
+        assignments=[_assignment_to_out(a) for a in result.assignments],
+        conflicts=[
+            DraftConflictOut(
+                slot_date=str(c.slot.date),
+                slot_start_min=c.slot.start_min,
+                slot_shift_type=c.slot.shift_type,
+                reason=c.reason,
+            )
+            for c in result.conflicts
+        ],
+        gaps=[
+            StaffingGapOut(
+                date=g.date,
+                shift_type=g.shift_type,
+                message=g.message,
+                shortfall=g.shortfall,
+                missing_certifications=g.missing_certifications,
+            )
+            for g in getattr(result, "gaps", []) or []
+        ],
+        staffing_requirements=[
+            StaffingRequirementOut(
+                id=r.id,
+                date=r.date.isoformat(),
+                shift_type=r.shift_type,
+                required_count=r.required_count,
+                required_certifications=r.required_certifications,
+                source=r.source,
+                confidence_score=r.confidence_score,
+            )
+            for r in getattr(result, "staffing_requirements", []) or []
+        ],
+        patterns_summary=getattr(result, "patterns_summary", {}) or {},
+    )
+
+
+@router.post("/schedule/draft/generate", response_model=DraftResultOut)
+async def generate_schedule_draft(
+    body: GenerateDraftIn,
+    db: Db,
+    user: Annotated[User, Depends(require_manager_or_above)],
+) -> DraftResultOut:
+    """
+    Full draft pipeline: historical patterns → staffing demand → gap fill.
+    Recommendations only — does not publish.
+    """
+    from app.services.scheduling_engine import GenerateDraftOptions, SchedulingEngine
+
+    regen = None
+    if body.regenerate_dates:
+        regen = [date.fromisoformat(d) for d in body.regenerate_dates]
+
+    engine = SchedulingEngine()
+    result = await engine.generate(
+        db,
+        str(user.company_id),
+        GenerateDraftOptions(
+            period_start=date.fromisoformat(body.period_start),
+            period_end=date.fromisoformat(body.period_end),
+            max_hours_per_worker=body.max_hours_per_worker,
+            fairness_enabled=body.fairness_enabled,
+            historical_lookback_days=body.historical_lookback_days,
+            regenerate_dates=regen,
+            respect_locked=body.respect_locked,
+        ),
+        default_facility_id=body.default_facility_id,
+    )
+    await db.commit()
+    return _draft_result_to_out(result)
 
 
 @router.post("/schedule/draft", response_model=DraftResultOut)
@@ -1040,34 +1170,7 @@ async def build_schedule_draft(
         fairness_enabled=body.fairness_enabled,
     )
 
-    return DraftResultOut(
-        total_slots=result.total_slots,
-        assignments=[
-            DraftAssignmentOut(
-                slot_date=str(a.slot.date),
-                slot_start_min=a.slot.start_min,
-                slot_end_min=a.slot.end_min,
-                slot_shift_type=a.slot.shift_type,
-                shift_definition_id=a.slot.shift_definition_id,
-                shift_code=a.slot.shift_code,
-                facility_id=a.slot.facility_id,
-                user_id=a.user_id,
-                user_name=a.user_name,
-                score=round(a.score, 2),
-                warnings=a.warnings,
-            )
-            for a in result.assignments
-        ],
-        conflicts=[
-            DraftConflictOut(
-                slot_date=str(c.slot.date),
-                slot_start_min=c.slot.start_min,
-                slot_shift_type=c.slot.shift_type,
-                reason=c.reason,
-            )
-            for c in result.conflicts
-        ],
-    )
+    return _draft_result_to_out(result)
 
 
 class CommitDraftIn(BaseModel):
@@ -1106,7 +1209,10 @@ async def commit_schedule_draft(
             ends_at=ends_at,
             shift_type=a.slot_shift_type,
             shift_kind="workforce",
-            is_draft=False,
+            is_draft=True,
+            generated_by="scheduling_engine",
+            confidence_score=a.confidence_score,
+            recommendation_reason=a.recommendation_reason,
         )
         db.add(shift)
         created += 1

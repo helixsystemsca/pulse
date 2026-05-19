@@ -188,6 +188,7 @@ class ShiftUpdate(BaseModel):
     shift_definition_id: Optional[str] = None
     requires_supervisor: Optional[bool] = None
     requires_ticketed: Optional[bool] = None
+    locked: Optional[bool] = None
 
 
 class ShiftOut(BaseModel):
@@ -214,6 +215,10 @@ class ShiftOut(BaseModel):
     # day | afternoon | night — routine checklist variants; null if unknown.
     routine_shift_band: Optional[str] = None
     department_slug: Optional[str] = None
+    locked: bool = False
+    generated_by: Optional[str] = None
+    confidence_score: Optional[float] = None
+    recommendation_reason: Optional[str] = None
 
     model_config = {"from_attributes": True}
 

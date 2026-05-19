@@ -28,8 +28,10 @@ const VISIBILITY_MULTIPLIER: Record<VisibilityTier, number> = {
 };
 
 const ZONE_MULTIPLIER: Record<string, number> = {
-  "North Bowl": 1.25,
-  "South Bowl": 1.15,
+  Left: 1.2,
+  Center: 1.35,
+  Right: 1.2,
+  Scoreboard: 1.5,
   Concourse: 1,
   Lobby: 1.1,
   Exterior: 1.4,

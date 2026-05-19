@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "@/lib/cn";
 import { styleForConstraintType } from "@/modules/communications/advertising-mapper/geometry/constraint-styles";
 import { blockStyleForStatus } from "@/modules/communications/advertising-mapper/lib/block-styles";
 import type { ConstraintRegion } from "@/modules/communications/advertising-mapper/geometry/types";
@@ -25,8 +26,12 @@ export function PlannerMinimap({ wall, blocks, constraints = [], viewportRect, o
       <p className="mb-1 text-[9px] font-bold uppercase tracking-wide text-ds-muted">Overview</p>
       <button
         type="button"
-        className="relative block overflow-hidden rounded border border-ds-border/80 bg-[#1a1f2e]"
+        className={cn(
+          "relative block overflow-hidden rounded border border-ds-border/80 bg-[#1a1f2e]",
+          !onNavigate && "cursor-not-allowed opacity-60",
+        )}
         style={{ width: MAP_W, height: MAP_H }}
+        disabled={!onNavigate}
         onClick={(e) => {
           if (!onNavigate) return;
           const rect = e.currentTarget.getBoundingClientRect();

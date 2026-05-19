@@ -1516,6 +1516,10 @@ class PulseScheduleShift(Base):
     shift_code: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
     is_draft: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     published_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    locked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    generated_by: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    confidence_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    recommendation_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     shift_type: Mapped[str] = mapped_column(String(64), default="shift", nullable=False)
@@ -1814,6 +1818,32 @@ class NotificationLog(Base):
     sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     recipients_resolved: Mapped[list[Any]] = mapped_column(
         JSONB, nullable=False, server_default=text("'[]'::jsonb")
+    )
+
+
+class StaffingRequirement(Base):
+    """Operational staffing demand target (inferred or manual). Separate from assigned shifts."""
+
+    __tablename__ = "staffing_requirements"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    shift_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    required_count: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    required_certifications: Mapped[list[str]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'[]'::jsonb")
+    )
+    zone_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("zones.id", ondelete="SET NULL"), nullable=True
+    )
+    event_id: Mapped[Optional[str]] = mapped_column(UUID(as_uuid=False), nullable=True)
+    source: Mapped[str] = mapped_column(String(64), nullable=False, default="inferred")
+    confidence_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.5)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
     )
 
 
