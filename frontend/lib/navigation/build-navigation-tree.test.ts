@@ -132,7 +132,7 @@ describe("buildNavigationTree", () => {
       }),
     );
     const commsKeys =
-      comms.find((d) => d.domain === "Dashboards")?.groups.flatMap((g) => g.items.map((i) => i.key)) ?? [];
+      comms.find((d) => d.domain === "Communications")?.groups.flatMap((g) => g.items.map((i) => i.key)) ?? [];
     expect(commsKeys).toEqual(["dashboard_dept_communications"]);
   });
 
@@ -177,7 +177,10 @@ describe("buildNavigationTree", () => {
     const dashboardKeys =
       tree.find((d) => d.domain === "Dashboards")?.groups.flatMap((g) => g.items.map((i) => i.key)) ?? [];
     expect(dashboardKeys).not.toContain("team_insights");
-    expect(dashboardKeys).toContain("dashboard_dept_communications");
+    expect(dashboardKeys).not.toContain("dashboard_dept_communications");
+    const commsDashboardKeys =
+      tree.find((d) => d.domain === "Communications")?.groups.flatMap((g) => g.items.map((i) => i.key)) ?? [];
+    expect(commsDashboardKeys).toContain("dashboard_dept_communications");
     const standardsKeys =
       tree.find((d) => d.domain === "Standards")?.groups.flatMap((g) => g.items.map((i) => i.key)) ?? [];
     expect(standardsKeys).not.toContain("team_insights");

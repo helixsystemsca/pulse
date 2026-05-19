@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-from app.core.features.canonical_catalog import CANONICAL_PRODUCT_FEATURES
+from app.core.features.canonical_catalog import (
+    CANONICAL_PRODUCT_FEATURES,
+    _CANONICAL_TO_CONTRACT,
+    to_canonical_feature_key,
+)
 
 _DASHBOARD_SURFACE_KEYS = frozenset(
     k for k in CANONICAL_PRODUCT_FEATURES if k == "dashboard" or k.startswith("dashboard_")
@@ -43,8 +47,16 @@ def augment_canonical_dashboard_grants(
     grants = _BASELINE_SLOT_DASHBOARD_GRANTS.get((department, slot))
     if not grants:
         return canonical_features
+    contract_set = set(contract_canonical)
     out = set(canonical_features)
     for key in grants:
-        if key in contract_canonical:
+        if key in contract_set:
             out.add(key)
+            continue
+        # Tenant contracts often store only the parent module (`dashboard`), not each flyout key.
+        parent_contract = _CANONICAL_TO_CONTRACT.get(key)
+        if parent_contract:
+            parent_canonical = to_canonical_feature_key(parent_contract)
+            if parent_canonical and parent_canonical in contract_set:
+                out.add(key)
     return sorted(out)

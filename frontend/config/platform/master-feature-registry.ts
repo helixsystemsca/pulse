@@ -14,6 +14,20 @@ import type { ModuleCategory } from "@/config/platform/module-categories";
 import type { NavDomain } from "@/config/platform/nav-domains";
 import type { PlatformIconKey } from "@/config/platform/types";
 
+/** Department blank dashboards appear in the owning workflow domain (Communications, Aquatics, …). */
+function navDomainForDepartmentDashboard(ownershipDepartment?: string): NavDomain {
+  const slug = (ownershipDepartment ?? "").trim().toLowerCase();
+  const map: Record<string, NavDomain> = {
+    communications: "Communications",
+    aquatics: "Aquatics",
+    reception: "Reception",
+    fitness: "Fitness",
+    racquets: "Racquets",
+    admin: "Administration",
+  };
+  return map[slug] ?? "Dashboards";
+}
+
 export type MasterFeatureIcon =
   | PlatformIconKey
   | "activity"
@@ -243,9 +257,9 @@ export const MASTER_FEATURES: readonly MasterFeatureDef[] = [
     rbacAnyOf: [...dashboardRbacAnyOf(d.viewPermission)],
     navVisible: true,
     sortOrder: d.sortOrder,
-    navDomain: "Dashboards" as const,
-    navGroup: d.navGroup,
-    navOrder: d.sortOrder,
+    navDomain: navDomainForDepartmentDashboard(d.ownershipDepartment),
+    navGroup: "Dashboard",
+    navOrder: 5,
     dashboardScope: "department" as const,
     ownershipDepartment: d.ownershipDepartment,
     navAlias: true,
