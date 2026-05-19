@@ -1,4 +1,4 @@
-import { StandardsCertificationsApp } from "@/components/standards/StandardsCertificationsApp";
+import { redirect } from "next/navigation";
 
 export const metadata = {
   title: "Certifications · Standards",
@@ -6,5 +6,5 @@ export const metadata = {
 };
 
 export default function StandardsCertificationsPage() {
-  return <StandardsCertificationsApp />;
+  redirect("/standards/training/certifications");
 }

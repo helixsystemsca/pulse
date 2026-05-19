@@ -29,7 +29,7 @@ export function TrainingLearningApp() {
           </div>
         </div>
         <Link
-          href="/standards/compliance"
+          href="/standards/training/compliance"
           className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-ds-border bg-ds-muted/20 px-3 py-2 text-sm font-semibold text-ds-foreground hover:bg-ds-muted/40"
         >
           <ShieldCheck className="h-4 w-4" aria-hidden />

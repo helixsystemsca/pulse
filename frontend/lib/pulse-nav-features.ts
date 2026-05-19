@@ -29,7 +29,11 @@ export function featureKeyForTenantNavHref(href: string): string | undefined {
   if (href === "/pm/planning" || href.startsWith("/pm/")) return "projects";
   if (href === "/dashboard/work-requests" || href.startsWith("/dashboard/work-requests")) return "work_requests";
   if (href === "/dashboard/maintenance" || href.startsWith("/dashboard/maintenance")) return "work_requests";
-  if (href === "/standards/training" || href.startsWith("/standards/training/")) return "standards_training";
+  if (href === "/standards/training" || href.startsWith("/standards/training/")) {
+    if (href.includes("/certifications")) return "standards_certifications";
+    if (href.includes("/compliance")) return "standards_compliance";
+    return "standards_training";
+  }
   if (href === "/standards/certifications" || href.startsWith("/standards/certifications/")) {
     return "standards_certifications";
   }

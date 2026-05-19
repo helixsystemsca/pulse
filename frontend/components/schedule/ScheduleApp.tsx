@@ -1136,7 +1136,6 @@ export function ScheduleApp() {
     setCursor({ y: td.getFullYear(), m: td.getMonth() });
   }
 
-  const session = readSession();
   const canViewProjectOverlays =
     Boolean(session) &&
     (can(session, "scheduling.project_overlays.view") || can(session, "schedule.view"));

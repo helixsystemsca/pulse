@@ -233,6 +233,11 @@ export async function patchProject(
     metrics: string | null;
     lessons_learned: string | null;
     repopulation_frequency: string | null;
+    show_on_schedule: boolean;
+    overlay_color: string | null;
+    operational_impact_level: "low" | "medium" | "high" | "critical";
+    staffing_priority: "low" | "normal" | "high" | "critical";
+    blackout_windows: { start_date: string; end_date: string; label?: string | null }[] | null;
   }>,
 ): Promise<ProjectRow> {
   return apiFetch<ProjectRow>(`/api/v1/projects/${id}`, { method: "PATCH", json: patch });
@@ -252,6 +257,11 @@ export async function createProject(body: {
   template_id?: string | null;
   category_id?: string | null;
   repopulation_frequency?: string | null;
+  show_on_schedule?: boolean;
+  overlay_color?: string | null;
+  operational_impact_level?: "low" | "medium" | "high" | "critical";
+  staffing_priority?: "low" | "normal" | "high" | "critical";
+  blackout_windows?: { start_date: string; end_date: string; label?: string | null }[] | null;
 }): Promise<ProjectRow> {
   const row = await apiFetch<Omit<ProjectRow, "task_total" | "task_completed" | "progress_pct" | "assignee_user_ids">>(
     "/api/v1/projects",

@@ -47,6 +47,95 @@ const FIELD =
   "mt-1.5 w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100";
 const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-muted";
 
+type ImpactLevel = "low" | "medium" | "high" | "critical";
+type StaffingPriority = "low" | "normal" | "high" | "critical";
+
+function ScheduleOverlayFields({
+  idPrefix,
+  showOnSchedule,
+  onShowOnScheduleChange,
+  overlayColor,
+  onOverlayColorChange,
+  impact,
+  onImpactChange,
+  staffingPriority,
+  onStaffingPriorityChange,
+}: {
+  idPrefix: string;
+  showOnSchedule: boolean;
+  onShowOnScheduleChange: (v: boolean) => void;
+  overlayColor: string;
+  onOverlayColorChange: (v: string) => void;
+  impact: ImpactLevel;
+  onImpactChange: (v: ImpactLevel) => void;
+  staffingPriority: StaffingPriority;
+  onStaffingPriorityChange: (v: StaffingPriority) => void;
+}) {
+  return (
+    <div className="rounded-xl border border-slate-200/90 p-4 dark:border-ds-border">
+      <p className="text-xs font-bold uppercase tracking-wider text-pulse-muted">Schedule overlay</p>
+      <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm font-medium text-pulse-navy dark:text-slate-100">
+        <input type="checkbox" checked={showOnSchedule} onChange={(e) => onShowOnScheduleChange(e.target.checked)} />
+        Show on schedule timeline
+      </label>
+      <div className="mt-3">
+        <label className={LABEL} htmlFor={`${idPrefix}-overlay-color`}>
+          Overlay color
+        </label>
+        <div className="mt-1.5 flex items-center gap-2">
+          <input
+            id={`${idPrefix}-overlay-color`}
+            type="color"
+            className="h-10 w-14 cursor-pointer rounded border border-slate-200 dark:border-ds-border"
+            value={overlayColor || "#3b82f6"}
+            onChange={(e) => onOverlayColorChange(e.target.value)}
+          />
+          <input
+            className={FIELD}
+            value={overlayColor}
+            onChange={(e) => onOverlayColorChange(e.target.value)}
+            placeholder="#3b82f6"
+          />
+        </div>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-3">
+        <div>
+          <label className={LABEL} htmlFor={`${idPrefix}-impact`}>
+            Operational impact
+          </label>
+          <select
+            id={`${idPrefix}-impact`}
+            className={FIELD}
+            value={impact}
+            onChange={(e) => onImpactChange(e.target.value as ImpactLevel)}
+          >
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="critical">Critical</option>
+          </select>
+        </div>
+        <div>
+          <label className={LABEL} htmlFor={`${idPrefix}-staff-pri`}>
+            Staffing priority
+          </label>
+          <select
+            id={`${idPrefix}-staff-pri`}
+            className={FIELD}
+            value={staffingPriority}
+            onChange={(e) => onStaffingPriorityChange(e.target.value as StaffingPriority)}
+          >
+            <option value="low">Low</option>
+            <option value="normal">Normal</option>
+            <option value="high">High</option>
+            <option value="critical">Critical</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function displayName(w: PulseWorkerApi): string {
   return (w.full_name || w.email || "User").trim();
 }
@@ -1148,6 +1237,17 @@ export function ProjectsApp() {
                   ))}
                 </select>
               </div>
+              <ScheduleOverlayFields
+                showOnSchedule={formShowOnSchedule}
+                onShowOnScheduleChange={setFormShowOnSchedule}
+                overlayColor={formOverlayColor}
+                onOverlayColorChange={setFormOverlayColor}
+                impact={formImpact}
+                onImpactChange={setFormImpact}
+                staffingPriority={formStaffingPriority}
+                onStaffingPriorityChange={setFormStaffingPriority}
+                idPrefix="cp"
+              />
             </div>
             <div className="mt-6 flex flex-wrap justify-end gap-3">
               <button
@@ -1495,6 +1595,17 @@ export function ProjectsApp() {
                   placeholder="Optional summary for your team"
                 />
               </div>
+              <ScheduleOverlayFields
+                showOnSchedule={formShowOnSchedule}
+                onShowOnScheduleChange={setFormShowOnSchedule}
+                overlayColor={formOverlayColor}
+                onOverlayColorChange={setFormOverlayColor}
+                impact={formImpact}
+                onImpactChange={setFormImpact}
+                staffingPriority={formStaffingPriority}
+                onStaffingPriorityChange={setFormStaffingPriority}
+                idPrefix="ep"
+              />
             </div>
             <div className="mt-6 flex flex-wrap justify-end gap-3">
               <button

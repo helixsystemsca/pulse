@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { TrainingLearningApp } from "@/components/training/TrainingLearningApp";
+import { WorkforceTrainingShell } from "@/components/standards/workforce-training/WorkforceTrainingShell";
 
 export const metadata: Metadata = {
-  title: "Training | Standards | Panorama",
-  description: "Assigned learning, onboarding, and completion progress.",
+  title: "Workforce qualifications | Standards | Panorama",
+  description: "Operational workforce compliance, certifications, and readiness.",
 };
 
 export default function StandardsTrainingPage() {
-  return <TrainingLearningApp />;
+  return <WorkforceTrainingShell section="overview" />;
 }

@@ -90,7 +90,7 @@ export function WorkerTrainingMatrixPanel({
         {loading ? <p className="mt-2 text-xs text-ds-muted">Loading training…</p> : null}
         {loadErr ? <p className="mt-2 text-xs font-semibold text-ds-danger">Could not load training: {loadErr}</p> : null}
         <p className="mt-2">
-          <Link href="/standards/compliance" className="ds-link text-xs font-semibold">
+          <Link href="/standards/training/compliance" className="ds-link text-xs font-semibold">
             Open Standards → Training →
           </Link>
         </p>

@@ -10,7 +10,7 @@ export function StandardsLayoutClient({ children }: { children: React.ReactNode 
     <div className="space-y-6">
       <PageHeader
         title="Standards"
-        description="Procedures, assigned learning, structured certifications, and workforce compliance readiness."
+        description="Procedures, workforce qualifications, certifications, and operational compliance readiness."
         icon={ListChecks}
       />
       <PageBody>{children}</PageBody>
