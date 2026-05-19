@@ -167,6 +167,7 @@ class InventoryVendorOut(BaseModel):
 
     id: str
     company_id: str
+    department_slug: str = "maintenance"
     name: str
     contact_name: Optional[str] = None
     contact_email: Optional[str] = None
@@ -188,6 +189,7 @@ class InventoryVendorOut(BaseModel):
 
 
 class InventoryVendorCreateIn(BaseModel):
+    department_slug: Optional[str] = Field(None, max_length=64)
     name: str = Field(..., min_length=1, max_length=255)
     contact_name: Optional[str] = Field(None, max_length=255)
     contact_email: Optional[str] = Field(None, max_length=255)
@@ -230,6 +232,7 @@ class InventoryContractorOut(BaseModel):
 
     id: str
     company_id: str
+    department_slug: str = "maintenance"
     name: str
     contact_name: Optional[str] = None
     contact_email: Optional[str] = None
@@ -251,6 +254,7 @@ class InventoryContractorOut(BaseModel):
 
 
 class InventoryContractorCreateIn(BaseModel):
+    department_slug: Optional[str] = Field(None, max_length=64)
     name: str = Field(..., min_length=1, max_length=255)
     contact_name: Optional[str] = Field(None, max_length=255)
     contact_email: Optional[str] = Field(None, max_length=255)
@@ -270,6 +274,7 @@ class InventoryContractorCreateIn(BaseModel):
 
 
 class InventoryContractorPatchIn(BaseModel):
+    department_slug: Optional[str] = Field(None, max_length=64)
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     contact_name: Optional[str] = Field(None, max_length=255)
     contact_email: Optional[str] = Field(None, max_length=255)

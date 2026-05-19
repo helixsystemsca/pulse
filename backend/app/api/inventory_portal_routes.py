@@ -16,7 +16,13 @@ from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db, require_any_rbac
-from app.core.inventory.policy import EffectiveInventoryPolicy, resolve_effective_inventory_policy
+from app.core.inventory.policy import (
+    EffectiveInventoryPolicy,
+    inventory_department_slugs_for_user,
+    resolve_effective_inventory_policy,
+)
+from app.core.permission_feature_matrix import permission_matrix_department_for_user
+from app.models.pulse_models import PulseWorkerHR
 from app.core.user_roles import user_has_any_role
 from app.models.domain import (
     InventoryContractor,
@@ -361,6 +367,55 @@ async def patch_inv_settings(
     return InventorySettingsOut(settings=base)
 
 
+async def _resolve_directory_department_slug(
+    db: AsyncSession,
+    user: User,
+    policy: EffectiveInventoryPolicy,
+    cid: str,
+    requested: Optional[str],
+) -> str:
+    if requested and str(requested).strip():
+        ds = _normalize_department_slug(str(requested))
+        if not policy.is_company_admin:
+            allowed = await inventory_department_slugs_for_user(db, user, cid)
+            if ds not in allowed:
+                raise HTTPException(status_code=403, detail="Department access denied")
+        return ds
+    if policy.is_company_admin:
+        return "maintenance"
+    allowed = await inventory_department_slugs_for_user(db, user, cid)
+    if len(allowed) == 1:
+        return _normalize_department_slug(next(iter(allowed)))
+    hr_row = await db.execute(select(PulseWorkerHR).where(PulseWorkerHR.user_id == user.id))
+    hr = hr_row.scalar_one_or_none()
+    return _normalize_department_slug(permission_matrix_department_for_user(user, hr))
+
+
+async def _apply_directory_department_filter(
+    db: AsyncSession,
+    user: User,
+    policy: EffectiveInventoryPolicy,
+    cid: str,
+    conds: list[Any],
+    model: type,
+    department_slug: Optional[str],
+) -> None:
+    if policy.is_company_admin:
+        if department_slug and department_slug.strip():
+            conds.append(model.department_slug == _normalize_department_slug(department_slug))
+        return
+    allowed = await inventory_department_slugs_for_user(db, user, cid)
+    if department_slug and department_slug.strip():
+        ds = _normalize_department_slug(department_slug)
+        if ds not in allowed:
+            raise HTTPException(status_code=403, detail="Department access denied")
+        conds.append(model.department_slug == ds)
+    elif len(allowed) == 1:
+        conds.append(model.department_slug == _normalize_department_slug(next(iter(allowed))))
+    else:
+        conds.append(model.department_slug.in_([_normalize_department_slug(s) for s in allowed]))
+
+
 def _vendor_ilike(column: Any, raw: Optional[str]) -> Optional[Any]:
     if raw is None:
         return None
@@ -374,8 +429,10 @@ def _vendor_ilike(column: Any, raw: Optional[str]) -> Optional[Any]:
 @router.get("/vendors", response_model=list[InventoryVendorOut])
 async def list_inventory_vendors(
     db: Db,
-    _: InvUser,
+    user: InvUser,
     cid: CompanyId,
+    policy: InventoryPolicyDep,
+    department_slug: Optional[str] = Query(None, description="Filter by workspace department slug"),
     name_contains: Optional[str] = Query(None),
     contact_name_contains: Optional[str] = Query(None),
     contact_email_contains: Optional[str] = Query(None),
@@ -418,6 +475,7 @@ async def list_inventory_vendors(
             conds.append(clause)
     if active is not None:
         conds.append(InventoryVendor.is_active.is_(bool(active)))
+    await _apply_directory_department_filter(db, user, policy, cid, conds, InventoryVendor, department_slug)
 
     stmt = (
         select(InventoryVendor)
@@ -432,14 +490,17 @@ async def list_inventory_vendors(
 @router.post("/vendors", response_model=InventoryVendorOut, status_code=status.HTTP_201_CREATED)
 async def create_inventory_vendor(
     db: Db,
-    _: InvUser,
+    user: InvUser,
     cid: CompanyId,
+    policy: InventoryPolicyDep,
     body: InventoryVendorCreateIn,
 ) -> InventoryVendorOut:
+    dept = await _resolve_directory_department_slug(db, user, policy, cid, body.department_slug)
     now = datetime.now(timezone.utc)
     row = InventoryVendor(
         id=str(uuid4()),
         company_id=cid,
+        department_slug=dept,
         name=body.name.strip(),
         contact_name=(body.contact_name or "").strip() or None,
         contact_email=(body.contact_email or "").strip() or None,
@@ -468,15 +529,24 @@ async def create_inventory_vendor(
 @router.patch("/vendors/{vendor_id}", response_model=InventoryVendorOut)
 async def patch_inventory_vendor(
     db: Db,
-    _: InvUser,
+    user: InvUser,
     cid: CompanyId,
+    policy: InventoryPolicyDep,
     vendor_id: str,
     body: InventoryVendorPatchIn,
 ) -> InventoryVendorOut:
     row = await db.get(InventoryVendor, vendor_id)
     if not row or row.company_id != cid:
         raise HTTPException(status_code=404, detail="Not found")
+    if not policy.is_company_admin:
+        allowed = await inventory_department_slugs_for_user(db, user, cid)
+        if row.department_slug not in allowed:
+            raise HTTPException(status_code=403, detail="Department access denied")
     data = body.model_dump(exclude_unset=True)
+    if "department_slug" in data and data["department_slug"] is not None:
+        row.department_slug = await _resolve_directory_department_slug(
+            db, user, policy, cid, str(data.pop("department_slug"))
+        )
     if "name" in data and data["name"] is not None:
         row.name = str(data["name"]).strip()
     str_fields = (
@@ -509,10 +579,20 @@ async def patch_inventory_vendor(
 
 
 @router.delete("/vendors/{vendor_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_inventory_vendor(db: Db, _: InvUser, cid: CompanyId, vendor_id: str) -> None:
+async def delete_inventory_vendor(
+    db: Db,
+    user: InvUser,
+    cid: CompanyId,
+    policy: InventoryPolicyDep,
+    vendor_id: str,
+) -> None:
     row = await db.get(InventoryVendor, vendor_id)
     if not row or row.company_id != cid:
         raise HTTPException(status_code=404, detail="Not found")
+    if not policy.is_company_admin:
+        allowed = await inventory_department_slugs_for_user(db, user, cid)
+        if row.department_slug not in allowed:
+            raise HTTPException(status_code=403, detail="Department access denied")
     await db.execute(delete(InventoryVendor).where(InventoryVendor.id == vendor_id))
     await db.commit()
 
@@ -520,8 +600,10 @@ async def delete_inventory_vendor(db: Db, _: InvUser, cid: CompanyId, vendor_id:
 @router.get("/contractors", response_model=list[InventoryContractorOut])
 async def list_inventory_contractors(
     db: Db,
-    _: InvUser,
+    user: InvUser,
     cid: CompanyId,
+    policy: InventoryPolicyDep,
+    department_slug: Optional[str] = Query(None, description="Filter by workspace department slug"),
     name_contains: Optional[str] = Query(None),
     contact_name_contains: Optional[str] = Query(None),
     contact_email_contains: Optional[str] = Query(None),
@@ -564,6 +646,7 @@ async def list_inventory_contractors(
             conds.append(clause)
     if active is not None:
         conds.append(InventoryContractor.is_active.is_(bool(active)))
+    await _apply_directory_department_filter(db, user, policy, cid, conds, InventoryContractor, department_slug)
 
     stmt = (
         select(InventoryContractor)
@@ -578,14 +661,17 @@ async def list_inventory_contractors(
 @router.post("/contractors", response_model=InventoryContractorOut, status_code=status.HTTP_201_CREATED)
 async def create_inventory_contractor(
     db: Db,
-    _: InvUser,
+    user: InvUser,
     cid: CompanyId,
+    policy: InventoryPolicyDep,
     body: InventoryContractorCreateIn,
 ) -> InventoryContractorOut:
+    dept = await _resolve_directory_department_slug(db, user, policy, cid, body.department_slug)
     now = datetime.now(timezone.utc)
     row = InventoryContractor(
         id=str(uuid4()),
         company_id=cid,
+        department_slug=dept,
         name=body.name.strip(),
         contact_name=(body.contact_name or "").strip() or None,
         contact_email=(body.contact_email or "").strip() or None,
@@ -614,15 +700,24 @@ async def create_inventory_contractor(
 @router.patch("/contractors/{contractor_id}", response_model=InventoryContractorOut)
 async def patch_inventory_contractor(
     db: Db,
-    _: InvUser,
+    user: InvUser,
     cid: CompanyId,
+    policy: InventoryPolicyDep,
     contractor_id: str,
     body: InventoryContractorPatchIn,
 ) -> InventoryContractorOut:
     row = await db.get(InventoryContractor, contractor_id)
     if not row or row.company_id != cid:
         raise HTTPException(status_code=404, detail="Not found")
+    if not policy.is_company_admin:
+        allowed = await inventory_department_slugs_for_user(db, user, cid)
+        if row.department_slug not in allowed:
+            raise HTTPException(status_code=403, detail="Department access denied")
     data = body.model_dump(exclude_unset=True)
+    if "department_slug" in data and data["department_slug"] is not None:
+        row.department_slug = await _resolve_directory_department_slug(
+            db, user, policy, cid, str(data.pop("department_slug"))
+        )
     if "name" in data and data["name"] is not None:
         row.name = str(data["name"]).strip()
     str_fields = (
@@ -655,10 +750,20 @@ async def patch_inventory_contractor(
 
 
 @router.delete("/contractors/{contractor_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_inventory_contractor(db: Db, _: InvUser, cid: CompanyId, contractor_id: str) -> None:
+async def delete_inventory_contractor(
+    db: Db,
+    user: InvUser,
+    cid: CompanyId,
+    policy: InventoryPolicyDep,
+    contractor_id: str,
+) -> None:
     row = await db.get(InventoryContractor, contractor_id)
     if not row or row.company_id != cid:
         raise HTTPException(status_code=404, detail="Not found")
+    if not policy.is_company_admin:
+        allowed = await inventory_department_slugs_for_user(db, user, cid)
+        if row.department_slug not in allowed:
+            raise HTTPException(status_code=403, detail="Department access denied")
     await db.execute(delete(InventoryContractor).where(InventoryContractor.id == contractor_id))
     await db.commit()
 

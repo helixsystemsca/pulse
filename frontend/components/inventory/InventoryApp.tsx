@@ -51,6 +51,10 @@ import { canAccessCompanyConfiguration } from "@/lib/pulse-roles";
 import { fetchWorkRequestList } from "@/lib/workRequestsService";
 import { InventoryContractorsPanel } from "@/components/inventory/InventoryContractorsPanel";
 import { InventoryVendorsPanel } from "@/components/inventory/InventoryVendorsPanel";
+import {
+  defaultInventoryDepartmentFromSession,
+  inventoryShowsContractorsTab,
+} from "@/lib/inventory-department";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
 import { getDepartmentBySlug, PLATFORM_DEPARTMENTS } from "@/config/platform/departments";
@@ -244,6 +248,7 @@ export function InventoryApp() {
   const sessionCompanyId = session?.company_id ?? null;
   const canViewInventory = can("inventory.view") || can("inventory.manage");
   const canMutateInventory = can("inventory.manage");
+  const userInventoryDepartment = defaultInventoryDepartmentFromSession(session);
 
   const [companyPick, setCompanyPick] = useState<string | null>(null);
   const [companies, setCompanies] = useState<CompanyOption[]>([]);
@@ -252,6 +257,15 @@ export function InventoryApp() {
   const apiCompany = isSystemAdmin ? effectiveCompanyId : null;
 
   const [inventoryTab, setInventoryTab] = useState<"items" | "vendors" | "contractors">("items");
+  const [departmentFilter, setDepartmentFilter] = useState(() => (canConfigureOrg ? "" : userInventoryDepartment));
+  const directoryDepartmentSlug = canConfigureOrg ? departmentFilter || undefined : userInventoryDepartment;
+  const showContractorsTab = inventoryShowsContractorsTab(directoryDepartmentSlug ?? userInventoryDepartment);
+
+  useEffect(() => {
+    if (!showContractorsTab && inventoryTab === "contractors") {
+      setInventoryTab("items");
+    }
+  }, [showContractorsTab, inventoryTab]);
 
   const [q, setQ] = useState("");
   const [qDebounced, setQDebounced] = useState("");
@@ -259,7 +273,6 @@ export function InventoryApp() {
   const [typeFilter, setTypeFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [zoneFilter, setZoneFilter] = useState("");
-  const [departmentFilter, setDepartmentFilter] = useState("");
   const [scopeAdminFilter, setScopeAdminFilter] = useState("");
   const [scopeOptions, setScopeOptions] = useState<{ id: string; name: string; slug: string }[]>([]);
   const [dateFrom, setDateFrom] = useState("");
@@ -564,6 +577,7 @@ export function InventoryApp() {
   function openCreate() {
     setEditMode("create");
     setEditTargetId(null);
+    const dept = directoryDepartmentSlug ?? userInventoryDepartment;
     setForm({
       name: "",
       sku: "",
@@ -575,7 +589,7 @@ export function InventoryApp() {
       zone_id: "",
       assigned_user_id: "",
       linked_tool_id: "",
-      department_slug: "maintenance",
+      department_slug: dept,
       condition: "good",
       unit_cost: "",
       vendor: "",
@@ -1000,26 +1014,28 @@ export function InventoryApp() {
               <Truck className="h-4 w-4" aria-hidden />
               Vendors
             </button>
-            <button
-              type="button"
-              onClick={() => setInventoryTab("contractors")}
-              className={`inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition ${
-                inventoryTab === "contractors"
-                  ? "bg-ds-accent text-ds-accent-foreground shadow-sm"
-                  : "text-pulse-muted hover:bg-ds-interactive-hover dark:hover:bg-ds-interactive-hover"
-              }`}
-            >
-              <HardHat className="h-4 w-4" aria-hidden />
-              Contractors
-            </button>
+            {showContractorsTab ? (
+              <button
+                type="button"
+                onClick={() => setInventoryTab("contractors")}
+                className={`inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition ${
+                  inventoryTab === "contractors"
+                    ? "bg-ds-accent text-ds-accent-foreground shadow-sm"
+                    : "text-pulse-muted hover:bg-ds-interactive-hover dark:hover:bg-ds-interactive-hover"
+                }`}
+              >
+                <HardHat className="h-4 w-4" aria-hidden />
+                Contractors
+              </button>
+            ) : null}
           </div>
 
           {inventoryTab === "vendors" ? (
-            <InventoryVendorsPanel apiCompany={apiCompany} />
+            <InventoryVendorsPanel apiCompany={apiCompany} departmentSlug={directoryDepartmentSlug} />
           ) : null}
 
-          {inventoryTab === "contractors" ? (
-            <InventoryContractorsPanel apiCompany={apiCompany} />
+          {inventoryTab === "contractors" && showContractorsTab ? (
+            <InventoryContractorsPanel apiCompany={apiCompany} departmentSlug={directoryDepartmentSlug} />
           ) : null}
 
           {inventoryTab === "items" && sum ? (

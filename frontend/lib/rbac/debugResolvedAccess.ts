@@ -127,7 +127,7 @@ export function logSidebarResolution(session: PulseAuthSession | null): void {
     })),
   );
   console.log("department hub (communications) allowed:", audit.department_hub_allowed);
-  console.log("publication builder:", audit.publication_builder);
+  console.log("Xplor → InDesign pipeline:", audit.indesign_pipeline);
   console.groupEnd();
 }
 

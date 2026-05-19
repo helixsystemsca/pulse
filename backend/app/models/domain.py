@@ -635,6 +635,7 @@ class InventoryVendor(Base):
     postal_code: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     country: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    department_slug: Mapped[str] = mapped_column(String(64), nullable=False, default="maintenance", index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
     )
@@ -670,6 +671,7 @@ class InventoryContractor(Base):
     postal_code: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     country: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    department_slug: Mapped[str] = mapped_column(String(64), nullable=False, default="maintenance", index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
     )

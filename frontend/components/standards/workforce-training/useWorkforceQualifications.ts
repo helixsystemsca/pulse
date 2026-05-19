@@ -53,7 +53,7 @@ export function useWorkforceQualifications() {
     } finally {
       setLoading(false);
     }
-  }, [api, session?.company_id]);
+  }, [api, session]);
 
   useEffect(() => {
     void load();

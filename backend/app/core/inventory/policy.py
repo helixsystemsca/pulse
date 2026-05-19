@@ -149,3 +149,17 @@ async def resolve_effective_inventory_policy(
     read, write = _apply_overrides(read, write, overrides)
     xfer = set(write)
     return EffectiveInventoryPolicy(read, write, xfer, False)
+
+
+async def inventory_department_slugs_for_user(
+    db: AsyncSession,
+    user: User,
+    company_id: str,
+) -> set[str]:
+    """Workspace department slugs this user may access for inventory directory partitions."""
+    hr_row = await db.execute(select(PulseWorkerHR).where(PulseWorkerHR.user_id == user.id))
+    hr = hr_row.scalar_one_or_none()
+    slugs = _department_slugs_from_hr_and_matrix(user, hr)
+    if slugs:
+        return slugs
+    return {permission_matrix_department_for_user(user, hr)}
