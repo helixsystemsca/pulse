@@ -213,7 +213,6 @@ export const RBAC_PERMISSION_CATALOG: readonly RbacPermissionMeta[] = [
   { key: "live_map.view", label: "View live map", description: "Live map and positioning.", module: "live_map", category: "Operations" },
   { key: "arena_advertising.view", label: "Arena advertising", description: "Arena advertising mapper.", module: "comms_advertising_mapper", category: "Communications" },
   { key: "social_planner.view", label: "Social planner", description: "Campaign and social content planner.", module: "comms_campaign_planner", category: "Communications" },
-  { key: "publication_pipeline.view", label: "Publication pipeline", description: "Publication builder pipeline.", module: "comms_publication_builder", category: "Communications" },
   { key: "xplor_indesign.view", label: "Xplor → InDesign", description: "Xplor export to InDesign.", module: "comms_indesign_pipeline", category: "Communications" },
   { key: "communications_assets.view", label: "Communications assets", description: "Communications asset library.", module: "comms_assets", category: "Communications" },
 ] as const;

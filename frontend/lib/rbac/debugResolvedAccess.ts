@@ -56,7 +56,7 @@ export function auditSessionAccessLocally(
 ): {
   department_hub_allowed: boolean;
   sidebar_rows: { key: string; label: string; visible: boolean; reason?: string }[];
-  publication_builder: {
+  indesign_pipeline: {
     route: string;
     route_allowed: boolean;
     sidebar_visible: boolean;
@@ -76,9 +76,9 @@ export function auditSessionAccessLocally(
       return { key: f.key, label: f.label, visible: ex.visible, reason: ex.reason };
     });
 
-  const pubRoute = "/communications/publication-builder";
-  const pubMaster = MASTER_FEATURES.find((f) => f.key === "comms_publication_builder");
-  const pubEx = pubMaster ? explainMasterFeatureVisibility(session, pubMaster, isSystemAdmin) : null;
+  const indesignRoute = "/communications/indesign-pipeline";
+  const indesignMaster = MASTER_FEATURES.find((f) => f.key === "xplor_indesign");
+  const indesignEx = indesignMaster ? explainMasterFeatureVisibility(session, indesignMaster, isSystemAdmin) : null;
 
   const feature_log: FeatureResolutionLogEntry[] = NAV_VISIBLE_MASTER_FEATURES.map((f) => {
     const ex = explainMasterFeatureVisibility(session, f, isSystemAdmin);
@@ -102,10 +102,10 @@ export function auditSessionAccessLocally(
   return {
     department_hub_allowed: false,
     sidebar_rows,
-    publication_builder: {
-      route: pubRoute,
-      route_allowed: canAccessClassicNavHref(session, pubRoute),
-      sidebar_visible: pubEx?.visible ?? false,
+    indesign_pipeline: {
+      route: indesignRoute,
+      route_allowed: canAccessClassicNavHref(session, indesignRoute),
+      sidebar_visible: indesignEx?.visible ?? false,
       legacy_caps: legacy,
       publications_create: sessionHasCapability(session, "publications.create"),
     },
@@ -131,22 +131,14 @@ export function logSidebarResolution(session: PulseAuthSession | null): void {
   console.groupEnd();
 }
 
+/** @deprecated Publication pipeline removed — use Xplor → InDesign. */
 export function logPublicationBuilderAccess(session: PulseAuthSession | null): void {
   if (typeof window === "undefined") return;
   if (localStorage.getItem("pulse_rbac_debug") !== "1") return;
-
-  const route = "/communications/publication-builder";
-  const gate = {
-    component_mounted: true,
+  const route = "/communications/indesign-pipeline";
+  console.info("[pulse_rbac_debug] XplorInDesign (legacy PublicationBuilder hook)", {
     route_guard_passed: canAccessClassicNavHref(session, route),
-    workspace_hub_allowed: false,
-    enabled_features: session?.enabled_features ?? [],
-    rbac_permissions: session?.rbac_permissions ?? [],
-    contract_features: session?.contract_features ?? [],
-    publication_pipeline_rbac: hasRbacPermission(session, "publication_pipeline.view"),
-    legacy_publications_create: sessionHasCapability(session, "publications.create"),
-    platform_route: route,
-    platform_module_redirect: "/communications/publication-builder (canonical)",
-  };
-  console.info("[pulse_rbac_debug] PublicationBuilder", gate);
+    xplor_indesign_rbac: hasRbacPermission(session, "xplor_indesign.view"),
+    legacy_publication_pipeline_rbac: hasRbacPermission(session, "publication_pipeline.view"),
+  });
 }

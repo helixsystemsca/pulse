@@ -5,7 +5,6 @@ import { ComingSoonCard } from "@/components/platform/ComingSoonCard";
 import { CommunicationsIndesignPipelineTool } from "@/components/platform/communications/CommunicationsIndesignPipelineTool";
 import { AdvertisingMapperPage } from "@/modules/communications/advertising-mapper/AdvertisingMapperPage";
 import { CampaignPlannerPage } from "@/modules/communications/campaign-planner/CampaignPlannerPage";
-import { PublicationBuilderPage } from "@/modules/communications/publication-builder/PublicationBuilderPage";
 import type { Metadata } from "next";
 
 type PageProps = { params: { department: string; module: string } };
@@ -40,9 +39,6 @@ export default function PlatformModulePage({ params }: PageProps) {
 
   if (mod.id === "advertising_mapper") {
     return <AdvertisingMapperPage />;
-  }
-  if (mod.id === "comms_publication_builder") {
-    return <PublicationBuilderPage />;
   }
   if (mod.id === "comms_campaign_planner") {
     return <CampaignPlannerPage />;

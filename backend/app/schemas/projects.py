@@ -34,6 +34,9 @@ class ProjectCreate(BaseModel):
     operational_impact_level: OperationalImpactLevel = "medium"
     staffing_priority: StaffingPriority = "normal"
     blackout_windows: Optional[list[ProjectBlackoutWindow]] = None
+    department_slug: Optional[str] = Field(
+        None, max_length=32, description="Schedule/inventory department slug e.g. communications"
+    )
 
 
 class ProjectPatch(BaseModel):
@@ -57,6 +60,7 @@ class ProjectPatch(BaseModel):
     operational_impact_level: Optional[OperationalImpactLevel] = None
     staffing_priority: Optional[StaffingPriority] = None
     blackout_windows: Optional[list[ProjectBlackoutWindow]] = None
+    department_slug: Optional[str] = Field(None, max_length=32)
 
 
 class CategoryOut(BaseModel):
@@ -104,6 +108,7 @@ class ProjectOut(BaseModel):
     operational_impact_level: str = "medium"
     staffing_priority: str = "normal"
     blackout_windows: Optional[list[ProjectBlackoutWindow]] = None
+    department_slug: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     health_status: str = "On Track"

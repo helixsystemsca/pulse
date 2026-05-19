@@ -47,6 +47,7 @@ export type ProjectRow = {
   operational_impact_level?: "low" | "medium" | "high" | "critical";
   staffing_priority?: "low" | "normal" | "high" | "critical";
   blackout_windows?: { start_date: string; end_date: string; label?: string | null }[] | null;
+  department_slug?: string | null;
 };
 
 export type TaskRow = {
@@ -211,8 +212,10 @@ export type AutomationRuleRow = {
   updated_at: string;
 };
 
-export async function listProjects(): Promise<ProjectRow[]> {
-  return apiFetch<ProjectRow[]>("/api/v1/projects");
+export async function listProjects(departmentSlug?: string | null): Promise<ProjectRow[]> {
+  const slug = (departmentSlug ?? "").trim();
+  const qs = slug ? `?department_slug=${encodeURIComponent(slug)}` : "";
+  return apiFetch<ProjectRow[]>(`/api/v1/projects${qs}`);
 }
 
 export async function patchProject(

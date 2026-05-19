@@ -490,9 +490,9 @@ export function AccessDebugModal({
                       </tbody>
                     </table>
                   </div>
-                  {resolvedAudit.workspace_context?.publication_builder ? (
+                  {resolvedAudit.workspace_context?.indesign_pipeline ? (
                     <pre className="mt-2 max-h-28 overflow-auto rounded-lg bg-ds-secondary p-2 text-[10px]">
-                      {JSON.stringify(resolvedAudit.workspace_context.publication_builder, null, 2)}
+                      {JSON.stringify(resolvedAudit.workspace_context.indesign_pipeline, null, 2)}
                     </pre>
                   ) : null}
                 </section>

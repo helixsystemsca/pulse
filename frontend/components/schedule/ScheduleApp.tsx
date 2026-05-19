@@ -17,6 +17,13 @@ import {
 } from "@/lib/schedule/project-overlay-styles";
 import type { ProjectBarItem } from "@/lib/schedule/project-schedule-bars";
 import { pendingPtoCountForRange } from "@/lib/schedule/project-pto-conflicts";
+import {
+  normalizeScheduleDepartmentSlug,
+  readScheduleDepartmentPreference,
+  scheduleDepartmentOptionsForSession,
+  scheduleDepartmentQueryParam,
+  writeScheduleDepartmentPreference,
+} from "@/lib/schedule/schedule-department";
 import { can } from "@/lib/rbac/session-access";
 import {
   addDaysToIso,
@@ -205,7 +212,16 @@ export function ScheduleApp() {
   const [activePeriod, setActivePeriod] = useState<SchedulePeriodLite | null>(null);
   const [showPeriodModal, setShowPeriodModal] = useState(false);
   const [scheduleProjects, setScheduleProjects] = useState<ProjectRow[] | null>(null);
-  const [showProjectOverlay, setShowProjectOverlay] = useState(() => readOverlayTogglePreference());
+  const scheduleDepartmentOptions = useMemo(
+    () => scheduleDepartmentOptionsForSession(session, canConfigureOrg),
+    [session, canConfigureOrg],
+  );
+  const [scheduleDepartmentSlug, setScheduleDepartmentSlug] = useState(() =>
+    readScheduleDepartmentPreference(session),
+  );
+  const [showProjectOverlay, setShowProjectOverlay] = useState(() =>
+    readOverlayTogglePreference(readScheduleDepartmentPreference(session)),
+  );
   const schedulePath = usePathname() ?? "";
   const [shiftModal, setShiftModal] = useState<{
     shift: Shift | null;
@@ -278,7 +294,7 @@ export function ScheduleApp() {
     let cancelled = false;
     void (async () => {
       try {
-        const data = await listProjects();
+        const data = await listProjects(scheduleDepartmentSlug);
         if (!cancelled) setScheduleProjects(data);
       } catch {
         if (!cancelled) setScheduleProjects([]);
@@ -287,7 +303,7 @@ export function ScheduleApp() {
     return () => {
       cancelled = true;
     };
-  }, [hydrated, schedulePath]);
+  }, [hydrated, schedulePath, scheduleDepartmentSlug]);
 
   const reloadPulseSchedule = useCallback(async () => {
     if (!isApiMode()) return;
@@ -312,15 +328,16 @@ export function ScheduleApp() {
       to = new Date(from);
       to.setHours(23, 59, 59, 999);
     }
+    const deptQs = scheduleDepartmentQueryParam(scheduleDepartmentSlug);
     const [w, z, defs] = await Promise.all([
-      apiFetch<PulseWorkerApi[]>("/api/v1/pulse/workers"),
+      apiFetch<PulseWorkerApi[]>(`/api/v1/pulse/workers?${deptQs}`),
       apiFetch<PulseZoneApi[]>("/api/v1/pulse/schedule-facilities"),
       apiFetch<ScheduleShiftDefinitionRow[]>("/api/v1/pulse/schedule/shift-definitions"),
     ]);
     let sh: PulseShiftApi[] = [];
     try {
       sh = await apiFetch<PulseShiftApi[]>(
-        `/api/v1/pulse/schedule/shifts?from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}`,
+        `/api/v1/pulse/schedule/shifts?from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}&${deptQs}`,
       );
       setScheduleModuleBlocked(false);
     } catch (err) {
@@ -341,7 +358,18 @@ export function ScheduleApp() {
     const shiftsMapped = pulseShiftsToSchedule(sh, fallbackZ);
     applyPulseScheduleSnapshot(workersMapped, zonesMapped, shiftsMapped);
     setShiftDefinitions(defs);
-  }, [applyPulseScheduleSnapshot, timeScale, cursor.m, cursor.y, focusDate]);
+  }, [applyPulseScheduleSnapshot, timeScale, cursor.m, cursor.y, focusDate, scheduleDepartmentSlug]);
+
+  const handleScheduleDepartmentChange = useCallback(
+    (slug: string) => {
+      const norm = normalizeScheduleDepartmentSlug(slug);
+      if (!norm) return;
+      writeScheduleDepartmentPreference(norm);
+      setScheduleDepartmentSlug(norm);
+      setShowProjectOverlay(readOverlayTogglePreference(norm));
+    },
+    [],
+  );
 
   const reloadActivePeriod = useCallback(async () => {
     if (!hydrated || !canEdit || !isApiMode()) return;
@@ -440,6 +468,7 @@ export function ScheduleApp() {
             shift_type: s.shiftType,
             requires_supervisor: !!s.requires_supervisor,
             requires_ticketed: false,
+            department_slug: scheduleDepartmentSlug,
           },
         });
       }
@@ -454,6 +483,7 @@ export function ScheduleApp() {
             shift_type: s.shiftType,
             requires_supervisor: !!s.requires_supervisor,
             requires_ticketed: false,
+            department_slug: scheduleDepartmentSlug,
           },
         });
       }
@@ -464,7 +494,7 @@ export function ScheduleApp() {
     } finally {
       setSaveBusy(false);
     }
-  }, [reloadPulseSchedule]);
+  }, [reloadPulseSchedule, scheduleDepartmentSlug]);
 
   const visibleDatesForScheduleMerge = useMemo(() => {
     if (timeScale === "month") return monthGrid(cursor.y, cursor.m).map((c) => c.date);
@@ -1192,10 +1222,10 @@ export function ScheduleApp() {
   const onToggleProjectOverlay = useCallback(() => {
     setShowProjectOverlay((v) => {
       const next = !v;
-      writeOverlayTogglePreference(next);
+      writeOverlayTogglePreference(next, scheduleDepartmentSlug);
       return next;
     });
-  }, []);
+  }, [scheduleDepartmentSlug]);
 
   const dayProjectBar = useMemo(() => {
     if (timeScale !== "day" || !projectBarItems) return null;
@@ -1350,6 +1380,9 @@ export function ScheduleApp() {
               <ScheduleToolbar
                 embedded
                 compact
+                scheduleDepartmentSlug={scheduleDepartmentSlug}
+                scheduleDepartmentOptions={scheduleDepartmentOptions}
+                onScheduleDepartmentChange={handleScheduleDepartmentChange}
                 timeScale={timeScale}
                 onTimeScaleChange={setTimeScale}
                 contentFilter={contentFilter}

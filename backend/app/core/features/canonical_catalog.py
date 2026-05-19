@@ -32,16 +32,25 @@ CANONICAL_PRODUCT_FEATURES: tuple[str, ...] = (
     "xplor_indesign",
     "drawings",
     "schedule",
+    "schedule_availability",
+    "schedule_coverage",
+    "schedule_shift_definitions",
     "projects",
+    "pm_workspace",
+    "pm_planning",
     "work_requests",
     "procedures",
     "standards_training",
     "standards_certifications",
     "standards_compliance",
+    "standards_my_procedures",
+    "standards_routines",
+    "standards_acknowledgments",
+    "facilities_spatial",
+    "spatial_infrastructure",
     # Communications extras (system-admin contract; included in role toggles when on contract).
     "messaging",
     "comms_assets",
-    "comms_publication_builder",
     "comms_campaign_planner",
 )
 
@@ -52,6 +61,7 @@ _LEGACY_TO_CANONICAL: dict[str, str] = {
     "compliance": "logs_inspections",
     "comms_advertising_mapper": "advertising_mapper",
     "comms_indesign_pipeline": "xplor_indesign",
+    "comms_publication_builder": "xplor_indesign",
 }
 
 # Canonical → legacy contract key stored in `company_features` until catalog migration completes.
@@ -75,7 +85,52 @@ _CANONICAL_TO_CONTRACT: dict[str, str] = {
     "standards_training": "procedures",
     "standards_certifications": "procedures",
     "standards_compliance": "procedures",
+    "standards_my_procedures": "procedures",
+    "standards_routines": "procedures",
+    "standards_acknowledgments": "procedures",
+    "schedule_availability": "schedule",
+    "schedule_coverage": "schedule",
+    "schedule_shift_definitions": "schedule",
+    "pm_workspace": "projects",
+    "pm_planning": "projects",
+    "facilities_spatial": "drawings",
+    "spatial_infrastructure": "drawings",
 }
+
+# Parent contract module → flyout keys licensable in Team Management (not auto-enabled).
+_MATRIX_LICENSABLE_CHILDREN: dict[str, tuple[str, ...]] = {
+    "schedule": (
+        "schedule",
+        "schedule_availability",
+        "schedule_coverage",
+        "schedule_shift_definitions",
+    ),
+    "projects": ("projects", "pm_workspace", "pm_planning"),
+    "procedures": (
+        "procedures",
+        "standards_training",
+        "standards_certifications",
+        "standards_compliance",
+        "standards_my_procedures",
+        "standards_routines",
+        "standards_acknowledgments",
+    ),
+    "drawings": ("drawings", "facilities_spatial", "spatial_infrastructure"),
+    "dashboard": tuple(k for k in CANONICAL_PRODUCT_FEATURES if k == "dashboard" or k.startswith("dashboard_")),
+}
+
+
+def _expand_matrix_licensable_keys(names: Iterable[str]) -> set[str]:
+    out: set[str] = set()
+    for raw in names:
+        t = str(raw).strip()
+        if not t:
+            continue
+        out.add(t)
+        children = _MATRIX_LICENSABLE_CHILDREN.get(t)
+        if children:
+            out.update(children)
+    return out
 
 
 def to_canonical_feature_key(name: str) -> str | None:
@@ -109,15 +164,20 @@ def contract_keys_for_canonical(canonical_keys: Iterable[str]) -> list[str]:
 
 
 def canonical_keys_from_contract(names: Iterable[str]) -> list[str]:
-    """Normalize tenant contract rows to canonical keys for role UI."""
+    """Normalize tenant contract rows to canonical keys (includes flyout keys when parent module is licensed)."""
     out: set[str] = set()
     for raw in names:
         c = to_canonical_feature_key(str(raw))
         if c:
             out.add(c)
             continue
-        # Contract-only legacy names not in _LEGACY_TO_CANONICAL but valid catalog keys.
         n = str(raw).strip()
         if n in _CANONICAL_SET:
             out.add(n)
+    for key in _expand_matrix_licensable_keys(names):
+        c = to_canonical_feature_key(key)
+        if c:
+            out.add(c)
+        elif key in _CANONICAL_SET:
+            out.add(key)
     return sorted(out)

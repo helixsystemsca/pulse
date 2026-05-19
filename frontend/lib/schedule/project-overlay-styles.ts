@@ -74,10 +74,15 @@ export const SCHEDULE_OVERLAY_STATUSES = new Set(["active", "future", "on_hold"]
 
 export const OVERLAY_TOGGLE_STORAGE_KEY = "pulse_schedule_project_overlay_visible";
 
-export function readOverlayTogglePreference(): boolean {
+function overlayToggleKey(departmentSlug?: string | null): string {
+  const slug = (departmentSlug ?? "").trim().toLowerCase();
+  return slug ? `${OVERLAY_TOGGLE_STORAGE_KEY}_${slug}` : OVERLAY_TOGGLE_STORAGE_KEY;
+}
+
+export function readOverlayTogglePreference(departmentSlug?: string | null): boolean {
   if (typeof window === "undefined") return true;
   try {
-    const raw = localStorage.getItem(OVERLAY_TOGGLE_STORAGE_KEY);
+    const raw = localStorage.getItem(overlayToggleKey(departmentSlug));
     if (raw === "0" || raw === "false") return false;
     if (raw === "1" || raw === "true") return true;
   } catch {
@@ -86,10 +91,10 @@ export function readOverlayTogglePreference(): boolean {
   return true;
 }
 
-export function writeOverlayTogglePreference(visible: boolean): void {
+export function writeOverlayTogglePreference(visible: boolean, departmentSlug?: string | null): void {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(OVERLAY_TOGGLE_STORAGE_KEY, visible ? "1" : "0");
+    localStorage.setItem(overlayToggleKey(departmentSlug), visible ? "1" : "0");
   } catch {
     /* ignore */
   }

@@ -22,6 +22,13 @@ from app.core.user_avatar_upload import INTERNAL_AVATAR_PATH, co_worker_avatar_u
 from app.core.user_roles import is_field_worker_like, primary_jwt_role
 from app.core.user_roles import user_has_any_role
 from app.core.inventory.policy import resolve_effective_inventory_policy
+from app.core.schedule_department import (
+    apply_shift_department_filter,
+    load_hr_by_user_ids,
+    normalize_schedule_department_slug,
+    primary_department_slug_from_hr,
+    resolve_department_slug_for_user,
+)
 from app.repositories import inventory_scope_repository as inv_scope_repo
 from app.core.tenant_feature_access import load_merged_workers_settings
 from app.core.work_request_access import user_may_manage_facility_zones
@@ -48,6 +55,7 @@ from app.models.pulse_models import (
     PulseScheduleShiftDefinition,
     PulseWorkRequest,
     PulseWorkRequestStatus,
+    PulseWorkerHR,
     PulseWorkerProfile,
     PulseWorkerSkill,
 )
@@ -256,6 +264,7 @@ def _shift_to_out(
         project_name=project.name if project else None,
         task_priority=tp,
         routine_shift_band=routine_shift_band,
+        department_slug=getattr(sh, "department_slug", None),
     )
 
 
@@ -459,7 +468,11 @@ async def delete_work_request(db: Db, cid: CompanyId, work_request_id: str) -> N
 
 
 @router.get("/workers", response_model=list[WorkerOut])
-async def list_workers(db: Db, cid: CompanyId) -> list[WorkerOut]:
+async def list_workers(
+    db: Db,
+    cid: CompanyId,
+    department_slug: Optional[str] = Query(None, description="Filter roster by HR department slug"),
+) -> list[WorkerOut]:
     uq = await db.execute(
         select(User).where(
             User.company_id == cid,
@@ -480,7 +493,9 @@ async def list_workers(db: Db, cid: CompanyId) -> list[WorkerOut]:
         )
     )
     users = uq.scalars().all()
-    uids = [u.id for u in users]
+    uids = [str(u.id) for u in users]
+    hr_map = await load_hr_by_user_ids(db, cid, uids)
+    dept_filter = normalize_schedule_department_slug(department_slug)
     skills_map: dict[str, list[WorkerSkillMiniOut]] = defaultdict(list)
     if uids:
         sq = await db.execute(
@@ -506,6 +521,9 @@ async def list_workers(db: Db, cid: CompanyId) -> list[WorkerOut]:
         avail = dict(prof.availability or {}) if prof else {}
         emp, rec = _worker_scheduling_fields(prof)
         uid_s = str(u.id)
+        worker_dept = primary_department_slug_from_hr(hr_map.get(uid_s))
+        if dept_filter and worker_dept != dept_filter:
+            continue
         out.append(
             WorkerOut(
                 id=uid_s,
@@ -520,6 +538,7 @@ async def list_workers(db: Db, cid: CompanyId) -> list[WorkerOut]:
                 avatar_url=co_worker_avatar_url(uid_s, u.avatar_url),
                 employment_type=emp,
                 recurring_shifts=rec,
+                department_slug=worker_dept,
             )
         )
     return out
@@ -627,12 +646,14 @@ async def list_shifts(
     cid: CompanyId,
     from_ts: Optional[datetime] = Query(None, alias="from"),
     to_ts: Optional[datetime] = Query(None, alias="to"),
+    department_slug: Optional[str] = Query(None, description="Filter shifts by department slug"),
 ) -> list[ShiftOut]:
     stmt = select(PulseScheduleShift).where(PulseScheduleShift.company_id == cid)
     if from_ts is not None:
         stmt = stmt.where(PulseScheduleShift.ends_at > from_ts)
     if to_ts is not None:
         stmt = stmt.where(PulseScheduleShift.starts_at < to_ts)
+    stmt = apply_shift_department_filter(stmt, department_slug)
     stmt = stmt.order_by(PulseScheduleShift.starts_at)
     rows = (await db.execute(stmt)).scalars().all()
     shift_ids = [str(r.id) for r in rows if (getattr(r, "shift_kind", None) or "workforce") == "project_task"]
@@ -799,6 +820,10 @@ async def create_shift(
     if errs:
         raise HTTPException(status_code=400, detail={"errors": errs, "warnings": warnings})
 
+    dept_slug = await resolve_department_slug_for_user(
+        db, cid, body.assigned_user_id, body.department_slug
+    )
+
     sh = PulseScheduleShift(
         company_id=cid,
         assigned_user_id=body.assigned_user_id,
@@ -814,6 +839,7 @@ async def create_shift(
         requires_ticketed=body.requires_ticketed,
         shift_kind="workforce",
         display_label=None,
+        department_slug=dept_slug,
     )
     db.add(sh)
     await db.commit()
@@ -907,6 +933,10 @@ async def patch_shift(db: Db, cid: CompanyId, shift_id: str, body: ShiftUpdate) 
 
     for k, v in data.items():
         setattr(sh, k, v)
+    if "assigned_user_id" in data and data["assigned_user_id"]:
+        sh.department_slug = await resolve_department_slug_for_user(
+            db, cid, str(data["assigned_user_id"]), getattr(sh, "department_slug", None)
+        )
     await db.flush()
     await proj_task_svc.sync_task_from_linked_shift(db, sh)
     await db.commit()

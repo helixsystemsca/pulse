@@ -25,10 +25,15 @@ _BASELINE_SLOT_DASHBOARD_GRANTS: dict[tuple[str, str], tuple[str, ...]] = {
 
 
 def matrix_feature_keys_allowed_in_settings() -> frozenset[str]:
-    """Keys storable in ``department_role_feature_access`` (contract catalog + dashboard surfaces)."""
+    """Keys storable in ``department_role_feature_access`` (catalog + flyout matrix keys + legacy names)."""
+    from app.core.features.canonical_catalog import _LEGACY_TO_CANONICAL
     from app.core.features.system_catalog import GLOBAL_SYSTEM_FEATURES
 
-    return frozenset(GLOBAL_SYSTEM_FEATURES) | _DASHBOARD_SURFACE_KEYS
+    return (
+        frozenset(GLOBAL_SYSTEM_FEATURES)
+        | frozenset(CANONICAL_PRODUCT_FEATURES)
+        | frozenset(_LEGACY_TO_CANONICAL.keys())
+    )
 
 
 def augment_canonical_dashboard_grants(

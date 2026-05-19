@@ -48,8 +48,8 @@ const RBAC_TO_PLATFORM_CAPS: Record<string, readonly string[]> = {
   "zones_devices.view": ["equipment.view"],
   "arena_advertising.view": ["communications.advertising_mapper.view"],
   "social_planner.view": ["communications.campaign_planner.view"],
-  "publication_pipeline.view": ["publications.create", "publications.export"],
-  "xplor_indesign.view": ["communications.indesign_pipeline.view"],
+  "xplor_indesign.view": ["communications.indesign_pipeline.view", "publications.create", "publications.export"],
+  "publication_pipeline.view": ["communications.indesign_pipeline.view", "publications.create", "publications.export"],
   "communications_assets.view": ["communications.assets.view"],
 };
 

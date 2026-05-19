@@ -41,7 +41,6 @@ RBAC_PERMISSION_SEED: tuple[tuple[str, str], ...] = (
     ("live_map.view", "View live map"),
     ("arena_advertising.view", "Arena advertising mapper"),
     ("social_planner.view", "Social / campaign planner"),
-    ("publication_pipeline.view", "Publication pipeline"),
     ("xplor_indesign.view", "Xplor → InDesign export"),
     ("communications_assets.view", "Communications assets library"),
 )
@@ -85,7 +84,6 @@ FEATURE_TO_RBAC_PERMISSIONS: dict[str, tuple[str, ...]] = {
     "live_map": ("live_map.view",),
     "comms_advertising_mapper": ("arena_advertising.view",),
     "comms_campaign_planner": ("social_planner.view",),
-    "comms_publication_builder": ("publication_pipeline.view",),
     "comms_indesign_pipeline": ("xplor_indesign.view",),
     "comms_assets": ("communications_assets.view",),
 }
@@ -127,7 +125,7 @@ RBAC_KEY_REQUIRES_COMPANY_FEATURE: dict[str, str | None] = {
     "live_map.view": "live_map",
     "arena_advertising.view": "comms_advertising_mapper",
     "social_planner.view": "comms_campaign_planner",
-    "publication_pipeline.view": "comms_publication_builder",
     "xplor_indesign.view": "comms_indesign_pipeline",
+    "publication_pipeline.view": "comms_indesign_pipeline",
     "communications_assets.view": "comms_assets",
 }

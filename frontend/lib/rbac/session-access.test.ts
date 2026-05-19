@@ -40,12 +40,12 @@ describe("canAccessClassicNavHref", () => {
 
   it("allows communications modules when contract uses legacy keys", () => {
     const s = session({
-      contract_features: ["comms_advertising_mapper", "comms_publication_builder"],
-      enabled_features: ["advertising_mapper", "comms_publication_builder"],
-      rbac_permissions: ["arena_advertising.view", "publication_pipeline.view"],
+      contract_features: ["comms_advertising_mapper", "comms_indesign_pipeline"],
+      enabled_features: ["advertising_mapper", "xplor_indesign"],
+      rbac_permissions: ["arena_advertising.view", "xplor_indesign.view"],
     });
     expect(canAccessClassicNavHref(s, "/drawings?workspace=advertising")).toBe(true);
-    expect(canAccessClassicNavHref(s, "/communications/publication-builder")).toBe(true);
+    expect(canAccessClassicNavHref(s, "/communications/indesign-pipeline")).toBe(true);
   });
 });
 

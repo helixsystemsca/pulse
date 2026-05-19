@@ -34,7 +34,7 @@ def _user(roles: list[str]) -> User:
 
 
 @pytest.mark.asyncio
-async def test_resolved_audit_publication_builder_denied_without_matrix_and_rbac() -> None:
+async def test_resolved_audit_indesign_denied_without_matrix_and_rbac() -> None:
     user = _user([UserRole.worker.value])
     hr = SimpleNamespace(
         department_slugs=["communications"],
@@ -42,7 +42,7 @@ async def test_resolved_audit_publication_builder_denied_without_matrix_and_rbac
         job_title="",
         matrix_slot="coordination",
     )
-    contract = ["comms_publication_builder", "inventory"]
+    contract = ["comms_indesign_pipeline", "inventory"]
     merged = {
         "department_role_feature_access": {
             "communications": {"coordination": ["inventory"]},
@@ -57,14 +57,14 @@ async def test_resolved_audit_publication_builder_denied_without_matrix_and_rbac
         tenant_role=None,
         department_slug="communications",
     )
-    pub = next(e for e in audit["feature_resolution_log"] if e["registry_key"] == "comms_publication_builder")
-    assert pub["sidebar_visible"] is False
-    assert pub["failure_reason"] == "sidebar_hidden"
-    assert "comms_publication_builder" in audit["denied_features"]
+    indesign = next(e for e in audit["feature_resolution_log"] if e["registry_key"] == "xplor_indesign")
+    assert indesign["sidebar_visible"] is False
+    assert indesign["failure_reason"] == "sidebar_hidden"
+    assert "xplor_indesign" in audit["denied_features"]
 
 
 @pytest.mark.asyncio
-async def test_resolved_audit_publication_builder_allowed_when_matrix_and_rbac() -> None:
+async def test_resolved_audit_indesign_allowed_when_matrix_and_rbac() -> None:
     user = _user([UserRole.worker.value])
     hr = SimpleNamespace(
         department_slugs=["communications"],
@@ -72,10 +72,10 @@ async def test_resolved_audit_publication_builder_allowed_when_matrix_and_rbac()
         job_title="",
         matrix_slot="coordination",
     )
-    contract = ["comms_publication_builder"]
+    contract = ["comms_indesign_pipeline"]
     merged = {
         "department_role_feature_access": {
-            "communications": {"coordination": ["comms_publication_builder"]},
+            "communications": {"coordination": ["xplor_indesign"]},
         },
     }
     audit = await debug_resolved_access(
@@ -87,8 +87,8 @@ async def test_resolved_audit_publication_builder_allowed_when_matrix_and_rbac()
         tenant_role=None,
         department_slug="communications",
     )
-    pub = next(e for e in audit["feature_resolution_log"] if e["registry_key"] == "comms_publication_builder")
-    assert pub["sidebar_visible"] is True
-    assert pub["route_allowed"] is True
-    assert pub["render_allowed"] is True
+    indesign = next(e for e in audit["feature_resolution_log"] if e["registry_key"] == "xplor_indesign")
+    assert indesign["sidebar_visible"] is True
+    assert indesign["route_allowed"] is True
+    assert indesign["render_allowed"] is True
     assert audit["workspace_context"]["department_hub_allowed"] is True

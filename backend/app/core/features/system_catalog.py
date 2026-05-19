@@ -31,7 +31,6 @@ GLOBAL_SYSTEM_FEATURES: tuple[str, ...] = (
     # Communications tools (scoped routes /communications/… share these contract keys).
     "comms_assets",
     "comms_advertising_mapper",
-    "comms_publication_builder",
     "comms_indesign_pipeline",
     "comms_campaign_planner",
 )

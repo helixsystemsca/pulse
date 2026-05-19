@@ -69,7 +69,7 @@ describe("buildNavigationTree", () => {
     const withPm = buildNavigationTree(
       session({
         contract_features: ["projects", "schedule"],
-        enabled_features: ["projects", "schedule"],
+        enabled_features: ["projects", "schedule", "pm_workspace", "pm_planning"],
         rbac_permissions: ["projects.view", "projects.pm.view", "schedule.view"],
       }),
     );
@@ -140,13 +140,9 @@ describe("buildNavigationTree", () => {
     const tree = buildNavigationTree(
       session({
         hr_department: "communications",
-        contract_features: [
-          "comms_advertising_mapper",
-          "comms_publication_builder",
-          "comms_indesign_pipeline",
-        ],
-        enabled_features: ["advertising_mapper", "comms_publication_builder", "xplor_indesign"],
-        rbac_permissions: ["arena_advertising.view", "publication_pipeline.view", "xplor_indesign.view"],
+        contract_features: ["comms_advertising_mapper", "comms_indesign_pipeline"],
+        enabled_features: ["advertising_mapper", "xplor_indesign"],
+        rbac_permissions: ["arena_advertising.view", "xplor_indesign.view"],
       }),
     );
     const commsDomain = tree.find((d) => d.domain === "Communications");
@@ -155,14 +151,13 @@ describe("buildNavigationTree", () => {
     expect(keys).toEqual(
       expect.arrayContaining([
         "advertising_mapper",
-        "comms_publication_builder",
         "xplor_indesign",
       ]),
     );
     const visualsKeys =
       tree.find((d) => d.domain === "Visuals")?.groups.flatMap((g) => g.items.map((i) => i.key)) ?? [];
     expect(visualsKeys).not.toContain("advertising_mapper");
-    expect(visualsKeys).not.toContain("comms_publication_builder");
+    expect(visualsKeys).not.toContain("xplor_indesign");
   });
 
   it("hides maintenance-owned team insights from communications users", () => {
@@ -237,5 +232,30 @@ describe("buildNavigationTree", () => {
     );
     expect(tree).toHaveLength(1);
     expect(tree[0]!.domain).toBe("Planning");
+  });
+
+  it("hides schedule flyouts unless explicitly enabled in matrix", () => {
+    const base = session({
+      contract_features: ["schedule"],
+      enabled_features: ["schedule"],
+      rbac_permissions: ["schedule.view"],
+    });
+    const withScheduleOnly = buildNavigationTree(base);
+    const scheduleGroup = withScheduleOnly[0]?.groups.find((g) => g.group === "Scheduling");
+    const labelsOnlySchedule = (scheduleGroup?.items ?? []).map((i) => i.label);
+    expect(labelsOnlySchedule).toContain("Schedule");
+    expect(labelsOnlySchedule).not.toContain("Availability");
+
+    const withFlyouts = buildNavigationTree(
+      session({
+        ...base,
+        enabled_features: ["schedule", "schedule_availability", "schedule_coverage"],
+      }),
+    );
+    const flyoutGroup = withFlyouts[0]?.groups.find((g) => g.group === "Scheduling");
+    const flyoutLabels = (flyoutGroup?.items ?? []).map((i) => i.label);
+    expect(flyoutLabels).toContain("Availability");
+    expect(flyoutLabels).toContain("Coverage");
+    expect(flyoutLabels).not.toContain("Shift definitions");
   });
 });

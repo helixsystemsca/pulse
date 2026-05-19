@@ -101,7 +101,6 @@ const MAINTENANCE_OPS_KEYS = [
 const COMMS_TOOLS_KEYS = [
   "comms_assets",
   "comms_advertising_mapper",
-  "comms_publication_builder",
   "comms_indesign_pipeline",
   "comms_campaign_planner",
 ] as const;
@@ -124,21 +123,34 @@ const DASHBOARD_ACCESS_KEYS = [
   "dashboard_dept_admin",
 ] as const;
 
-const SHARED_PROGRAM_KEYS = [
+const PLANNING_SCHEDULE_KEYS = [
   "schedule",
-  "team_management",
-  "team_insights",
+  "schedule_availability",
+  "schedule_coverage",
+  "schedule_shift_definitions",
+] as const;
+
+const PLANNING_PROJECT_KEYS = ["projects", "pm_workspace", "pm_planning"] as const;
+
+const STANDARDS_PROGRAM_KEYS = [
   "procedures",
   "standards_training",
   "standards_certifications",
   "standards_compliance",
-  "messaging",
+  "standards_my_procedures",
+  "standards_routines",
+  "standards_acknowledgments",
 ] as const;
 
-/** Communications coordination — no maintenance-owned team insights surface. */
-const COMMS_SHARED_PROGRAM_KEYS = SHARED_PROGRAM_KEYS.filter((k) => k !== "team_insights");
+const SHARED_PROGRAM_KEYS = ["team_management", "team_insights", "messaging"] as const;
 
-const MAP_KEYS = ["drawings", "zones_devices", "live_map"] as const;
+const MAP_KEYS = [
+  "drawings",
+  "facilities_spatial",
+  "spatial_infrastructure",
+  "zones_devices",
+  "live_map",
+] as const;
 
 /** Single catalog for company admins — underlying rows are duplicated per workspace department on save. */
 export const MASTER_PERMISSION_FEATURE_GROUPS: PermissionFeatureGroup[] = [
@@ -163,12 +175,31 @@ export const MASTER_PERMISSION_FEATURE_GROUPS: PermissionFeatureGroup[] = [
   {
     id: "comms",
     label: "Communications tools",
-    description: "Publication pipeline, campaigns, assets, advertising mapper, and InDesign export.",
+    description: "Campaigns, assets, advertising mapper, and Xplor → InDesign export.",
     keys: [...COMMS_TOOLS_KEYS],
   },
   {
+    id: "planning_schedule",
+    label: "Planning · Scheduling",
+    description:
+      "Workforce schedule plus flyout tools. Availability, coverage, and shift definitions are off until enabled here.",
+    keys: [...PLANNING_SCHEDULE_KEYS],
+  },
+  {
+    id: "planning_projects",
+    label: "Planning · Projects",
+    description: "Project list, PM workspace, and PM planning routes.",
+    keys: [...PLANNING_PROJECT_KEYS],
+  },
+  {
+    id: "standards",
+    label: "Standards",
+    description: "Procedures, training hub, certifications, compliance, and personal procedure views.",
+    keys: [...STANDARDS_PROGRAM_KEYS],
+  },
+  {
     id: "shared",
-    label: "Scheduling, people & standards",
+    label: "People & messaging",
     keys: [...SHARED_PROGRAM_KEYS],
   },
   {
@@ -183,7 +214,12 @@ export function permissionFeatureGroupsForDepartment(dept: PermissionMatrixDepar
   const maintenanceOps = MAINTENANCE_OPS_KEYS;
   const commsTools = COMMS_TOOLS_KEYS;
   const leadership = LEADERSHIP_KEYS;
-  const sharedProgram = SHARED_PROGRAM_KEYS;
+  const sharedProgram = [
+    ...PLANNING_SCHEDULE_KEYS,
+    ...PLANNING_PROJECT_KEYS,
+    ...STANDARDS_PROGRAM_KEYS,
+    ...SHARED_PROGRAM_KEYS,
+  ];
   const maps = MAP_KEYS;
 
   if (dept === "maintenance") {
@@ -201,7 +237,14 @@ export function permissionFeatureGroupsForDepartment(dept: PermissionMatrixDepar
         keys: [...DASHBOARD_ACCESS_KEYS],
       },
       { id: "ops", label: "Maintenance & operations", description: "Classic Pulse modules for this department.", keys: [...maintenanceOps] },
-      { id: "shared", label: "Scheduling, people & standards", keys: [...sharedProgram] },
+      {
+        id: "planning_schedule",
+        label: "Planning · Scheduling",
+        keys: [...PLANNING_SCHEDULE_KEYS],
+      },
+      { id: "planning_projects", label: "Planning · Projects", keys: [...PLANNING_PROJECT_KEYS] },
+      { id: "standards", label: "Standards", keys: [...STANDARDS_PROGRAM_KEYS] },
+      { id: "shared", label: "People & messaging", keys: [...SHARED_PROGRAM_KEYS] },
       { id: "maps", label: "Maps, drawings & devices", keys: [...maps] },
     ];
   }
@@ -220,7 +263,14 @@ export function permissionFeatureGroupsForDepartment(dept: PermissionMatrixDepar
         keys: ["dashboard_dept_communications", "dashboard_leadership", "dashboard_operations", "dashboard_project"],
       },
       { id: "comms", label: "Communications tools", description: "Publication, campaigns, assets, and related tools.", keys: [...commsTools] },
-      { id: "shared", label: "Scheduling, people & standards", keys: [...COMMS_SHARED_PROGRAM_KEYS] },
+      {
+        id: "planning_schedule",
+        label: "Planning · Scheduling",
+        keys: [...PLANNING_SCHEDULE_KEYS],
+      },
+      { id: "planning_projects", label: "Planning · Projects", keys: [...PLANNING_PROJECT_KEYS] },
+      { id: "standards", label: "Standards", keys: [...STANDARDS_PROGRAM_KEYS] },
+      { id: "shared", label: "People & messaging", keys: [...SHARED_PROGRAM_KEYS] },
       { id: "maps", label: "Maps, drawings & devices", keys: [...maps] },
     ];
   }
@@ -237,7 +287,11 @@ export function permissionFeatureGroupsForDepartment(dept: PermissionMatrixDepar
         label: "Dashboard surfaces",
         keys: ["dashboard_dept_aquatics", "dashboard_leadership", "dashboard_operations"],
       },
-      { id: "pool", label: "Aquatics programs", description: "Scheduling and pool-facing tools.", keys: ["schedule"] },
+      {
+        id: "planning_schedule",
+        label: "Planning · Scheduling",
+        keys: [...PLANNING_SCHEDULE_KEYS],
+      },
       { id: "shared", label: "People & standards", keys: ["team_management", "team_insights", "procedures", "messaging"] },
       { id: "maps", label: "Maps, drawings & devices", keys: [...maps] },
     ];
@@ -255,7 +309,14 @@ export function permissionFeatureGroupsForDepartment(dept: PermissionMatrixDepar
         keys: ["dashboard_dept_reception", "dashboard_leadership", "dashboard_operations"],
       },
       { id: "comms", label: "Communications tools", keys: [...commsTools] },
-      { id: "shared", label: "Scheduling, people & standards", keys: [...sharedProgram] },
+      {
+        id: "planning_schedule",
+        label: "Planning · Scheduling",
+        keys: [...PLANNING_SCHEDULE_KEYS],
+      },
+      { id: "planning_projects", label: "Planning · Projects", keys: [...PLANNING_PROJECT_KEYS] },
+      { id: "standards", label: "Standards", keys: [...STANDARDS_PROGRAM_KEYS] },
+      { id: "shared", label: "People & messaging", keys: [...SHARED_PROGRAM_KEYS] },
       { id: "maps", label: "Maps, drawings & devices", keys: [...maps] },
     ];
   }
@@ -271,7 +332,11 @@ export function permissionFeatureGroupsForDepartment(dept: PermissionMatrixDepar
         label: "Dashboard surfaces",
         keys: ["dashboard_dept_fitness", "dashboard_leadership", "dashboard_operations"],
       },
-      { id: "program", label: "Program scheduling", keys: ["schedule"] },
+      {
+        id: "planning_schedule",
+        label: "Planning · Scheduling",
+        keys: [...PLANNING_SCHEDULE_KEYS],
+      },
       { id: "shared", label: "People & standards", keys: ["team_management", "team_insights", "procedures", "messaging"] },
       { id: "maps", label: "Maps, drawings & devices", keys: [...maps] },
     ];
@@ -288,7 +353,11 @@ export function permissionFeatureGroupsForDepartment(dept: PermissionMatrixDepar
         label: "Dashboard surfaces",
         keys: ["dashboard_dept_racquets", "dashboard_leadership", "dashboard_operations"],
       },
-      { id: "program", label: "Program scheduling", keys: ["schedule"] },
+      {
+        id: "planning_schedule",
+        label: "Planning · Scheduling",
+        keys: [...PLANNING_SCHEDULE_KEYS],
+      },
       { id: "shared", label: "People & standards", keys: ["team_management", "team_insights", "procedures", "messaging"] },
       { id: "maps", label: "Maps, drawings & devices", keys: [...maps] },
     ];
@@ -305,7 +374,14 @@ export function permissionFeatureGroupsForDepartment(dept: PermissionMatrixDepar
         label: "Dashboard surfaces",
         keys: ["dashboard_dept_admin", "dashboard_leadership", "dashboard_operations", "dashboard_project"],
       },
-      { id: "shared", label: "Scheduling, people & standards", keys: [...sharedProgram] },
+      {
+        id: "planning_schedule",
+        label: "Planning · Scheduling",
+        keys: [...PLANNING_SCHEDULE_KEYS],
+      },
+      { id: "planning_projects", label: "Planning · Projects", keys: [...PLANNING_PROJECT_KEYS] },
+      { id: "standards", label: "Standards", keys: [...STANDARDS_PROGRAM_KEYS] },
+      { id: "shared", label: "People & messaging", keys: [...SHARED_PROGRAM_KEYS] },
       { id: "maps", label: "Maps, drawings & devices", keys: [...maps] },
     ];
   }

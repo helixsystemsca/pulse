@@ -1122,6 +1122,7 @@ class PulseProject(Base):
         String(16), nullable=False, default="normal", server_default="normal"
     )
     blackout_windows: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)
+    department_slug: Mapped[Optional[str]] = mapped_column(String(32), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
@@ -1521,6 +1522,7 @@ class PulseScheduleShift(Base):
     requires_ticketed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     shift_kind: Mapped[str] = mapped_column(String(32), default="workforce", nullable=False)
     display_label: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    department_slug: Mapped[Optional[str]] = mapped_column(String(32), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

@@ -52,7 +52,7 @@ async def test_unassigned_worker_gets_no_matrix_features(db_session: AsyncSessio
     )
     assert caps.status == "unassigned"
     assert caps.features == []
-    assert "comms_publication_builder" not in caps.features
+    assert "xplor_indesign" not in caps.features
 
 
 @pytest.mark.asyncio
@@ -87,7 +87,7 @@ async def test_assigned_coordination_gets_matrix_cell(db_session: AsyncSession) 
     assert caps.status == "assigned"
     assert caps.department_slug == "communications"
     assert caps.role_key == "coordination"
-    assert caps.features == ["comms_publication_builder"]
+    assert caps.features == ["xplor_indesign"]
 
 
 @pytest.mark.asyncio

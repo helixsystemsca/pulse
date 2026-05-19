@@ -18,7 +18,6 @@ export const SYSTEM_ADMIN_FEATURE_ORDER = [
   "equipment",
   "comms_assets",
   "comms_advertising_mapper",
-  "comms_publication_builder",
   "comms_indesign_pipeline",
   "comms_campaign_planner",
   "drawings",
@@ -44,7 +43,6 @@ export const SYSTEM_ADMIN_FEATURE_LABELS: Record<string, string> = {
   live_map: "Live Map",
   comms_assets: "Communications · Assets",
   comms_advertising_mapper: "Communications · Advertising mapper",
-  comms_publication_builder: "Communications · Publication pipeline",
   comms_indesign_pipeline: "Communications · RTF / TXT → InDesign",
   comms_campaign_planner: "Communications · Campaign planner",
 };

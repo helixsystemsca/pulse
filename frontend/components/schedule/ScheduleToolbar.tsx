@@ -11,6 +11,9 @@ type Props = {
   embedded?: boolean;
   /** Single dense row for the unified control card (no section labels). */
   compact?: boolean;
+  scheduleDepartmentSlug: string;
+  scheduleDepartmentOptions: { slug: string; name: string }[];
+  onScheduleDepartmentChange: (slug: string) => void;
   timeScale: ScheduleTimeScale;
   onTimeScaleChange: (v: ScheduleTimeScale) => void;
   contentFilter: ScheduleContentFilter;
@@ -59,6 +62,9 @@ function Seg({
 export function ScheduleToolbar({
   embedded = false,
   compact = false,
+  scheduleDepartmentSlug,
+  scheduleDepartmentOptions,
+  onScheduleDepartmentChange,
   timeScale,
   onTimeScaleChange,
   contentFilter,
@@ -118,6 +124,24 @@ export function ScheduleToolbar({
             <p className="text-[11px] font-bold uppercase tracking-wider text-ds-muted">Display</p>
           ) : null}
           <div className="flex flex-wrap items-center gap-2">
+            {scheduleDepartmentOptions.length > 0 ? (
+              <select
+                className={cn(
+                  "rounded-lg border border-pulseShell-border bg-white font-semibold text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100",
+                  compact ? "px-2.5 py-1.5 text-xs" : "px-3 py-2 text-sm",
+                )}
+                value={scheduleDepartmentSlug}
+                disabled={disabled}
+                aria-label="Schedule department"
+                onChange={(e) => onScheduleDepartmentChange(e.target.value)}
+              >
+                {scheduleDepartmentOptions.map((d) => (
+                  <option key={d.slug} value={d.slug}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+            ) : null}
             <nav
               id="schedule-toggle"
               className={cn(navShell, "flex flex-wrap")}

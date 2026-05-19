@@ -11,20 +11,20 @@ describe("access-snapshot", () => {
     const snap = {
       department: "communications",
       matrix_slot: "coordination",
-      features: ["comms_publication_builder"],
-      capabilities: ["publication_pipeline.view"],
+      features: ["xplor_indesign"],
+      capabilities: ["xplor_indesign.view"],
       departments: ["communications"],
       is_company_admin: false,
     };
-    expect(getDepartmentAccessibleFeatures("communications", snap)).toContain("comms_publication_builder");
+    expect(getDepartmentAccessibleFeatures("communications", snap)).toContain("xplor_indesign");
   });
 
   it("denies communications modules without HR department membership", () => {
     const snap = {
       department: "maintenance",
       matrix_slot: "team_member",
-      features: ["comms_publication_builder"],
-      capabilities: ["publication_pipeline.view"],
+      features: ["xplor_indesign"],
+      capabilities: ["xplor_indesign.view"],
       departments: ["maintenance"],
       is_company_admin: false,
     };

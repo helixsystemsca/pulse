@@ -64,7 +64,7 @@ async def test_explicit_coordination_slot_grants_matrix_features() -> None:
     assert snap.audit.assignment_status == "assigned"
     assert snap.audit.assigned_department_slug == "communications"
     assert snap.audit.assigned_role_key == "coordination"
-    assert "comms_publication_builder" in snap.features
+    assert "xplor_indesign" in snap.features
     assert "inventory" not in snap.features
 
 
@@ -97,4 +97,4 @@ async def test_department_baseline_when_slot_unset() -> None:
     assert snap.assignment_status == "assigned"
     assert snap.audit is not None
     assert snap.audit.assigned_role_key == "coordination"
-    assert snap.features == ["comms_publication_builder"]
+    assert snap.features == ["xplor_indesign"]

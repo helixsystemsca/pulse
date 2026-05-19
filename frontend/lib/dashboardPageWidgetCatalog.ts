@@ -177,14 +177,6 @@ export const DASHBOARD_PAGE_WIDGET_CATALOG: DashboardPageDefinition[] = [
     slices: [QUICK_OPEN_SLICE],
   },
   {
-    id: "comms_publication_builder",
-    label: "Publication builder",
-    href: "/communications/publication-builder",
-    description: "Build and manage publications.",
-    requiredFeatures: ["comms_publication_builder"],
-    slices: [QUICK_OPEN_SLICE],
-  },
-  {
     id: "comms_indesign_pipeline",
     label: "InDesign pipeline",
     href: "/communications/indesign-pipeline",

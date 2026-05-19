@@ -25,11 +25,11 @@ describe("groupModulesByCategory", () => {
       row({ key: "schedule", label: "Schedule", moduleCategory: "General" }),
       row({ key: "inventory", label: "Inventory", moduleCategory: "General" }),
       row({ key: "ads", label: "Arena Advertising", moduleCategory: "Communications" }),
-      row({ key: "pub", label: "Publication pipeline", moduleCategory: "Communications" }),
+      row({ key: "indesign", label: "Xplor → InDesign", moduleCategory: "Communications" }),
     ]);
     expect(groups.map((g) => g.category)).toEqual(["General", "Communications"]);
     expect(groups[0]!.items.map((i) => i.label)).toEqual(["Schedule", "Inventory"]);
-    expect(groups[1]!.items.map((i) => i.label)).toEqual(["Arena Advertising", "Publication pipeline"]);
+    expect(groups[1]!.items.map((i) => i.label)).toEqual(["Arena Advertising", "Xplor → InDesign"]);
   });
 
   it("orders known categories before unknown (alphabetically)", () => {

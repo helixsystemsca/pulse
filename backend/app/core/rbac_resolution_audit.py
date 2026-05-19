@@ -31,7 +31,6 @@ _NAV_FEATURES: tuple[dict[str, Any], ...] = (
     {"registry_key": "projects", "feature": "projects", "route": "/dashboard/projects", "rbac": ("projects.view",)},
     {"registry_key": "team_management", "feature": "team_management", "route": "/dashboard/workers", "rbac": ("team_management.view",)},
     {"registry_key": "comms_advertising_mapper", "feature": "advertising_mapper", "route": "/communications/advertising-mapper", "rbac": ("arena_advertising.view",), "contract": "comms_advertising_mapper"},
-    {"registry_key": "comms_publication_builder", "feature": "comms_publication_builder", "route": "/communications/publication-builder", "rbac": ("publication_pipeline.view",)},
     {"registry_key": "xplor_indesign", "feature": "xplor_indesign", "route": "/communications/indesign-pipeline", "rbac": ("xplor_indesign.view",), "contract": "comms_indesign_pipeline"},
     {"registry_key": "comms_campaign_planner", "feature": "comms_campaign_planner", "route": "/communications/campaign-planner", "rbac": ("social_planner.view",)},
     {"registry_key": "comms_assets", "feature": "comms_assets", "route": "/communications/assets", "rbac": ("communications_assets.view",)},
@@ -42,7 +41,6 @@ _RBAC_KEYS_WITHOUT_API_ENFORCEMENT: frozenset[str] = frozenset(
     {
         "arena_advertising.view",
         "social_planner.view",
-        "publication_pipeline.view",
         "xplor_indesign.view",
         "communications_assets.view",
         "messaging.view",
@@ -52,8 +50,8 @@ _RBAC_KEYS_WITHOUT_API_ENFORCEMENT: frozenset[str] = frozenset(
 _LEGACY_RBAC_TO_PLATFORM_CAPS: dict[str, tuple[str, ...]] = {
     "arena_advertising.view": ("communications.advertising_mapper.view",),
     "social_planner.view": ("communications.campaign_planner.view",),
-    "publication_pipeline.view": ("publications.create", "publications.export"),
-    "xplor_indesign.view": ("communications.indesign_pipeline.view",),
+    "xplor_indesign.view": ("communications.indesign_pipeline.view", "publications.create", "publications.export"),
+    "publication_pipeline.view": ("communications.indesign_pipeline.view", "publications.create", "publications.export"),
     "communications_assets.view": ("communications.assets.view",),
 }
 
@@ -254,7 +252,7 @@ async def debug_resolved_access(
             "NOT filtered by department slug"
         ),
         "simulated_sidebar_visible_count": dept_nav_count,
-        "publication_builder": next((e for e in log if e.get("registry_key") == "comms_publication_builder"), None),
+        "indesign_pipeline": next((e for e in log if e.get("registry_key") == "xplor_indesign"), None),
     }
 
     return {

@@ -2,6 +2,8 @@
  * Canonical product feature keys — role toggles, sidebar, Team Management.
  * Must stay aligned with `backend/app/core/features/canonical_catalog.py`.
  */
+import { expandMatrixLicensableKeys } from "@/lib/features/matrix-nav-features";
+
 export const CANONICAL_PRODUCT_FEATURES = [
   "dashboard",
   "dashboard_operations",
@@ -29,15 +31,24 @@ export const CANONICAL_PRODUCT_FEATURES = [
   "xplor_indesign",
   "drawings",
   "schedule",
+  "schedule_availability",
+  "schedule_coverage",
+  "schedule_shift_definitions",
   "projects",
+  "pm_workspace",
+  "pm_planning",
   "work_requests",
   "procedures",
   "standards_training",
   "standards_certifications",
   "standards_compliance",
+  "standards_my_procedures",
+  "standards_routines",
+  "standards_acknowledgments",
+  "facilities_spatial",
+  "spatial_infrastructure",
   "messaging",
   "comms_assets",
-  "comms_publication_builder",
   "comms_campaign_planner",
 ] as const;
 
@@ -48,6 +59,7 @@ export const LEGACY_CONTRACT_TO_CANONICAL: Record<string, CanonicalFeatureKey> =
   compliance: "logs_inspections",
   comms_advertising_mapper: "advertising_mapper",
   comms_indesign_pipeline: "xplor_indesign",
+  comms_publication_builder: "xplor_indesign",
 };
 
 /** Canonical → legacy contract key in `company_features` / `contract_features`. */
@@ -71,6 +83,16 @@ export const CANONICAL_TO_CONTRACT: Partial<Record<CanonicalFeatureKey, string>>
   standards_training: "procedures",
   standards_certifications: "procedures",
   standards_compliance: "procedures",
+  standards_my_procedures: "procedures",
+  standards_routines: "procedures",
+  standards_acknowledgments: "procedures",
+  schedule_availability: "schedule",
+  schedule_coverage: "schedule",
+  schedule_shift_definitions: "schedule",
+  pm_workspace: "projects",
+  pm_planning: "projects",
+  facilities_spatial: "drawings",
+  spatial_infrastructure: "drawings",
 };
 
 const STANDARDS_SUB_FEATURES: readonly CanonicalFeatureKey[] = [
@@ -113,7 +135,7 @@ export function canonicalizeFeatureKeys(names: Iterable<string>): CanonicalFeatu
 
 /**
  * Expand contract feature names for permission-matrix filtering: include raw keys,
- * canonical equivalents, and paired legacy contract keys (`compliance` ↔ `logs_inspections`, …).
+ * canonical equivalents, paired legacy contract keys, and flyout children (licensable, not auto-on).
  */
 export function expandContractKeysForMatrixFilter(catalog: readonly string[]): Set<string> {
   const s = new Set<string>();
@@ -128,5 +150,28 @@ export function expandContractKeysForMatrixFilter(catalog: readonly string[]): S
       if (legacy) s.add(legacy);
     }
   }
+  for (const key of expandMatrixLicensableKeys(catalog)) {
+    s.add(key);
+    const c = toCanonicalFeatureKey(key);
+    if (c) {
+      s.add(c);
+      const legacy = CANONICAL_TO_CONTRACT[c];
+      if (legacy) s.add(legacy);
+    }
+  }
   return s;
+}
+
+/** Contract modules → all canonical keys the tenant may license (for capability ∩). */
+export function canonicalKeysFromContractExpanded(catalog: readonly string[]): CanonicalFeatureKey[] {
+  const s = new Set<CanonicalFeatureKey>();
+  for (const key of expandMatrixLicensableKeys(catalog)) {
+    const c = toCanonicalFeatureKey(key);
+    if (c) s.add(c);
+  }
+  for (const raw of catalog) {
+    const c = toCanonicalFeatureKey(String(raw));
+    if (c) s.add(c);
+  }
+  return [...s].sort();
 }

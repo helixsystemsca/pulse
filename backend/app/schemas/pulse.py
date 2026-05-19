@@ -148,6 +148,7 @@ class WorkerOut(BaseModel):
     avatar_url: Optional[str] = None
     employment_type: Optional[str] = None
     recurring_shifts: list[dict[str, Any]] = []
+    department_slug: Optional[str] = None
 
 
 class WorkerProfilePatch(BaseModel):
@@ -171,6 +172,7 @@ class ShiftCreate(BaseModel):
     shift_definition_id: Optional[str] = None
     requires_supervisor: bool = False
     requires_ticketed: bool = False
+    department_slug: Optional[str] = None
 
 
 class ShiftUpdate(BaseModel):
@@ -211,6 +213,7 @@ class ShiftOut(BaseModel):
     task_priority: Optional[str] = None
     # day | afternoon | night — routine checklist variants; null if unknown.
     routine_shift_band: Optional[str] = None
+    department_slug: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
