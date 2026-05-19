@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects.postgresql import UUID
 
 revision = "1010_employee_availability"
 down_revision = "1009_inventory_vendor_contractor_department"
@@ -14,16 +15,16 @@ depends_on = None
 def upgrade() -> None:
     op.create_table(
         "employee_availability",
-        sa.Column("id", sa.String(36), primary_key=True),
+        sa.Column("id", UUID(as_uuid=False), primary_key=True),
         sa.Column(
             "company_id",
-            sa.String(36),
+            UUID(as_uuid=False),
             sa.ForeignKey("companies.id", ondelete="CASCADE"),
             nullable=False,
         ),
         sa.Column(
             "employee_id",
-            sa.String(36),
+            UUID(as_uuid=False),
             sa.ForeignKey("users.id", ondelete="CASCADE"),
             nullable=False,
         ),

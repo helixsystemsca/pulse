@@ -53,7 +53,6 @@ FEATURE_TO_RBAC_PERMISSIONS: dict[str, tuple[str, ...]] = {
     "dashboard_project": ("dashboard.project.view",),
     "dashboard_inspections": ("dashboard.inspections.view",),
     "dashboard_team_insights": ("dashboard.team_insights.view",),
-    "dashboard_kiosk": ("dashboard.kiosk.view",),
     "dashboard_dept_communications": ("dashboard.dept.communications.view",),
     "dashboard_dept_aquatics": ("dashboard.dept.aquatics.view",),
     "dashboard_dept_reception": ("dashboard.dept.reception.view",),

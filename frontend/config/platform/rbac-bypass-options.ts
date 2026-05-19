@@ -92,7 +92,6 @@ export const RBAC_BYPASS_FEATURES: readonly RbacBypassFeature[] = [
       { id: "project", label: "Project dashboard", keys: ["dashboard.project.view"] },
       { id: "inspections", label: "Inspections & logs", keys: ["dashboard.inspections.view"] },
       { id: "team_insights", label: "Team insights", keys: ["dashboard.team_insights.view"] },
-      { id: "kiosk", label: "Kiosk displays", keys: ["dashboard.kiosk.view"] },
       { id: "all", label: "All dashboards (legacy)", keys: ["dashboard.view"] },
     ],
   },

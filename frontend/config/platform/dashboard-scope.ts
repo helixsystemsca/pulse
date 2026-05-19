@@ -22,7 +22,6 @@ export const DASHBOARD_NAV_GROUPS = [
   "Department Dashboards",
   "Project Dashboards",
   "Shared Dashboards",
-  "Kiosk Displays",
 ] as const;
 
 export type DashboardNavGroup = (typeof DASHBOARD_NAV_GROUPS)[number];

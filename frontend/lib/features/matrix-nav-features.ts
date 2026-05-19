@@ -46,7 +46,6 @@ export const MATRIX_LICENSABLE_CHILDREN: Partial<Record<string, readonly Canonic
     "dashboard_project",
     "dashboard_inspections",
     "dashboard_team_insights",
-    "dashboard_kiosk",
     "dashboard_dept_communications",
     "dashboard_dept_aquatics",
     "dashboard_dept_reception",

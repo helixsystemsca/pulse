@@ -114,7 +114,6 @@ const DASHBOARD_ACCESS_KEYS = [
   "dashboard_project",
   "dashboard_inspections",
   "dashboard_team_insights",
-  "dashboard_kiosk",
   "dashboard_dept_communications",
   "dashboard_dept_aquatics",
   "dashboard_dept_reception",
@@ -233,7 +232,7 @@ export function permissionFeatureGroupsForDepartment(dept: PermissionMatrixDepar
       {
         id: "dashboard_access",
         label: "Dashboard surfaces",
-        description: "Operations, leadership, maintenance dashboards, and kiosk displays.",
+        description: "Operations, leadership, project, and department dashboards.",
         keys: [...DASHBOARD_ACCESS_KEYS],
       },
       { id: "ops", label: "Maintenance & operations", description: "Classic Pulse modules for this department.", keys: [...maintenanceOps] },

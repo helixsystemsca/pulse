@@ -130,7 +130,17 @@ function classicNavGate(href: string): NavGate {
     };
   }
   if (h.startsWith("/kiosk/")) {
-    return { kind: "module", companyModules: ["dashboard"], rbacAnyOf: ["dashboard.kiosk.view", "dashboard.view"] };
+    return {
+      kind: "module",
+      companyModules: ["dashboard"],
+      rbacAnyOf: [
+        "dashboard.kiosk.view",
+        "dashboard.view",
+        "dashboard.leadership.view",
+        "dashboard.operations.view",
+        "dashboard.project.view",
+      ],
+    };
   }
   if (h === "/dashboard/pm-workspace" || h.startsWith("/dashboard/pm-workspace/")) {
     return { kind: "module", companyModules: ["projects"], rbacAnyOf: ["projects.pm.view"] };

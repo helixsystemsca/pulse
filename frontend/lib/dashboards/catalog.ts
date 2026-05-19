@@ -29,15 +29,12 @@ export type DashboardCatalogEntry = {
 function scopeForDashboard(def: DashboardAccessDef): DashboardScope {
   switch (def.id) {
     case "dashboard_worker":
-    case "kiosk_worker":
       return "personal";
     case "dashboard_project":
       return "project";
     case "monitoring":
       return "shared";
     case "dashboard":
-    case "kiosk_overview":
-    case "kiosk_leadership":
       return "organization";
     default:
       return "department";
