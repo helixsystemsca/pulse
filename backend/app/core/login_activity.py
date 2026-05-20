@@ -9,18 +9,25 @@ import logging
 import urllib.error
 import urllib.parse
 import urllib.request
-from typing import Optional, Sequence
+from typing import Literal, Optional, Sequence
 
 from fastapi import Request
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.domain import LoginEvent, User
+from app.core.workers_settings_merge import merge_workers_settings
+from app.models.domain import LoginEvent, PulseWorkersSettings, User
+from app.schemas.login_events import LoginEventOut
 
 logger = logging.getLogger(__name__)
 
 _IPAPI_TIMEOUT_SEC = 3.0
 _UA_MAX_LEN = 8000
+
+LoginMethod = Literal["password", "microsoft", "impersonation"]
+SessionOrigin = Literal["user", "impersonation", "internal_test"]
+
+_END_USER_ORIGINS = frozenset({"user"})
 
 
 def client_ip(request: Request) -> Optional[str]:
@@ -86,13 +93,54 @@ async def get_location(ip: str) -> tuple[Optional[str], Optional[str], Optional[
     return await asyncio.to_thread(get_location_sync, ip)
 
 
-async def log_login_event(db: AsyncSession, request: Request, user: User) -> None:
+async def _internal_test_emails_for_company(db: AsyncSession, company_id: str | None) -> set[str]:
+    if not company_id:
+        return set()
+    q = await db.execute(
+        select(PulseWorkersSettings).where(PulseWorkersSettings.company_id == company_id)
+    )
+    row = q.scalar_one_or_none()
+    merged = merge_workers_settings(row.settings if row else None)
+    raw = merged.get("login_activity_internal_emails") or []
+    if not isinstance(raw, list):
+        return set()
+    return {str(x).strip().lower() for x in raw if str(x).strip()}
+
+
+async def resolve_session_origin(
+    db: AsyncSession,
+    user: User,
+    *,
+    forced: SessionOrigin | None = None,
+) -> str:
+    if forced:
+        return forced
+    emails = await _internal_test_emails_for_company(db, user.company_id)
+    if (user.email or "").strip().lower() in emails:
+        return "internal_test"
+    return "user"
+
+
+async def log_login_event(
+    db: AsyncSession,
+    request: Request,
+    user: User,
+    *,
+    login_method: LoginMethod = "password",
+    session_origin: SessionOrigin | None = None,
+    impersonator_user_id: str | None = None,
+) -> None:
     """Persist one login row; swallow errors so auth never fails."""
     try:
         ip = client_ip(request) or ""
         ua_hdr = request.headers.get("user-agent") or request.headers.get("User-Agent") or ""
         ua = (ua_hdr[:_UA_MAX_LEN] if ua_hdr else None) or None
         city, region, country = await get_location(ip)
+        origin = await resolve_session_origin(
+            db,
+            user,
+            forced=session_origin or ("impersonation" if impersonator_user_id else None),
+        )
         ev = LoginEvent(
             user_id=user.id,
             ip_address=(ip[:128] if ip else "unknown"),
@@ -100,24 +148,82 @@ async def log_login_event(db: AsyncSession, request: Request, user: User) -> Non
             region=(region[:255] if region else None),
             country=(country[:255] if country else None),
             user_agent=ua,
+            login_method=login_method,
+            session_origin=origin,
+            impersonator_user_id=impersonator_user_id,
         )
         db.add(ev)
     except Exception:  # noqa: BLE001
         logger.warning("log_login_event failed for user_id=%s", getattr(user, "id", None), exc_info=True)
 
 
+async def recent_ips_for_user(db: AsyncSession, user_id: str, limit: int = 8) -> set[str]:
+    q = await db.execute(
+        select(LoginEvent.ip_address)
+        .where(LoginEvent.user_id == user_id)
+        .order_by(LoginEvent.timestamp.desc())
+        .limit(limit)
+    )
+    return {str(r[0]).strip() for r in q.all() if r[0]}
+
+
+async def login_events_to_out(
+    db: AsyncSession,
+    rows: list[LoginEvent],
+    *,
+    viewer: User | None = None,
+) -> list[LoginEventOut]:
+    viewer_ips: set[str] = set()
+    if viewer:
+        viewer_ips = await recent_ips_for_user(db, str(viewer.id))
+
+    imp_ids = {str(r.impersonator_user_id) for r in rows if r.impersonator_user_id}
+    imp_email: dict[str, str] = {}
+    if imp_ids:
+        q = await db.execute(select(User.id, User.email).where(User.id.in_(list(imp_ids))))
+        for uid, email in q.all():
+            imp_email[str(uid)] = email or ""
+
+    out: list[LoginEventOut] = []
+    for row in rows:
+        ip = (row.ip_address or "").strip()
+        likely = bool(viewer_ips and ip and ip in viewer_ips)
+        out.append(
+            LoginEventOut(
+                id=str(row.id),
+                timestamp=row.timestamp,
+                ip_address=row.ip_address,
+                city=row.city,
+                region=row.region,
+                country=row.country,
+                user_agent=row.user_agent,
+                login_method=getattr(row, "login_method", None) or "password",
+                session_origin=getattr(row, "session_origin", None) or "user",
+                impersonator_email=(
+                    imp_email.get(str(row.impersonator_user_id)) if row.impersonator_user_id else None
+                ),
+                likely_your_session=likely,
+            )
+        )
+    return out
+
+
 async def latest_login_event_per_user(
-    db: AsyncSession, user_ids: Sequence[str],
+    db: AsyncSession,
+    user_ids: Sequence[str],
+    *,
+    end_user_only: bool = True,
 ) -> dict[str, LoginEvent]:
     """Most recent LoginEvent per user id (for roster / directory summaries)."""
     ids = [str(x) for x in user_ids if x]
     if not ids:
         return {}
-    sub = (
-        select(LoginEvent.user_id, func.max(LoginEvent.timestamp).label("mx"))
-        .where(LoginEvent.user_id.in_(ids))
-        .group_by(LoginEvent.user_id)
-    ).subquery()
+    subq = select(LoginEvent.user_id, func.max(LoginEvent.timestamp).label("mx")).where(
+        LoginEvent.user_id.in_(ids)
+    )
+    if end_user_only:
+        subq = subq.where(LoginEvent.session_origin.in_(_END_USER_ORIGINS))
+    sub = subq.group_by(LoginEvent.user_id).subquery()
     q = await db.execute(
         select(LoginEvent).join(
             sub,
@@ -130,13 +236,18 @@ async def latest_login_event_per_user(
     return out
 
 
-async def list_recent_login_events(db: AsyncSession, user_id: str, limit: int = 20) -> list[LoginEvent]:
-    q = await db.execute(
-        select(LoginEvent)
-        .where(LoginEvent.user_id == user_id)
-        .order_by(LoginEvent.timestamp.desc())
-        .limit(limit)
-    )
+async def list_recent_login_events(
+    db: AsyncSession,
+    user_id: str,
+    limit: int = 20,
+    *,
+    end_user_only: bool = False,
+) -> list[LoginEvent]:
+    stmt = select(LoginEvent).where(LoginEvent.user_id == user_id)
+    if end_user_only:
+        stmt = stmt.where(LoginEvent.session_origin.in_(_END_USER_ORIGINS))
+    stmt = stmt.order_by(LoginEvent.timestamp.desc()).limit(limit)
+    q = await db.execute(stmt)
     return list(q.scalars().all())
 
 
@@ -147,4 +258,6 @@ __all__ = [
     "latest_login_event_per_user",
     "list_recent_login_events",
     "log_login_event",
+    "login_events_to_out",
+    "resolve_session_origin",
 ]

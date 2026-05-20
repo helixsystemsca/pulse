@@ -284,6 +284,14 @@ class LoginEvent(Base):
     region: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     country: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     user_agent: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    login_method: Mapped[str] = mapped_column(String(32), nullable=False, default="password")
+    session_origin: Mapped[str] = mapped_column(String(32), nullable=False, default="user")
+    impersonator_user_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     user: Mapped["User"] = relationship(back_populates="login_events")
 

@@ -152,7 +152,7 @@ const ROTATION_PRESET_BUTTONS: { label: string; days: boolean[] }[] = [
   { label: "All week", days: [true, true, true, true, true, true, true] },
 ];
 
-const SETTINGS_TABS = ["Roles", "Shifts", "Skill categories", "Certification rules"] as const;
+const SETTINGS_TABS = ["Roles", "Shifts", "Skill categories", "Certification rules", "Login activity"] as const;
 type SettingsTab = (typeof SETTINGS_TABS)[number];
 
 /** Shown when the invite exists but email delivery is uncertain or disabled - share link manually. */
@@ -375,6 +375,22 @@ function formatLoginWhen(iso: string | null | undefined): string {
   }
 }
 
+function loginSessionOriginLabel(ev: LoginEventRow): string {
+  if (ev.session_origin === "impersonation") {
+    return ev.impersonator_email ? `Impersonation (${ev.impersonator_email})` : "Impersonation";
+  }
+  if (ev.session_origin === "internal_test") return "Internal test account";
+  if (ev.likely_your_session) return "Likely your session";
+  return "End user";
+}
+
+function loginSessionOriginBadgeClass(ev: LoginEventRow): string {
+  if (ev.session_origin === "impersonation") return "bg-violet-100 text-violet-900 dark:bg-violet-950/50 dark:text-violet-100";
+  if (ev.session_origin === "internal_test") return "bg-amber-100 text-amber-950 dark:bg-amber-950/40 dark:text-amber-100";
+  if (ev.likely_your_session) return "bg-slate-300/80 text-slate-900 dark:bg-slate-600 dark:text-slate-100";
+  return "bg-emerald-100 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-100";
+}
+
 function matrixSlotBadgeClass(kind: string): string {
   if (kind === "explicit") {
     return "border-emerald-700/35 bg-emerald-100 text-emerald-950 dark:border-emerald-500/40 dark:bg-emerald-950/50 dark:text-emerald-100";
@@ -591,6 +607,7 @@ export function WorkersApp() {
   const [activityRows, setActivityRows] = useState<LoginEventRow[]>([]);
   const [activityLoading, setActivityLoading] = useState(false);
   const [activityError, setActivityError] = useState<string | null>(null);
+  const [activityEndUserOnly, setActivityEndUserOnly] = useState(true);
 
   const [accessDebugOpen, setAccessDebugOpen] = useState(false);
   const [accessDebugLoading, setAccessDebugLoading] = useState(false);
@@ -706,21 +723,31 @@ export function WorkersApp() {
       .catch(() => setSlotAccessAudit(null));
   }, [dataEnabled, effectiveCompanyId, apiCompany, isTenantFullAdmin]);
 
-  const openLoginActivity = useCallback(async (target: Pick<WorkerRow, "id" | "full_name" | "email">) => {
-    setActivityUserId(target.id);
-    setActivityLabel(target.full_name ?? target.email);
-    setActivityLoading(true);
-    setActivityError(null);
-    setActivityRows([]);
-    try {
-      const rows = await fetchUserLoginEvents(target.id);
-      setActivityRows(rows);
-    } catch (e: unknown) {
-      setActivityError(parseClientApiError(e).message);
-    } finally {
-      setActivityLoading(false);
-    }
-  }, []);
+  const loadLoginActivity = useCallback(
+    async (userId: string, endUserOnly: boolean) => {
+      setActivityLoading(true);
+      setActivityError(null);
+      try {
+        const rows = await fetchUserLoginEvents(userId, { endUserOnly });
+        setActivityRows(rows);
+      } catch (e: unknown) {
+        setActivityError(parseClientApiError(e).message);
+      } finally {
+        setActivityLoading(false);
+      }
+    },
+    [],
+  );
+
+  const openLoginActivity = useCallback(
+    async (target: Pick<WorkerRow, "id" | "full_name" | "email">) => {
+      setActivityUserId(target.id);
+      setActivityLabel(target.full_name ?? target.email);
+      setActivityRows([]);
+      await loadLoginActivity(target.id, activityEndUserOnly);
+    },
+    [activityEndUserOnly, loadLoginActivity],
+  );
 
   const openAccessDebugger = useCallback(async () => {
     if (!profileId) return;
@@ -3577,6 +3604,24 @@ export function WorkersApp() {
         wide
       >
         <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-ds-border bg-ds-secondary/20 px-3 py-2">
+            <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-ds-foreground">
+              <input
+                type="checkbox"
+                className="rounded border-ds-border"
+                checked={activityEndUserOnly}
+                onChange={(e) => {
+                  const on = e.target.checked;
+                  setActivityEndUserOnly(on);
+                  if (activityUserId) void loadLoginActivity(activityUserId, on);
+                }}
+              />
+              Show end-user sign-ins only
+            </label>
+            <p className="text-[10px] text-ds-muted">
+              Hides impersonation and internal test accounts. Rows matching your IP are labeled &quot;Likely your session&quot;.
+            </p>
+          </div>
           {activityLoading ? (
             <div className="flex items-center gap-2 text-sm text-ds-muted">
               <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
@@ -3585,7 +3630,7 @@ export function WorkersApp() {
           ) : null}
           {activityError ? <p className="text-sm text-ds-danger">{activityError}</p> : null}
           {!activityLoading && !activityError && activityRows.length === 0 ? (
-            <p className="text-sm text-ds-muted">No recorded logins yet.</p>
+            <p className="text-sm text-ds-muted">No recorded logins match this filter.</p>
           ) : null}
           {!activityLoading && activityRows.length > 0 ? (
             <div className="overflow-x-auto rounded-lg border border-ds-border">
@@ -3593,6 +3638,7 @@ export function WorkersApp() {
                 <thead>
                   <tr className={dataTableHeadRowClass}>
                     <th className="px-3 py-2">When</th>
+                    <th className="px-3 py-2">Type</th>
                     <th className="px-3 py-2">IP</th>
                     <th className="px-3 py-2">Location</th>
                     <th className="px-3 py-2">User agent</th>
@@ -3600,8 +3646,24 @@ export function WorkersApp() {
                 </thead>
                 <tbody>
                   {activityRows.map((ev) => (
-                    <tr key={ev.id} className={dataTableBodyRow()}>
+                    <tr
+                      key={ev.id}
+                      className={cn(
+                        dataTableBodyRow(),
+                        ev.likely_your_session && "bg-slate-100/60 dark:bg-slate-800/40",
+                      )}
+                    >
                       <td className="px-3 py-2 text-ds-foreground">{formatLoginWhen(ev.timestamp)}</td>
+                      <td className="px-3 py-2">
+                        <span
+                          className={cn(
+                            "inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                            loginSessionOriginBadgeClass(ev),
+                          )}
+                        >
+                          {loginSessionOriginLabel(ev)}
+                        </span>
+                      </td>
                       <td className="px-3 py-2 text-ds-muted">{ev.ip_address}</td>
                       <td className="px-3 py-2 text-ds-muted">
                         {[ev.city, ev.region].filter(Boolean).join(", ") || "-"}
@@ -3736,6 +3798,30 @@ export function WorkersApp() {
                 className={`${FIELD} min-h-[160px] font-mono text-xs`}
                 value={certRulesText}
                 onChange={(e) => setCertRulesText(e.target.value)}
+              />
+            </div>
+          ) : null}
+
+          {settingsTab === "Login activity" && isTenantFullAdmin ? (
+            <div className="space-y-2">
+              <p className="text-xs text-pulse-muted">
+                Emails listed here are tagged as <strong>Internal test account</strong> in login history (your QA
+                logins). One email per line.
+              </p>
+              <label className={LABEL}>Internal test account emails</label>
+              <textarea
+                className={`${FIELD} min-h-[120px] font-mono text-xs`}
+                placeholder="you@company.com"
+                value={(settingsDraft.login_activity_internal_emails ?? []).join("\n")}
+                onChange={(e) =>
+                  setSettingsDraft((s) => ({
+                    ...s,
+                    login_activity_internal_emails: e.target.value
+                      .split(/[\n,;]+/)
+                      .map((x) => x.trim().toLowerCase())
+                      .filter(Boolean),
+                  }))
+                }
               />
             </div>
           ) : null}

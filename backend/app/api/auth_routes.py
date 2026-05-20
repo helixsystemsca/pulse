@@ -224,7 +224,7 @@ async def login(
         company_id=user.company_id,
         metadata={"email": user.email},
     )
-    await log_login_event(db, request, user)
+    await log_login_event(db, request, user, login_method="password")
     await db.commit()
     return _token_for_user(user)
 
@@ -260,7 +260,7 @@ async def microsoft_oauth_login(
             "created_internal_user": created,
         },
     )
-    await log_login_event(db, request, user)
+    await log_login_event(db, request, user, login_method="microsoft")
     await db.commit()
     return _token_for_user(user)
 
@@ -290,6 +290,14 @@ async def impersonate(
             "target_email": target.email,
             "impersonator_id": admin.id,
         },
+    )
+    await log_login_event(
+        db,
+        request,
+        target,
+        login_method="impersonation",
+        session_origin="impersonation",
+        impersonator_user_id=str(admin.id),
     )
     await db.commit()
     return _token_for_user(

@@ -86,6 +86,40 @@ export function monthLabel(year: number, monthIndex: number): string {
   });
 }
 
+export type MonthPickerOption = {
+  year: number;
+  monthIndex: number;
+  label: string;
+  value: string;
+};
+
+/** Month options for schedule month view (past + future). */
+export function buildMonthPickerRange(options?: {
+  anchor?: Date;
+  monthsBack?: number;
+  monthsForward?: number;
+}): MonthPickerOption[] {
+  const anchor = options?.anchor ?? new Date();
+  const monthsBack = options?.monthsBack ?? 12;
+  const monthsForward = options?.monthsForward ?? 36;
+  const start = new Date(anchor.getFullYear(), anchor.getMonth() - monthsBack, 1);
+  const end = new Date(anchor.getFullYear(), anchor.getMonth() + monthsForward, 1);
+  const out: MonthPickerOption[] = [];
+  const cur = new Date(start);
+  while (cur <= end) {
+    const y = cur.getFullYear();
+    const m = cur.getMonth();
+    out.push({
+      year: y,
+      monthIndex: m,
+      label: monthLabel(y, m),
+      value: `${y}-${m}`,
+    });
+    cur.setMonth(cur.getMonth() + 1);
+  }
+  return out;
+}
+
 /** Move a local calendar date by `deltaDays` (can be negative). */
 export function addDaysToIso(iso: string, deltaDays: number): string {
   const d = parseLocalDate(iso);

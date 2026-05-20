@@ -13,7 +13,11 @@ import {
 } from "@/lib/schedule/drag";
 import { buildingIndicatorForZone } from "@/lib/schedule/building-indicators";
 import { displayStandardShiftCode } from "@/lib/schedule/shift-definition-catalog";
-import { shiftCodeBadgeToneClasses, shiftCodeToneClassForRowBadge } from "@/lib/schedule/scheduleWorkerPanelSort";
+import {
+  scheduleAssignmentRowSurfaceClass,
+  shiftCodeBadgeToneClasses,
+  shiftCodeToneClassForRowBadge,
+} from "@/lib/schedule/scheduleWorkerPanelSort";
 import { cn } from "@/lib/cn";
 import { OperationalBadgeStack } from "@/components/schedule/operational/OperationalBadgeStack";
 import { ScheduleShiftCertChips } from "./ScheduleShiftCertChips";
@@ -121,8 +125,8 @@ export function ScheduleCompactCellRows({
         const zoneObj = zoneObjMap.get(s.zoneId);
         const bld = buildingIndicatorForZone(zoneObj);
         const roleLb = roleMap.get(s.role) ?? s.role;
-        // Outer card stays neutral; shift chip carries the shift-type color for compact scan.
-        const cardCls = "border border-pulseShell-border bg-pulseShell-surface text-ds-foreground";
+        const rowWorker = s.workerId ? workerMap.get(s.workerId) : undefined;
+        const cardCls = scheduleAssignmentRowSurfaceClass(rowWorker);
         const openCls = isOpen
           ? "ring-2 ring-dashed ring-ds-success/45 ring-offset-1 ring-offset-pulse-shell-cell dark:ring-offset-pulse-shell-cell"
           : "";

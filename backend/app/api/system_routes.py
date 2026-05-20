@@ -6,7 +6,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any, Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from pydantic import BaseModel
 from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import array as pg_array
@@ -33,7 +33,7 @@ from app.core.features.system_catalog import (
     normalize_enabled_features,
 )
 from app.core.company_logo_upload import INTERNAL_LOGO_PATH, normalize_logo_content_type, validate_logo_bytes
-from app.core.login_activity import latest_login_event_per_user, list_recent_login_events
+from app.core.login_activity import latest_login_event_per_user, list_recent_login_events, log_login_event, login_events_to_out
 from app.core.pulse_storage import write_company_logo_bytes
 from app.core.system_audit import record_system_log
 from app.core.system_tokens import generate_raw_token, hash_system_token as hash_opaque_token
@@ -831,20 +831,22 @@ async def patch_user_facility_tenant_admin(
 @router.get("/users/{user_id}/login-events", response_model=list[LoginEventOut])
 async def system_user_login_events(
     user_id: str,
-    _: Annotated[User, Depends(require_system_admin)],
+    admin: Annotated[User, Depends(require_system_admin)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    end_user_only: bool = False,
 ) -> list[LoginEventOut]:
-    """Last 20 password logins for any user (system_admin)."""
+    """Last 20 sign-ins for any user (system_admin)."""
     u = await db.get(User, user_id)
     if not u:
         raise HTTPException(status_code=404, detail="User not found")
-    rows = await list_recent_login_events(db, user_id, limit=20)
-    return [LoginEventOut.model_validate(r) for r in rows]
+    rows = await list_recent_login_events(db, user_id, limit=20, end_user_only=end_user_only)
+    return await login_events_to_out(db, rows, viewer=admin)
 
 
 @router.post("/users/{user_id}/impersonate", response_model=Token)
 async def system_impersonate_user(
     user_id: str,
+    request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     admin: Annotated[User, Depends(require_system_admin)],
 ) -> Token:
@@ -875,6 +877,14 @@ async def system_impersonate_user(
         target_type="user",
         target_id=target.id,
         metadata={"target_email": target.email, "company_id": target.company_id},
+    )
+    await log_login_event(
+        db,
+        request,
+        target,
+        login_method="impersonation",
+        session_origin="impersonation",
+        impersonator_user_id=str(admin.id),
     )
     await db.commit()
 

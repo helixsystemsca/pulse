@@ -1632,6 +1632,7 @@ export function ScheduleApp() {
                     monthIndex={cursor.m}
                     onPrevMonth={prevMonth}
                     onNextMonth={nextMonth}
+                    onMonthSelect={(y, m) => setCursor({ y, m })}
                     shifts={displayShiftsForGrid}
                     workers={workers}
                     zones={zones}

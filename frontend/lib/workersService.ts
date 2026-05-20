@@ -46,6 +46,10 @@ export type LoginEventRow = {
   region?: string | null;
   country?: string | null;
   user_agent?: string | null;
+  login_method?: string;
+  session_origin?: string;
+  impersonator_email?: string | null;
+  likely_your_session?: boolean;
 };
 
 export type WorkerCert = {
@@ -140,6 +144,8 @@ export type WorkersSettings = {
   work_request_edit_roles?: string[];
   /** Roles allowed to create/rename/delete facility zones (work-request location list). Company admins always can. */
   zone_manage_roles?: string[];
+  /** Company admin: emails tagged as internal/test in login activity. */
+  login_activity_internal_emails?: string[];
 };
 
 function companyQs(companyId: string | null): string {
@@ -152,13 +158,21 @@ function withCompany(path: string, companyId: string | null): string {
   return path.includes("?") ? `${path}&${qs}` : `${path}?${qs}`;
 }
 
-export async function fetchUserLoginEvents(userId: string): Promise<LoginEventRow[]> {
-  return apiFetch<LoginEventRow[]>(`/api/v1/users/${encodeURIComponent(userId)}/login-events`);
+export async function fetchUserLoginEvents(
+  userId: string,
+  options?: { endUserOnly?: boolean },
+): Promise<LoginEventRow[]> {
+  const qs = options?.endUserOnly ? "?end_user_only=true" : "";
+  return apiFetch<LoginEventRow[]>(`/api/v1/users/${encodeURIComponent(userId)}/login-events${qs}`);
 }
 
 /** system_admin: cross-tenant login history */
-export async function fetchSystemUserLoginEvents(userId: string): Promise<LoginEventRow[]> {
-  return apiFetch<LoginEventRow[]>(`/api/system/users/${encodeURIComponent(userId)}/login-events`);
+export async function fetchSystemUserLoginEvents(
+  userId: string,
+  options?: { endUserOnly?: boolean },
+): Promise<LoginEventRow[]> {
+  const qs = options?.endUserOnly ? "?end_user_only=true" : "";
+  return apiFetch<LoginEventRow[]>(`/api/system/users/${encodeURIComponent(userId)}/login-events${qs}`);
 }
 
 export type WorkerSlotAccessAudit = {

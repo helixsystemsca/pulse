@@ -46,6 +46,8 @@ DEFAULT_WORKERS_SETTINGS: dict[str, Any] = {
     "work_request_edit_roles": ["manager", "supervisor"],
     #: Roles that may add/rename/delete facility zones (work-request locations). Company admins always can.
     "zone_manage_roles": ["manager", "supervisor"],
+    #: Emails whose sign-ins are tagged internal_test in login activity (admin / QA accounts).
+    "login_activity_internal_emails": [],
 }
 
 
