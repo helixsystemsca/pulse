@@ -14,7 +14,7 @@ import {
 import type { WorkspaceTool } from "../workspaceTools";
 
 const BTN =
-  "flex h-8 w-8 shrink-0 items-center justify-center rounded-[7px] transition-colors disabled:cursor-not-allowed disabled:opacity-35";
+  "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-l-[3px] border-transparent transition-colors disabled:cursor-not-allowed disabled:opacity-35";
 
 type Item = { tool: WorkspaceTool; label: string; Icon: typeof MousePointer2; disabled?: boolean };
 
@@ -58,7 +58,7 @@ export function MiniToolRail({
 
   return (
     <nav
-      className="flex w-11 shrink-0 flex-col border-r border-[#e2e6ec] bg-white py-2.5 dark:border-ds-border/80 dark:bg-ds-secondary/30"
+      className="flex w-12 shrink-0 flex-col overflow-visible border-r border-[#e2e6ec] bg-white px-1 py-2.5 dark:border-ds-border/80 dark:bg-ds-secondary/30"
       aria-label="Map tools"
     >
       <button
@@ -71,7 +71,7 @@ export function MiniToolRail({
           canvasNavMode === "select"
             ? "bg-[#e6faf5] text-[#0fa07e] dark:bg-emerald-950/40 dark:text-emerald-200"
             : "text-[#96a0b0] hover:bg-ds-interactive-hover hover:text-[#1a2030] dark:text-ds-muted dark:hover:bg-ds-interactive-hover dark:hover:text-ds-foreground"
-        } ${canvasNavMode === "select" ? "before:absolute before:left-0 before:top-1/2 before:h-[18px] before:w-[3px] before:-translate-y-1/2 before:rounded-r before:bg-[#1ec8a0]" : ""}`}
+        } ${canvasNavMode === "select" ? "border-l-[#1ec8a0] pl-0.5" : ""}`}
         onClick={() => !navLocked && onCanvasSelectMode()}
       >
         <MousePointer2 className="h-4 w-4" aria-hidden />
@@ -86,7 +86,7 @@ export function MiniToolRail({
           canvasNavMode === "pan"
             ? "bg-[#e6faf5] text-[#0fa07e] dark:bg-emerald-950/40 dark:text-emerald-200"
             : "text-[#96a0b0] hover:bg-ds-interactive-hover hover:text-[#1a2030] dark:text-ds-muted dark:hover:bg-ds-interactive-hover dark:hover:text-ds-foreground"
-        } ${canvasNavMode === "pan" ? "before:absolute before:left-0 before:top-1/2 before:h-[18px] before:w-[3px] before:-translate-y-1/2 before:rounded-r before:bg-[#1ec8a0]" : ""}`}
+        } ${canvasNavMode === "pan" ? "border-l-[#1ec8a0] pl-0.5" : ""}`}
         onClick={() => !navLocked && onCanvasPanMode()}
       >
         <Hand className="h-4 w-4" aria-hidden />
@@ -109,7 +109,7 @@ export function MiniToolRail({
             disabled={effectiveDisabled}
             className={`${BTN} relative mx-auto mt-0.5 ${
               on
-                ? "bg-[#e6faf5] text-[#0fa07e] before:absolute before:left-0 before:top-1/2 before:h-[18px] before:w-[3px] before:-translate-y-1/2 before:rounded-r before:bg-[#1ec8a0] dark:bg-emerald-950/40 dark:text-emerald-200"
+                ? "border-l-[#1ec8a0] bg-[#e6faf5] pl-0.5 text-[#0fa07e] dark:bg-emerald-950/40 dark:text-emerald-200"
                 : "text-[#96a0b0] hover:bg-ds-interactive-hover hover:text-[#1a2030] dark:text-ds-muted dark:hover:bg-ds-interactive-hover dark:hover:text-ds-foreground"
             }`}
             onClick={() => !effectiveDisabled && onToolChange(tool)}

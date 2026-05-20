@@ -4,7 +4,7 @@ import type { SpatialWorkspaceToolEntry } from "@/spatial-engine/workspace/types
 import { cn } from "@/lib/cn";
 
 const BTN =
-  "relative mx-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-35";
+  "relative mx-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-l-[3px] border-transparent transition-colors disabled:cursor-not-allowed disabled:opacity-35";
 
 type Props = {
   tools: readonly SpatialWorkspaceToolEntry[];
@@ -29,7 +29,7 @@ export function SpatialToolRail({
 
   return (
     <nav
-      className="flex w-11 shrink-0 flex-col border-r border-ds-border/80 bg-ds-secondary/40 py-2 dark:bg-ds-secondary/30"
+      className="flex w-12 shrink-0 flex-col overflow-visible border-r border-ds-border/80 bg-ds-secondary/40 px-1 py-2 dark:bg-ds-secondary/30"
       aria-label={ariaLabel}
     >
       {navigation.map((tool) => (
@@ -100,7 +100,7 @@ function ToolButton({
       className={cn(
         BTN,
         active
-          ? "bg-[var(--ds-accent)]/15 text-[var(--ds-accent)] before:absolute before:left-0 before:top-1/2 before:h-[18px] before:w-[3px] before:-translate-y-1/2 before:rounded-r before:bg-[var(--ds-accent)]"
+          ? "border-l-[var(--ds-accent)] bg-[var(--ds-accent)]/15 pl-0.5 text-[var(--ds-accent)]"
           : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground",
       )}
       onClick={() => !disabled && onSelect()}

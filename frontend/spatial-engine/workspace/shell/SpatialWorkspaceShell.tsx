@@ -118,14 +118,16 @@ export function SpatialWorkspaceShell({
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-row overflow-hidden">
         {!hideToolRail ? (
-          <SpatialToolRail
-            tools={tools}
-            activeToolId={activeToolId}
-            onToolChange={onToolChange}
-            disabled={toolsDisabled}
-            disabledReason={toolsDisabledReason}
-            ariaLabel={`${workspace.label} tools`}
-          />
+          <div className="z-10 shrink-0 overflow-visible">
+            <SpatialToolRail
+              tools={tools}
+              activeToolId={activeToolId}
+              onToolChange={onToolChange}
+              disabled={toolsDisabled}
+              disabledReason={toolsDisabledReason}
+              ariaLabel={`${workspace.label} tools`}
+            />
+          </div>
         ) : null}
 
         {showLeft ? (
