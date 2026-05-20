@@ -2,9 +2,15 @@
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
+import alembic_helpers as ah
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects.postgresql import UUID
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 revision = "1013_planning_ideas"
 down_revision = "1012_login_event_session_origin"
@@ -13,7 +19,10 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.create_table(
+    conn = op.get_bind()
+    ah.safe_create_table(
+        op,
+        conn,
         "planning_ideas",
         sa.Column("id", UUID(as_uuid=False), primary_key=True, nullable=False),
         sa.Column(
@@ -55,15 +64,16 @@ def upgrade() -> None:
         ),
         sa.Column("converted_at", sa.DateTime(timezone=True), nullable=True),
     )
-    op.create_index("ix_planning_ideas_company_id", "planning_ideas", ["company_id"])
-    op.create_index("ix_planning_ideas_status", "planning_ideas", ["status"])
-    op.create_index("ix_planning_ideas_linked_project_id", "planning_ideas", ["linked_project_id"])
-    op.create_index("ix_planning_ideas_created_at", "planning_ideas", ["created_at"])
+    ah.safe_create_index(op, conn, "ix_planning_ideas_company_id", "planning_ideas", ["company_id"])
+    ah.safe_create_index(op, conn, "ix_planning_ideas_status", "planning_ideas", ["status"])
+    ah.safe_create_index(op, conn, "ix_planning_ideas_linked_project_id", "planning_ideas", ["linked_project_id"])
+    ah.safe_create_index(op, conn, "ix_planning_ideas_created_at", "planning_ideas", ["created_at"])
 
 
 def downgrade() -> None:
-    op.drop_index("ix_planning_ideas_created_at", table_name="planning_ideas")
-    op.drop_index("ix_planning_ideas_linked_project_id", table_name="planning_ideas")
-    op.drop_index("ix_planning_ideas_status", table_name="planning_ideas")
-    op.drop_index("ix_planning_ideas_company_id", table_name="planning_ideas")
-    op.drop_table("planning_ideas")
+    conn = op.get_bind()
+    ah.safe_drop_index(op, conn, "ix_planning_ideas_created_at", "planning_ideas")
+    ah.safe_drop_index(op, conn, "ix_planning_ideas_linked_project_id", "planning_ideas")
+    ah.safe_drop_index(op, conn, "ix_planning_ideas_status", "planning_ideas")
+    ah.safe_drop_index(op, conn, "ix_planning_ideas_company_id", "planning_ideas")
+    ah.safe_drop_table(op, conn, "planning_ideas")

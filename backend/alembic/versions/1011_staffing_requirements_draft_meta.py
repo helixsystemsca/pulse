@@ -2,9 +2,15 @@
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
+import alembic_helpers as ah
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects.postgresql import JSONB, UUID
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 revision = "1011_staffing_requirements_draft_meta"
 down_revision = "1010_employee_availability"
@@ -13,7 +19,10 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.create_table(
+    conn = op.get_bind()
+    ah.safe_create_table(
+        op,
+        conn,
         "staffing_requirements",
         sa.Column("id", UUID(as_uuid=False), primary_key=True),
         sa.Column(
@@ -37,38 +46,49 @@ def upgrade() -> None:
             server_default=sa.text("now()"),
         ),
     )
-    op.create_index("ix_staffing_requirements_company_id", "staffing_requirements", ["company_id"])
-    op.create_index("ix_staffing_requirements_date", "staffing_requirements", ["date"])
-    op.create_index(
+    ah.safe_create_index(op, conn, "ix_staffing_requirements_company_id", "staffing_requirements", ["company_id"])
+    ah.safe_create_index(op, conn, "ix_staffing_requirements_date", "staffing_requirements", ["date"])
+    ah.safe_create_index(
+        op,
+        conn,
         "ix_staffing_requirements_company_date",
         "staffing_requirements",
         ["company_id", "date"],
     )
 
-    op.add_column(
+    ah.safe_add_column(
+        op,
+        conn,
         "pulse_schedule_shifts",
         sa.Column("locked", sa.Boolean(), nullable=False, server_default=sa.text("false")),
     )
-    op.add_column(
+    ah.safe_add_column(
+        op,
+        conn,
         "pulse_schedule_shifts",
         sa.Column("generated_by", sa.String(64), nullable=True),
     )
-    op.add_column(
+    ah.safe_add_column(
+        op,
+        conn,
         "pulse_schedule_shifts",
         sa.Column("confidence_score", sa.Float(), nullable=True),
     )
-    op.add_column(
+    ah.safe_add_column(
+        op,
+        conn,
         "pulse_schedule_shifts",
         sa.Column("recommendation_reason", sa.Text(), nullable=True),
     )
 
 
 def downgrade() -> None:
-    op.drop_column("pulse_schedule_shifts", "recommendation_reason")
-    op.drop_column("pulse_schedule_shifts", "confidence_score")
-    op.drop_column("pulse_schedule_shifts", "generated_by")
-    op.drop_column("pulse_schedule_shifts", "locked")
-    op.drop_index("ix_staffing_requirements_company_date", table_name="staffing_requirements")
-    op.drop_index("ix_staffing_requirements_date", table_name="staffing_requirements")
-    op.drop_index("ix_staffing_requirements_company_id", table_name="staffing_requirements")
-    op.drop_table("staffing_requirements")
+    conn = op.get_bind()
+    ah.safe_drop_column(op, conn, "pulse_schedule_shifts", "recommendation_reason")
+    ah.safe_drop_column(op, conn, "pulse_schedule_shifts", "confidence_score")
+    ah.safe_drop_column(op, conn, "pulse_schedule_shifts", "generated_by")
+    ah.safe_drop_column(op, conn, "pulse_schedule_shifts", "locked")
+    ah.safe_drop_index(op, conn, "ix_staffing_requirements_company_date", "staffing_requirements")
+    ah.safe_drop_index(op, conn, "ix_staffing_requirements_date", "staffing_requirements")
+    ah.safe_drop_index(op, conn, "ix_staffing_requirements_company_id", "staffing_requirements")
+    ah.safe_drop_table(op, conn, "staffing_requirements")

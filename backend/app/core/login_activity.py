@@ -16,7 +16,8 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.workers_settings_merge import merge_workers_settings
-from app.models.domain import LoginEvent, PulseWorkersSettings, User
+from app.models.domain import LoginEvent, User
+from app.models.pulse_models import PulseWorkersSettings
 from app.schemas.login_events import LoginEventOut
 
 logger = logging.getLogger(__name__)

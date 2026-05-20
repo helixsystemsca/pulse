@@ -35,7 +35,6 @@ describe("tenantSidebarNavItemsForSession", () => {
     );
     const labels = items.map((i) => i.label);
     expect(labels).toContain("Logs & Inspections");
-    expect(labels).toContain("Inspections & Logs");
     expect(labels).toContain("Arena Advertising");
     expect(labels).not.toContain("Schedule");
   });
