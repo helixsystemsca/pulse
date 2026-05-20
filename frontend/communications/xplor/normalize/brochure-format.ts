@@ -13,9 +13,20 @@ import {
   stripLocationLabel,
 } from "./text-cleanup";
 
-/** True when an instructor name should be shown. */
+/** Normalize instructor field; strip label noise from OCR/tag bleed. */
+export function formatInstructor(instructor: string): string {
+  const t = collapseWhitespace(applyOcrPhraseFixes(instructor))
+    .replace(/^Instructor:\s*/i, "")
+    .trim();
+  return t;
+}
+
+/** True when an instructor name should be shown in UI or export. */
 export function hasInstructorName(instructor: string | null | undefined): boolean {
-  return Boolean(instructor?.trim());
+  const t = formatInstructor(instructor ?? "");
+  if (!t) return false;
+  if (/^instructor$/i.test(t)) return false;
+  return true;
 }
 
 /** Location without "Location:" prefix. */
@@ -91,7 +102,3 @@ export function formatProgramText(text: string): string {
   );
 }
 
-export function formatInstructor(instructor: string): string {
-  const t = collapseWhitespace(applyOcrPhraseFixes(instructor)).trim();
-  return t;
-}

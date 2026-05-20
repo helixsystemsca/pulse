@@ -2,8 +2,12 @@
 
 import { MapPin, User } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { formatSessionDateRange, hasInstructorName } from "@/communications/xplor/normalize/brochure-format";
-import type { PublicationEntry } from "@/communications/xplor/schema/publication";
+import {
+  formatInstructor,
+  formatSessionDateRange,
+  hasInstructorName,
+} from "@/communications/xplor/normalize/brochure-format";
+import type { PublicationEntry, PublicationSession } from "@/communications/xplor/schema/publication";
 
 type XplorPreviewCardProps = {
   entry: PublicationEntry;
@@ -11,11 +15,57 @@ type XplorPreviewCardProps = {
   className?: string;
 };
 
+function SessionMetadataRow({ session }: { session: PublicationSession }) {
+  const dateLine = formatSessionDateRange(session.startDate, session.endDate);
+  const hasAny = Boolean(
+    session.days?.trim() ||
+      session.time?.trim() ||
+      dateLine ||
+      session.price?.trim() ||
+      session.programCode?.trim(),
+  );
+  if (!hasAny) return null;
+
+  return (
+    <div
+      className="flex flex-wrap items-baseline gap-x-4 gap-y-0 font-mono text-xs leading-snug text-ds-foreground"
+      role="row"
+    >
+      {session.days ? (
+        <span className="shrink-0 whitespace-nowrap" role="cell">
+          {session.days}
+        </span>
+      ) : null}
+      {session.time ? (
+        <span className="shrink-0 whitespace-nowrap" role="cell">
+          {session.time.replace(/-/g, "–")}
+        </span>
+      ) : null}
+      {dateLine ? (
+        <span className="shrink-0 whitespace-nowrap" role="cell">
+          {dateLine}
+        </span>
+      ) : null}
+      {session.price ? (
+        <span className="shrink-0 whitespace-nowrap" role="cell">
+          {session.price}
+        </span>
+      ) : null}
+      {session.programCode ? (
+        <span className="shrink-0 whitespace-nowrap text-ds-muted" role="cell">
+          #{session.programCode}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 export function XplorPreviewCard({ entry, index, className }: XplorPreviewCardProps) {
   const groups = entry.sessionGroups.length
     ? entry.sessionGroups
     : [{ ageGroup: entry.ageRange, sessions: entry.sessions }];
 
+  const instructorName = formatInstructor(entry.instructor);
   const showInstructor = hasInstructorName(entry.instructor);
 
   return (
@@ -55,7 +105,7 @@ export function XplorPreviewCard({ entry, index, className }: XplorPreviewCardPr
         {showInstructor ? (
           <div className="flex gap-2 text-ds-muted">
             <User className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-            <span>{entry.instructor.trim()}</span>
+            <span>{instructorName}</span>
           </div>
         ) : null}
 
@@ -64,20 +114,9 @@ export function XplorPreviewCard({ entry, index, className }: XplorPreviewCardPr
             {group.ageGroup && group.ageGroup !== entry.ageRange ? (
               <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--ds-accent)]">{group.ageGroup}</p>
             ) : null}
-            {group.sessions.map((session) => {
-              const dateLine = formatSessionDateRange(session.startDate, session.endDate);
-              return (
-                <div key={session.id} className="space-y-0.5 font-mono text-xs text-ds-foreground">
-                  {session.days ? <p>{session.days}</p> : null}
-                  {session.time ? <p>{session.time}</p> : null}
-                  {dateLine ? <p>{dateLine}</p> : null}
-                  {session.price ? <p>{session.price}</p> : null}
-                  {session.programCode ? (
-                    <p className="text-ds-muted">#{session.programCode}</p>
-                  ) : null}
-                </div>
-              );
-            })}
+            {group.sessions.map((session) => (
+              <SessionMetadataRow key={session.id} session={session} />
+            ))}
           </div>
         ))}
 

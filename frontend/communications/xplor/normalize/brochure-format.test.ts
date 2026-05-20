@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   formatAgeRange,
+  formatInstructor,
   formatSessionDateRange,
   formatSessionPrice,
   hasInstructorName,
@@ -11,7 +12,10 @@ describe("brochure-format", () => {
   it("hides empty instructor", () => {
     expect(hasInstructorName("")).toBe(false);
     expect(hasInstructorName("   ")).toBe(false);
+    expect(hasInstructorName("Instructor:")).toBe(false);
+    expect(hasInstructorName("  Instructor:   ")).toBe(false);
     expect(hasInstructorName("Jane Doe")).toBe(true);
+    expect(formatInstructor("Instructor: Jane Doe")).toBe("Jane Doe");
   });
 
   it("normalizes age 16 - yrs", () => {
