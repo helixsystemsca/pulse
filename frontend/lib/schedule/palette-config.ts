@@ -138,6 +138,7 @@ export type ScheduleShiftDefinitionRow = {
   start_min: number;
   end_min: number;
   shift_type: string;
+  color?: string | null;
 };
 
 export function shiftDefinitionsToPalette(defs: ScheduleShiftDefinitionRow[]): StandardShiftDefinition[] {
