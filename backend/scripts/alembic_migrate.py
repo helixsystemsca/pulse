@@ -27,6 +27,9 @@ from alembic.util.exc import CommandError
 from sqlalchemy import create_engine, inspect, text
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(BACKEND_ROOT))
+import alembic_helpers as ah  # noqa: E402
+
 sys.path.insert(0, str(BACKEND_ROOT / "alembic"))
 from version_table import (  # noqa: E402
     ensure_version_num_width,
@@ -129,8 +132,7 @@ def main() -> int:
     _log.info("STARTUP: alembic upgrade head complete")
 
     with engine.connect() as conn:
-        public_tables = set(inspect(conn).get_table_names(schema="public"))
-    missing = [t for t in _REQUIRED_PUBLIC_TABLES if t not in public_tables]
+        missing = [t for t in _REQUIRED_PUBLIC_TABLES if not ah.table_exists(conn, t)]
     if missing:
         _log.error(
             "schema incomplete after upgrade head (database=%r); missing tables: %s",

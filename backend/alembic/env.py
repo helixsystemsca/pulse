@@ -54,9 +54,14 @@ def run_migrations_online() -> None:
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
+            transaction_per_migration=True,
         )
         with context.begin_transaction():
             context.run_migrations()
+        # SQLAlchemy 2: begin_transaction() may not commit the connection-level
+        # transaction; without this, all DDL is rolled back on context exit (CI
+        # saw table_exists skips during upgrade but zero tables afterward).
+        connection.commit()
 
 
 if context.is_offline_mode():
