@@ -78,7 +78,6 @@ export function XplorProgramPreview({
 
       {compareMode && rawTaggedSample ? (
         <SplitPreviewLayout
-          flatRight
           leftTitle="Source tags"
           rightTitle="Normalized schema"
           left={

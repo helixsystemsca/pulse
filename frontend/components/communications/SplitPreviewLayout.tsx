@@ -7,43 +7,27 @@ type SplitPreviewLayoutProps = {
   left: ReactNode;
   right: ReactNode;
   className?: string;
-  /** Flat right pane — full-width editorial preview without nested card chrome. */
-  flatRight?: boolean;
 };
 
-export function SplitPreviewLayout({
-  leftTitle,
-  rightTitle,
-  left,
-  right,
-  className,
-  flatRight = false,
-}: SplitPreviewLayoutProps) {
+/** Shared outer frame for each comparison pane (symmetrical split QA). */
+const COMPARISON_PANE_CLASS =
+  "min-h-[min(280px,50vh)] min-w-0 w-full flex-1 overflow-auto rounded-xl border border-ds-border bg-ds-secondary/30 p-3";
+
+export function SplitPreviewLayout({ leftTitle, rightTitle, left, right, className }: SplitPreviewLayoutProps) {
   return (
     <div
       className={cn(
-        "grid w-full min-w-0 gap-4 lg:grid-cols-2 lg:gap-6 lg:divide-x lg:divide-ds-border",
+        "grid w-full min-w-0 grid-cols-1 gap-4 lg:grid-cols-2 lg:items-stretch",
         className,
       )}
     >
       <div className="flex min-h-0 min-w-0 flex-col">
         <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-ds-muted">{leftTitle}</p>
-        <div className="min-h-0 min-w-0 flex-1 overflow-auto rounded-xl border border-ds-border bg-ds-secondary/30 p-3">
-          {left}
-        </div>
+        <div className={COMPARISON_PANE_CLASS}>{left}</div>
       </div>
       <div className="flex min-h-0 min-w-0 flex-col">
         <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-ds-muted">{rightTitle}</p>
-        <div
-          className={cn(
-            "min-h-0 min-w-0 flex-1 overflow-auto",
-            flatRight
-              ? "w-full max-w-none p-0"
-              : "rounded-xl border border-ds-border bg-ds-primary p-3 shadow-inner",
-          )}
-        >
-          {right}
-        </div>
+        <div className={COMPARISON_PANE_CLASS}>{right}</div>
       </div>
     </div>
   );
