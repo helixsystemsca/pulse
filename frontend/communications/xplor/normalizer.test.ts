@@ -21,9 +21,9 @@ describe("normalizer", () => {
     expect(normalizeTimesInText("9:00am-12:00pm")).toBe("9am-12pm");
   });
 
-  it("normalizes money", () => {
+  it("normalizes zero prices only in generic money helper", () => {
     expect(normalizeMoneyInText("$0")).toBe("Free");
-    expect(normalizeMoneyInText("$24/1")).toBe("$24");
+    expect(normalizeMoneyInText("$24/1")).toBe("$24/1");
   });
 
   it("strips location label", () => {

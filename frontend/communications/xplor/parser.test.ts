@@ -30,6 +30,8 @@ describe("runPublicationPipeline", () => {
     expect(exp.taggedTxt).toContain("Jul 6");
     expect(exp.taggedTxt).toContain("9am");
     expect(exp.taggedTxt).not.toContain("Location:");
+    expect(exp.taggedTxt).not.toContain("<pstyle:Instructor>");
+    expect(exp.taggedTxt).toContain("Jul 6");
     expect(exp.taggedTxt).toContain("Free");
     expect(document.entries[0]!.sessions[0]!.time).toContain("9");
   });

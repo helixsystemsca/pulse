@@ -14,7 +14,7 @@ describe("parseSessionBlob", () => {
     expect(s.days).toMatch(/M-F/i);
     expect(s.time).toContain("9");
     expect(s.startDate).toContain("Jul");
-    expect(s.price).toBe("$129");
+    expect(s.price).toBe("$129/5");
     expect(s.sessionCount).toBe(5);
     expect(s.programCode).toBe("187651");
     expect(s.sessionLabel).toBe("Session A");

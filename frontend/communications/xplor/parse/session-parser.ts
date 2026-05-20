@@ -86,12 +86,12 @@ function extractPrice(text: string): { price: string; sessionCount: number | nul
   let price = raw;
   const slash = raw.match(/\$([\d.,]+)\/(\d+)/);
   if (slash) {
-    price = `$${slash[1]}`;
+    price = `$${slash[1]}/${slash[2]}`;
     sessionCount = parseInt(slash[2]!, 10);
   }
-  if (/^Free$/i.test(price) || /\$0/.test(raw)) price = "Free";
+  if (/^Free$/i.test(price) || /^\$0/i.test(raw)) price = "Free";
   const rest = text.replace(m[0], " ").trim();
-  return { price: normalizeFreeformLine(price), sessionCount, rest };
+  return { price, sessionCount, rest };
 }
 
 function extractProgramCode(text: string): { programCode: string; rest: string } {
@@ -150,7 +150,7 @@ export function parseSessionBlob(
       time: "",
       startDate: "",
       endDate: "",
-      price: price ? normalizeFreeformLine(price) : "",
+      price: price ?? "",
       sessionCount,
       programCode: "",
       rawLine: normalizeFreeformLine(cleaned),
@@ -191,7 +191,7 @@ export function parseSessionBlob(
     time: time ? normalizeFreeformLine(time) : "",
     startDate: startDate ? normalizeFreeformLine(startDate) : "",
     endDate: endDate ? normalizeFreeformLine(endDate) : "",
-    price: price ? normalizeFreeformLine(price) : "",
+    price: price ?? "",
     sessionCount,
     programCode,
     rawLine: normalizeFreeformLine(cleaned),

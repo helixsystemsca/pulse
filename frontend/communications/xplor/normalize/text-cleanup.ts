@@ -34,9 +34,25 @@ export function collapseWhitespace(text: string): string {
   return text.replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
 }
 
-/** Jul 06 → Jul 6; Jul 06-Jul 10 → Jul 6–10 */
-export function normalizeDatesInText(text: string): string {
+/** Collapse malformed repeated date tokens: Jun 24-Jun 24-Jun 24 → Jun 24 */
+export function collapseDuplicateDateRanges(text: string): string {
   let s = text;
+  const triple = new RegExp(
+    `\\b(${MONTH})\\s+(\\d{1,2})\\s*[-–]\\s*(?:${MONTH})\\s+\\2\\s*[-–]\\s*(?:${MONTH})\\s+\\2\\b`,
+    "gi",
+  );
+  s = s.replace(triple, (_, mon: string, d: string) => `${mon} ${d}`);
+  const dup = new RegExp(
+    `\\b(${MONTH})\\s+(\\d{1,2})\\s*[-–]\\s*(?:${MONTH})\\s+\\2\\b`,
+    "gi",
+  );
+  s = s.replace(dup, (_, mon: string, d: string) => `${mon} ${d}`);
+  return s;
+}
+
+/** Jul 06 → Jul 6; Jul 06-Jul 10 → Jul 6–10; Jun 24-Jun 24 → Jun 24 */
+export function normalizeDatesInText(text: string): string {
+  let s = collapseDuplicateDateRanges(text);
   s = s.replace(
     new RegExp(`\\b(${MONTH})\\s+0(\\d)\\b`, "gi"),
     (_, mon: string, d: string) => `${mon} ${d}`,
@@ -46,7 +62,8 @@ export function normalizeDatesInText(text: string): string {
       `\\b(${MONTH})\\s+(\\d{1,2})\\s*[-–]\\s*(?:${MONTH}\\s+)?(\\d{1,2})\\b`,
       "gi",
     ),
-    (_, mon: string, d1: string, d2: string) => `${mon} ${d1}–${d2}`,
+    (_, mon: string, d1: string, d2: string) =>
+      d1 === d2 ? `${mon} ${d1}` : `${mon} ${d1}–${d2}`,
   );
   s = s.replace(
     new RegExp(`\\b(${MONTH})\\s+(\\d{1,2})\\s*-\\s*(?:${MONTH})\\s+\\2\\b`, "gi"),
@@ -55,16 +72,15 @@ export function normalizeDatesInText(text: string): string {
   return s;
 }
 
-/** 9:00am → 9am */
+/** 9:00am → 9am; 9:30am unchanged */
 export function normalizeTimesInText(text: string): string {
   return text.replace(/\b(\d{1,2}):00\s*(am|pm)\b/gi, (_, h: string, ap: string) => `${h}${ap}`);
 }
 
-/** $0 → Free; $24/1 → $24 (count parsed separately) */
+/** $0 → Free (does not strip multi-session /5 suffix — use formatSessionPrice). */
 export function normalizeMoneyInText(text: string): string {
-  let s = text.replace(/\$0\b/g, "Free");
+  let s = text.replace(/\$0(?:\/\d+)?\b/g, "Free");
   s = s.replace(/\bFee:\s*\$?0\b/gi, "Fee: Free");
-  s = s.replace(/\$(\d+(?:\.\d{2})?)\/\d+\b/g, (_, amount: string) => `$${amount}`);
   return s;
 }
 

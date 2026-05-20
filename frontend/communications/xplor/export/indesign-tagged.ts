@@ -2,6 +2,7 @@
  * Deterministic InDesign-tagged TXT export — paragraph styles for GREP / import automation.
  */
 
+import { formatSessionDateRange, hasInstructorName } from "../normalize/brochure-format";
 import type { PublicationDocument, PublicationEntry, PublicationSession } from "../schema/publication";
 
 const BLANK_BETWEEN_PARAGRAPHS = "\n";
@@ -35,7 +36,7 @@ function entryToTaggedBlocks(entry: PublicationEntry): string[] {
   if (entry.ageRange) blocks.push(pstyle("AgeGroup", entry.ageRange));
   if (entry.description) blocks.push(pstyle("Description", entry.description));
   if (entry.location) blocks.push(pstyle("Location", entry.location));
-  if (entry.instructor) blocks.push(pstyle("Instructor", entry.instructor));
+  if (hasInstructorName(entry.instructor)) blocks.push(pstyle("Instructor", entry.instructor));
 
   const groups = entry.sessionGroups.length
     ? entry.sessionGroups
