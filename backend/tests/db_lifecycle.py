@@ -276,6 +276,11 @@ def provision_test_database() -> TestDbInfo:
         info = TestDbInfo(async_url=explicit, managed_container_id=None)
         _ping_postgres(explicit, timeout_s=15.0)
         os.environ["DATABASE_URL"] = explicit
+        os.environ["TEST_DATABASE_URL"] = explicit
+        if "app.core.config" in sys.modules:
+            from app.core.config import get_settings
+
+            get_settings.cache_clear()
         _run_alembic_upgrade(explicit)
         assert_schema_ready(explicit)
         reload_database_engine()

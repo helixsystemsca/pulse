@@ -258,6 +258,7 @@ class User(Base):
     )
     login_events: Mapped[list["LoginEvent"]] = relationship(
         back_populates="user",
+        foreign_keys="LoginEvent.user_id",
         cascade="all, delete-orphan",
     )
 
@@ -293,7 +294,13 @@ class LoginEvent(Base):
         index=True,
     )
 
-    user: Mapped["User"] = relationship(back_populates="login_events")
+    user: Mapped["User"] = relationship(
+        back_populates="login_events",
+        foreign_keys=[user_id],
+    )
+    impersonator: Mapped[Optional["User"]] = relationship(
+        foreign_keys=[impersonator_user_id],
+    )
 
 
 class RolePermission(Base):

@@ -43,7 +43,11 @@ def pytest_configure(config: pytest.Config) -> None:
     try:
         _TEST_DB_INFO = provision_test_database()
     except TestDbUnavailable as exc:
-        _TEST_DB_CONFIGURE_ERROR = str(exc)
+        msg = str(exc)
+        # CI sets TEST_DATABASE_URL — fail before collection imports unmigrated app.main.
+        if os.environ.get("TEST_DATABASE_URL", "").strip():
+            pytest.exit(msg, returncode=1)
+        _TEST_DB_CONFIGURE_ERROR = msg
 
 
 @dataclass

@@ -34,6 +34,13 @@ from version_table import (  # noqa: E402
     repair_stored_revision_if_alias,
 )
 ALPHA_BASELINE = "1000_alpha_baseline"
+_REQUIRED_PUBLIC_TABLES: tuple[str, ...] = (
+    "rbac_catalog_permissions",
+    "tenant_roles",
+    "tenant_role_grants",
+    "companies",
+    "users",
+)
 
 _log = logging.getLogger("alembic.migrate")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -120,6 +127,18 @@ def main() -> int:
     _log.info("STARTUP: running alembic upgrade head")
     command.upgrade(cfg, "head")
     _log.info("STARTUP: alembic upgrade head complete")
+
+    with engine.connect() as conn:
+        public_tables = set(inspect(conn).get_table_names(schema="public"))
+    missing = [t for t in _REQUIRED_PUBLIC_TABLES if t not in public_tables]
+    if missing:
+        _log.error(
+            "schema incomplete after upgrade head (database=%r); missing tables: %s",
+            url.split("@")[-1] if "@" in url else url,
+            ", ".join(missing),
+        )
+        raise SystemExit(1)
+
     return 0
 
 
