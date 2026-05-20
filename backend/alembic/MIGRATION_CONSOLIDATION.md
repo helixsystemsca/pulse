@@ -10,7 +10,9 @@
 
 **Heads:** 1 (`1000_alpha_baseline`)
 
-**Next migration:** use `down_revision = "1000_alpha_baseline"` and a revision id ≤ 32 chars (e.g. `1001_sched_fix`).
+**Next migration:** use `down_revision` = current head and a **short** revision id (e.g. `1016_sched_fix`). See `alembic/REVISION_NAMING.md`.
+
+**Head (2026-05):** `1015_version_num_128` — active chain `1000` → … → `1015`.
 
 ## Archived
 
@@ -24,14 +26,15 @@ Includes former `0001`–`0128` chain, merge revisions, and idempotency-heavy hi
 
 - `0103_merge_routine_and_project_summary_heads` → `0103_merge_heads` (archived copy in `archive/`)
 - Revision ids > 32 chars shortened in archived files (e.g. `0115_proc_ack_snapshots`)
-- `tests/test_migration_ddl_lint.py` enforces: no raw `op.*` structural DDL, revision id length ≤ 32, bind-before-`safe_*` order
+- Active chain revision ids shortened (e.g. `1009_vendor_scope`); `alembic_version.version_num` widened to VARCHAR(128)
+- `tests/test_migration_ddl_lint.py` enforces: no raw `op.*` structural DDL, revision id length ≤ 128, bind-before-`safe_*` order
 
 ## CI impact
 
 | Before | After |
 |--------|--------|
 | ~131 revisions per `upgrade head` | 1 revision |
-| Merge heads / long `version_num` failures | Single head, short revision id |
+| Merge heads / long `version_num` failures | Single head, short revision ids + VARCHAR(128) column |
 | Heavy per-revision introspection | Baseline only; new deltas stay small |
 
 ## Render / production start command
@@ -97,7 +100,7 @@ Only stamp when the live schema already matches current models. Do **not** run a
 ### New migrations
 
 1. `alembic revision -m "short_desc"`
-2. Set `revision` to ≤ 32 characters (`1001_feature_x`).
+2. Set `revision` to a short slug (`1016_feature_x`); see `REVISION_NAMING.md`.
 3. Use `ah.safe_*` helpers for additive DDL (see `alembic_helpers.py`).
 4. Run `python scripts/migration_lint_lib.py` before push.
 

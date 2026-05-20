@@ -26,6 +26,7 @@ export const PRODUCT_PATH_PREFIXES = [
   "/login",
   "/auth",
   "/invite",
+  "/planning-approval",
   "/reset-password",
   "/overview",
   "/worker",

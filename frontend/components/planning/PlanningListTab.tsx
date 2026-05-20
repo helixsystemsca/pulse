@@ -7,22 +7,28 @@ import {
   Pencil,
   Plus,
   Search,
+  Send,
   Trash2,
 } from "lucide-react";
+import { PlanningIdeaApprovalRequestModal } from "@/components/planning/PlanningIdeaApprovalRequestModal";
 import { PlanningIdeaConvertModal } from "@/components/planning/PlanningIdeaConvertModal";
 import { PlanningIdeaFormModal } from "@/components/planning/PlanningIdeaFormModal";
 import {
   formatEstimatedCost,
+  formatPipelineValue,
+  normalizePlanningStatus,
   PRIORITY_LABELS,
   STATUS_LABELS,
 } from "@/lib/planning-ideas/labels";
 import {
   createPlanningIdea,
   deletePlanningIdea,
+  fetchPlanningIdeaStats,
   listPlanningIdeas,
   patchPlanningIdea,
   convertPlanningIdea,
 } from "@/lib/planning-ideas/api";
+import type { PlanningIdeaStats } from "@/lib/planning-ideas/types";
 import type { PlanningIdeaRow, PlanningIdeaStatus } from "@/lib/planning-ideas/types";
 import { PLANNING_IDEA_STATUSES } from "@/lib/planning-ideas/types";
 import {
@@ -70,12 +76,18 @@ export function PlanningListTab({ onToast }: Props) {
   const [editTarget, setEditTarget] = useState<PlanningIdeaRow | null>(null);
   const [convertTarget, setConvertTarget] = useState<PlanningIdeaRow | null>(null);
   const [convertSuccess, setConvertSuccess] = useState<{ projectId: string; projectName: string } | null>(null);
+  const [approvalTarget, setApprovalTarget] = useState<PlanningIdeaRow | null>(null);
+  const [stats, setStats] = useState<PlanningIdeaStats | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await listPlanningIdeas({ q: q.trim() || undefined, status: statusFilter || undefined });
+      const [data, kpi] = await Promise.all([
+        listPlanningIdeas({ q: q.trim() || undefined, status: statusFilter || undefined }),
+        fetchPlanningIdeaStats(),
+      ]);
       setRows(data);
+      setStats(kpi);
     } catch (e) {
       onToast(e instanceof Error ? e.message : "Could not load ideas.");
     } finally {
@@ -92,9 +104,21 @@ export function PlanningListTab({ onToast }: Props) {
   const statusCounts = useMemo(() => {
     const m = new Map<string, number>();
     for (const s of PLANNING_IDEA_STATUSES) m.set(s, 0);
-    for (const r of rows) m.set(r.status, (m.get(r.status) ?? 0) + 1);
+    for (const r of rows) {
+      const s = normalizePlanningStatus(r.status);
+      m.set(s, (m.get(s) ?? 0) + 1);
+    }
     return m;
   }, [rows]);
+
+  function canRequestApproval(row: PlanningIdeaRow): boolean {
+    const s = normalizePlanningStatus(row.status);
+    return s === "idea" || s === "rejected" || s === "deferred";
+  }
+
+  function canCreateProject(row: PlanningIdeaRow): boolean {
+    return normalizePlanningStatus(row.status) === "approved";
+  }
 
   const sorted = useMemo(() => sortRows(rows, sort), [rows, sort]);
 
@@ -231,21 +255,24 @@ export function PlanningListTab({ onToast }: Props) {
   }
 
   function IdeaCard({ row }: { row: PlanningIdeaRow }) {
-    const converted = row.status === "converted";
+    const displayStatus = normalizePlanningStatus(row.status);
+    const converted = displayStatus === "converted";
+    const showConvert = canCreateProject(row);
+    const showApproval = canRequestApproval(row);
     return (
       <article className={cn(rowSurfaceClass(converted), "grid gap-3 p-4 sm:grid-cols-[auto_1fr_auto] sm:items-start")}>
         <div className="flex flex-col gap-2 sm:min-w-[7.5rem]">
           <select
             className={cn(
               "w-full rounded-md border-0 bg-transparent py-0.5 text-xs font-bold ring-1 ring-inset",
-              statusBadgeClass(row.status),
+              statusBadgeClass(displayStatus),
             )}
-            value={row.status}
-            disabled={converted}
+            value={displayStatus}
+            disabled={converted || displayStatus === "awaiting_review"}
             aria-label="Status"
             onChange={(e) => void handleInlineStatus(row, e.target.value as PlanningIdeaStatus)}
           >
-            {PLANNING_IDEA_STATUSES.filter((s) => s !== "converted" || row.status === "converted").map((s) => (
+            {PLANNING_IDEA_STATUSES.filter((s) => s !== "converted" || displayStatus === "converted").map((s) => (
               <option key={s} value={s}>
                 {STATUS_LABELS[s]}
               </option>
@@ -294,15 +321,33 @@ export function PlanningListTab({ onToast }: Props) {
         </div>
 
         <div className="flex shrink-0 items-center gap-1 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
-          {!converted ? (
+          {showApproval ? (
             <button
               type="button"
-              title="Create project"
+              title="Request approval"
               className="rounded-lg border border-ds-border p-2 text-ds-foreground hover:bg-ds-interactive-hover"
+              onClick={() => setApprovalTarget(row)}
+            >
+              <Send className="h-4 w-4" aria-hidden />
+            </button>
+          ) : null}
+          {!converted && showConvert ? (
+            <button
+              type="button"
+              title="Create project (approved)"
+              className="rounded-lg border border-emerald-400/60 p-2 text-emerald-800 hover:bg-emerald-50 dark:text-emerald-200 dark:hover:bg-emerald-950/40"
               onClick={() => setConvertTarget(row)}
             >
               <FolderKanban className="h-4 w-4" aria-hidden />
             </button>
+          ) : null}
+          {!converted && !showConvert ? (
+            <span
+              className="hidden rounded-md border border-ds-border/80 px-2 py-1 text-[10px] font-semibold text-ds-muted sm:inline"
+              title="Manager approval required before creating a project"
+            >
+              Needs approval
+            </span>
           ) : null}
           {!converted ? (
             <button
@@ -349,6 +394,28 @@ export function PlanningListTab({ onToast }: Props) {
           Add idea
         </button>
       </div>
+
+      {stats ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          {(
+            [
+              ["Ideas submitted", stats.ideas_submitted, "text-ds-foreground"],
+              ["Awaiting approval", stats.awaiting_approval, "text-amber-800 dark:text-amber-200"],
+              ["Approved", stats.approved, "text-emerald-800 dark:text-emerald-200"],
+              ["Converted", stats.converted_to_projects, "text-ds-muted"],
+              ["Pipeline value", formatPipelineValue(stats.estimated_pipeline_value), "text-ds-accent"],
+            ] as const
+          ).map(([label, value, valueClass]) => (
+            <div
+              key={label}
+              className="rounded-xl border border-ds-border/70 bg-ds-primary/90 px-4 py-3 shadow-sm"
+            >
+              <p className="text-[10px] font-bold uppercase tracking-wide text-ds-muted">{label}</p>
+              <p className={cn("mt-1 text-xl font-semibold tabular-nums", valueClass)}>{value}</p>
+            </div>
+          ))}
+        </div>
+      ) : null}
 
       <div className="flex flex-col gap-3 rounded-xl border border-ds-border/70 bg-ds-secondary/15 p-3 sm:flex-row sm:flex-wrap sm:items-center">
         <div className="relative min-w-[12rem] flex-1">
@@ -459,6 +526,25 @@ export function PlanningListTab({ onToast }: Props) {
         idea={convertTarget}
         onClose={() => setConvertTarget(null)}
         onConfirm={handleConvert}
+      />
+
+      <PlanningIdeaApprovalRequestModal
+        open={approvalTarget != null}
+        idea={approvalTarget}
+        onClose={() => setApprovalTarget(null)}
+        onSubmitted={({ email_sent, review_url, status }) => {
+          if (approvalTarget) {
+            setRows((list) =>
+              list.map((r) => (r.id === approvalTarget.id ? { ...r, status: status as PlanningIdeaRow["status"] } : r)),
+            );
+          }
+          void refresh();
+          if (email_sent) onToast("Approval request emailed to reviewer.");
+          else if (review_url) {
+            onToast("SMTP not configured — share the review link with your manager.");
+            void navigator.clipboard?.writeText(review_url);
+          } else onToast("Approval request recorded.");
+        }}
       />
     </div>
   );

@@ -197,6 +197,8 @@ async def convert_idea_to_project(
 ) -> tuple[PlanningIdea, PulseProject]:
     if idea.status == "converted" and idea.linked_project_id:
         raise ValueError("already converted")
+    if idea.status != "approved":
+        raise ValueError("idea must be approved before creating a project")
     end = target_end_date or (target_start_date + timedelta(days=90))
     if end < target_start_date:
         raise ValueError("end_date must be on or after start_date")

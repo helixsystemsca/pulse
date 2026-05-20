@@ -12,7 +12,7 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-revision = "1001_tenant_role_feature_keys"
+revision = "1001_role_features"
 down_revision = "1000_alpha_baseline"
 branch_labels = None
 depends_on = None

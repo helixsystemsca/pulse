@@ -11,8 +11,8 @@ from alembic import op
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-revision = "1007_project_schedule_overlay"
-down_revision = "1006_user_rbac_permission_extra"
+revision = "1007_schedule_overlay"
+down_revision = "1006_rbac_extra"
 branch_labels = None
 depends_on = None
 

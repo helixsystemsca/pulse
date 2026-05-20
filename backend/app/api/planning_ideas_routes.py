@@ -6,10 +6,19 @@ from datetime import timedelta
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db, require_tenant_user
 from app.models.domain import User
+from app.models.pulse_models import PlanningIdeaApproval
+from app.schemas.planning_idea_approvals import (
+    PlanningIdeaApprovalOut,
+    PlanningIdeaApprovalRequestIn,
+    PlanningIdeaApprovalRequestOut,
+    PlanningIdeaReviewerOut,
+    PlanningIdeaStatsOut,
+)
 from app.schemas.planning_ideas import (
     PlanningIdeaConvertIn,
     PlanningIdeaConvertOut,
@@ -18,6 +27,7 @@ from app.schemas.planning_ideas import (
     PlanningIdeaPatchIn,
 )
 from app.modules.pulse import project_service as proj_svc
+from app.services import planning_idea_approvals_service as approval_svc
 from app.services import planning_ideas_service as svc
 
 router = APIRouter(prefix="/planning-ideas", tags=["planning-ideas"])
@@ -29,6 +39,17 @@ Actor = Annotated[User, Depends(require_tenant_user)]
 
 def _out(row) -> PlanningIdeaOut:
     return PlanningIdeaOut.model_validate(svc._idea_to_dict(row))
+
+
+@router.get("/stats", response_model=PlanningIdeaStatsOut)
+async def planning_ideas_stats(db: Db, cid: CompanyId) -> PlanningIdeaStatsOut:
+    return PlanningIdeaStatsOut.model_validate(await approval_svc.compute_stats(db, cid))
+
+
+@router.get("/reviewers", response_model=list[PlanningIdeaReviewerOut])
+async def planning_idea_reviewers(db: Db, cid: CompanyId) -> list[PlanningIdeaReviewerOut]:
+    rows = await approval_svc.list_reviewers(db, cid)
+    return [PlanningIdeaReviewerOut.model_validate(r) for r in rows]
 
 
 @router.get("", response_model=list[PlanningIdeaOut])
@@ -117,6 +138,52 @@ async def delete_planning_idea(db: Db, cid: CompanyId, idea_id: str) -> None:
     await db.commit()
 
 
+@router.post("/{idea_id}/request-approval", response_model=PlanningIdeaApprovalRequestOut, status_code=status.HTTP_201_CREATED)
+async def request_planning_idea_approval(
+    db: Db,
+    cid: CompanyId,
+    actor: Actor,
+    idea_id: str,
+    body: PlanningIdeaApprovalRequestIn,
+) -> PlanningIdeaApprovalRequestOut:
+    row = await svc.get_idea(db, cid, idea_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Not found")
+    try:
+        approval, email_sent, review_url = await approval_svc.request_approval(
+            db,
+            cid,
+            str(actor.id),
+            row,
+            requested_to_user_id=body.requested_to_user_id.strip(),
+            comments=body.comments,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    await db.commit()
+    await db.refresh(row)
+    return PlanningIdeaApprovalRequestOut(
+        approval_id=str(approval.id),
+        idea_id=str(row.id),
+        status=row.status,
+        email_sent=email_sent,
+        review_url=review_url if not email_sent else None,
+    )
+
+
+@router.get("/{idea_id}/approvals", response_model=list[PlanningIdeaApprovalOut])
+async def list_planning_idea_approvals(db: Db, cid: CompanyId, idea_id: str) -> list[PlanningIdeaApprovalOut]:
+    row = await svc.get_idea(db, cid, idea_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Not found")
+    rq = await db.execute(
+        select(PlanningIdeaApproval)
+        .where(PlanningIdeaApproval.planning_idea_id == idea_id)
+        .order_by(PlanningIdeaApproval.requested_at.desc())
+    )
+    return [PlanningIdeaApprovalOut.model_validate(approval_svc.approval_out(a)) for a in rq.scalars().all()]
+
+
 @router.post("/{idea_id}/convert", response_model=PlanningIdeaConvertOut, status_code=status.HTTP_201_CREATED)
 async def convert_planning_idea(
     db: Db,
@@ -152,6 +219,8 @@ async def convert_planning_idea(
     except ValueError as e:
         msg = str(e)
         code = 409 if "already converted" in msg else 400
+        if "must be approved" in msg:
+            code = 400
         raise HTTPException(status_code=code, detail=msg) from e
     await db.commit()
     await db.refresh(idea)

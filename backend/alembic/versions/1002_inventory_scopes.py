@@ -14,7 +14,7 @@ from sqlalchemy.dialects.postgresql import UUID
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 revision = "1002_inventory_scopes"
-down_revision = "1001_tenant_role_feature_keys"
+down_revision = "1001_role_features"
 branch_labels = None
 depends_on = None
 

@@ -12,8 +12,8 @@ from sqlalchemy.dialects.postgresql import JSONB
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-revision = "1006_user_rbac_permission_extra"
-down_revision = "1005_tenant_role_assignments"
+revision = "1006_rbac_extra"
+down_revision = "1005_role_assignments"
 branch_labels = None
 depends_on = None
 

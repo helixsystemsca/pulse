@@ -7,8 +7,8 @@ import json
 import sqlalchemy as sa
 from alembic import op
 
-revision = "1004_matrix_department_baselines"
-down_revision = "1003_pulse_worker_hr_matrix_slot"
+revision = "1004_matrix_baselines"
+down_revision = "1003_hr_matrix_slot"
 branch_labels = None
 depends_on = None
 

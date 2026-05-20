@@ -12,8 +12,8 @@ from sqlalchemy.dialects.postgresql import UUID
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-revision = "1012_login_event_session_origin"
-down_revision = "1011_staffing_requirements_draft_meta"
+revision = "1012_login_origin"
+down_revision = "1011_staffing_draft"
 branch_labels = None
 depends_on = None
 

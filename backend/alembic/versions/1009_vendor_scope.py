@@ -11,8 +11,8 @@ from alembic import op
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-revision = "1009_inventory_vendor_contractor_department"
-down_revision = "1008_schedule_department_scope"
+revision = "1009_vendor_scope"
+down_revision = "1008_schedule_dept"
 branch_labels = None
 depends_on = None
 

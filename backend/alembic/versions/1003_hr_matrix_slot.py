@@ -11,7 +11,7 @@ from alembic import op
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-revision = "1003_pulse_worker_hr_matrix_slot"
+revision = "1003_hr_matrix_slot"
 down_revision = "1002_inventory_scopes"
 branch_labels = None
 depends_on = None

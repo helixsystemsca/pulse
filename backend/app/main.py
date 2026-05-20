@@ -51,6 +51,7 @@ from app.api.operations_routes import router as operations_router
 from app.api.proximity_routes import router as proximity_router
 from app.api.search_routes import router as search_router
 from app.api.core_routes import router as core_router
+from app.api.planning_approval_public_routes import router as planning_approval_public_router
 from app.api.public_routes import router as public_router
 from app.api.rbac_debug_routes import router as rbac_debug_router
 from app.api.realtime import router as realtime_router
@@ -181,6 +182,7 @@ app.add_middleware(
 )
 
 app.include_router(public_router, prefix="/api/public")
+app.include_router(planning_approval_public_router, prefix="/api/public")
 app.include_router(gateway_register_router, prefix="/api")
 app.include_router(blueprint_router, prefix="/api")
 app.include_router(map_router, prefix="/api")

@@ -12,8 +12,8 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-revision = "1011_staffing_requirements_draft_meta"
-down_revision = "1010_employee_availability"
+revision = "1011_staffing_draft"
+down_revision = "1010_availability"
 branch_labels = None
 depends_on = None
 

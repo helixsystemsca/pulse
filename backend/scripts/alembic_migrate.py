@@ -27,6 +27,12 @@ from alembic.util.exc import CommandError
 from sqlalchemy import create_engine, inspect, text
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(BACKEND_ROOT / "alembic"))
+from version_table import (  # noqa: E402
+    ensure_version_num_width,
+    normalize_stored_revision,
+    repair_stored_revision_if_alias,
+)
 ALPHA_BASELINE = "1000_alpha_baseline"
 
 _log = logging.getLogger("alembic.migrate")
@@ -47,7 +53,9 @@ def _read_stored_revision(conn) -> str | None:
     if "alembic_version" not in inspect(conn).get_table_names():
         return None
     row = conn.execute(text("SELECT version_num FROM alembic_version LIMIT 1")).first()
-    return str(row[0]) if row and row[0] is not None else None
+    if not row or row[0] is None:
+        return None
+    return normalize_stored_revision(str(row[0]))
 
 
 def _revision_in_active_tree(script: ScriptDirectory, revision: str) -> bool:
@@ -98,6 +106,8 @@ def main() -> int:
     url = _sync_database_url()
     engine = create_engine(url)
     with engine.connect() as conn:
+        ensure_version_num_width(conn)
+        repair_stored_revision_if_alias(conn)
         stored = _read_stored_revision(conn)
         if stored is not None:
             if stored == migration_head:

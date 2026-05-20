@@ -10,8 +10,7 @@ from pydantic import BaseModel, Field, field_validator
 
 PlanningIdeaStatusLiteral = Literal[
     "idea",
-    "reviewing",
-    "awaiting_approval",
+    "awaiting_review",
     "approved",
     "deferred",
     "rejected",
@@ -19,9 +18,7 @@ PlanningIdeaStatusLiteral = Literal[
 ]
 PlanningIdeaPriorityLiteral = Literal["low", "medium", "high", "critical"]
 
-_STATUSES = frozenset(
-    {"idea", "reviewing", "awaiting_approval", "approved", "deferred", "rejected", "converted"}
-)
+_STATUSES = frozenset({"idea", "awaiting_review", "approved", "deferred", "rejected", "converted"})
 _PRIORITIES = frozenset({"low", "medium", "high", "critical"})
 
 

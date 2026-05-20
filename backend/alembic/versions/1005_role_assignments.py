@@ -11,8 +11,8 @@ from alembic import op
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-revision = "1005_tenant_role_assignments"
-down_revision = "1004_matrix_department_baselines"
+revision = "1005_role_assignments"
+down_revision = "1004_matrix_baselines"
 branch_labels = None
 depends_on = None
 

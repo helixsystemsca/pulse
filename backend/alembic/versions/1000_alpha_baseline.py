@@ -6,7 +6,8 @@ Create Date: 2026-05-15
 
 Historical revisions (0001–0128) live in ``alembic/archive/`` for reference only.
 New migrations must use ``down_revision = "1000_alpha_baseline"`` (or the current head)
-and keep ``revision`` identifiers at most 32 characters (``alembic_version.version_num``).
+and keep ``revision`` identifiers concise (≤32 chars recommended; see ``alembic/REVISION_NAMING.md``).
+``alembic_version.version_num`` is widened to VARCHAR(128) before upgrades run.
 """
 
 from alembic import op

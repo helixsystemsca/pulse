@@ -12,8 +12,8 @@ from sqlalchemy.dialects.postgresql import UUID
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-revision = "1010_employee_availability"
-down_revision = "1009_inventory_vendor_contractor_department"
+revision = "1010_availability"
+down_revision = "1009_vendor_scope"
 branch_labels = None
 depends_on = None
 

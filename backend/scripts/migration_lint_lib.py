@@ -12,8 +12,9 @@ import re
 from pathlib import Path
 from typing import Any
 
-# Alembic stores revision ids in alembic_version.version_num VARCHAR(32).
-MAX_REVISION_ID_LEN = 32
+# Hard limit matches widened alembic_version.version_num (see alembic/version_table.py).
+# Prefer ≤32 chars — see alembic/REVISION_NAMING.md.
+MAX_REVISION_ID_LEN = 128
 _REVISION_RE = re.compile(r"""^revision\s*=\s*(['"])([^'"]+)\1""", re.MULTILINE)
 
 FORBIDDEN_OP_METHODS = frozenset(

@@ -1,13 +1,13 @@
 import type { PlanningIdeaPriority, PlanningIdeaStatus } from "@/lib/planning-ideas/types";
+import { normalizePlanningStatus } from "@/lib/planning-ideas/labels";
 import { cn } from "@/lib/cn";
 
-export function statusBadgeClass(status: PlanningIdeaStatus): string {
-  switch (status) {
+export function statusBadgeClass(status: PlanningIdeaStatus | string): string {
+  const s = normalizePlanningStatus(status);
+  switch (s) {
     case "idea":
       return "bg-slate-100 text-slate-700 ring-slate-200 dark:bg-slate-800/80 dark:text-slate-200 dark:ring-slate-600";
-    case "reviewing":
-      return "bg-sky-50 text-sky-800 ring-sky-200/80 dark:bg-sky-950/50 dark:text-sky-200 dark:ring-sky-800";
-    case "awaiting_approval":
+    case "awaiting_review":
       return "bg-amber-50 text-amber-900 ring-amber-200/80 dark:bg-amber-950/40 dark:text-amber-100 dark:ring-amber-800";
     case "approved":
       return "bg-emerald-50 text-emerald-800 ring-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-200 dark:ring-emerald-800";

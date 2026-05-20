@@ -1914,12 +1914,17 @@ class PulseUserFeedback(Base):
 
 class PlanningIdeaStatus(str, enum.Enum):
     idea = "idea"
-    reviewing = "reviewing"
-    awaiting_approval = "awaiting_approval"
+    awaiting_review = "awaiting_review"
     approved = "approved"
     deferred = "deferred"
     rejected = "rejected"
     converted = "converted"
+
+
+class PlanningIdeaApprovalStatus(str, enum.Enum):
+    pending = "pending"
+    approved = "approved"
+    rejected = "rejected"
 
 
 class PlanningIdeaPriority(str, enum.Enum):
@@ -1963,3 +1968,32 @@ class PlanningIdea(Base):
         onupdate=lambda: datetime.now(timezone.utc),
     )
     converted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class PlanningIdeaApproval(Base):
+    """Manager approval request for a planning idea (tokenized email workflow)."""
+
+    __tablename__ = "planning_idea_approvals"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    planning_idea_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("planning_ideas.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    requested_by_user_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    requested_to_user_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=False
+    )
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending", server_default="pending", index=True)
+    request_comments: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    reviewer_comments: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    requested_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    responded_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    email_sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    approval_token_hash: Mapped[str] = mapped_column(String(128), nullable=False, unique=True, index=True)

@@ -1,7 +1,6 @@
 export const PLANNING_IDEA_STATUSES = [
   "idea",
-  "reviewing",
-  "awaiting_approval",
+  "awaiting_review",
   "approved",
   "deferred",
   "rejected",
@@ -56,4 +55,62 @@ export type PlanningIdeaConvertResult = {
   idea: PlanningIdeaRow;
   project_id: string;
   project_name: string;
+};
+
+export type PlanningIdeaReviewer = {
+  user_id: string;
+  full_name: string;
+  email: string;
+  roles: string[];
+};
+
+export type PlanningIdeaStats = {
+  ideas_submitted: number;
+  awaiting_approval: number;
+  approved: number;
+  converted_to_projects: number;
+  estimated_pipeline_value: string | number | null;
+};
+
+export type PlanningIdeaApprovalRequestInput = {
+  requested_to_user_id: string;
+  comments?: string | null;
+};
+
+export type PlanningIdeaApprovalRequestResult = {
+  approval_id: string;
+  idea_id: string;
+  status: string;
+  email_sent: boolean;
+  review_url?: string | null;
+};
+
+export type PublicPlanningApprovalPayload = {
+  id: string;
+  title: string;
+  description: string | null;
+  location: string | null;
+  category: string | null;
+  estimated_cost: string | number | null;
+  priority: string;
+  status: string;
+  request_comments: string | null;
+  requester_name: string;
+  requester_email: string | null;
+  company_name: string;
+  approval_status: string;
+  already_responded: boolean;
+};
+
+export type PublicPlanningApprovalRespondInput = {
+  token: string;
+  decision: "approve" | "reject";
+  reviewer_comments?: string | null;
+};
+
+export type PublicPlanningApprovalRespondResult = {
+  ok: boolean;
+  decision: string;
+  idea_status: string;
+  message: string;
 };
