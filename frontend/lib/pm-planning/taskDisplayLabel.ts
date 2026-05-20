@@ -8,6 +8,13 @@ export function isDemoStylePmTaskId(id: string): boolean {
   return /^T\d+$/i.test(id.trim());
 }
 
+/** Human-readable Gantt / resource bar label; never shows full UUID when a name exists. */
+export function pmTaskBarLabel(name: string | undefined | null, id: string): string {
+  const trimmed = (name ?? "").trim();
+  if (trimmed) return trimmed;
+  return formatPmTaskChipId(id);
+}
+
 /** Compact label for network nodes, resource bars, and similar. */
 export function formatPmTaskChipId(id: string): string {
   const s = id.trim();

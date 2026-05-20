@@ -12,8 +12,9 @@ router = APIRouter(tags=["health"])
 
 
 @router.get("/health")
+@router.get("/healthz", include_in_schema=False)
 async def health_live() -> dict[str, str]:
-    """Process is up; does not check dependencies."""
+    """Process is up; does not check dependencies (use for Render/load balancer probes)."""
     return {"status": "ok", "service": "pulse-api"}
 
 

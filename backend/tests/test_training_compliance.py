@@ -152,7 +152,7 @@ async def test_training_matrix_admin_override_patch(client, seeded_tenant, db_se
     admin = User(
         id=admin_id,
         company_id=seeded_tenant.company_id,
-        email=f"cadmin_{suffix}@pytest.test",
+        email=f"cadmin_{suffix}@example.com",
         hashed_password=hash_password(seeded_tenant.password),
         full_name="Pytest Company Admin",
         roles=[UserRole.company_admin.value],
@@ -325,7 +325,7 @@ async def test_training_matrix_allowed_for_lead(client, seeded_tenant, db_sessio
     lead = User(
         id=lead_id,
         company_id=seeded_tenant.company_id,
-        email=f"lead_{suffix}@pytest.test",
+        email=f"lead_{suffix}@example.com",
         hashed_password=hash_password(seeded_tenant.password),
         full_name="Pytest Lead",
         roles=[UserRole.lead.value],

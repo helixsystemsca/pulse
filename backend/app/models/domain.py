@@ -238,6 +238,19 @@ class User(Base):
         nullable=False,
         server_default=text("'[]'::jsonb"),
     )
+    #: Additive flat RBAC keys (e.g. work_requests.edit, procedures.edit) beyond matrix/feature bridge.
+    rbac_permission_extra: Mapped[list[str]] = mapped_column(
+        JSONB,
+        nullable=False,
+        server_default=text("'[]'::jsonb"),
+    )
+    #: Optional access overlay assignment (organizational label; does not widen product modules versus the matrix).
+    tenant_role_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("tenant_roles.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     company: Mapped[Optional[Company]] = relationship(
         back_populates="users",
@@ -245,6 +258,7 @@ class User(Base):
     )
     login_events: Mapped[list["LoginEvent"]] = relationship(
         back_populates="user",
+        foreign_keys="LoginEvent.user_id",
         cascade="all, delete-orphan",
     )
 
@@ -271,8 +285,22 @@ class LoginEvent(Base):
     region: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     country: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     user_agent: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    login_method: Mapped[str] = mapped_column(String(32), nullable=False, default="password")
+    session_origin: Mapped[str] = mapped_column(String(32), nullable=False, default="user")
+    impersonator_user_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
-    user: Mapped["User"] = relationship(back_populates="login_events")
+    user: Mapped["User"] = relationship(
+        back_populates="login_events",
+        foreign_keys=[user_id],
+    )
+    impersonator: Mapped[Optional["User"]] = relationship(
+        foreign_keys=[impersonator_user_id],
+    )
 
 
 class RolePermission(Base):
@@ -447,12 +475,63 @@ class DomainEventRow(Base):
     )
 
 
+class InventoryScope(Base):
+    """Tenant-owned inventory partition (department pool, shared pool, warehouse, …)."""
+
+    __tablename__ = "inventory_scopes"
+    __table_args__ = (UniqueConstraint("company_id", "slug", name="uq_inventory_scope_company_slug"),)
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    slug: Mapped[str] = mapped_column(String(64), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    is_shared: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+
+
+class DepartmentInventoryScope(Base):
+    """Maps HR/workspace department slugs to inventory scopes (many-to-many via rows)."""
+
+    __tablename__ = "department_inventory_scopes"
+    __table_args__ = (
+        UniqueConstraint(
+            "company_id",
+            "department_slug",
+            "scope_id",
+            name="uq_department_inventory_scope_row",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    department_slug: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    scope_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("inventory_scopes.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+
 class InventoryItem(Base):
     __tablename__ = "inventory_items"
 
     id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
     company_id: Mapped[str] = mapped_column(
         UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    scope_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("inventory_scopes.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
     )
     sku: Mapped[str] = mapped_column(String(128), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -474,7 +553,7 @@ class InventoryItem(Base):
     )
     item_condition: Mapped[str] = mapped_column(String(32), nullable=False, default="good")
     #: Workspace department (maintenance, communications, …) for filtering and reporting.
-    department_slug: Mapped[str] = mapped_column(String(32), nullable=False, default="maintenance")
+    department_slug: Mapped[str] = mapped_column(String(64), nullable=False, default="maintenance")
     reorder_flag: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     unit_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     vendor: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
@@ -571,6 +650,7 @@ class InventoryVendor(Base):
     postal_code: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     country: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    department_slug: Mapped[str] = mapped_column(String(64), nullable=False, default="maintenance", index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
     )
@@ -606,6 +686,7 @@ class InventoryContractor(Base):
     postal_code: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     country: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    department_slug: Mapped[str] = mapped_column(String(64), nullable=False, default="maintenance", index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
     )

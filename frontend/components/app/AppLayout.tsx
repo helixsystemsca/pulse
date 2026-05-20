@@ -13,7 +13,6 @@ import { AppLayoutFooter } from "./AppLayoutFooter";
 import { GamificationProvider } from "@/components/gamification/GamificationProvider";
 import { SidebarStateProvider } from "@/components/app/SidebarState";
 import { AppMainChromeColumn } from "@/components/app/AppMainChromeColumn";
-import { DepartmentPlatformProvider } from "@/contexts/DepartmentPlatformContext";
 
 type AppLayoutProps = {
   children: ReactNode;
@@ -37,8 +36,7 @@ export function AppLayout({
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-ds-secondary">
       <ModuleSettingsProvider>
-        <DepartmentPlatformProvider>
-          <GamificationProvider>
+        <GamificationProvider>
             <SidebarStateProvider>
             <InactivitySessionGuard />
             <ServerTimeSync />
@@ -83,7 +81,6 @@ export function AppLayout({
             </div>
             </SidebarStateProvider>
           </GamificationProvider>
-        </DepartmentPlatformProvider>
       </ModuleSettingsProvider>
     </div>
   );

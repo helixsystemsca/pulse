@@ -2,6 +2,11 @@
  * Availability layer — evaluates calendar cells independently from assignments.
  */
 
+import {
+  entriesForDay,
+  resolveDailyAvailability,
+} from "@/lib/schedule/employee-daily-availability";
+import type { EmployeeDailyAvailabilityEntry } from "@/lib/schedule/employee-availability-types";
 import { approvedTimeOffKind, normalizeWeekdayKey, weekdayKeyFromIso } from "@/lib/schedule/recurring";
 import type { AvailabilityCellEvaluation } from "@/lib/schedule/operational-scheduling-model";
 import type { WorkerSchedulingConstraints } from "@/lib/schedule/types";
@@ -32,13 +37,63 @@ function placementBand(start: string, end: string): ShiftTypeKey {
 }
 
 /** Evaluate availability for a worker on a calendar date (no assignment yet). */
+function dailyEvaluationToCell(
+  daily: ReturnType<typeof resolveDailyAvailability>,
+): AvailabilityCellEvaluation {
+  if (daily.kind === "unavailable") {
+    return {
+      kind: "unavailable",
+      overlay: "none",
+      dropAllowed: false,
+      managerOverrideEligible: false,
+      message: daily.message,
+    };
+  }
+  if (daily.kind === "conditional") {
+    return {
+      kind: "restricted",
+      overlay: "stripe-diagonal",
+      dropAllowed: false,
+      managerOverrideEligible: true,
+      message: daily.message,
+    };
+  }
+  if (daily.kind === "open_pickup") {
+    return {
+      kind: "open_pickup",
+      overlay: "none",
+      dropAllowed: true,
+      managerOverrideEligible: false,
+      message: daily.message,
+    };
+  }
+  if (daily.kind === "available") {
+    return {
+      kind: "available",
+      overlay: "none",
+      dropAllowed: true,
+      managerOverrideEligible: false,
+      message: daily.message,
+    };
+  }
+  return {
+    kind: "open_pickup",
+    overlay: "none",
+    dropAllowed: true,
+    managerOverrideEligible: false,
+    message: daily.message,
+  };
+}
+
 export function evaluateAvailabilityCell(
   worker: Worker,
   date: string,
   settings: ScheduleSettings,
   timeOffBlocks: TimeOffBlock[],
   /** Optional proposed assignment window for restricted checks */
-  proposed?: { start: string; end: string },
+  proposed?: { start: string; end: string; shiftCode?: string | null },
+  employeeAvailabilityIndex?: Record<string, EmployeeDailyAvailabilityEntry[]>,
+  useDailyAvailability = true,
 ): AvailabilityCellEvaluation {
   if (!worker.active) {
     return {
@@ -48,6 +103,13 @@ export function evaluateAvailabilityCell(
       managerOverrideEligible: false,
       message: "Inactive worker",
     };
+  }
+
+  if (useDailyAvailability && employeeAvailabilityIndex) {
+    const dayEntries = entriesForDay(employeeAvailabilityIndex, worker.id, date);
+    if (dayEntries.length) {
+      return dailyEvaluationToCell(resolveDailyAvailability(dayEntries, proposed));
+    }
   }
 
   const off = approvedTimeOffKind(worker.id, date, timeOffBlocks);

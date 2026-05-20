@@ -74,6 +74,50 @@ export function assignmentFor(
   return assignments.find((a) => a.employee_id === employeeId && a.training_program_id === programId);
 }
 
+/** Tier order for worker-facing procedure lists (matrix column order). */
+export const TRAINING_TIER_SORT_ORDER: readonly TrainingTier[] = ["mandatory", "high_risk", "general"];
+
+export type MyProcedureRow = {
+  program: TrainingProgram;
+  status: TrainingAssignmentStatus;
+  assignment: TrainingAssignment | undefined;
+};
+
+function myProcedureStatusSortRank(status: TrainingAssignmentStatus): number {
+  if (status === "completed" || status === "expiring_soon") return 1;
+  return 0;
+}
+
+/**
+ * Assigned / actionable procedures for the signed-in worker — excludes not-assigned rows;
+ * sorts by tier then incomplete-first with completions at the bottom of each tier band.
+ */
+export function myProcedureRowsForWorker(
+  employeeId: string,
+  programs: TrainingProgram[],
+  assignments: TrainingAssignment[],
+  acknowledgements: TrainingAcknowledgement[],
+  opts?: { trustAssignmentStatus?: boolean },
+): MyProcedureRow[] {
+  const rows: MyProcedureRow[] = [];
+  for (const program of programs) {
+    if (!program.active) continue;
+    const assignment = assignmentFor(employeeId, program.id, assignments);
+    const status = cellAssignmentStatus(program, assignment, acknowledgements, opts);
+    if (status === "not_assigned" || status === "not_applicable") continue;
+    rows.push({ program, status, assignment });
+  }
+  return rows.sort((a, b) => {
+    const tierA = TRAINING_TIER_SORT_ORDER.indexOf(a.program.tier);
+    const tierB = TRAINING_TIER_SORT_ORDER.indexOf(b.program.tier);
+    if (tierA !== tierB) return tierA - tierB;
+    const doneA = myProcedureStatusSortRank(a.status);
+    const doneB = myProcedureStatusSortRank(b.status);
+    if (doneA !== doneB) return doneA - doneB;
+    return a.program.title.localeCompare(b.program.title);
+  });
+}
+
 export function filterEmployees(employees: TrainingEmployee[], search: string): TrainingEmployee[] {
   const q = norm(search);
   if (!q) return employees;

@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { cn } from "@/lib/cn";
 import { sessionHasAnyRole, sessionPrimaryRole } from "@/lib/pulse-roles";
+import { canAccessClassicNavHref } from "@/lib/rbac/session-access";
 
 const VIEW_TAB_TOOLBAR =
   "rounded-lg border-2 border-ds-border bg-transparent px-3 py-2 text-center text-xs font-semibold text-ds-foreground shadow-none transition-colors sm:text-sm hover:border-[var(--ds-accent)] hover:bg-[color-mix(in_srgb,var(--ds-accent)_12%,var(--ds-bg))] hover:text-[var(--ds-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-accent)] dark:hover:bg-[color-mix(in_srgb,var(--ds-accent)_18%,transparent)]";
@@ -35,8 +36,15 @@ export function DashboardViewTabs({
   const canSeeBoth = sessionHasAnyRole(session, "company_admin", "manager", "supervisor", "lead");
   const primary = sessionPrimaryRole(session);
   const showWorkerTab = true;
-  const showOverviewTab = primary !== "worker" || canSeeBoth;
-  const showProjectTab = primary !== "worker" || canSeeBoth;
+  const demo = session?.role === "demo_viewer";
+  const showOverviewTab =
+    (primary !== "worker" || canSeeBoth) &&
+    (!session || demo || canAccessClassicNavHref(session, "/overview"));
+  const showProjectTab =
+    (primary !== "worker" || canSeeBoth) &&
+    (!session ||
+      demo ||
+      (canAccessClassicNavHref(session, "/overview/project") && Boolean(session.can_use_pm_features)));
 
   const items = [
     { key: "worker", label: "Operations", show: showWorkerTab, active: isWorker, onClick: () => router.push("/worker") },

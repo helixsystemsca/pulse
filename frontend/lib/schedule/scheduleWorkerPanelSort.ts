@@ -1,5 +1,6 @@
 import { ROTATION_WEEKDAY_KEYS } from "@/lib/workerRotation";
 import { recurringWindowLookupKey, shiftBandForWindow, type ShiftCodeBand } from "@/lib/schedule/shift-codes";
+import { isFlexDeploymentWorker } from "@/lib/schedule/worker-scheduling-model";
 import type { EmploymentType, RecurringShiftRule, Worker } from "@/lib/schedule/types";
 
 export type WorkerPrimaryBand = ShiftCodeBand | "none";
@@ -78,6 +79,14 @@ export function compareWorkersInSchedulePanel(a: Worker, b: Worker): number {
  * (`WorkersApp` / `globals.css`: `app-badge-sky`, `app-badge-amber-soft`, `app-badge-night`).
  * Do not pair with an extra `border` class; badges use `ring-1` from those utilities.
  */
+/** Month/week assignment chip — auxiliary roster uses a cooler grey than FT/RPT rows. */
+export function scheduleAssignmentRowSurfaceClass(worker: Worker | null | undefined): string {
+  if (worker && isFlexDeploymentWorker(worker)) {
+    return "border border-pulseShell-border bg-slate-200/75 text-ds-foreground dark:bg-slate-700/45";
+  }
+  return "border border-pulseShell-border bg-pulseShell-surface text-ds-foreground";
+}
+
 export function shiftCodeBadgeToneClasses(code: string): string {
   const c = code.trim().toUpperCase();
   if (c.startsWith("G")) return "app-badge-violet";

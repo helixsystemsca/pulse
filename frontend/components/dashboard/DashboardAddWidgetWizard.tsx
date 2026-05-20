@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { LayoutItem } from "react-grid-layout";
+import type { PulseAuthSession } from "@/lib/pulse-session";
 import {
-  DASHBOARD_PAGE_WIDGET_CATALOG,
   type CustomDashboardWidgetConfig,
   type CustomWidgetSliceOptions,
   catalogPage,
+  catalogPagesForSession,
   defaultSliceOptions,
   newCustomWidgetId,
 } from "@/lib/dashboardPageWidgetCatalog";
@@ -22,17 +23,20 @@ export function DashboardAddWidgetWizard({
   open,
   mode,
   initialConfig,
+  session,
   onClose,
   onSave,
 }: {
   open: boolean;
   mode: "create" | "edit";
   initialConfig: CustomDashboardWidgetConfig | null;
+  session: PulseAuthSession | null;
   onClose: () => void;
   onSave: (config: CustomDashboardWidgetConfig, layoutItem: LayoutItem | null) => void;
 }) {
+  const availablePages = useMemo(() => catalogPagesForSession(session), [session]);
   const [step, setStep] = useState<Step>(1);
-  const [pageId, setPageId] = useState<string>(DASHBOARD_PAGE_WIDGET_CATALOG[0]!.id);
+  const [pageId, setPageId] = useState<string>("");
   const [selectedSlices, setSelectedSlices] = useState<string[]>([]);
   const [sliceOptions, setSliceOptions] = useState<CustomWidgetSliceOptions>({});
   const [title, setTitle] = useState("");
@@ -50,12 +54,19 @@ export function DashboardAddWidgetWizard({
       setStep(2);
       return;
     }
-    const first = DASHBOARD_PAGE_WIDGET_CATALOG[0]!;
+    const first = availablePages[0];
+    if (!first) {
+      setPageId("");
+      setSelectedSlices([]);
+      setSliceOptions({});
+      setTitle("");
+      return;
+    }
     setPageId(first.id);
     setSelectedSlices(first.slices[0] ? [first.slices[0].id] : []);
     setSliceOptions(defaultSliceOptions(first, first.slices[0] ? [first.slices[0].id] : []));
     setTitle("");
-  }, [open, mode, initialConfig]);
+  }, [availablePages, open, mode, initialConfig]);
 
   useEffect(() => {
     if (!open || !page) return;
@@ -143,7 +154,13 @@ export function DashboardAddWidgetWizard({
           <div className="mt-5 space-y-2">
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-ds-muted">Page</p>
             <div className="grid gap-2 sm:grid-cols-2">
-              {DASHBOARD_PAGE_WIDGET_CATALOG.map((p) => (
+              {availablePages.length === 0 ? (
+                <p className="col-span-2 text-sm text-slate-600 dark:text-ds-muted">
+                  No modules are unlocked for your role yet. Ask an administrator to enable communications or shared
+                  tools in Team Management.
+                </p>
+              ) : null}
+              {availablePages.map((p) => (
                 <button
                   key={p.id}
                   type="button"
@@ -168,7 +185,7 @@ export function DashboardAddWidgetWizard({
               <button type="button" className={BTN} onClick={onClose}>
                 Cancel
               </button>
-              <button type="button" className={BTN_PRIMARY} onClick={() => setStep(2)}>
+              <button type="button" className={BTN_PRIMARY} disabled={availablePages.length === 0} onClick={() => setStep(2)}>
                 Next
               </button>
             </div>

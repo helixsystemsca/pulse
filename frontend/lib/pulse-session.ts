@@ -10,8 +10,9 @@ import {
 } from "@/lib/impersonation-overlay-token";
 import { navigateToPulseLogin } from "@/lib/pulse-app";
 import { applyServerTimeFromUserOut } from "@/lib/serverTime";
+import type { AccessSnapshot } from "@/lib/access-snapshot";
 
-export const PULSE_AUTH_STORAGE_KEY = "pulse_auth_v1";
+export const PULSE_AUTH_STORAGE_KEY = "pulse_auth_v2";
 
 const PUBLIC_PATH_PREFIXES = ["/login", "/auth/callback", "/invite", "/reset-password"] as const;
 
@@ -55,14 +56,26 @@ export type PulseAuthSession = {
   /** Workforce / monitoring capacity (`worker` | `manager` | `supervisor`), separate from permission roles. */
   operational_role?: string | null;
   is_system_admin?: boolean;
-  /** From `/auth/me`; when missing (legacy session), tenant nav shows all modules. */
+  /** From `/auth/me`; sidebar modules derive from department permission matrix ∪ per-user extras ∩ contract ∩ RBAC. */
   enabled_features?: string[];
-  /** From `/auth/me`; RBAC allow list for sidebar (omit on legacy session → no permission gating). */
+  /** From `/auth/me`; tenant contract module keys for all tenant users. */
+  contract_features?: string[];
+  /** From `/auth/me`; flat RBAC permission keys. */
+  rbac_permissions?: string[];
+  /** Canonical access envelope from `/auth/me` (matrix → features → capabilities). */
+  access_snapshot?: AccessSnapshot | null;
+  /** From `/auth/me`; coarse legacy permission strings (`module.*`). */
   permissions?: string[] | null;
-  /** From `/auth/me`; department workspace segments this user may open (`/{slug}/…`). */
+  /** Deprecated: always empty from API. Hub access uses `rbac_permissions` + `contract_features` only. */
   department_workspace_slugs?: string[];
+  /** Primary HR department slug from `/auth/me` for shell labels (not authorization). */
+  hr_department?: string | null;
   /** From `/auth/me`; full tenant contract modules (company admin only). */
   contract_enabled_features?: string[] | null;
+  /** From `/auth/me`; per-user module keys merged into RBAC (subset of contract). */
+  feature_allow_extra?: string[] | null;
+  /** Legacy overlay assignment id (`tenant_roles`); informational—does not override the permission matrix modules. */
+  tenant_role_id?: string | null;
   /** From `/auth/me`; may open `/dashboard/workers`. */
   workers_roster_access?: boolean;
   /** True when a system administrator is viewing the app as this tenant user (JWT + `/auth/me`). */
@@ -94,10 +107,20 @@ export type UserOut = {
   avatar_url?: string | null;
   job_title?: string | null;
   operational_role?: string | null;
+  /** Matrix ∪ per-user extras (see Team Management Permissions). Overlay assignment does not widen this list. */
   enabled_features?: string[];
+  contract_features?: string[];
+  rbac_permissions?: string[];
+  access_snapshot?: AccessSnapshot | null;
   permissions?: string[] | null;
+  /** Deprecated: always empty from API. Hub access uses `rbac_permissions` + `contract_features` only. */
   department_workspace_slugs?: string[];
+  /** Primary HR department slug from `/auth/me` for shell labels (not authorization). */
+  hr_department?: string | null;
   contract_enabled_features?: string[] | null;
+  feature_allow_extra?: string[] | null;
+  /** Legacy overlay id — does not change `enabled_features` vs the permission matrix (`no_access` is the only overlay exception). */
+  tenant_role_id?: string | null;
   workers_roster_access?: boolean;
   is_impersonating?: boolean;
   is_system_admin?: boolean;
@@ -187,6 +210,11 @@ function clearSessionQuiet() {
   if (typeof window === "undefined") return;
   setImpersonationOverlayAccessToken(null);
   localStorage.removeItem(PULSE_AUTH_STORAGE_KEY);
+  try {
+    localStorage.removeItem("pulse_auth_v1");
+  } catch {
+    /* ignore */
+  }
   document.cookie = "pulse_session=; path=/; max-age=0; SameSite=Lax";
   try {
     sessionStorage.removeItem(PULSE_WELCOME_SESSION_KEY);
@@ -255,9 +283,15 @@ export function writeApiSession(
     operational_role: user.operational_role ?? null,
     is_system_admin: user.is_system_admin,
     enabled_features: user.enabled_features,
+    contract_features: user.contract_features ?? undefined,
+    rbac_permissions: user.rbac_permissions ?? undefined,
+    access_snapshot: user.access_snapshot ?? undefined,
     permissions: user.permissions ?? undefined,
     department_workspace_slugs: user.department_workspace_slugs ?? undefined,
+    hr_department: user.hr_department ?? undefined,
     contract_enabled_features: user.contract_enabled_features ?? undefined,
+    feature_allow_extra: user.feature_allow_extra ?? undefined,
+    tenant_role_id: user.tenant_role_id ?? undefined,
     workers_roster_access: user.workers_roster_access,
     is_impersonating:
       user.is_impersonating === false

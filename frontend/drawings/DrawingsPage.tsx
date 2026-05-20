@@ -1,14 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { apiFetch, isApiMode } from "@/lib/api";
 import type { BlueprintElement, BlueprintLayer } from "@/components/zones-devices/blueprint-types";
 import { SYMBOL_DEFAULT, mapApiElement, parseApiBlueprintLayers, toApiPayload } from "@/lib/blueprint-layout";
 import { packInfraAssetNotes, parseInfraAssetFromNotes } from "./utils/infraSymbolNotes";
 import { packZoneMeta } from "./utils/overlayMeta";
 import { useActiveProject } from "./hooks/useActiveProject";
-import { useInfrastructureGraph } from "./hooks/useInfrastructureGraph";
+import { useDrawingsSpatialRuntime } from "./hooks/useDrawingsSpatialRuntime";
+import { useInfrastructureOperationalContext } from "./hooks/useInfrastructureOperationalContext";
 import type { FilterRule, GraphFilters, SystemType, TraceRouteResult } from "./utils/graphHelpers";
 import { getVisibleGraphElements } from "./utils/graphHelpers";
 import { MODES } from "./mapBuilderModes";
@@ -18,7 +19,11 @@ import type { BlueprintViewportHandle } from "@/components/zones-devices/Bluepri
 import { CanvasWrapper } from "./components/CanvasWrapper";
 import { DrawingCanvasToolbar } from "./components/DrawingCanvasToolbar";
 import { DrawingsTopBar } from "./components/DrawingsTopBar";
-import { MiniToolRail } from "./components/MiniToolRail";
+import {
+  getSpatialWorkspace,
+  SpatialWorkspaceShell,
+  useSpatialWorkspaceTools,
+} from "@/spatial-engine/workspace";
 import { RightPanel } from "./components/RightPanel";
 import { ToolPanel } from "./components/ToolPanel";
 import { PRIMARY_TO_TOOL, toolToPrimaryMode, type WorkspaceTool } from "./workspaceTools";
@@ -26,6 +31,7 @@ import type { AnnotateKind, AssetDrawShape, ConnectFlow, PrimaryMode } from "./m
 import { bboxFromFlatPoly, uniqueLabel } from "./utils/mapBuilderHelpers";
 import type { StageViewport } from "./components/MapSemanticDrawLayer";
 import { DRAWINGS_BASE_IMAGE_SYMBOL } from "./mapConstants";
+import { ensureDrawingsSpatialRenderers } from "./lib/register-spatial-renderers";
 
 type MapSummary = {
   id: string;
@@ -91,8 +97,20 @@ function useDocumentDark(): boolean {
   return dark;
 }
 
-export default function DrawingsPage({ fullscreen = false }: { fullscreen?: boolean }) {
+export function InfrastructureWorkspaceView({
+  fullscreen = false,
+  workspaceSwitcher,
+}: {
+  fullscreen?: boolean;
+  workspaceSwitcher?: ReactNode;
+}) {
+  useEffect(() => {
+    ensureDrawingsSpatialRenderers();
+  }, []);
+
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const workspaceQuery = searchParams.get("workspace");
   const isDark = useDocumentDark();
   const theme = isDark ? ("dark" as const) : ("light" as const);
   const { activeMode, setActiveMode, modeConfig } = useBuilderMode();
@@ -206,7 +224,21 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
     return p != null && String(p).trim() ? String(p).trim() : null;
   }, [activeMapId, mapDetail, maps]);
 
-  const graph = useInfrastructureGraph(graphProjectId, activeMapId.trim() || null);
+  const spatialLoadInput = useMemo(() => {
+    if (!activeMapId.trim() || !mapDetail) return null;
+    return {
+      mapId: activeMapId.trim(),
+      name: mapDetail.name,
+      category: mapDetail.category,
+      imageUrl: mapDetail.image_url?.trim() || null,
+      worldWidth: baseWorldSize?.w ?? MAX_BASE_IMAGE_WORLD,
+      worldHeight: baseWorldSize?.h ?? MAX_BASE_IMAGE_WORLD,
+      projectId: graphProjectId,
+    };
+  }, [activeMapId, mapDetail, baseWorldSize, graphProjectId]);
+
+  const graph = useDrawingsSpatialRuntime(graphProjectId, activeMapId.trim() || null, spatialLoadInput);
+  useInfrastructureOperationalContext(activeMapId.trim() || null);
 
   useEffect(() => {
     if (!isApiMode()) {
@@ -306,20 +338,30 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
     };
   }, [activeMapId]);
 
+  useEffect(() => {
+    if (!mapDetail || !graph.activeDocument || graph.activeDocument.id !== mapDetail.id) return;
+    graph.hydrateBlueprintFromApi(mapDetail.elements, parseApiBlueprintLayers(mapDetail.layers));
+    // Do not depend on graph.revision — hydrateBlueprintFromApi bumps revision and would loop.
+  }, [mapDetail, graph.activeDocument?.id, graph.hydrateBlueprintFromApi]);
+
   const mapLoading = mapListLoading || mapDetailLoading;
 
   const blueprintElements: BlueprintElement[] = useMemo(() => {
-    if (!mapDetail) return [];
-    const els = mapDetail.elements.map(mapApiElement);
-    const stripLegacyBase = Boolean(mapDetail.image_url?.trim());
+    const els = graph.blueprintElements.length > 0 || graph.activeDocument
+      ? graph.blueprintElements
+      : mapDetail
+        ? mapDetail.elements.map(mapApiElement)
+        : [];
+    const stripLegacyBase = Boolean(mapDetail?.image_url?.trim());
     return els
       .filter((e) => !(stripLegacyBase && e.type === "symbol" && e.symbol_type === DRAWINGS_BASE_IMAGE_SYMBOL))
       .filter((e) => !hiddenBlueprintElementIds.has(e.id));
-  }, [mapDetail, hiddenBlueprintElementIds]);
+  }, [graph.activeDocument, graph.blueprintElements, mapDetail, hiddenBlueprintElementIds]);
 
   const blueprintLayers: BlueprintLayer[] = useMemo(() => {
+    if (graph.blueprintLayers.length > 0 || graph.activeDocument) return graph.blueprintLayers;
     return mapDetail ? parseApiBlueprintLayers(mapDetail.layers) : [];
-  }, [mapDetail]);
+  }, [graph.activeDocument, graph.blueprintLayers, mapDetail]);
 
   const selectedBlueprintElement = useMemo(() => {
     if (!selectedBlueprintElementId) return null;
@@ -337,6 +379,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
   const persistMapElements = useCallback(
     async (next: BlueprintElement[]) => {
       if (!mapDetail || !isApiMode()) return;
+      graph.setBlueprintElements(next, blueprintLayers);
       const updated = await apiFetch<MapDetail>(`/api/maps/${encodeURIComponent(mapDetail.id)}`, {
         method: "PUT",
         json: {
@@ -350,7 +393,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
       });
       setMapDetail(updated);
     },
-    [mapDetail, blueprintLayers],
+    [blueprintLayers, graph, mapDetail],
   );
 
   function editableBlueprintElements(): BlueprintElement[] {
@@ -785,23 +828,64 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
 
   const toolsLocked = Boolean(isApiMode() && (!activeMapId.trim() || !mapDetail || !hasBaseImage));
 
+  const infrastructureWorkspace = getSpatialWorkspace("infrastructure");
+  const infrastructureTools = useMemo(
+    () =>
+      infrastructureWorkspace.tools.map((t) => {
+        if (t.id === "trace") {
+          return {
+            ...t,
+            disabled: !modeConfig.ui.showTraceRoute || !apiConnected || toolsLocked,
+            disabledReason: toolsLocked ? TOOLS_LOCKED_HINT : undefined,
+          };
+        }
+        if (t.id === "select" || t.id === "pan") {
+          return { ...t, disabled: toolsLocked, disabledReason: toolsLocked ? TOOLS_LOCKED_HINT : undefined };
+        }
+        if (t.group === "primary") {
+          return {
+            ...t,
+            disabled: toolsLocked || t.disabled,
+            disabledReason: toolsLocked ? TOOLS_LOCKED_HINT : t.disabledReason,
+          };
+        }
+        return t;
+      }),
+    [apiConnected, infrastructureWorkspace.tools, modeConfig.ui.showTraceRoute, toolsLocked],
+  );
+
+  const activeRailToolId = canvasNavMode === "pan" ? "pan" : activeTool;
+
+  const onInfrastructureToolChange = useCallback(
+    (toolId: string) => {
+      if (toolId === "pan") {
+        setCanvasNavMode("pan");
+        return;
+      }
+      setCanvasNavMode("select");
+      if (toolId === "select") {
+        applyWorkspaceTool("select");
+        return;
+      }
+      applyWorkspaceTool(toolId as WorkspaceTool);
+    },
+    [applyWorkspaceTool],
+  );
+
+  useSpatialWorkspaceTools(infrastructureTools, onInfrastructureToolChange, Boolean(mapDetail));
+
   const workspaceChrome = (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-row overflow-hidden bg-[#f4f6f8] dark:bg-ds-primary">
-      <span id="drawings-workspace-title" className="sr-only">
-        Infrastructure map workspace
-      </span>
-      <MiniToolRail
-        activeTool={activeTool}
-        onToolChange={applyWorkspaceTool}
-        traceAllowed={modeConfig.ui.showTraceRoute}
-        apiConnected={apiConnected}
-        toolsLocked={toolsLocked}
-        toolsLockedHint={TOOLS_LOCKED_HINT}
-        canvasNavMode={canvasNavMode}
-        onCanvasSelectMode={() => applyWorkspaceTool("select")}
-        onCanvasPanMode={() => setCanvasNavMode("pan")}
-      />
-      <ToolPanel
+    <SpatialWorkspaceShell
+      workspaceId="infrastructure"
+      title={mapDetail?.name ?? "Infrastructure map"}
+      subtitle={mapDetail?.category}
+      activeToolId={activeRailToolId}
+      onToolChange={onInfrastructureToolChange}
+      tools={infrastructureTools}
+      immersive
+      className="min-h-0 flex-1"
+      leftPanel={
+        <ToolPanel
         activeTool={activeTool}
         apiConnected={apiConnected}
         toolsLocked={toolsLocked}
@@ -849,9 +933,12 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
         traceResult={traceResult}
         onTraceRoute={() => void onTraceRoute()}
       />
-
-      <div className="flex min-h-0 min-w-0 flex-1 flex-row overflow-hidden">
-        <main className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+      }
+      viewport={
+        <>
+          <span id="drawings-workspace-title" className="sr-only">
+            Infrastructure map workspace
+          </span>
           {mapListLoading ? (
             <div className="flex flex-1 items-center justify-center border-l border-[#e2e6ec] bg-[#f4f6f8] dark:border-ds-border/40 dark:bg-ds-primary">
               <p className="text-sm text-ds-muted">Loading maps…</p>
@@ -912,7 +999,6 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
               </div>
 
               <div className="relative flex min-h-0 flex-1 flex-col">
-                <DrawingCanvasToolbar disabled={toolsLocked} viewportRef={canvasViewportRef} />
                 {(() => {
                   const vis = getVisibleGraphElements(
                     { systems: activeSystems } satisfies GraphFilters,
@@ -1003,8 +1089,12 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
               </div>
             </>
           )}
-        </main>
-
+        </>
+      }
+      floatingControls={
+        mapDetail ? <DrawingCanvasToolbar disabled={toolsLocked} viewportRef={canvasViewportRef} /> : undefined
+      }
+      rightPanel={
         <RightPanel
           selectedAssets={selectedAssets}
           selectedConnections={selectedConnections}
@@ -1035,8 +1125,8 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
             await graph.upsertAttribute(opts);
           }}
         />
-      </div>
-    </div>
+      }
+    />
   );
 
   const errorBanner =
@@ -1049,7 +1139,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
       className={
         fullscreen
           ? "flex h-full min-h-0 w-full flex-col overflow-hidden bg-background font-manrope font-normal"
-          : "flex min-h-0 min-h-[calc(100dvh-7rem)] w-full flex-1 flex-col overflow-hidden font-manrope font-normal"
+          : "flex min-h-0 min-h-[calc(100dvh-4.5rem)] w-full flex-1 flex-col overflow-hidden font-manrope font-normal"
       }
     >
       <input
@@ -1062,6 +1152,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
         onChange={onMapImageInputChange}
       />
       <DrawingsTopBar
+        workspaceSwitcher={workspaceSwitcher}
         mapsToolbarDisabled={!apiConnected || mapListLoading || uploadBusy}
         activeProjectId={activeProjectId}
         setActiveProjectId={setActiveProjectId}
@@ -1074,8 +1165,14 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
         onSaveMap={() => void handleSaveMap()}
         saveDisabled={!mapDetail || mapLoading || uploadBusy}
         fullscreen={fullscreen}
-        onEnterFullscreen={() => router.push("/drawings/fullscreen")}
-        onExitFullscreen={() => router.push("/drawings")}
+        onEnterFullscreen={() => {
+          const qs = workspaceQuery ? `?workspace=${workspaceQuery}` : "";
+          router.push(`/drawings/fullscreen${qs}`);
+        }}
+        onExitFullscreen={() => {
+          const qs = workspaceQuery ? `?workspace=${workspaceQuery}` : "";
+          router.push(`/drawings${qs}`);
+        }}
       />
       {errorBanner}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{workspaceChrome}</div>

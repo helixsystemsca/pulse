@@ -1,9 +1,9 @@
 "use client";
 
+import { Suspense, useEffect, useState } from "react";
 import { ScheduleApp } from "@/components/schedule";
 import { navigateToPulseLogin } from "@/lib/pulse-app";
 import { readSession } from "@/lib/pulse-session";
-import { useEffect, useState } from "react";
 
 export default function SchedulePage() {
   const [ready, setReady] = useState(false);
@@ -26,7 +26,13 @@ export default function SchedulePage() {
 
   return (
     <div className="w-full min-w-0">
-      <ScheduleApp />
+      <Suspense
+        fallback={
+          <div className="flex min-h-[40vh] items-center justify-center text-sm text-pulse-muted">Loading…</div>
+        }
+      >
+        <ScheduleApp />
+      </Suspense>
     </div>
   );
 }

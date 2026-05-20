@@ -27,7 +27,7 @@ from app.core.pulse_storage import (
     read_user_avatar_pending_bytes,
 )
 from app.core.user_avatar_upload import INTERNAL_AVATAR_PATH
-from app.core.login_activity import list_recent_login_events
+from app.core.login_activity import list_recent_login_events, login_events_to_out
 from app.core.user_roles import (
     default_operational_role_for_invite_role,
     user_has_any_role,
@@ -383,12 +383,13 @@ async def list_login_events_for_user(
     user_id: str,
     db: Annotated[AsyncSession, Depends(get_db)],
     actor: Annotated[User, Depends(get_current_user)],
+    end_user_only: bool = False,
 ) -> list[LoginEventOut]:
-    """Last 20 successful password logins (self or company_admin in same org)."""
+    """Last 20 successful sign-ins (self or company_admin in same org)."""
     target = await db.get(User, user_id)
     if not target:
         raise HTTPException(status_code=404, detail="User not found")
     if not _can_view_user_login_events(actor, target):
         raise HTTPException(status_code=403, detail="Not allowed to view login activity for this user")
-    rows = await list_recent_login_events(db, user_id, limit=20)
-    return [LoginEventOut.model_validate(r) for r in rows]
+    rows = await list_recent_login_events(db, user_id, limit=20, end_user_only=end_user_only)
+    return await login_events_to_out(db, rows, viewer=actor)

@@ -137,7 +137,14 @@ function emptyForm(): FormState {
   };
 }
 
-export function InventoryVendorsPanel({ apiCompany }: { apiCompany: string | null }) {
+export function InventoryVendorsPanel({
+  apiCompany,
+  departmentSlug,
+}: {
+  apiCompany: string | null;
+  /** When set, list/create are scoped to this workspace department. */
+  departmentSlug?: string;
+}) {
   const [rows, setRows] = useState<InventoryVendorRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -159,11 +166,17 @@ export function InventoryVendorsPanel({ apiCompany }: { apiCompany: string | nul
     return () => window.clearTimeout(t);
   }, [textDraft, activeDraft]);
 
+  const listFilters = useMemo(() => {
+    const f: InventoryVendorListFilters = { ...applied };
+    if (departmentSlug?.trim()) f.department_slug = departmentSlug.trim();
+    return f;
+  }, [applied, departmentSlug]);
+
   const load = useCallback(async () => {
     setLoading(true);
     setErr(null);
     try {
-      const list = await fetchInventoryVendors(apiCompany, applied);
+      const list = await fetchInventoryVendors(apiCompany, listFilters);
       setRows(list);
     } catch (e) {
       const { message } = parseClientApiError(e);
@@ -172,7 +185,7 @@ export function InventoryVendorsPanel({ apiCompany }: { apiCompany: string | nul
     } finally {
       setLoading(false);
     }
-  }, [apiCompany, applied]);
+  }, [apiCompany, listFilters]);
 
   useEffect(() => {
     void load();
@@ -220,7 +233,10 @@ export function InventoryVendorsPanel({ apiCompany }: { apiCompany: string | nul
         is_active: form.is_active,
       };
       if (drawerMode === "create") {
-        await createInventoryVendor(apiCompany, body);
+        await createInventoryVendor(apiCompany, {
+          ...body,
+          ...(departmentSlug?.trim() ? { department_slug: departmentSlug.trim() } : {}),
+        });
       } else if (editingId) {
         await patchInventoryVendor(apiCompany, editingId, body);
       }

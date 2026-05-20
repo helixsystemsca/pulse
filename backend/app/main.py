@@ -17,6 +17,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
+from app.api.access_debug_routes import router as access_debug_router
 from app.api.admin_routes import router as admin_router
 from app.api.automation_debug_routes import router as automation_debug_router
 from app.api.automation_events_routes import router as automation_events_router
@@ -42,6 +43,7 @@ from app.api.profile_routes import router as profile_router
 from app.api.compliance_routes import router as compliance_router
 from app.api.pm_coord_routes import router as pm_coord_router
 from app.api.project_summary_routes import router as project_summary_router
+from app.api.planning_ideas_routes import router as planning_ideas_router
 from app.api.projects_routes import router as projects_router
 from app.api.projects_routes import tasks_router as projects_tasks_router
 from app.api.monitoring_routes import router as monitoring_router
@@ -49,7 +51,9 @@ from app.api.operations_routes import router as operations_router
 from app.api.proximity_routes import router as proximity_router
 from app.api.search_routes import router as search_router
 from app.api.core_routes import router as core_router
+from app.api.planning_approval_public_routes import router as planning_approval_public_router
 from app.api.public_routes import router as public_router
+from app.api.rbac_debug_routes import router as rbac_debug_router
 from app.api.realtime import router as realtime_router
 from app.api.system_routes import router as system_router
 from app.api.users_routes import router as users_router
@@ -58,6 +62,7 @@ from app.api.pm_task_routes import internal_router as pm_internal_router
 from app.api.pm_task_routes import router as pm_task_router
 from app.api.pm_task_routes import tools_router as pm_tools_router
 from app.api.pm_plans_routes import router as pm_plans_router
+from app.api.schedule_employee_availability_routes import router as schedule_employee_availability_router
 from app.api.schedule_internal_routes import router as schedule_internal_router
 from app.api.notification_internal_routes import router as notification_internal_router
 from app.api.gamification_routes import router as gamification_router
@@ -66,6 +71,7 @@ from app.api.team_insights_routes import router as team_insights_router
 from app.api.worker_profile_routes import router as worker_profile_router
 from app.api.work_requests_routes import router as work_requests_router
 from app.api.workers_routes import router as workers_router
+from app.api.tenant_roles_routes import router as tenant_roles_router
 from app.api.inventory_portal_routes import router as inventory_portal_router
 from app.api.routes_schedule import router as schedule_router
 from app.api.telemetry_ingest_routes import router as telemetry_ingest_router
@@ -73,6 +79,7 @@ from app.api.telemetry_positions_routes import router as telemetry_positions_rou
 from app.api.routines_routes import router as routines_router
 from app.api.training_routes import router as training_router
 from app.core.bootstrap import ensure_bootstrap_system_admin
+from app.core.rbac.catalog_sync import sync_rbac_catalog_permissions
 from app.core.config import get_settings
 from app.core.database import AsyncSessionLocal
 from app.limiter import limiter
@@ -117,11 +124,35 @@ if not _cors_origins and not settings.cors_origin_regex_pattern:
     )
 
 
+_startup_log = logging.getLogger("pulse.startup")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with AsyncSessionLocal() as db:
-        await ensure_bootstrap_system_admin(db)
-    yield
+    _startup_log.info("STARTUP STEP 1: rbac catalog sync begin")
+    try:
+        async with AsyncSessionLocal() as db:
+            await sync_rbac_catalog_permissions(db)
+            await db.commit()
+        _startup_log.info("STARTUP STEP 1: rbac catalog sync complete")
+    except Exception:
+        _startup_log.exception("STARTUP STEP 1: rbac catalog sync failed")
+        raise
+
+    _startup_log.info("STARTUP STEP 2: bootstrap system admin begin")
+    try:
+        async with AsyncSessionLocal() as db:
+            await ensure_bootstrap_system_admin(db)
+        _startup_log.info("STARTUP STEP 2: bootstrap system admin complete")
+    except Exception:
+        _startup_log.exception("STARTUP STEP 2: bootstrap system admin failed")
+        raise
+
+    _startup_log.info("STARTUP STEP 3: application ready (lifespan yield)")
+    try:
+        yield
+    finally:
+        _startup_log.info("STARTUP SHUTDOWN: lifespan teardown")
 
 
 _doc_kwargs: dict = {}
@@ -139,6 +170,12 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Health checks (no /api prefix — easy for load balancers and platform probes).
 app.include_router(health_router)
+
+
+@app.get("/", include_in_schema=False)
+async def root_probe() -> dict[str, str]:
+    """Minimal root for platform probes that hit ``/`` instead of ``/health``."""
+    return {"status": "ok"}
 
 # First registered sits innermost (just above routes); last registered is outermost.
 app.add_middleware(SlowAPIMiddleware)
@@ -172,6 +209,7 @@ app.add_middleware(
 )
 
 app.include_router(public_router, prefix="/api/public")
+app.include_router(planning_approval_public_router, prefix="/api/public")
 app.include_router(gateway_register_router, prefix="/api")
 app.include_router(blueprint_router, prefix="/api")
 app.include_router(map_router, prefix="/api")
@@ -179,6 +217,7 @@ app.include_router(infrastructure_map_router, prefix="/api")
 app.include_router(compliance_router, prefix="/api")
 app.include_router(work_requests_router, prefix="/api")
 app.include_router(workers_router, prefix="/api")
+app.include_router(tenant_roles_router, prefix="/api")
 app.include_router(inventory_portal_router, prefix="/api")
 app.include_router(schedule_router, prefix="/api")
 app.include_router(auth_router, prefix="/api/v1")
@@ -202,9 +241,12 @@ app.include_router(automation_config_router, prefix="/api/v1")
 app.include_router(admin_router, prefix="/api/v1")
 app.include_router(system_router, prefix="/api/system")
 app.include_router(users_router, prefix="/api/v1")
+app.include_router(rbac_debug_router, prefix="/api/v1")
+app.include_router(access_debug_router, prefix="/api/v1")
 app.include_router(core_router, prefix="/api/v1")
 app.include_router(realtime_router, prefix="/api/v1")
 app.include_router(pulse_router, prefix="/api/v1")
+app.include_router(schedule_employee_availability_router, prefix="/api/v1")
 app.include_router(maintenance_hub_router, prefix="/api/v1")
 app.include_router(routines_router, prefix="/api/v1")
 app.include_router(training_router, prefix="/api/v1")
@@ -218,6 +260,7 @@ app.include_router(gamification_router, prefix="/api/v1")
 app.include_router(operational_xp_router, prefix="/api/v1")
 app.include_router(team_insights_router, prefix="/api/v1")
 app.include_router(worker_profile_router, prefix="/api/v1")
+app.include_router(planning_ideas_router, prefix="/api/v1")
 app.include_router(projects_router, prefix="/api/v1")
 app.include_router(project_summary_router, prefix="/api/v1")
 app.include_router(projects_tasks_router, prefix="/api/v1")
@@ -228,4 +271,6 @@ app.include_router(monitoring_router, prefix="/api/v1")
 app.include_router(telemetry_positions_router, prefix="/api/v1")
 app.include_router(search_router, prefix="/api/v1")
 
+_startup_log.info("STARTUP STEP 4: register_modules begin")
 register_modules(app)
+_startup_log.info("STARTUP STEP 4: register_modules complete")

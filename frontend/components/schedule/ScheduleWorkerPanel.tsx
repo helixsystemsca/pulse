@@ -23,7 +23,7 @@ const BAND_SECTION_LABEL: Record<WorkerPrimaryBand, string> = {
   D: "Day shifts",
   A: "Afternoon shifts",
   N: "Night shifts",
-  none: "No recurring template",
+  none: "Auxiliary",
 };
 
 type Props = {
@@ -165,7 +165,7 @@ export function ScheduleWorkerPanel({
                     const eligible = workerMeetsCerts(w, activeCertRequirements);
                     const wc = new Set(w.certifications ?? []);
                     const missingCerts = activeCertRequirements.filter((c) => !wc.has(c));
-                    const roleInd = roleIndicatorForSchedule(w.role);
+                    const roleInd = band === "none" ? null : roleIndicatorForSchedule(w.role);
                     return (
                       <li key={w.id}>
                         <div

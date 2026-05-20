@@ -1,23 +1,48 @@
 /**
- * Maps tenant sidebar `href` entries to system-admin `company_features` keys.
- * Omitted hrefs are always shown. When `enabled_features` is absent on the session (legacy), all items show.
+ * Legacy href → company feature key (SysAdmin catalog). Used for admin UIs only — not tenant authorization.
+ * Tenant visibility uses {@link canAccessClassicNavHref} in `@/lib/rbac/session-access`.
  */
 
 import { PLATFORM_DEPARTMENT_SLUGS } from "@/config/platform/departments";
+import { PLATFORM_WORKSPACE_MODULES } from "@/lib/rbac/platform-workspace-modules";
 
-/** Nav href → feature key required to show the item. */
+/** Nav href → feature key (company contract / system catalog). */
 export function featureKeyForTenantNavHref(href: string): string | undefined {
-  for (const slug of PLATFORM_DEPARTMENT_SLUGS) {
-    if (href === `/${slug}` || href.startsWith(`/${slug}/`)) return undefined;
+  const base = href.split("?")[0] ?? href;
+  const h = base.endsWith("/") && base.length > 1 ? base.slice(0, -1) : base;
+  const parts = h.split("/").filter(Boolean);
+  if (parts.length >= 2) {
+    const dept = parts[0]!;
+    const routeSeg = parts[1]!;
+    if (PLATFORM_DEPARTMENT_SLUGS.includes(dept)) {
+      const mod = PLATFORM_WORKSPACE_MODULES.find((m) => m.departmentSlugs.includes(dept) && m.route === routeSeg);
+      if (mod) return mod.requiredCompanyModule;
+    }
   }
+  if (href === "/overview" || href.startsWith("/overview/")) return "dashboard";
+  if (href === "/dashboard/messages" || href.startsWith("/dashboard/messages")) return "messaging";
   if (href === "/dashboard/compliance") return "compliance";
   if (href === "/schedule") return "schedule";
   if (href === "/monitoring") return "monitoring";
+  if (href === "/planning" || href.startsWith("/planning")) return "projects";
   if (href === "/projects" || href.startsWith("/projects/")) return "projects";
+  if (href === "/project-management" || href.startsWith("/project-management")) return "projects";
   if (href === "/dashboard/pm-workspace" || href.startsWith("/dashboard/pm-workspace")) return "projects";
   if (href === "/pm/planning" || href.startsWith("/pm/")) return "projects";
   if (href === "/dashboard/work-requests" || href.startsWith("/dashboard/work-requests")) return "work_requests";
   if (href === "/dashboard/maintenance" || href.startsWith("/dashboard/maintenance")) return "work_requests";
+  if (href === "/standards/training" || href.startsWith("/standards/training/")) {
+    if (href.includes("/certifications")) return "standards_certifications";
+    if (href.includes("/compliance")) return "standards_compliance";
+    return "standards_training";
+  }
+  if (href === "/standards/certifications" || href.startsWith("/standards/certifications/")) {
+    return "standards_certifications";
+  }
+  if (href === "/standards/compliance" || href.startsWith("/standards/compliance/")) return "standards_compliance";
+  if (href === "/standards/acknowledgments" || href.startsWith("/standards/acknowledgments")) {
+    return "standards_compliance";
+  }
   if (href === "/standards" || href.startsWith("/standards")) return "procedures";
   if (href === "/dashboard/procedures" || href.startsWith("/dashboard/procedures")) return "procedures";
   if (href === "/dashboard/team-insights" || href.startsWith("/dashboard/team-insights")) return "team_insights";
@@ -31,22 +56,4 @@ export function featureKeyForTenantNavHref(href: string): string | undefined {
   if (href === "/zones" || href.startsWith("/zones")) return "zones_devices";
   if (href === "/live-map" || href.startsWith("/live-map")) return "live_map";
   return undefined;
-}
-
-/** True if the nav item should render for this tenant session. */
-export function isTenantNavFeatureEnabled(
-  href: string,
-  enabledFeatures: string[] | undefined | null,
-): boolean {
-  const key = featureKeyForTenantNavHref(href);
-  if (!key) return true;
-  if (enabledFeatures === undefined || enabledFeatures === null) return true;
-  if (key === "equipment") {
-    return (
-      enabledFeatures.includes("equipment") ||
-      enabledFeatures.includes("tool_tracking") ||
-      enabledFeatures.includes("rtls_tracking")
-    );
-  }
-  return enabledFeatures.includes(key);
 }

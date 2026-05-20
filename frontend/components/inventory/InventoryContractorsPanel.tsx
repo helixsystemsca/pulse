@@ -137,7 +137,13 @@ function emptyForm(): FormState {
   };
 }
 
-export function InventoryContractorsPanel({ apiCompany }: { apiCompany: string | null }) {
+export function InventoryContractorsPanel({
+  apiCompany,
+  departmentSlug,
+}: {
+  apiCompany: string | null;
+  departmentSlug?: string;
+}) {
   const [rows, setRows] = useState<InventoryContractorRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -159,11 +165,17 @@ export function InventoryContractorsPanel({ apiCompany }: { apiCompany: string |
     return () => window.clearTimeout(t);
   }, [textDraft, activeDraft]);
 
+  const listFilters = useMemo(() => {
+    const f: InventoryContractorListFilters = { ...applied };
+    if (departmentSlug?.trim()) f.department_slug = departmentSlug.trim();
+    return f;
+  }, [applied, departmentSlug]);
+
   const load = useCallback(async () => {
     setLoading(true);
     setErr(null);
     try {
-      const list = await fetchInventoryContractors(apiCompany, applied);
+      const list = await fetchInventoryContractors(apiCompany, listFilters);
       setRows(list);
     } catch (e) {
       const { message } = parseClientApiError(e);
@@ -172,7 +184,7 @@ export function InventoryContractorsPanel({ apiCompany }: { apiCompany: string |
     } finally {
       setLoading(false);
     }
-  }, [apiCompany, applied]);
+  }, [apiCompany, listFilters]);
 
   useEffect(() => {
     void load();
@@ -220,7 +232,10 @@ export function InventoryContractorsPanel({ apiCompany }: { apiCompany: string |
         is_active: form.is_active,
       };
       if (drawerMode === "create") {
-        await createInventoryContractor(apiCompany, body);
+        await createInventoryContractor(apiCompany, {
+          ...body,
+          ...(departmentSlug?.trim() ? { department_slug: departmentSlug.trim() } : {}),
+        });
       } else if (editingId) {
         await patchInventoryContractor(apiCompany, editingId, body);
       }

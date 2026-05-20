@@ -20,7 +20,7 @@ export function TrainingComplianceWidget({
   training,
   mode = "md",
   variant = "peek",
-  matrixHref = "/standards/training#training-matrix",
+  matrixHref = "/standards/training/compliance#training-matrix",
   layoutContext: _layoutContext,
   /** When true with `variant="dashboard"`, omit outer premium chrome so {@link OpsWidgetShell} provides the frame. */
   opsEmbedded = false,

@@ -1,9 +1,16 @@
 """Alembic migration environment (sync URL derived from app settings for `upgrade head`)."""
 
+import sys
 from logging.config import fileConfig
+from pathlib import Path
 
 from alembic import context
-from sqlalchemy import String, engine_from_config, pool
+from sqlalchemy import engine_from_config, pool
+
+_ALEMBIC_DIR = Path(__file__).resolve().parent
+if str(_ALEMBIC_DIR) not in sys.path:
+    sys.path.insert(0, str(_ALEMBIC_DIR))
+from version_table import ensure_version_num_width, repair_stored_revision_if_alias  # noqa: E402
 
 from app.core.config import get_settings
 from app.models import Base
@@ -42,12 +49,19 @@ def run_migrations_online() -> None:
         poolclass=pool.NullPool,
     )
     with connectable.connect() as connection:
+        ensure_version_num_width(connection)
+        repair_stored_revision_if_alias(connection)
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
+            transaction_per_migration=True,
         )
         with context.begin_transaction():
             context.run_migrations()
+        # SQLAlchemy 2: begin_transaction() may not commit the connection-level
+        # transaction; without this, all DDL is rolled back on context exit (CI
+        # saw table_exists skips during upgrade but zero tables afterward).
+        connection.commit()
 
 
 if context.is_offline_mode():

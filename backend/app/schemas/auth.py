@@ -2,6 +2,8 @@ from typing import Optional
 
 from pydantic import BaseModel, EmailStr, Field
 
+from app.schemas.access_snapshot import AccessSnapshotOut
+
 
 class Token(BaseModel):
     access_token: str
@@ -51,7 +53,12 @@ class UserOut(BaseModel):
     job_title: Optional[str] = None
     #: Workforce / scheduling / monitoring capacity (separate from permission roles).
     operational_role: Optional[str] = None
+    #: Canonical keys from department × permission matrix ∪ `feature_allow_extra` (∩ contract). Overlay assignments do not widen this list.
     enabled_features: list[str] = []
+    #: Tenant contract module keys (system admin). Same list for all tenant users for module licensing checks.
+    contract_features: list[str] = Field(default_factory=list)
+    #: Flat RBAC permission keys for sidebar + guards (`["*"]` = unrestricted within tenant).
+    rbac_permissions: list[str] = Field(default_factory=list)
     #: Full tenant contract modules (system-admin grants). Populated for company_admin for the Workers UI matrix.
     contract_enabled_features: Optional[list[str]] = None
     #: True when this user may open the Workers & Roles page (admin or delegated).
@@ -66,12 +73,20 @@ class UserOut(BaseModel):
     role_display_label: Optional[str] = None
     #: Effective permission strings for tenant UI (`["*"]` = full access). Omitted for system operators without a tenant session.
     permissions: Optional[list[str]] = None
-    #: Department workspace path segments (`communications`, …) this user may open under `/{slug}/…`.
+    #: Deprecated: always `[]`. Department hubs use `rbac_permissions` + contract modules on the client.
     department_workspace_slugs: list[str] = Field(default_factory=list)
+    #: Primary HR department slug (roster) for shell labels — not used for authorization.
+    hr_department: Optional[str] = None
+    #: Company-admin–granted module keys merged into RBAC resolution (subset of contract); self row only.
+    feature_allow_extra: Optional[list[str]] = None
+    #: Optional overlay row (`tenant_roles.id`). Does not widen `enabled_features` / sidebar modules (matrix is authoritative except `no_access`).
+    tenant_role_id: Optional[str] = None
     #: Current server time (UTC ISO-8601) for client clock sync; not persisted on the user row.
     server_time: str
     #: True when the account is using the default temporary password and must set a new one.
     must_change_password: bool = False
+    #: Canonical access envelope (matrix → features → capabilities). Prefer this over re-deriving on the client.
+    access_snapshot: Optional[AccessSnapshotOut] = None
 
     model_config = {"from_attributes": True}
 

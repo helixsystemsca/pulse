@@ -83,15 +83,18 @@ export const OPERATIONAL_BADGE_REGISTRY: Record<string, OperationalBadgeDefiniti
 };
 
 /** Label shown on small schedule chips; falls back to a short slice of the code. */
-export function operationalBadgeChipLabel(code: string): string {
+export function operationalBadgeChipLabel(
+  code: string,
+  registry: Record<string, OperationalBadgeDefinition> = OPERATIONAL_BADGE_REGISTRY,
+): string {
   const u = code.trim().toUpperCase();
   if (!u) return code;
-  const def = OPERATIONAL_BADGE_REGISTRY[u];
+  const def = registry[u];
   if (def?.chipLabel) return def.chipLabel;
   return u.length > 5 ? u.slice(0, 4) : u;
 }
 
-export type AvailabilityCellKind = "available" | "unavailable" | "restricted";
+export type AvailabilityCellKind = "available" | "unavailable" | "restricted" | "open_pickup";
 
 export type AvailabilityCellOverlay = "none" | "stripe-diagonal" | "edge-morning" | "edge-afternoon";
 

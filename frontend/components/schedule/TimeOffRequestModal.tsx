@@ -1,7 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import type { Worker } from "@/lib/schedule/types";
+import { useMemo, useState } from "react";
+import { AlertTriangle } from "lucide-react";
+import type { Worker, Shift, ScheduleSettings, TimeOffBlock } from "@/lib/schedule/types";
+import type { ProjectScheduleOverlayMeta } from "@/lib/schedule/project-overlay-styles";
+import { assessPtoApprovalWarnings } from "@/lib/schedule/project-pto-conflicts";
 import { PulseDrawer } from "./PulseDrawer";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
@@ -9,6 +12,11 @@ import { buttonVariants } from "@/styles/button-variants";
 type Props = {
   open: boolean;
   workers: Worker[];
+  projects?: readonly ProjectScheduleOverlayMeta[];
+  shifts?: Shift[];
+  settings?: ScheduleSettings;
+  timeOffBlocks?: TimeOffBlock[];
+  showConflictHints?: boolean;
   onClose: () => void;
   onSubmit: (payload: {
     workerId: string;
@@ -20,20 +28,45 @@ type Props = {
 };
 
 /**
- * Placeholder hook for time-off: approved blocks feed conflict hints only (no real workflow).
+ * Time-off entry with non-blocking project staffing conflict hints for leadership.
  */
-export function TimeOffRequestModal({ open, workers, onClose, onSubmit }: Props) {
+export function TimeOffRequestModal({
+  open,
+  workers,
+  projects = [],
+  shifts = [],
+  settings,
+  timeOffBlocks = [],
+  showConflictHints = true,
+  onClose,
+  onSubmit,
+}: Props) {
   const [workerId, setWorkerId] = useState("");
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [status, setStatus] = useState<"approved" | "pending">("approved");
   const [kind, setKind] = useState<"vacation" | "sick">("vacation");
 
+  const warnings = useMemo(() => {
+    if (!showConflictHints || !workerId || !start || !end || start > end) return [];
+    if (!settings) return [];
+    return assessPtoApprovalWarnings({
+      workerId,
+      ptoStart: start,
+      ptoEnd: end,
+      projects,
+      shifts,
+      workers,
+      settings,
+      timeOffBlocks,
+    });
+  }, [showConflictHints, workerId, start, end, projects, shifts, workers, settings, timeOffBlocks]);
+
   return (
     <PulseDrawer
       open={open}
-      title="Time off (demo)"
-      subtitle="Approved entries block availability hints on the schedule. Full workflow coming later."
+      title="Time off"
+      subtitle="Approved entries affect availability hints. Project overlaps are warnings only — they do not block approval."
       onClose={onClose}
       placement="center"
       labelledBy="timeoff-drawer-title"
@@ -64,6 +97,34 @@ export function TimeOffRequestModal({ open, workers, onClose, onSubmit }: Props)
         <h3 id="timeoff-drawer-title" className="sr-only">
           Time off request
         </h3>
+        {warnings.length > 0 ? (
+          <div
+            role="status"
+            className="rounded-xl border border-amber-200/90 bg-amber-50/90 px-3 py-3 dark:border-amber-900/50 dark:bg-amber-950/40"
+          >
+            <div className="flex gap-2">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" aria-hidden />
+              <div className="min-w-0 space-y-2">
+                <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">Staffing impact warnings</p>
+                <ul className="space-y-1.5 text-xs text-amber-900/90 dark:text-amber-100/90">
+                  {warnings.map((w) => (
+                    <li key={`${w.code}-${w.message}`}>
+                      <span
+                        className={cn(
+                          "font-semibold",
+                          w.severity === "critical" ? "text-rose-800 dark:text-rose-300" : "",
+                        )}
+                      >
+                        {w.severity === "critical" ? "Critical: " : ""}
+                      </span>
+                      {w.message}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        ) : null}
         <div>
           <label className="text-[11px] font-semibold uppercase tracking-wider text-pulse-muted" htmlFor="pto-worker">
             Worker
@@ -120,13 +181,13 @@ export function TimeOffRequestModal({ open, workers, onClose, onSubmit }: Props)
             value={kind}
             onChange={(e) => setKind(e.target.value as "vacation" | "sick")}
           >
-            <option value="vacation">Vacation (amber on calendar)</option>
-            <option value="sick">Sick leave (rose tint on calendar)</option>
+            <option value="vacation">Vacation</option>
+            <option value="sick">Sick</option>
           </select>
         </div>
         <div>
           <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400" htmlFor="pto-status">
-            Status (mock)
+            Status
           </label>
           <select
             id="pto-status"
@@ -134,8 +195,8 @@ export function TimeOffRequestModal({ open, workers, onClose, onSubmit }: Props)
             value={status}
             onChange={(e) => setStatus(e.target.value as "approved" | "pending")}
           >
-            <option value="approved">Approved (blocks hints)</option>
-            <option value="pending">Pending (informational only)</option>
+            <option value="approved">Approved</option>
+            <option value="pending">Pending</option>
           </select>
         </div>
       </div>

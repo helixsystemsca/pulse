@@ -3,7 +3,7 @@
 import type { PmTask } from "@/lib/pm-planning/types";
 import type { CPMResult } from "@/lib/projects/cpm";
 import { resourceBarClass } from "@/lib/pm-planning/resourcePalette";
-import { formatPmTaskChipId } from "@/lib/pm-planning/taskDisplayLabel";
+import { pmTaskBarLabel } from "@/lib/pm-planning/taskDisplayLabel";
 
 export function ResourceRow({
   resourceName,
@@ -46,7 +46,7 @@ export function ResourceRow({
                 }`}
                 style={{ left, width: w }}
               >
-                <span className="truncate">{t.name.trim() || formatPmTaskChipId(t.id)}</span>
+                <span className="truncate">{pmTaskBarLabel(t.name, t.id)}</span>
               </div>
             );
           })}

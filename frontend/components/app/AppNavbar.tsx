@@ -15,7 +15,7 @@ import { notificationBadgeCount } from "@/lib/dashboard/operational-notification
 import { useOperationalNotificationsStore } from "@/lib/dashboard/operational-notifications-store";
 import { fetchOperationalNotificationsForHeader } from "@/lib/dashboard/fetch-operational-notifications";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
-import { navigateToPulseLogin, pulseApp, pulsePostLoginPath, pulseRoutes } from "@/lib/pulse-app";
+import { navigateToPulseLogin, pulseApp, pulseRoutes } from "@/lib/pulse-app";
 import { dispatchPulseLogoutSuccessUi, pulseLogoutNavigationDelayMs } from "@/lib/pulse-logout-ui";
 import { clearSession, canAccessPulseTenantApis } from "@/lib/pulse-session";
 import { signOutSupabaseIdentity } from "@/lib/microsoft-auth";
@@ -26,6 +26,7 @@ import {
   sessionRoleDisplayLabel,
   shouldShowWorkerMandatoryPasswordBadge,
 } from "@/lib/pulse-roles";
+import { firstAccessibleClassicTenantHref } from "@/lib/rbac/session-access";
 import { cn } from "@/lib/cn";
 import { isApiMode } from "@/lib/api";
 import { fetchFeedbackUnreadCount } from "@/lib/feedbackApi";
@@ -65,13 +66,15 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
   const storeNotificationCount = useOperationalNotificationsStore((s) => notificationBadgeCount(s.items));
   const notificationCount = Math.max(notificationCountProp, storeNotificationCount);
   const adminInbox = Boolean(session && canAccessCompanyConfiguration(session));
-  const messagesCountDisplay = Math.max(messagesCount, feedbackInboxCount + storeNotificationCount);
+  const messagesCountDisplay = Math.max(messagesCount, adminInbox ? feedbackInboxCount : 0);
 
   const logoHref =
-    authed && session ? pulseApp.to(pulsePostLoginPath(session)) : pulseRoutes.pulseLanding;
+    authed && session ? pulseApp.to(firstAccessibleClassicTenantHref(session)) : pulseRoutes.login;
   const isDemoViewer = session?.role === "demo_viewer";
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
   const canOpenOrgSettings = session ? isSystemAdmin || canAccessCompanyConfiguration(session) : false;
+  /** Operations/frontline roles only get profile from the cog — profile is in the account menu. */
+  const showHeaderSettingsCog = canOpenOrgSettings;
   const settingsActive =
     pathname === "/settings" ||
     pathname.startsWith("/settings/") ||
@@ -238,7 +241,7 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
           {!authed ? (
             pathname !== "/login" ? (
               <Link
-                href={pulseApp.login()}
+                href={pulseRoutes.login}
                 className="rounded-lg px-3 py-2 text-sm font-semibold text-white/95 hover:bg-ds-chrome-hover active:bg-ds-chrome-active"
               >
                 Login
@@ -304,14 +307,16 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
                 <IconBadgeCount count={messagesCountDisplay} />
               </Link>
 
-              <Link
-                href={pulseApp.to(canOpenOrgSettings ? "/settings" : "/dashboard/profile-settings")}
-                className={cn(chromeIconBtn, settingsActive && "bg-ds-chrome-active text-white")}
-                aria-label={canOpenOrgSettings ? "Organization settings" : "Profile"}
-                title="Settings"
-              >
-                <Settings className="h-[1.125rem] w-[1.125rem]" strokeWidth={1.75} aria-hidden />
-              </Link>
+              {showHeaderSettingsCog ? (
+                <Link
+                  href={pulseApp.to("/settings")}
+                  className={cn(chromeIconBtn, settingsActive && "bg-ds-chrome-active text-white")}
+                  aria-label="Organization settings"
+                  title="Settings"
+                >
+                  <Settings className="h-[1.125rem] w-[1.125rem]" strokeWidth={1.75} aria-hidden />
+                </Link>
+              ) : null}
 
               <div className="relative pl-0.5" ref={userMenuRef}>
                 <button
@@ -417,7 +422,7 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
               <div className="relative flex gap-2">
                 <p className="min-w-0 flex-1 text-[11px] leading-snug text-ds-foreground sm:text-xs">
                   <span className="font-semibold text-[var(--ds-accent)]">New:</span> tap the megaphone to send product
-                  feedback—admins can read it under Messages → Product feedback.
+                  feedback—admins can read it under Messages.
                 </p>
                 <button
                   type="button"

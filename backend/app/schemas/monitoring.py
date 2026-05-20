@@ -6,9 +6,13 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.models.monitoring_models import AlertSeverity, AlertStatus
+
+# Matches `Numeric(24, 8)` on monitoring_sensor_readings.value_num
+_SENSOR_VALUE_NUM_MAX = Decimal("9999999999999999.99999999")
+_SENSOR_VALUE_NUM_MIN = -_SENSOR_VALUE_NUM_MAX
 
 
 # --- Facility / zone / system / sensor (CRUD-style for future use) ---
@@ -107,6 +111,20 @@ class ReadingBatchItem(BaseModel):
     value_num: Optional[Decimal] = None
     value_bool: Optional[bool] = None
     value_text: Optional[str] = None
+
+    @field_validator("value_num")
+    @classmethod
+    def value_num_within_db_range(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        if v is None:
+            return v
+        if not v.is_finite():
+            raise ValueError("value_num must be a finite number")
+        if v < _SENSOR_VALUE_NUM_MIN or v > _SENSOR_VALUE_NUM_MAX:
+            raise ValueError(
+                "value_num exceeds allowed range for sensor readings "
+                f"({_SENSOR_VALUE_NUM_MIN} .. {_SENSOR_VALUE_NUM_MAX})"
+            )
+        return v
 
 
 class ReadingBatchIn(BaseModel):

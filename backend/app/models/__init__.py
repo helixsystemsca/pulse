@@ -12,6 +12,14 @@ from app.models.automation_engine import (
 )
 from app.models.device_hub import AutomationBleDevice, AutomationGateway, AutomationUnknownDevice
 from app.models.base import Base
+from app.models.rbac_models import (
+    RbacAuditEvent,
+    RbacCatalogPermission,
+    TenantDepartment,
+    TenantRole,
+    TenantRoleAssignment,
+    TenantRoleGrant,
+)
 from app.models.blueprint_models import Blueprint, BlueprintElement
 from app.models.facility_map_models import FacilityMap
 from app.models.infrastructure_map_models import InfraAsset, InfraAttribute, InfraConnection
@@ -34,11 +42,13 @@ from app.models.domain import (
     ComplianceRecord,
     ComplianceRecordStatus,
     ComplianceRule,
+    DepartmentInventoryScope,
     DomainEventRow,
     EquipmentPart,
     FacilityEquipment,
     FacilityEquipmentStatus,
     Invite,
+    InventoryScope,
     InventoryItem,
     InventoryContractor,
     InventoryVendor,
@@ -130,6 +140,8 @@ __all__ = [
     "EquipmentPart",
     "FacilityEquipment",
     "FacilityEquipmentStatus",
+    "DepartmentInventoryScope",
+    "InventoryScope",
     "InventoryItem",
     "InventoryContractor",
     "InventoryVendor",

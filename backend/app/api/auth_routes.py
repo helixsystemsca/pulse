@@ -1,5 +1,7 @@
 """Authentication: login, session info, impersonation (system_admin), effective permissions."""
 
+import logging
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
@@ -25,8 +27,8 @@ from app.core.database import get_db
 from app.core.login_activity import log_login_event
 from app.core.microsoft_oauth import MicrosoftOAuthError, MicrosoftIdentity, verify_supabase_microsoft_access_token
 from app.core.permissions.service import PermissionService
-from app.core.tenant_feature_access import contract_and_effective_features_for_me
-from app.core.workspace_departments import effective_workspace_slugs_for_user
+from app.core.rbac.resolve import effective_rbac_permission_keys
+from app.core.workspace_departments import primary_hr_department_slug_for_auth
 from app.core.system_audit import record_system_log
 from app.core.system_tokens import hash_system_token
 from app.limiter import limiter
@@ -222,7 +224,7 @@ async def login(
         company_id=user.company_id,
         metadata={"email": user.email},
     )
-    await log_login_event(db, request, user)
+    await log_login_event(db, request, user, login_method="password")
     await db.commit()
     return _token_for_user(user)
 
@@ -258,7 +260,7 @@ async def microsoft_oauth_login(
             "created_internal_user": created,
         },
     )
-    await log_login_event(db, request, user)
+    await log_login_event(db, request, user, login_method="microsoft")
     await db.commit()
     return _token_for_user(user)
 
@@ -289,6 +291,14 @@ async def impersonate(
             "impersonator_id": admin.id,
         },
     )
+    await log_login_event(
+        db,
+        request,
+        target,
+        login_method="impersonation",
+        session_origin="impersonation",
+        impersonator_user_id=str(admin.id),
+    )
     await db.commit()
     return _token_for_user(
         target,
@@ -303,6 +313,11 @@ async def me(
     db: Annotated[AsyncSession, Depends(get_db)],
     request: Request,
 ) -> UserOut:
+    """
+    Tenant session envelope. Contract + matrix + grants are resolved from the database on **every** request;
+    JWT carries identity + `tv` only. The SPA persists this payload in ``localStorage`` (``pulse_auth_v2``) and
+    must call ``refreshPulseUserFromServer`` (or reload) to pick up Team Management changes made while the tab is open.
+    """
     # Claims for UI impersonation hint (re-decode would duplicate; use header optional)
     is_imp = False
     try:
@@ -315,7 +330,15 @@ async def me(
     except Exception:
         pass
 
-    _, eff_feats, roster_access, contract_admin_catalog = await contract_and_effective_features_for_me(db, user)
+    from app.core.access_snapshot import resolve_access_snapshot
+    from app.schemas.access_snapshot import AccessSnapshotOut
+
+    access_snap = await resolve_access_snapshot(db, user)
+    contract_feats = access_snap.contract_features
+    eff_feats = access_snap.features
+    rbac_keys = access_snap.capabilities
+    roster_access = access_snap.workers_roster_access
+    contract_admin_catalog = list(contract_feats) if access_snap.is_company_admin else []
 
     company_summary: CompanySummaryOut | None = None
     if user.company_id:
@@ -346,7 +369,27 @@ async def me(
     if user.company_id:
         hr_row = await db.execute(select(PulseWorkerHR).where(PulseWorkerHR.user_id == user.id))
         hr_me = hr_row.scalar_one_or_none()
-    dept_workspace = effective_workspace_slugs_for_user(user=user, hr=hr_me, permissions=perm_out)
+
+    extras_raw = getattr(user, "feature_allow_extra", None) or []
+    feature_allow_out = [str(x) for x in extras_raw if isinstance(x, str)] if user.company_id else []
+    tr_id = getattr(user, "tenant_role_id", None)
+    tenant_role_out = str(tr_id) if tr_id else None
+
+    if os.getenv("PULSE_AUTH_ME_ENTITLEMENTS_LOG", "").lower() in ("1", "true", "yes"):
+        logging.getLogger("pulse.auth_me").info(
+            "auth_me entitlements user_id=%s company_id=%s roles=%s facility_tenant_admin=%s tenant_role_id=%s "
+            "contract_features=%s enabled_features=%s rbac_permissions=%s feature_allow_extra=%s permissions_legacy=%s",
+            user.id,
+            user.company_id,
+            list(user.roles or []),
+            bool(getattr(user, "facility_tenant_admin", False)),
+            tenant_role_out,
+            contract_feats,
+            eff_feats,
+            rbac_keys,
+            feature_allow_out,
+            perm_out,
+        )
 
     return UserOut(
         id=user.id,
@@ -361,18 +404,28 @@ async def me(
         job_title=user.job_title,
         operational_role=(str(user.operational_role).strip() or None) if user.operational_role else None,
         enabled_features=eff_feats,
+        contract_features=contract_feats,
+        rbac_permissions=rbac_keys,
         contract_enabled_features=contract_admin_catalog if contract_admin_catalog else None,
         workers_roster_access=roster_access,
         is_impersonating=is_imp,
         is_system_admin=bool(user.is_system_admin or user_has_any_role(user, UserRole.system_admin)),
         company=company_summary,
-        can_use_pm_features=bool(getattr(user, "can_use_pm_features", False)),
+        can_use_pm_features=(
+            bool(getattr(user, "can_use_pm_features", False))
+            or "projects.pm.view" in (rbac_keys or [])
+            or "*" in (rbac_keys or [])
+        ),
         facility_tenant_admin=bool(getattr(user, "facility_tenant_admin", False)),
         role_display_label=tenant_role_display_label(user),
         permissions=perm_out,
-        department_workspace_slugs=dept_workspace,
+        department_workspace_slugs=[],
+        hr_department=primary_hr_department_slug_for_auth(hr_me),
+        feature_allow_extra=feature_allow_out if user.company_id else None,
+        tenant_role_id=tenant_role_out,
         server_time=datetime.now(timezone.utc).isoformat(),
         must_change_password=must_change_password,
+        access_snapshot=AccessSnapshotOut.model_validate(access_snap.as_dict()),
     )
 
 

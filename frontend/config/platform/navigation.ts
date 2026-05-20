@@ -1,8 +1,12 @@
+/**
+ * Department-scoped module helpers (legacy). Tenant navigation uses {@link tenantSidebarNavItemsForSession} only.
+ */
 import { getDepartmentBySlug, PLATFORM_DEPARTMENTS } from "@/config/platform/departments";
-import { PLATFORM_MODULES } from "@/config/platform/modules";
-import { hasCapability, resolveCapabilitiesFromSession } from "@/config/platform/permissions";
 import type { Department, PlatformNavItem } from "@/config/platform/types";
+import { MASTER_FEATURES } from "@/config/platform/master-feature-registry";
 import type { PulseAuthSession } from "@/lib/pulse-session";
+import { getDepartmentAccessibleFeatures, readAccessSnapshot } from "@/lib/access-snapshot";
+import type { PlatformIconKey } from "@/config/platform/types";
 
 const STORAGE_LAST_DEPT = "pulse_platform_department_slug_v1";
 
@@ -33,34 +37,21 @@ export function getDefaultModuleRouteForDepartment(departmentSlug: string, sessi
   return parts[1] ?? null;
 }
 
-/**
- * Sidebar items for the department workspace rail: enabled modules ∩ allowed slugs ∩ capabilities.
- * Order follows `PLATFORM_MODULES` declaration order for predictable UX.
- */
+/** @deprecated Department workspaces removed — use tenant sidebar registry routes. */
 export function buildDepartmentNavItems(departmentSlug: string, session: PulseAuthSession | null): PlatformNavItem[] {
   const dept = getDepartmentBySlug(departmentSlug);
-  if (!dept) return [];
-  const caps = resolveCapabilitiesFromSession(session);
-  const enabledIds = new Set(dept.enabledModuleIds);
-  const items: PlatformNavItem[] = [];
-  const feats = session?.enabled_features;
-  const featsDefined = feats !== undefined && feats !== null;
-
-  for (const mod of PLATFORM_MODULES) {
-    if (!enabledIds.has(mod.id)) continue;
-    if (!mod.allowedDepartmentSlugs.includes(dept.slug)) continue;
-    const reqs = mod.requiredCapabilities ?? [];
-    if (reqs.some((r) => !hasCapability(caps, r))) continue;
-    const fk = mod.tenantNavFeatureKey;
-    if (fk && featsDefined && !feats.includes(fk)) continue;
-    items.push({
-      href: `/${dept.slug}/${mod.route}`,
-      label: mod.name,
-      icon: mod.icon ?? "layout",
-      group: "modules",
-    });
-  }
-  return items;
+  if (!dept || !session) return [];
+  const snap = readAccessSnapshot(session);
+  const allowed = new Set(getDepartmentAccessibleFeatures(departmentSlug, snap));
+  const sorted = [...MASTER_FEATURES]
+    .filter((f) => f.navVisible && f.platformDepartmentSlug === departmentSlug && allowed.has(f.feature))
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+  return sorted.map((f) => ({
+    href: f.route,
+    label: f.label,
+    icon: f.icon as PlatformIconKey,
+    group: "modules" as const,
+  }));
 }
 
 export function getFirstNavHrefForDepartment(departmentSlug: string, session: PulseAuthSession | null): string | null {
@@ -68,83 +59,10 @@ export function getFirstNavHrefForDepartment(departmentSlug: string, session: Pu
   return items[0]?.href ?? null;
 }
 
-/** Contract / role feature key for opening a department hub (`/{slug}/…`). */
-export function workspaceFeatureKeyForDepartmentSlug(slug: string): string {
-  return `workspace_${slug}`;
-}
-
-function sessionUsesDepartmentWorkspaceFeatureGate(session: PulseAuthSession | null): boolean {
-  const feats = session?.enabled_features;
-  if (!feats?.length) return false;
-  return feats.some((f) => f.startsWith("workspace_"));
-}
-
-/**
- * Departments the user may enter in the platform workspace (HR allow-list ∩ optional `workspace_*` contract keys).
- * When `enabled_features` contains any `workspace_*` key, each hub also requires its matching key; if none are
- * present, all hubs allowed by HR remain visible (backward compatible until the contract includes workspace keys).
- */
 export function listDepartmentsAllowedForSession(session: PulseAuthSession | null): readonly Department[] {
-  let depts: readonly Department[];
-  const allowed = session?.department_workspace_slugs;
-  if (!allowed || allowed.length === 0) {
-    depts = PLATFORM_DEPARTMENTS;
-  } else {
-    const set = new Set(allowed);
-    depts = PLATFORM_DEPARTMENTS.filter((d) => set.has(d.slug));
-  }
-  const feats = session?.enabled_features;
-  if (!feats?.length || !sessionUsesDepartmentWorkspaceFeatureGate(session)) return depts;
-  return depts.filter((d) => feats.includes(workspaceFeatureKeyForDepartmentSlug(d.slug)));
-}
-
-/** When a user has several workspaces, prefer a non-maintenance home so comms/reception staff land on their hub. */
-function departmentsOrderedForDefaultHub(depts: readonly Department[]): Department[] {
-  if (depts.length <= 1) return [...depts];
-  const nonMaint = depts.filter((d) => d.slug !== "maintenance");
-  const maint = depts.filter((d) => d.slug === "maintenance");
-  return [...nonMaint, ...maint];
-}
-
-/** First workspace home URL for the tenant rail “Workspaces” entry. */
-export function defaultWorkspaceHubHref(session: PulseAuthSession | null): string {
-  const depts = departmentsOrderedForDefaultHub(listDepartmentsAllowedForSession(session));
-  const first = depts[0];
-  if (!first) return "/overview";
-  const mod = getDefaultModuleRouteForDepartment(first.slug, session);
-  if (mod) return `/${first.slug}/${mod}`;
-  return `/${first.slug}`;
+  return PLATFORM_DEPARTMENTS.filter((d) => buildDepartmentNavItems(d.slug, session).length > 0);
 }
 
 export function listDepartmentsForSwitcher(): readonly Department[] {
   return PLATFORM_DEPARTMENTS;
 }
-
-/**
- * Legacy tenant left rail: one row per department the user may open, each linking to that
- * department’s first visible module (same rules as the in-workspace rail).
- */
-export function buildLegacyDepartmentWorkspaceRailItems(session: PulseAuthSession | null): PlatformNavItem[] {
-  const depts = departmentsOrderedForDefaultHub(listDepartmentsAllowedForSession(session));
-  const out: PlatformNavItem[] = [];
-  for (const d of depts) {
-    const modules = buildDepartmentNavItems(d.slug, session);
-    if (modules.length === 0) continue;
-    const href = getFirstNavHrefForDepartment(d.slug, session) ?? `/${d.slug}`;
-    out.push({
-      href,
-      label: d.name,
-      icon: d.icon ?? "layout",
-      group: "platform",
-    });
-  }
-  return out;
-}
-
-/** @deprecated Prefer {@link buildLegacyDepartmentWorkspaceRailItems}; kept for stable imports. */
-export const LEGACY_SIDEBAR_DEPARTMENT_HUB: PlatformNavItem = {
-  href: "/maintenance",
-  label: "Workspaces",
-  icon: "layout",
-  group: "platform",
-};

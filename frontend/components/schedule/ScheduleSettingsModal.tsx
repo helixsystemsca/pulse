@@ -9,15 +9,31 @@ import { useScheduleStore } from "@/lib/schedule/schedule-store";
 import { resolvePlacementBandOptions } from "@/lib/schedule/placement-panel-options";
 import type { PlacementBandOption, ShiftTypeConfig } from "@/lib/schedule/types";
 import { PulseDrawer } from "./PulseDrawer";
+import { ScheduleDevToolsPanel } from "./ScheduleDevToolsPanel";
+import { ShiftDefinitionsSettingsPanel } from "./ShiftDefinitionsSettingsPanel";
+import type { ScheduleShiftDefinitionRow } from "@/lib/schedule/palette-config";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
 
-const TABS = ["Organization", "General", "Placement panel", "Roles", "Shift types", "Staffing"] as const;
+const TABS = [
+  "Organization",
+  "General",
+  "Placement panel",
+  "Roles",
+  "Shift types",
+  "Shift definitions",
+  "Staffing",
+  "Dev tools",
+] as const;
 type Tab = (typeof TABS)[number];
 
 type Props = {
   open: boolean;
   onClose: () => void;
+  onAvailabilitySeeded?: () => void;
+  initialTab?: Tab;
+  shiftDefinitions?: ScheduleShiftDefinitionRow[];
+  onShiftDefinitionsChange?: (rows: ScheduleShiftDefinitionRow[]) => void;
 };
 
 function newRoleId(): string {
@@ -30,8 +46,17 @@ const LABEL =
   "text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400";
 const PRIMARY_BTN = cn(buttonVariants({ surface: "light", intent: "accent" }), "px-5 py-2.5");
 
-export function ScheduleSettingsModal({ open, onClose }: Props) {
+export function ScheduleSettingsModal({
+  open,
+  onClose,
+  onAvailabilitySeeded,
+  initialTab,
+  shiftDefinitions = [],
+  onShiftDefinitionsChange,
+}: Props) {
   const { session } = usePulseAuth();
+  const isDev = process.env.NODE_ENV !== "production";
+  const visibleTabs = isDev ? TABS : TABS.filter((t) => t !== "Dev tools");
   const canEnableOtRiskMonitoring = sessionHasAnyRole(session, "manager", "company_admin");
   const settings = useScheduleStore((s) => s.settings);
   const roles = useScheduleStore((s) => s.roles);
@@ -49,10 +74,11 @@ export function ScheduleSettingsModal({ open, onClose }: Props) {
 
   useEffect(() => {
     if (open) {
-      setTab("Organization");
+      const tabs = isDev ? TABS : TABS.filter((t) => t !== "Dev tools");
+      setTab(initialTab && (tabs as readonly string[]).includes(initialTab) ? initialTab : "Organization");
       setRoleError(null);
     }
-  }, [open]);
+  }, [open, initialTab, isDev]);
 
   if (!open) return null;
 
@@ -108,7 +134,7 @@ export function ScheduleSettingsModal({ open, onClose }: Props) {
         <div>
           <p className={LABEL}>Section</p>
           <div className="mt-1.5 flex flex-wrap gap-1 rounded-[10px] border border-pulseShell-border bg-gray-100/85 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] dark:bg-pulseShell-elevated/75 dark:shadow-none">
-            {TABS.map((t) => (
+            {visibleTabs.map((t) => (
               <button
                 key={t}
                 type="button"
@@ -517,6 +543,15 @@ export function ScheduleSettingsModal({ open, onClose }: Props) {
             </div>
           ) : null}
 
+          {tab === "Shift definitions" && onShiftDefinitionsChange ? (
+            <ShiftDefinitionsSettingsPanel
+              shiftDefinitions={shiftDefinitions}
+              onShiftDefinitionsChange={onShiftDefinitionsChange}
+            />
+          ) : tab === "Shift definitions" ? (
+            <p className="text-sm text-ds-muted">Shift definitions are not available in this view.</p>
+          ) : null}
+
           {tab === "Staffing" ? (
             <div className="space-y-4">
               <div>
@@ -616,6 +651,8 @@ export function ScheduleSettingsModal({ open, onClose }: Props) {
                 />
               </div>
             </div>
+          ) : tab === "Dev tools" ? (
+            <ScheduleDevToolsPanel onSeeded={onAvailabilitySeeded} />
           ) : null}
         </div>
       </div>

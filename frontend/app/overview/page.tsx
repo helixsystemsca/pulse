@@ -10,6 +10,8 @@ import { isApiMode } from "@/lib/api";
 import { navigateToPulseLogin, pulsePostLoginPath } from "@/lib/pulse-app";
 import { readSession } from "@/lib/pulse-session";
 import { sessionHasAnyRole } from "@/lib/pulse-roles";
+import { canShowClassicSidebarItem, firstAccessibleClassicTenantHref } from "@/lib/rbac/session-access";
+import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -27,6 +29,7 @@ function welcomeFromSession(email: string | null | undefined, fullName: string |
  */
 export default function OverviewPage() {
   const router = useRouter();
+  const { session } = usePulseAuth();
   const [ready, setReady] = useState(false);
   const [dashboardDataReady, setDashboardDataReady] = useState(false);
   const [welcomeAlertContext, setWelcomeAlertContext] = useState<OperationalDashboardReadyPayload>({
@@ -56,6 +59,16 @@ export default function OverviewPage() {
     }
     setReady(true);
   }, [router]);
+
+  useEffect(() => {
+    if (!ready) return;
+    if (!isApiMode()) return;
+    if (!session) return;
+    if (session.role === "demo_viewer") return;
+    if (!canShowClassicSidebarItem(session, "/overview", false)) {
+      router.replace(firstAccessibleClassicTenantHref(session));
+    }
+  }, [ready, router, session]);
 
   const userName = useMemo(() => {
     const s = readSession();

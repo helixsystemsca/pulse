@@ -1,9 +1,10 @@
 import { mondayOfCalendarWeek, parseLocalDate } from "@/lib/schedule/calendar";
 import { evaluateAvailabilityCell } from "@/lib/schedule/availability-layer";
+import type { EmployeeDailyAvailabilityEntry } from "@/lib/schedule/employee-availability-types";
 import { normalizeWeekdayKey, weekdayKeyFromIso } from "@/lib/schedule/recurring";
 import type { ScheduleSettings, Shift, TimeOffBlock, Worker } from "@/lib/schedule/types";
 
-export type WorkerDayHighlightTone = "good" | "warning" | "invalid" | "neutral";
+export type WorkerDayHighlightTone = "good" | "warning" | "invalid" | "neutral" | "pickup";
 
 export type WorkerDayHighlight = {
   tone: WorkerDayHighlightTone;
@@ -71,6 +72,8 @@ export function buildWorkerDragHighlightMap(
   timeOffBlocks: TimeOffBlock[],
   /** When set (e.g. fixed day/afternoon/night placement), all dates use this window for availability highlights. */
   placementWindow?: { start: string; end: string } | null,
+  employeeAvailabilityIndex?: Record<string, EmployeeDailyAvailabilityEntry[]>,
+  useDailyAvailability = true,
 ): Record<string, WorkerDayHighlight> {
   const map: Record<string, WorkerDayHighlight> = {};
   const maxH = settings.staffing.maxHoursPerWorkerPerWeek || 48;
@@ -83,9 +86,21 @@ export function buildWorkerDragHighlightMap(
     }
 
     const slot = placementWindow ?? proposedSlot(worker, date, settings);
-    const ev = evaluateAvailabilityCell(worker, date, settings, timeOffBlocks, slot);
+    const ev = evaluateAvailabilityCell(
+      worker,
+      date,
+      settings,
+      timeOffBlocks,
+      slot,
+      employeeAvailabilityIndex,
+      useDailyAvailability,
+    );
     if (ev.kind === "unavailable") {
       map[date] = { tone: "invalid", tooltip: ev.message };
+      continue;
+    }
+    if (ev.kind === "open_pickup") {
+      map[date] = { tone: "pickup", tooltip: ev.message };
       continue;
     }
     if (!ev.dropAllowed) {
@@ -125,10 +140,22 @@ export function evaluateWorkerDrop(
   settings: ScheduleSettings,
   timeOffBlocks: TimeOffBlock[],
   placementWindow?: { start: string; end: string } | null,
-  opts?: { treatRestrictionsAsSatisfied?: boolean },
+  opts?: {
+    treatRestrictionsAsSatisfied?: boolean;
+    employeeAvailabilityIndex?: Record<string, EmployeeDailyAvailabilityEntry[]>;
+    useDailyAvailability?: boolean;
+  },
 ): { ok: boolean; tooltip?: string; needsManagerOverride?: boolean } {
   const slot = placementWindow ?? proposedSlot(worker, targetDate, settings);
-  const ev = evaluateAvailabilityCell(worker, targetDate, settings, timeOffBlocks, slot);
+  const ev = evaluateAvailabilityCell(
+    worker,
+    targetDate,
+    settings,
+    timeOffBlocks,
+    slot,
+    opts?.employeeAvailabilityIndex,
+    opts?.useDailyAvailability ?? true,
+  );
   if (ev.kind === "unavailable") {
     return { ok: false, tooltip: ev.message, needsManagerOverride: false };
   }

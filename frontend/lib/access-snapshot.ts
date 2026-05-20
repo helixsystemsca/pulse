@@ -1,0 +1,152 @@
+/**
+ * Canonical access snapshot from `/auth/me` — single source for client authorization checks.
+ */
+import { LEGACY_PLATFORM_ROUTE_ALIASES } from "@/config/platform/legacy-platform-routes";
+import { MASTER_FEATURES, type MasterFeatureDef } from "@/config/platform/master-feature-registry";
+import { isPlatformDepartmentSlug } from "@/config/platform/departments";
+import type { PulseAuthSession } from "@/lib/pulse-session";
+
+export type AssignmentStatus = "assigned" | "unassigned" | "admin_bypass";
+
+export type AccessSnapshotAudit = {
+  assignment_status?: AssignmentStatus;
+  assigned_department_slug?: string | null;
+  assigned_role_key?: string | null;
+  matrix_slot_source?: string;
+  matrix_slot_inferred?: boolean;
+  hr_matrix_slot?: string | null;
+  resolution_warnings?: string[];
+  denied_by_contract?: string[];
+  contract_features?: string[];
+};
+
+export type AccessSnapshot = {
+  department: string;
+  matrix_slot: string;
+  assignment_status?: AssignmentStatus;
+  features: string[];
+  capabilities: string[];
+  departments: string[];
+  is_company_admin: boolean;
+  workers_roster_access?: boolean;
+  contract_features?: string[];
+  denied_features?: string[];
+  audit?: AccessSnapshotAudit | null;
+};
+
+function featureEnabledInSnapshot(snap: AccessSnapshot, featureKey: string): boolean {
+  if (snap.features.includes("*")) return true;
+  return snap.features.includes(featureKey);
+}
+
+function capabilityGranted(snap: AccessSnapshot, key: string): boolean {
+  if (snap.capabilities.includes("*")) return true;
+  return snap.capabilities.includes(key);
+}
+
+/** Read canonical snapshot from session, or synthesize a minimal legacy envelope (no matrix inference). */
+export function readAccessSnapshot(session: PulseAuthSession | null): AccessSnapshot | null {
+  if (!session) return null;
+  if (session.access_snapshot) return session.access_snapshot;
+
+  if (!session.enabled_features?.length && !session.rbac_permissions?.length) {
+    if (!session.is_system_admin && session.role !== "system_admin") return null;
+  }
+
+  const isAdmin =
+    session.facility_tenant_admin === true ||
+    session.role === "company_admin" ||
+    Boolean(session.roles?.includes("company_admin"));
+
+  return {
+    department: session.hr_department ?? "maintenance",
+    matrix_slot: "unassigned",
+    assignment_status: isAdmin ? "admin_bypass" : "unassigned",
+    features: [...(session.enabled_features ?? [])],
+    capabilities: [...(session.rbac_permissions ?? [])],
+    departments: session.hr_department ? [session.hr_department] : [],
+    is_company_admin: isAdmin,
+    workers_roster_access: session.workers_roster_access,
+    contract_features: [...(session.contract_features ?? [])],
+    audit: {
+      assignment_status: isAdmin ? "admin_bypass" : "unassigned",
+      resolution_warnings: [
+        "Session missing access_snapshot — treating as unassigned; reload after deploy.",
+      ],
+    },
+  };
+}
+
+export function snapshotIsUnassigned(snapshot: AccessSnapshot | null): boolean {
+  if (!snapshot) return true;
+  if (snapshot.is_company_admin || snapshot.assignment_status === "admin_bypass") return false;
+  return snapshot.assignment_status === "unassigned" || snapshot.matrix_slot === "unassigned";
+}
+
+export function snapshotHasCapability(snapshot: AccessSnapshot | null, permissionKey: string): boolean {
+  if (!snapshot) return false;
+  return capabilityGranted(snapshot, permissionKey);
+}
+
+export function snapshotHasFeature(snapshot: AccessSnapshot | null, featureKey: string): boolean {
+  if (!snapshot) return false;
+  if (snapshot.is_company_admin) {
+    const contract = new Set(snapshot.contract_features ?? []);
+    return contract.has(featureKey) || snapshot.features.includes(featureKey);
+  }
+  return featureEnabledInSnapshot(snapshot, featureKey);
+}
+
+export function userBelongsToDepartment(snapshot: AccessSnapshot | null, departmentSlug: string): boolean {
+  if (!snapshot) return false;
+  if (snapshot.is_company_admin) return true;
+  if (!snapshot.departments.length) return snapshot.department === departmentSlug;
+  return snapshot.departments.includes(departmentSlug);
+}
+
+function masterModuleAllowedForDepartment(
+  snapshot: AccessSnapshot,
+  f: MasterFeatureDef,
+  departmentSlug: string,
+): boolean {
+  if (f.platformDepartmentSlug && f.platformDepartmentSlug !== departmentSlug) return false;
+  if (!f.platformDepartmentSlug && f.platformRoute) return false;
+  if (!snapshotHasFeature(snapshot, f.feature)) return false;
+  if (!f.rbacAnyOf.length) return true;
+  return f.rbacAnyOf.some((k) => capabilityGranted(snapshot, k));
+}
+
+/** Features for a department prefix (debug / legacy helpers). */
+export function getDepartmentAccessibleFeatures(
+  departmentSlug: string,
+  snapshot: AccessSnapshot | null,
+): string[] {
+  if (!snapshot || !isPlatformDepartmentSlug(departmentSlug)) return [];
+  if (snapshot.is_company_admin || snapshot.capabilities.includes("*")) {
+    const feats = new Set<string>();
+    for (const f of MASTER_FEATURES) {
+      if (f.platformDepartmentSlug === departmentSlug) feats.add(f.feature);
+    }
+    for (const leg of LEGACY_PLATFORM_ROUTE_ALIASES) {
+      if (leg.departmentSlug === departmentSlug) feats.add(leg.feature);
+    }
+    return [...feats];
+  }
+  if (!userBelongsToDepartment(snapshot, departmentSlug)) return [];
+
+  const out = new Set<string>();
+  for (const f of MASTER_FEATURES) {
+    if (masterModuleAllowedForDepartment(snapshot, f, departmentSlug)) out.add(f.feature);
+  }
+  for (const leg of LEGACY_PLATFORM_ROUTE_ALIASES) {
+    if (leg.departmentSlug !== departmentSlug) continue;
+    if (!snapshotHasFeature(snapshot, leg.feature)) continue;
+    if (!leg.rbacAnyOf.some((k) => capabilityGranted(snapshot, k))) continue;
+    out.add(leg.feature);
+  }
+  return [...out];
+}
+
+export function matrixSlotInferred(snapshot: AccessSnapshot | null): boolean {
+  return Boolean(snapshot?.audit?.matrix_slot_inferred);
+}

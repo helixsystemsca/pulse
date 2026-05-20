@@ -1,6 +1,6 @@
 """Pydantic schemas for Pulse REST API."""
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Optional, Union
 
 from pydantic import AliasChoices, BaseModel, Field, field_validator
@@ -148,6 +148,7 @@ class WorkerOut(BaseModel):
     avatar_url: Optional[str] = None
     employment_type: Optional[str] = None
     recurring_shifts: list[dict[str, Any]] = []
+    department_slug: Optional[str] = None
 
 
 class WorkerProfilePatch(BaseModel):
@@ -171,6 +172,7 @@ class ShiftCreate(BaseModel):
     shift_definition_id: Optional[str] = None
     requires_supervisor: bool = False
     requires_ticketed: bool = False
+    department_slug: Optional[str] = None
 
 
 class ShiftUpdate(BaseModel):
@@ -186,6 +188,7 @@ class ShiftUpdate(BaseModel):
     shift_definition_id: Optional[str] = None
     requires_supervisor: Optional[bool] = None
     requires_ticketed: Optional[bool] = None
+    locked: Optional[bool] = None
 
 
 class ShiftOut(BaseModel):
@@ -211,6 +214,11 @@ class ShiftOut(BaseModel):
     task_priority: Optional[str] = None
     # day | afternoon | night — routine checklist variants; null if unknown.
     routine_shift_band: Optional[str] = None
+    department_slug: Optional[str] = None
+    locked: bool = False
+    generated_by: Optional[str] = None
+    confidence_score: Optional[float] = None
+    recommendation_reason: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
@@ -286,6 +294,7 @@ class InventoryItemOut(BaseModel):
     assigned_user_id: Optional[str] = None
     linked_tool_id: Optional[str] = None
     item_condition: str = "good"
+    scope_id: str
     reorder_flag: bool = False
     unit_cost: Optional[float] = None
     last_movement_at: Optional[datetime] = None

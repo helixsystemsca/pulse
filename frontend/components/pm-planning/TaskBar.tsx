@@ -1,6 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
+import { pmTaskBarLabel } from "@/lib/pm-planning/taskDisplayLabel";
 
 export type TaskBarProps = {
   taskId: string;
@@ -39,6 +40,7 @@ export function TaskBar({
   onSelect,
   onResizePointerDown,
 }: TaskBarProps) {
+  const label = pmTaskBarLabel(title, taskId);
   const criticalFill = { background: "var(--pm-color-critical)" } satisfies CSSProperties;
   const floatStyle = lowFloat
     ? { borderColor: "var(--pm-low-float)" }
@@ -63,15 +65,15 @@ export function TaskBar({
             width: Math.max(barWidthPx, 8),
             ...(isCritical ? criticalFill : {}),
           }}
-          title={title}
+          title={`${label} · ${durationDays}d`}
         >
           <span className="truncate px-1.5">
-            {taskId} · {durationDays}d
+            {label} · {durationDays}d
           </span>
           {whatIfMode && onResizePointerDown ? (
             <button
               type="button"
-              aria-label={`Resize duration for ${taskId}`}
+              aria-label={`Resize duration for ${label}`}
               onPointerDown={(e) => {
                 e.stopPropagation();
                 onResizePointerDown(e);

@@ -11,12 +11,19 @@ type Props = {
   embedded?: boolean;
   /** Single dense row for the unified control card (no section labels). */
   compact?: boolean;
+  scheduleDepartmentSlug: string;
+  scheduleDepartmentOptions: { slug: string; name: string }[];
+  onScheduleDepartmentChange: (slug: string) => void;
   timeScale: ScheduleTimeScale;
   onTimeScaleChange: (v: ScheduleTimeScale) => void;
   contentFilter: ScheduleContentFilter;
   onContentFilterChange: (v: ScheduleContentFilter) => void;
   showProjectOverlay: boolean;
   onToggleProjectOverlay: () => void;
+  /** When false, overlay toggle is hidden (RBAC). */
+  projectOverlayAvailable?: boolean;
+  showAvailabilityOverlay?: boolean;
+  onToggleAvailabilityOverlay?: () => void;
   disabled?: boolean;
 };
 
@@ -57,12 +64,18 @@ function Seg({
 export function ScheduleToolbar({
   embedded = false,
   compact = false,
+  scheduleDepartmentSlug,
+  scheduleDepartmentOptions,
+  onScheduleDepartmentChange,
   timeScale,
   onTimeScaleChange,
   contentFilter,
   onContentFilterChange,
   showProjectOverlay,
   onToggleProjectOverlay,
+  projectOverlayAvailable = true,
+  showAvailabilityOverlay = true,
+  onToggleAvailabilityOverlay,
   disabled,
 }: Props) {
   const navShell =
@@ -115,6 +128,24 @@ export function ScheduleToolbar({
             <p className="text-[11px] font-bold uppercase tracking-wider text-ds-muted">Display</p>
           ) : null}
           <div className="flex flex-wrap items-center gap-2">
+            {scheduleDepartmentOptions.length > 0 ? (
+              <select
+                className={cn(
+                  "rounded-lg border border-pulseShell-border bg-white font-semibold text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100",
+                  compact ? "px-2.5 py-1.5 text-xs" : "px-3 py-2 text-sm",
+                )}
+                value={scheduleDepartmentSlug}
+                disabled={disabled}
+                aria-label="Schedule department"
+                onChange={(e) => onScheduleDepartmentChange(e.target.value)}
+              >
+                {scheduleDepartmentOptions.map((d) => (
+                  <option key={d.slug} value={d.slug}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+            ) : null}
             <nav
               id="schedule-toggle"
               className={cn(navShell, "flex flex-wrap")}
@@ -132,20 +163,42 @@ export function ScheduleToolbar({
                 </Seg>
               ))}
             </nav>
-            <button
-              type="button"
-              onClick={onToggleProjectOverlay}
-              className={cn(
-                "rounded-lg border font-semibold transition-colors",
-                compact ? "px-2.5 py-1.5 text-[11px]" : "px-3 py-2 text-xs",
-                showProjectOverlay
-                  ? "border-[color-mix(in_srgb,var(--ds-accent)_35%,var(--ds-border))] bg-[color-mix(in_srgb,var(--ds-accent)_10%,transparent)] text-[var(--ds-accent)]"
-                  : "border-pulseShell-border bg-white/80 text-ds-muted hover:text-ds-foreground dark:bg-slate-900/50",
-              )}
-              title={showProjectOverlay ? "Hide project timeline overlay" : "Show project timeline overlay"}
-            >
-              Project overlay
-            </button>
+            {projectOverlayAvailable ? (
+              <button
+                type="button"
+                onClick={onToggleProjectOverlay}
+                className={cn(
+                  "rounded-lg border font-semibold transition-colors",
+                  compact ? "px-2.5 py-1.5 text-[11px]" : "px-3 py-2 text-xs",
+                  showProjectOverlay
+                    ? "border-[color-mix(in_srgb,var(--ds-accent)_35%,var(--ds-border))] bg-[color-mix(in_srgb,var(--ds-accent)_10%,transparent)] text-[var(--ds-accent)]"
+                    : "border-pulseShell-border bg-white/80 text-ds-muted hover:text-ds-foreground dark:bg-slate-900/50",
+                )}
+                title={showProjectOverlay ? "Hide project timeline overlay" : "Show project timeline overlay"}
+              >
+                Project overlay
+              </button>
+            ) : null}
+            {onToggleAvailabilityOverlay ? (
+              <button
+                type="button"
+                onClick={onToggleAvailabilityOverlay}
+                className={cn(
+                  "rounded-lg border font-semibold transition-colors",
+                  compact ? "px-2.5 py-1.5 text-[11px]" : "px-3 py-2 text-xs",
+                  showAvailabilityOverlay
+                    ? "border-emerald-500/35 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200"
+                    : "border-pulseShell-border bg-white/80 text-ds-muted hover:text-ds-foreground dark:bg-slate-900/50",
+                )}
+                title={
+                  showAvailabilityOverlay
+                    ? "Hide per-day availability highlights while dragging"
+                    : "Show per-day availability highlights while dragging"
+                }
+              >
+                Show availability
+              </button>
+            ) : null}
           </div>
         </div>
       </div>

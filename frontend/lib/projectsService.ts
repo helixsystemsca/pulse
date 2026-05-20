@@ -42,6 +42,12 @@ export type ProjectRow = {
   assignee_user_ids?: string[];
   last_activity_at?: string | null;
   health_status?: string;
+  show_on_schedule?: boolean;
+  overlay_color?: string | null;
+  operational_impact_level?: "low" | "medium" | "high" | "critical";
+  staffing_priority?: "low" | "normal" | "high" | "critical";
+  blackout_windows?: { start_date: string; end_date: string; label?: string | null }[] | null;
+  department_slug?: string | null;
 };
 
 export type TaskRow = {
@@ -206,8 +212,10 @@ export type AutomationRuleRow = {
   updated_at: string;
 };
 
-export async function listProjects(): Promise<ProjectRow[]> {
-  return apiFetch<ProjectRow[]>("/api/v1/projects");
+export async function listProjects(departmentSlug?: string | null): Promise<ProjectRow[]> {
+  const slug = (departmentSlug ?? "").trim();
+  const qs = slug ? `?department_slug=${encodeURIComponent(slug)}` : "";
+  return apiFetch<ProjectRow[]>(`/api/v1/projects${qs}`);
 }
 
 export async function patchProject(
@@ -228,6 +236,11 @@ export async function patchProject(
     metrics: string | null;
     lessons_learned: string | null;
     repopulation_frequency: string | null;
+    show_on_schedule: boolean;
+    overlay_color: string | null;
+    operational_impact_level: "low" | "medium" | "high" | "critical";
+    staffing_priority: "low" | "normal" | "high" | "critical";
+    blackout_windows: { start_date: string; end_date: string; label?: string | null }[] | null;
   }>,
 ): Promise<ProjectRow> {
   return apiFetch<ProjectRow>(`/api/v1/projects/${id}`, { method: "PATCH", json: patch });
@@ -247,6 +260,11 @@ export async function createProject(body: {
   template_id?: string | null;
   category_id?: string | null;
   repopulation_frequency?: string | null;
+  show_on_schedule?: boolean;
+  overlay_color?: string | null;
+  operational_impact_level?: "low" | "medium" | "high" | "critical";
+  staffing_priority?: "low" | "normal" | "high" | "critical";
+  blackout_windows?: { start_date: string; end_date: string; label?: string | null }[] | null;
 }): Promise<ProjectRow> {
   const row = await apiFetch<Omit<ProjectRow, "task_total" | "task_completed" | "progress_pct" | "assignee_user_ids">>(
     "/api/v1/projects",

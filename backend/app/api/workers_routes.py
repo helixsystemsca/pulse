@@ -33,11 +33,13 @@ from app.core.login_activity import latest_login_event_per_user
 from app.core.user_avatar_upload import co_worker_avatar_url
 from app.core.features.service import MODULE_KEYS
 from app.core.features.system_catalog import GLOBAL_SYSTEM_FEATURES
+from app.core.rbac.audit_service import record_rbac_audit_event
 from app.core.tenant_feature_access import (
     contract_and_effective_features_for_me,
     load_merged_workers_settings,
     user_has_workers_roster_page_access,
 )
+from app.core.tenant_roles import assign_user_tenant_role, get_tenant_role_in_company
 from app.core.workers_permission_delegation import (
     actor_is_delegated_permission_editor,
     actor_may_set_worker_feature_allow_extra,
@@ -46,7 +48,23 @@ from app.core.workspace_departments import (
     normalize_workspace_department_slug,
     normalize_workspace_department_slug_list,
 )
-from app.core.workers_settings_merge import DEFAULT_WORKERS_SETTINGS, merge_workers_settings
+from app.core.matrix_slot_policy import worker_slot_audit_fields
+from app.core.tenant_role_assignments import (
+    assign_user_department_role,
+    get_active_assignment,
+    normalize_department_slug,
+    normalize_role_key,
+)
+from app.core.department_matrix_baselines import department_baseline_slot
+from app.core.permission_feature_matrix import (
+    expand_department_role_matrix_baselines,
+    permission_matrix_department_for_user,
+)
+from app.core.workers_settings_merge import (
+    DEFAULT_WORKERS_SETTINGS,
+    merge_workers_settings,
+    sanitize_workers_policy_keys,
+)
 from app.core.email_smtp import send_employee_invite
 from app.core.auth.security import bump_access_token_version, hash_password
 from app.core.system_tokens import generate_raw_token, hash_system_token
@@ -58,6 +76,8 @@ from app.models.domain import (
     UserAccountStatus,
     UserRole,
 )
+from app.models.rbac_models import TenantRoleAssignment
+from app.core.department_matrix_baselines import operational_matrix_slot_label
 from app.models.pulse_models import (
     PulseWorkerCertification,
     PulseWorkerHR,
@@ -70,7 +90,7 @@ from app.models.pulse_models import (
 )
 from app.modules.compliance.service import effective_status, repeat_offender_user_ids
 from app.modules.pulse import service as pulse_svc
-from app.schemas.training import WorkerTrainingOut
+from app.schemas.training import WorkerTrainingOut as WorkerTrainingBundleOut
 from app.schemas.pulse_workers import (
     WorkerCertificationOut,
     WorkerComplianceSummaryOut,
@@ -81,6 +101,9 @@ from app.schemas.pulse_workers import (
     WorkerListOut,
     WorkerPatchIn,
     WorkerRowOut,
+    ApplyDepartmentBaselinesOut,
+    WorkerSlotAccessAuditOut,
+    WorkerSlotAccessAuditRowOut,
     WorkersSettingsOut,
     WorkersSettingsPatchIn,
     WorkerSkillOut,
@@ -177,31 +200,13 @@ def _sanitize_feature_key_list(v: object) -> list[str]:
     return sorted({str(x) for x in v if str(x) in cat})
 
 
-def _sanitize_workers_policy_keys(base: dict[str, Any]) -> None:
-    rfa = base.get("role_feature_access")
-    if isinstance(rfa, dict):
-        allowed_roles = frozenset({"manager", "supervisor", "lead", "worker"})
-        out: dict[str, list[str]] = {}
-        for k, v in rfa.items():
-            if str(k) in allowed_roles:
-                out[str(k)] = _sanitize_feature_key_list(v)
-        base["role_feature_access"] = out
-    wpd = base.get("workers_page_delegation")
-    if isinstance(wpd, dict):
-        base["workers_page_delegation"] = {
-            "manager": bool(wpd.get("manager")),
-            "supervisor": bool(wpd.get("supervisor")),
-            "lead": bool(wpd.get("lead")),
-        }
-    pdel = base.get("permission_delegation")
-    if isinstance(pdel, dict):
-        base["permission_delegation"] = {
-            "manager": bool(pdel.get("manager")),
-            "supervisor": bool(pdel.get("supervisor")),
-            "lead": bool(pdel.get("lead")),
-        }
-    if "delegates_can_assign_worker_module_extras" in base:
-        base["delegates_can_assign_worker_module_extras"] = bool(base.get("delegates_can_assign_worker_module_extras"))
+def _sanitize_rbac_permission_list(v: object) -> list[str]:
+    from app.core.rbac.catalog import RBAC_PERMISSION_SEED
+
+    allowed = {k for k, _ in RBAC_PERMISSION_SEED}
+    if not isinstance(v, list):
+        return []
+    return sorted({str(x) for x in v if str(x) in allowed})
 
 
 async def _contract_feature_names_for_company(db: AsyncSession, cid: str) -> list[str]:
@@ -243,6 +248,14 @@ def _employee_join_path(raw_token: str) -> str:
 def _pulse_public_link(path: str) -> str:
     base = get_settings().pulse_app_public_origin.rstrip("/")
     return f"{base}{path if path.startswith('/') else '/' + path}"
+
+
+async def _assert_valid_tenant_role(db: AsyncSession, cid: str, tenant_role_id: Optional[str]) -> None:
+    if not tenant_role_id:
+        return
+    role = await get_tenant_role_in_company(db, cid, tenant_role_id)
+    if not role:
+        raise HTTPException(status_code=400, detail="Invalid tenant role")
 
 
 async def _assert_valid_supervisor(db: AsyncSession, cid: str, supervisor_id: Optional[str]) -> None:
@@ -549,6 +562,7 @@ async def _build_detail(db: AsyncSession, cid: str, u: User, users_map: dict[str
     recurring_shifts = [x for x in raw_rs if isinstance(x, dict)]
     gg_assignable = bool(sched.get("gg_assignable"))
 
+    tr_id = getattr(u, "tenant_role_id", None)
     return WorkerDetailOut(
         id=uid_s,
         company_id=str(u.company_id) if u.company_id else cid,
@@ -556,14 +570,21 @@ async def _build_detail(db: AsyncSession, cid: str, u: User, users_map: dict[str
         full_name=u.full_name,
         role=primary_jwt_role(u).value,
         roles=list(u.roles),
+        tenant_role_id=str(tr_id) if tr_id else None,
         avatar_url=co_worker_avatar_url(uid_s, u.avatar_url),
         feature_allow_extra=[str(x) for x in extras if isinstance(x, str)],
+        rbac_permission_extra=[
+            str(x)
+            for x in (list(u.rbac_permission_extra) if isinstance(getattr(u, "rbac_permission_extra", None), list) else [])
+            if isinstance(x, str)
+        ],
         is_active=u.is_active,
         account_status=u.account_status.value,
         phone=hr.phone if hr else None,
         department=hr.department if hr else None,
         department_slugs=_hr_department_slugs_list(hr),
         job_title=hr.job_title if hr else None,
+        matrix_slot=hr.matrix_slot if hr else None,
         shift=hr.shift if hr else None,
         supervisor_id=hr.supervisor_user_id if hr else None,
         supervisor_name=sup_name,
@@ -664,7 +685,7 @@ async def patch_workers_settings(
             detail="Only company administrators or delegated operational roles may update these settings.",
         )
 
-    _sanitize_workers_policy_keys(base)
+    sanitize_workers_policy_keys(base)
     if row:
         row.settings = base
     else:
@@ -672,6 +693,135 @@ async def patch_workers_settings(
     await db.commit()
     cfn = await _contract_feature_names_for_company(db, cid)
     return WorkersSettingsOut(settings=base, contract_feature_names=cfn)
+
+
+@router.get("/slot-access-audit", response_model=WorkerSlotAccessAuditOut)
+async def worker_slot_access_audit(
+    db: Db,
+    _: RosterPageUser,
+    cid: CompanyId,
+) -> WorkerSlotAccessAuditOut:
+    """Workers using inferred/fallback matrix slots — for Team Management cleanup."""
+    roster_vals = [r.value for r in _ROSTER_ROLES]
+    users = list(
+        (
+            await db.execute(
+                select(User).where(
+                    User.company_id == cid,
+                    User.roles.overlap(pg_array(roster_vals)),
+                    User.is_active.is_(True),
+                )
+            )
+        ).scalars().all()
+    )
+    hr_map: dict[str, PulseWorkerHR] = {}
+    if users:
+        hq = await db.execute(select(PulseWorkerHR).where(PulseWorkerHR.user_id.in_([u.id for u in users])))
+        for h in hq.scalars().all():
+            hr_map[h.user_id] = h
+    rows: list[WorkerSlotAccessAuditRowOut] = []
+    inferred_count = 0
+    unresolved_count = 0
+    for u in users:
+        h = hr_map.get(u.id)
+        dept = permission_matrix_department_for_user(u, h)
+        audit = worker_slot_audit_fields(u, h, department=dept)
+        if not audit["matrix_slot_inferred"] and not audit.get("is_unresolved"):
+            continue
+        inferred_count += 1
+        if audit.get("is_unresolved"):
+            unresolved_count += 1
+        rows.append(
+            WorkerSlotAccessAuditRowOut(
+                id=str(u.id),
+                email=u.email,
+                full_name=u.full_name,
+                department=h.department if h else None,
+                job_title=h.job_title if h else None,
+                hr_matrix_slot=audit["hr_matrix_slot"],
+                resolved_matrix_slot=audit["resolved_matrix_slot"],
+                matrix_slot_source=audit["matrix_slot_source"],
+                matrix_slot_display=audit["matrix_slot_display"],
+                matrix_slot_source_label=audit.get("matrix_slot_source_label") or "",
+                is_unresolved=bool(audit.get("is_unresolved")),
+            )
+        )
+    rows.sort(key=lambda r: (not r.is_unresolved, (r.full_name or r.email or "").lower()))
+    return WorkerSlotAccessAuditOut(
+        items=rows,
+        inferred_count=inferred_count,
+        unresolved_count=unresolved_count,
+    )
+
+
+@router.post("/apply-department-baselines", response_model=ApplyDepartmentBaselinesOut)
+async def apply_department_baselines(
+    db: Db,
+    actor: Annotated[User, Depends(get_current_user)],
+    cid: CompanyId,
+) -> ApplyDepartmentBaselinesOut:
+    """Bulk-set explicit HR matrix_slot to each worker's department baseline (skips existing explicit slots)."""
+    await require_workers_roster_page(actor, db, cid)
+    roster_vals = [r.value for r in _ROSTER_ROLES]
+    users = list(
+        (
+            await db.execute(
+                select(User).where(
+                    User.company_id == cid,
+                    User.roles.overlap(pg_array(roster_vals)),
+                    User.is_active.is_(True),
+                )
+            )
+        ).scalars().all()
+    )
+    hr_map: dict[str, PulseWorkerHR] = {}
+    if users:
+        hq = await db.execute(select(PulseWorkerHR).where(PulseWorkerHR.user_id.in_([u.id for u in users])))
+        for h in hq.scalars().all():
+            hr_map[h.user_id] = h
+
+    updated = 0
+    skipped_explicit = 0
+    skipped_no_hr = 0
+    by_department: dict[str, int] = {}
+
+    for u in users:
+        h = hr_map.get(u.id)
+        if not h:
+            skipped_no_hr += 1
+            continue
+        existing = await get_active_assignment(db, company_id=cid, user_id=str(u.id))
+        if existing:
+            skipped_explicit += 1
+            continue
+        dept = permission_matrix_department_for_user(u, h)
+        baseline = department_baseline_slot(dept)
+        if not baseline:
+            continue
+        await assign_user_department_role(
+            db,
+            company_id=cid,
+            user_id=str(u.id),
+            department_slug=dept,
+            role_key=baseline,
+            assigned_by=str(actor.id),
+        )
+        h.matrix_slot = baseline
+        h.department = dept
+        if not h.department_slugs:
+            h.department_slugs = [dept]
+        updated += 1
+        by_department[dept] = by_department.get(dept, 0) + 1
+
+    if updated:
+        await db.commit()
+
+    return ApplyDepartmentBaselinesOut(
+        updated_count=updated,
+        skipped_explicit=skipped_explicit,
+        skipped_no_hr=skipped_no_hr,
+        by_department=by_department,
+    )
 
 
 @router.get("", response_model=WorkerListOut)
@@ -717,6 +867,18 @@ async def list_workers(
         )
         for pr in pq.scalars().all():
             prof_map[str(pr.user_id)] = pr
+    assign_map: dict[str, TenantRoleAssignment] = {}
+    if users:
+        aq = await db.execute(
+            select(TenantRoleAssignment).where(
+                TenantRoleAssignment.company_id == cid,
+                TenantRoleAssignment.user_id.in_([u.id for u in users]),
+                TenantRoleAssignment.active.is_(True),
+            )
+        )
+        for a in aq.scalars().all():
+            assign_map[str(a.user_id)] = a
+
     items: list[WorkerRowOut] = []
     for u in users:
         h = hr_map.get(u.id)
@@ -726,6 +888,25 @@ async def list_workers(
         sched_row: dict[str, Any] | None = dict(prof_row.scheduling or {}) if prof_row else None
         employment_type = _employment_type_from_scheduling_payload(sched_row)
         gg_assignable = bool((sched_row or {}).get("gg_assignable"))
+        asn = assign_map.get(uid_s)
+        if asn:
+            dept_slug = asn.department_slug
+            role_key = asn.role_key
+            assignment_status = "assigned"
+            matrix_display = operational_matrix_slot_label(role_key, department=dept_slug)
+            resolved_slot = role_key
+            matrix_source = "explicit_matrix_slot"
+            matrix_inferred = False
+            is_unresolved = False
+        else:
+            dept_slug = h.department if h else None
+            role_key = None
+            assignment_status = "unassigned"
+            matrix_display = "Unassigned"
+            resolved_slot = "unassigned"
+            matrix_source = "unresolved"
+            matrix_inferred = True
+            is_unresolved = True
         items.append(
             WorkerRowOut(
                 id=uid_s,
@@ -733,12 +914,14 @@ async def list_workers(
                 full_name=u.full_name,
                 role=primary_jwt_role(u).value,
                 roles=list(u.roles),
+                tenant_role_id=str(u.tenant_role_id) if getattr(u, "tenant_role_id", None) else None,
                 is_active=u.is_active,
                 account_status=u.account_status.value,
                 phone=h.phone if h else None,
                 department=h.department if h else None,
                 department_slugs=_hr_department_slugs_list(h),
                 job_title=h.job_title if h else None,
+                matrix_slot=h.matrix_slot if h else None,
                 shift=h.shift if h else None,
                 gg_assignable=gg_assignable,
                 employment_type=employment_type,
@@ -747,18 +930,29 @@ async def list_workers(
                 last_login_city=le.city if le else None,
                 last_login_region=le.region if le else None,
                 last_login_user_agent=le.user_agent if le else None,
+                resolved_matrix_slot=resolved_slot,
+                matrix_slot_source=matrix_source,
+                matrix_slot_source_kind="explicit" if asn else "unresolved",
+                matrix_slot_inferred=matrix_inferred,
+                matrix_slot_display=matrix_display,
+                matrix_slot_operational_label=matrix_display,
+                matrix_slot_source_label="Explicit" if asn else "Unresolved",
+                is_unresolved=is_unresolved,
+                assignment_status=assignment_status,
+                assigned_department_slug=dept_slug,
+                assigned_role_key=role_key,
             )
         )
     return WorkerListOut(items=items)
 
 
-@router.get("/{user_id}/training", response_model=WorkerTrainingOut)
+@router.get("/{user_id}/training", response_model=WorkerTrainingBundleOut)
 async def worker_training_matrix(
     db: Db,
     user: Annotated[User, Depends(get_current_user)],
     cid: CompanyId,
     user_id: str,
-) -> WorkerTrainingOut:
+) -> WorkerTrainingBundleOut:
     if str(user.id) != user_id:
         await require_workers_roster_page(user, db, cid)
     else:
@@ -809,24 +1003,23 @@ async def _apply_worker_hr_and_extras(
     body: WorkerCreateIn,
     *,
     hr_row: PulseWorkerHR | None,
+    actor_id: str | None = None,
 ) -> None:
     merged_slugs = _merge_hr_department_slugs(
         list(body.department_slugs) if body.department_slugs else None,
         body.department,
     )
-    primary_department: str | None
-    if merged_slugs:
-        primary_department = merged_slugs[0]
-    elif body.department and str(body.department).strip():
-        primary_department = str(body.department).strip()
-    else:
-        primary_department = None
+    primary_department = normalize_department_slug(body.department) or (
+        merged_slugs[0] if merged_slugs else None
+    )
+    matrix_slot = body.matrix_slot or body.role_key
 
     if hr_row:
         hr_row.phone = body.phone
         hr_row.department = primary_department
         hr_row.department_slugs = merged_slugs if merged_slugs else None
         hr_row.job_title = body.job_title
+        hr_row.matrix_slot = matrix_slot
         hr_row.shift = body.shift
         hr_row.supervisor_user_id = body.supervisor_id
         hr_row.start_date = body.start_date
@@ -839,11 +1032,20 @@ async def _apply_worker_hr_and_extras(
                 department=primary_department,
                 department_slugs=merged_slugs if merged_slugs else None,
                 job_title=body.job_title,
+                matrix_slot=matrix_slot,
                 shift=body.shift,
                 supervisor_user_id=body.supervisor_id,
                 start_date=body.start_date,
             )
         )
+    await assign_user_department_role(
+        db,
+        company_id=cid,
+        user_id=str(user.id),
+        department_slug=primary_department or body.department,
+        role_key=body.role_key,
+        assigned_by=actor_id,
+    )
     prof = await _ensure_profile(db, cid, user.id)
     if body.employment_type is not None:
         cur = dict(prof.scheduling or {})
@@ -859,6 +1061,11 @@ async def _apply_worker_hr_and_extras(
         await _sync_skills(db, cid, user.id, body.skills)
     if body.training:
         await _sync_training(db, cid, user.id, body.training)
+    if body.tenant_role_id is not None:
+        role = await get_tenant_role_in_company(db, cid, body.tenant_role_id)
+        if not role:
+            raise HTTPException(status_code=400, detail="Invalid tenant role")
+        await assign_user_tenant_role(db, user, role)
 
 
 @router.post("", response_model=WorkerCreateResultOut, status_code=status.HTTP_201_CREATED)
@@ -941,7 +1148,7 @@ async def create_worker(
         await db.flush()
 
         hr = await _get_hr(db, user.id)
-        await _apply_worker_hr_and_extras(db, cid, user, body, hr_row=hr)
+        await _apply_worker_hr_and_extras(db, cid, user, body, hr_row=hr, actor_id=str(actor.id))
 
         await db.commit()
 
@@ -997,7 +1204,7 @@ async def create_worker(
     await db.flush()
 
     hr = await _get_hr(db, user.id)
-    await _apply_worker_hr_and_extras(db, cid, user, body, hr_row=hr)
+    await _apply_worker_hr_and_extras(db, cid, user, body, hr_row=hr, actor_id=str(actor.id))
 
     company = await db.get(Company, cid)
     co_name = company.name if company else "your organization"
@@ -1176,6 +1383,8 @@ async def patch_worker(
             "department",
             "department_slugs",
             "job_title",
+            "matrix_slot",
+            "role_key",
             "shift",
             "supervisor_id",
             "start_date",
@@ -1212,6 +1421,10 @@ async def patch_worker(
                 hr.department_slugs = None
         if "job_title" in data:
             hr.job_title = data["job_title"]
+        if "matrix_slot" in data:
+            hr.matrix_slot = data["matrix_slot"]
+        if "role_key" in data and data["role_key"]:
+            hr.matrix_slot = normalize_role_key(data["role_key"])
         if "shift" in data:
             hr.shift = data["shift"]
         if "supervisor_id" in data:
@@ -1222,6 +1435,23 @@ async def patch_worker(
             hr.start_date = data["start_date"]
         if "supervisor_notes" in data:
             hr.supervisor_notes = data["supervisor_notes"]
+
+    if hr and ("role_key" in data or "department" in data or "department_slugs" in data):
+        dept_slug = normalize_department_slug(hr.department)
+        role = normalize_role_key(data.get("role_key") if "role_key" in data else hr.matrix_slot)
+        if dept_slug and role:
+            await assign_user_department_role(
+                db,
+                company_id=cid,
+                user_id=user_id,
+                department_slug=dept_slug,
+                role_key=role,
+                assigned_by=str(actor.id),
+            )
+            hr.matrix_slot = role
+            hr.department = dept_slug
+            if not hr.department_slugs:
+                hr.department_slugs = [dept_slug]
 
     if "profile_notes" in data:
         prof = await _ensure_profile(db, cid, user_id)
@@ -1281,6 +1511,26 @@ async def patch_worker(
     if body.training is not None:
         await _sync_training(db, cid, user_id, body.training)
 
+    if "tenant_role_id" in data:
+        if not user_has_any_role(actor, UserRole.company_admin) and not user_has_facility_tenant_admin_flag(actor):
+            raise HTTPException(status_code=403, detail="Only company administrators can assign tenant roles")
+        tr_val = data["tenant_role_id"]
+        if tr_val is None:
+            target.tenant_role_id = None
+        else:
+            role = await get_tenant_role_in_company(db, cid, str(tr_val))
+            if not role:
+                raise HTTPException(status_code=400, detail="Invalid tenant role")
+            await assign_user_tenant_role(db, target, role)
+        await record_rbac_audit_event(
+            db,
+            company_id=cid,
+            actor_user_id=str(actor.id),
+            action="user.tenant_role.updated",
+            target_user_id=str(target.id),
+            payload={"tenant_role_id": target.tenant_role_id},
+        )
+
     if body.feature_allow_extra is not None:
         merged = await load_merged_workers_settings(db, cid)
         if not actor_may_set_worker_feature_allow_extra(actor, target, merged):
@@ -1288,7 +1538,35 @@ async def patch_worker(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only company administrators or delegated leads may set extra module access for worker-role users when enabled in Team Management settings.",
             )
+        raw_ex = getattr(target, "feature_allow_extra", None)
+        before_extras = list(raw_ex) if isinstance(raw_ex, list) else []
         target.feature_allow_extra = _sanitize_feature_key_list(body.feature_allow_extra)
+        await record_rbac_audit_event(
+            db,
+            company_id=cid,
+            actor_user_id=str(actor.id),
+            action="user.feature_allow_extra.updated",
+            target_user_id=str(target.id),
+            payload={"before": before_extras, "after": list(target.feature_allow_extra)},
+        )
+
+    if body.rbac_permission_extra is not None:
+        if not user_has_any_role(actor, UserRole.company_admin) and not user_has_facility_tenant_admin_flag(actor):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only company administrators may set per-feature permission bypasses.",
+            )
+        raw_perm = getattr(target, "rbac_permission_extra", None)
+        before_perm = list(raw_perm) if isinstance(raw_perm, list) else []
+        target.rbac_permission_extra = _sanitize_rbac_permission_list(body.rbac_permission_extra)
+        await record_rbac_audit_event(
+            db,
+            company_id=cid,
+            actor_user_id=str(actor.id),
+            action="user.rbac_permission_extra.updated",
+            target_user_id=str(target.id),
+            payload={"before": before_perm, "after": list(target.rbac_permission_extra)},
+        )
 
     await db.commit()
     u2 = await pulse_svc._user_in_company(db, cid, user_id)

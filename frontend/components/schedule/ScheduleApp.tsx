@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SettingsGear } from "@/components/settings/SettingsGear";
 import { cn } from "@/lib/cn";
@@ -9,7 +9,22 @@ import { apiFetch, isApiMode } from "@/lib/api";
 import { getServerDate } from "@/lib/serverTime";
 import { listProjects, type ProjectRow } from "@/lib/projectsService";
 import { getOrAssignProjectTintClass } from "@/lib/schedule/project-overlay-tints";
+import {
+  readOverlayTogglePreference,
+  SCHEDULE_OVERLAY_STATUSES,
+  writeOverlayTogglePreference,
+  type ProjectScheduleOverlayMeta,
+} from "@/lib/schedule/project-overlay-styles";
 import type { ProjectBarItem } from "@/lib/schedule/project-schedule-bars";
+import { pendingPtoCountForRange } from "@/lib/schedule/project-pto-conflicts";
+import {
+  normalizeScheduleDepartmentSlug,
+  readScheduleDepartmentPreference,
+  scheduleDepartmentOptionsForSession,
+  scheduleDepartmentQueryParam,
+  writeScheduleDepartmentPreference,
+} from "@/lib/schedule/schedule-department";
+import { can } from "@/lib/rbac/session-access";
 import {
   addDaysToIso,
   formatLocalDate,
@@ -32,8 +47,22 @@ import {
 } from "@/lib/schedule/recurring";
 import { logScheduleAuditEvent } from "@/lib/schedule/schedule-audit-log";
 import { inferStandardShiftCode, standardShiftByCode } from "@/lib/schedule/shift-definition-catalog";
+import {
+  buildPaletteBadgeRegistry,
+  loadPaletteBadgeConfig,
+  savePaletteBadgeConfig,
+  setActivePaletteBadgeRegistry,
+  shiftDefinitionsToPalette,
+  type PaletteBadgeConfig,
+  type ScheduleShiftDefinitionRow,
+} from "@/lib/schedule/palette-config";
 import { placementBandDropdownOptions, resolvePlacementRoles } from "@/lib/schedule/placement-panel-options";
 import { suggestReplacementLabel } from "@/lib/schedule/suggest-replacement";
+import {
+  buildEmployeeAvailabilityIndex,
+  fetchEmployeeAvailability,
+} from "@/lib/schedule/employee-availability-api";
+import type { EmployeeDailyAvailabilityEntry } from "@/lib/schedule/employee-availability-types";
 import { buildWorkerDragHighlightMap, evaluateWorkerDrop } from "@/lib/schedule/worker-drag-highlights";
 import {
   isPulseApiShiftId,
@@ -126,6 +155,7 @@ export function ScheduleApp() {
   const currentUserId = session?.sub ?? null;
   const canPublishSchedule = sessionHasAnyRole(session, "manager", "supervisor", "company_admin", "system_admin");
   const canEdit = canPublishSchedule;
+  const companyId = session?.company_id ?? "default";
 
   const scheduleMod = useModuleSettings("schedule");
   const scheduleFlags = scheduleMod.settings as { allowShiftOverrides?: boolean };
@@ -146,9 +176,43 @@ export function ScheduleApp() {
   const [availabilitySupervisorOpen, setAvailabilitySupervisorOpen] = useState(false);
   const [employeeAvailabilityOpen, setEmployeeAvailabilityOpen] = useState(false);
   const [availabilityMatrixVersion, setAvailabilityMatrixVersion] = useState(0);
+  const [employeeAvailabilityIndex, setEmployeeAvailabilityIndex] = useState<
+    Record<string, EmployeeDailyAvailabilityEntry[]>
+  >({});
+  const [showAvailabilityOverlay, setShowAvailabilityOverlay] = useState(true);
   const [publishBusy, setPublishBusy] = useState(false);
-  const [shiftDefinitions, setShiftDefinitions] = useState<{ id: string; code: string; name?: string | null }[]>([]);
+  const [shiftDefinitions, setShiftDefinitions] = useState<ScheduleShiftDefinitionRow[]>([]);
+  const [paletteBadgeConfig, setPaletteBadgeConfig] = useState<PaletteBadgeConfig>({
+    hiddenBuiltinCodes: [],
+    customBadges: [],
+  });
+
+  useEffect(() => {
+    setPaletteBadgeConfig(loadPaletteBadgeConfig(companyId));
+  }, [companyId]);
+
+  useEffect(() => {
+    setActivePaletteBadgeRegistry(buildPaletteBadgeRegistry(paletteBadgeConfig));
+  }, [paletteBadgeConfig]);
+
+  const paletteShiftCatalog = useMemo(
+    () => shiftDefinitionsToPalette(shiftDefinitions),
+    [shiftDefinitions],
+  );
+
+  const handlePaletteBadgeConfigChange = useCallback(
+    (next: PaletteBadgeConfig) => {
+      setPaletteBadgeConfig(next);
+      savePaletteBadgeConfig(companyId, next);
+    },
+    [companyId],
+  );
+
+  const searchParams = useSearchParams();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsInitialTab, setSettingsInitialTab] = useState<
+    "Shift definitions" | "Organization" | undefined
+  >(undefined);
   const [timeOffOpen, setTimeOffOpen] = useState(false);
   const [dragSession, setDragSession] = useState<ScheduleDragSession | null>(null);
   const [placementDutyRole, setPlacementDutyRole] = useState<string>("worker");
@@ -161,7 +225,16 @@ export function ScheduleApp() {
   const [activePeriod, setActivePeriod] = useState<SchedulePeriodLite | null>(null);
   const [showPeriodModal, setShowPeriodModal] = useState(false);
   const [scheduleProjects, setScheduleProjects] = useState<ProjectRow[] | null>(null);
-  const [showProjectOverlay, setShowProjectOverlay] = useState(true);
+  const scheduleDepartmentOptions = useMemo(
+    () => scheduleDepartmentOptionsForSession(session, canConfigureOrg),
+    [session, canConfigureOrg],
+  );
+  const [scheduleDepartmentSlug, setScheduleDepartmentSlug] = useState(() =>
+    readScheduleDepartmentPreference(session),
+  );
+  const [showProjectOverlay, setShowProjectOverlay] = useState(() =>
+    readOverlayTogglePreference(readScheduleDepartmentPreference(session)),
+  );
   const schedulePath = usePathname() ?? "";
   const [shiftModal, setShiftModal] = useState<{
     shift: Shift | null;
@@ -234,7 +307,7 @@ export function ScheduleApp() {
     let cancelled = false;
     void (async () => {
       try {
-        const data = await listProjects();
+        const data = await listProjects(scheduleDepartmentSlug);
         if (!cancelled) setScheduleProjects(data);
       } catch {
         if (!cancelled) setScheduleProjects([]);
@@ -243,7 +316,18 @@ export function ScheduleApp() {
     return () => {
       cancelled = true;
     };
-  }, [hydrated, schedulePath]);
+  }, [hydrated, schedulePath, scheduleDepartmentSlug]);
+
+  useEffect(() => {
+    const settings = searchParams.get("settings");
+    if (settings === "shift-definitions") {
+      setSettingsInitialTab("Shift definitions");
+      setSettingsOpen(true);
+    }
+    const availability = searchParams.get("availability");
+    if (availability === "supervisor") setAvailabilitySupervisorOpen(true);
+    if (availability === "employee") setEmployeeAvailabilityOpen(true);
+  }, [searchParams]);
 
   const reloadPulseSchedule = useCallback(async () => {
     if (!isApiMode()) return;
@@ -268,15 +352,16 @@ export function ScheduleApp() {
       to = new Date(from);
       to.setHours(23, 59, 59, 999);
     }
+    const deptQs = scheduleDepartmentQueryParam(scheduleDepartmentSlug);
     const [w, z, defs] = await Promise.all([
-      apiFetch<PulseWorkerApi[]>("/api/v1/pulse/workers"),
+      apiFetch<PulseWorkerApi[]>(`/api/v1/pulse/workers?${deptQs}`),
       apiFetch<PulseZoneApi[]>("/api/v1/pulse/schedule-facilities"),
-      apiFetch<{ id: string; code: string; name?: string | null }[]>("/api/v1/pulse/schedule/shift-definitions"),
+      apiFetch<ScheduleShiftDefinitionRow[]>("/api/v1/pulse/schedule/shift-definitions"),
     ]);
     let sh: PulseShiftApi[] = [];
     try {
       sh = await apiFetch<PulseShiftApi[]>(
-        `/api/v1/pulse/schedule/shifts?from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}`,
+        `/api/v1/pulse/schedule/shifts?from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}&${deptQs}`,
       );
       setScheduleModuleBlocked(false);
     } catch (err) {
@@ -297,7 +382,26 @@ export function ScheduleApp() {
     const shiftsMapped = pulseShiftsToSchedule(sh, fallbackZ);
     applyPulseScheduleSnapshot(workersMapped, zonesMapped, shiftsMapped);
     setShiftDefinitions(defs);
-  }, [applyPulseScheduleSnapshot, timeScale, cursor.m, cursor.y, focusDate]);
+    try {
+      const fromIso = formatLocalDate(from);
+      const toIso = formatLocalDate(to);
+      const availRows = await fetchEmployeeAvailability(fromIso, toIso);
+      setEmployeeAvailabilityIndex(buildEmployeeAvailabilityIndex(availRows));
+    } catch {
+      setEmployeeAvailabilityIndex({});
+    }
+  }, [applyPulseScheduleSnapshot, timeScale, cursor.m, cursor.y, focusDate, scheduleDepartmentSlug]);
+
+  const handleScheduleDepartmentChange = useCallback(
+    (slug: string) => {
+      const norm = normalizeScheduleDepartmentSlug(slug);
+      if (!norm) return;
+      writeScheduleDepartmentPreference(norm);
+      setScheduleDepartmentSlug(norm);
+      setShowProjectOverlay(readOverlayTogglePreference(norm));
+    },
+    [],
+  );
 
   const reloadActivePeriod = useCallback(async () => {
     if (!hydrated || !canEdit || !isApiMode()) return;
@@ -396,6 +500,7 @@ export function ScheduleApp() {
             shift_type: s.shiftType,
             requires_supervisor: !!s.requires_supervisor,
             requires_ticketed: false,
+            department_slug: scheduleDepartmentSlug,
           },
         });
       }
@@ -410,6 +515,7 @@ export function ScheduleApp() {
             shift_type: s.shiftType,
             requires_supervisor: !!s.requires_supervisor,
             requires_ticketed: false,
+            department_slug: scheduleDepartmentSlug,
           },
         });
       }
@@ -420,7 +526,7 @@ export function ScheduleApp() {
     } finally {
       setSaveBusy(false);
     }
-  }, [reloadPulseSchedule]);
+  }, [reloadPulseSchedule, scheduleDepartmentSlug]);
 
   const visibleDatesForScheduleMerge = useMemo(() => {
     if (timeScale === "month") return monthGrid(cursor.y, cursor.m).map((c) => c.date);
@@ -493,7 +599,16 @@ export function ScheduleApp() {
         : timeScale === "month"
           ? monthGrid(cursor.y, cursor.m).map((c) => c.date)
           : [focusDate];
-    return buildWorkerDragHighlightMap(w, dates, shiftsForView, settings, timeOffBlocks, placementDropWindow);
+    return buildWorkerDragHighlightMap(
+      w,
+      dates,
+      shiftsForView,
+      settings,
+      timeOffBlocks,
+      placementDropWindow,
+      employeeAvailabilityIndex,
+      showAvailabilityOverlay,
+    );
   }, [
     dragSession,
     workers,
@@ -505,7 +620,17 @@ export function ScheduleApp() {
     cursor.m,
     focusDate,
     placementDropWindow,
+    employeeAvailabilityIndex,
+    showAvailabilityOverlay,
   ]);
+
+  const dropAvailabilityOpts = useMemo(
+    () => ({
+      employeeAvailabilityIndex,
+      useDailyAvailability: showAvailabilityOverlay,
+    }),
+    [employeeAvailabilityIndex, showAvailabilityOverlay],
+  );
 
   const weekDates = useMemo(() => weekDatesFromSunday(focusDate), [focusDate]);
 
@@ -621,34 +746,16 @@ export function ScheduleApp() {
     if (!visibleDatesForScheduleMerge.length) return;
     setBuildingDraft(true);
     try {
-      const toMin = (t: string) => {
-        const [h, m] = t.split(":").map(Number);
-        return h * 60 + m;
-      };
-      const startMin = toMin(settings.workDayStart || "07:00");
-      const endMin = toMin(settings.workDayEnd || "15:00");
-
-      const slots = visibleDatesForScheduleMerge.map((date) => ({
-        date,
-        start_min: startMin,
-        end_min: endMin,
-        shift_type: "shift",
-        shift_definition_id: null,
-        shift_code: null,
-        required_certs: [] as string[],
-        facility_id: zones[0]?.id ?? null,
-      }));
-
-      const url = "/api/v1/pulse/schedule/draft";
-
+      const url = "/api/v1/pulse/schedule/draft/generate";
       const result = await apiFetch<DraftResult>(url, {
         method: "POST",
         json: {
-          slots,
           period_start: visibleDatesForScheduleMerge[0],
           period_end: visibleDatesForScheduleMerge[visibleDatesForScheduleMerge.length - 1],
           max_hours_per_worker: settings.staffing.maxHoursPerWorkerPerWeek || 160,
           fairness_enabled: true,
+          respect_locked: true,
+          default_facility_id: zones[0]?.id ?? null,
         },
       });
       setDraftResult(result);
@@ -791,6 +898,7 @@ export function ScheduleApp() {
 
       const ev = evaluateWorkerDrop(w, targetDate, shiftsForView, settings, timeOffBlocks, placementDropWindow, {
         treatRestrictionsAsSatisfied: Boolean(trimmedOverride),
+        ...dropAvailabilityOpts,
       });
       if (!ev.ok) {
         if (!trimmedOverride && ev.needsManagerOverride && canPublishSchedule) {
@@ -864,6 +972,7 @@ export function ScheduleApp() {
       canPublishSchedule,
       placementBand,
       placementDutyRole,
+      dropAvailabilityOpts,
       placementDropWindow,
       session?.email,
       session?.full_name,
@@ -892,6 +1001,7 @@ export function ScheduleApp() {
 
       const ev = evaluateWorkerDrop(w, targetDate, shiftsForView, settings, timeOffBlocks, placementDropWindow, {
         treatRestrictionsAsSatisfied: Boolean(trimmedOverride),
+        ...dropAvailabilityOpts,
       });
       if (!ev.ok) {
         setScheduleToast(ev.tooltip ?? "Cannot assign this shift.");
@@ -1042,6 +1152,7 @@ export function ScheduleApp() {
 
       const ev = evaluateWorkerDrop(w, targetDate, shiftsForView, settings, timeOffBlocks, placementDropWindow, {
         treatRestrictionsAsSatisfied: false,
+        ...dropAvailabilityOpts,
       });
       if (!ev.ok) {
         if (ev.needsManagerOverride && canPublishSchedule) {
@@ -1092,33 +1203,66 @@ export function ScheduleApp() {
     setCursor({ y: td.getFullYear(), m: td.getMonth() });
   }
 
+  const canViewProjectOverlays =
+    Boolean(session) &&
+    (can(session, "scheduling.project_overlays.view") || can(session, "schedule.view"));
+  const canViewPtoProjectConflicts =
+    Boolean(session) &&
+    (can(session, "scheduling.pto_conflict_visibility.view") || can(session, "schedule.view"));
+
+  const scheduleOverlayProjects = useMemo((): ProjectScheduleOverlayMeta[] => {
+    if (!scheduleProjects?.length) return [];
+    return scheduleProjects
+      .filter(
+        (p) =>
+          p.show_on_schedule !== false &&
+          SCHEDULE_OVERLAY_STATUSES.has(p.status) &&
+          p.start_date &&
+          p.end_date,
+      )
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((p) => ({
+        id: p.id,
+        name: p.name,
+        start_date: p.start_date,
+        end_date: p.end_date,
+        status: p.status,
+        show_on_schedule: p.show_on_schedule,
+        overlay_color: p.overlay_color,
+        operational_impact_level: p.operational_impact_level ?? "medium",
+        staffing_priority: p.staffing_priority ?? "normal",
+        blackout_windows: p.blackout_windows ?? null,
+        tintClass: getOrAssignProjectTintClass(p.id),
+        assigned_team_label:
+          (p.assignee_user_ids?.length ?? 0) > 0
+            ? `${p.assignee_user_ids!.length} assignee${p.assignee_user_ids!.length === 1 ? "" : "s"}`
+            : null,
+        pending_pto_count: pendingPtoCountForRange(timeOffBlocks, p.start_date, p.end_date),
+      }));
+  }, [scheduleProjects, timeOffBlocks]);
+
   const projectLegendItems: ScheduleProjectLegendItem[] | null = useMemo(() => {
-    if (!scheduleProjects || scheduleProjects.length === 0) return null;
-    const active = scheduleProjects
-      .filter((p) => p.status !== "completed")
-      .sort((a, b) => a.name.localeCompare(b.name));
-    if (active.length === 0) return null;
-    return active.map((p) => ({
+    if (!canViewProjectOverlays || scheduleOverlayProjects.length === 0) return null;
+    return scheduleOverlayProjects.map((p) => ({
       id: p.id,
       name: p.name,
-      tintClass: getOrAssignProjectTintClass(p.id),
+      tintClass: p.tintClass,
+      overlayColor: p.overlay_color,
     }));
-  }, [scheduleProjects]);
+  }, [canViewProjectOverlays, scheduleOverlayProjects]);
 
   const projectBarItems: ProjectBarItem[] | null = useMemo(() => {
-    if (!scheduleProjects || scheduleProjects.length === 0) return null;
-    const active = scheduleProjects
-      .filter((p) => p.status !== "completed")
-      .sort((a, b) => a.name.localeCompare(b.name));
-    if (active.length === 0) return null;
-    return active.map((p) => ({
-      id: p.id,
-      name: p.name,
-      start_date: p.start_date,
-      end_date: p.end_date,
-      tintClass: getOrAssignProjectTintClass(p.id),
-    }));
-  }, [scheduleProjects]);
+    if (!canViewProjectOverlays || scheduleOverlayProjects.length === 0) return null;
+    return scheduleOverlayProjects;
+  }, [canViewProjectOverlays, scheduleOverlayProjects]);
+
+  const onToggleProjectOverlay = useCallback(() => {
+    setShowProjectOverlay((v) => {
+      const next = !v;
+      writeOverlayTogglePreference(next, scheduleDepartmentSlug);
+      return next;
+    });
+  }, [scheduleDepartmentSlug]);
 
   const dayProjectBar = useMemo(() => {
     if (timeScale !== "day" || !projectBarItems) return null;
@@ -1273,12 +1417,18 @@ export function ScheduleApp() {
               <ScheduleToolbar
                 embedded
                 compact
+                scheduleDepartmentSlug={scheduleDepartmentSlug}
+                scheduleDepartmentOptions={scheduleDepartmentOptions}
+                onScheduleDepartmentChange={handleScheduleDepartmentChange}
                 timeScale={timeScale}
                 onTimeScaleChange={setTimeScale}
                 contentFilter={contentFilter}
                 onContentFilterChange={setContentFilter}
                 showProjectOverlay={showProjectOverlay}
-                onToggleProjectOverlay={() => setShowProjectOverlay((v) => !v)}
+                onToggleProjectOverlay={onToggleProjectOverlay}
+                projectOverlayAvailable={canViewProjectOverlays}
+                showAvailabilityOverlay={showAvailabilityOverlay}
+                onToggleAvailabilityOverlay={() => setShowAvailabilityOverlay((v) => !v)}
                 disabled={scheduleDragLock}
               />
             }
@@ -1361,6 +1511,12 @@ export function ScheduleApp() {
                       </div>
                       <ScheduleAssignmentPalette
                         disabled={scheduleDragLock && dragSession?.kind !== "palette"}
+                        companyId={companyId}
+                        badgeConfig={paletteBadgeConfig}
+                        onBadgeConfigChange={handlePaletteBadgeConfigChange}
+                        shiftCatalog={paletteShiftCatalog}
+                        shiftDefinitions={shiftDefinitions}
+                        onShiftDefinitionsChange={setShiftDefinitions}
                         onDragSessionStart={(p) => setDragSession({ kind: "palette", ...p })}
                         onDragSessionEnd={() => {
                           setDragSession(null);
@@ -1431,6 +1587,7 @@ export function ScheduleApp() {
                       shiftDragEnabled={shiftDragEnabled}
                       workerDayHighlight={workerHighlightMap?.[focusDate] ?? null}
                       workerDropPlacementWindow={placementDropWindow}
+                      dropAvailabilityOpts={dropAvailabilityOpts}
                       onWorkerDropRejected={(msg) => setScheduleToast(msg)}
                       onWorkerDrop={(workerId) => handleWorkerDrop(workerId, focusDate)}
                       onShiftDragSessionStart={setDragSession}
@@ -1470,6 +1627,7 @@ export function ScheduleApp() {
                     shiftDragEnabled={shiftDragEnabled}
                     workerHighlightByDate={workerHighlightMap}
                     workerDropPlacementWindow={placementDropWindow}
+                    dropAvailabilityOpts={dropAvailabilityOpts}
                     onWorkerDropRejected={(msg) => setScheduleToast(msg)}
                     onShiftDragSessionStart={setDragSession}
                     onShiftDragSessionEnd={() => {
@@ -1489,6 +1647,7 @@ export function ScheduleApp() {
                     monthIndex={cursor.m}
                     onPrevMonth={prevMonth}
                     onNextMonth={nextMonth}
+                    onMonthSelect={(y, m) => setCursor({ y, m })}
                     shifts={displayShiftsForGrid}
                     workers={workers}
                     zones={zones}
@@ -1511,6 +1670,7 @@ export function ScheduleApp() {
                     shiftDragEnabled={shiftDragEnabled}
                     workerHighlightByDate={workerHighlightMap}
                     workerDropPlacementWindow={placementDropWindow}
+                    dropAvailabilityOpts={dropAvailabilityOpts}
                     onWorkerDropRejected={(msg) => setScheduleToast(msg)}
                     onShiftDragSessionStart={setDragSession}
                     onShiftDragSessionEnd={() => {
@@ -1601,7 +1761,17 @@ export function ScheduleApp() {
         }
       />
 
-      <ScheduleSettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <ScheduleSettingsModal
+        open={settingsOpen}
+        onClose={() => {
+          setSettingsOpen(false);
+          setSettingsInitialTab(undefined);
+        }}
+        initialTab={settingsInitialTab}
+        shiftDefinitions={shiftDefinitions}
+        onShiftDefinitionsChange={setShiftDefinitions}
+        onAvailabilitySeeded={() => void reloadPulseSchedule()}
+      />
 
       <ScheduleTrashDropZone
         active={scheduleDragLock && shiftDragEnabled && dragSession?.kind === "shift"}
@@ -1651,6 +1821,11 @@ export function ScheduleApp() {
       <TimeOffRequestModal
         open={timeOffOpen}
         workers={workers}
+        projects={canViewPtoProjectConflicts ? scheduleOverlayProjects : []}
+        shifts={shifts}
+        settings={settings}
+        timeOffBlocks={timeOffBlocks}
+        showConflictHints={canViewPtoProjectConflicts}
         onClose={() => setTimeOffOpen(false)}
         onSubmit={(p) => addTimeOffBlock(p)}
       />

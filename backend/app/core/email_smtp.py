@@ -259,6 +259,125 @@ async def send_password_reset_email(
         return False
 
 
+async def send_planning_idea_approval_request(
+    settings: Settings,
+    *,
+    to_email: str,
+    reviewer_name: str,
+    requester_name: str,
+    idea_title: str,
+    idea_description: Optional[str],
+    idea_location: Optional[str],
+    estimated_cost: Optional["Decimal"],
+    priority: str,
+    request_comments: Optional[str],
+    review_url: str,
+    approve_url: str,
+    reject_url: str,
+) -> bool:
+    """Notify a manager that a planning idea needs approval (button links, not reply-by-email)."""
+    if not settings.smtp_configured:
+        return False
+
+    from decimal import Decimal
+
+    display = settings.email_from_display.strip() or "Pulse"
+    noreply = settings.email_from_noreply.strip()
+    cost_line = "—"
+    if estimated_cost is not None:
+        try:
+            cost_line = f"${Decimal(str(estimated_cost)):,.0f}"
+        except Exception:
+            cost_line = str(estimated_cost)
+
+    subject = f"Planning approval requested — {idea_title.strip()[:80]}"
+    desc = (idea_description or "").strip() or "(no description)"
+    loc = (idea_location or "").strip() or "—"
+    comments_block = ""
+    if request_comments and request_comments.strip():
+        comments_block = f"\nRequester notes:\n{request_comments.strip()}\n"
+
+    text = (
+        f"Hello {reviewer_name},\n\n"
+        f"{requester_name} submitted a project idea for your approval.\n\n"
+        f"Title: {idea_title}\n"
+        f"Priority: {priority}\n"
+        f"Estimated cost: {cost_line}\n"
+        f"Location: {loc}\n\n"
+        f"Description:\n{desc}\n"
+        f"{comments_block}\n"
+        f"Review details: {review_url}\n"
+        f"Approve: {approve_url}\n"
+        f"Reject: {reject_url}\n\n"
+        "Use the links above — do not reply to this email.\n"
+    )
+
+    safe_title = html.escape(idea_title, quote=True)
+    safe_requester = html.escape(requester_name, quote=True)
+    safe_reviewer = html.escape(reviewer_name, quote=True)
+    safe_desc = html.escape(desc[:2000], quote=True)
+    safe_loc = html.escape(loc, quote=True)
+    safe_priority = html.escape(priority, quote=True)
+    safe_cost = html.escape(cost_line, quote=True)
+    safe_review = html.escape(review_url, quote=True)
+    safe_approve = html.escape(approve_url, quote=True)
+    safe_reject = html.escape(reject_url, quote=True)
+    comments_html = ""
+    if request_comments and request_comments.strip():
+        comments_html = (
+            f'<p style="margin:12px 0 0;font-size:14px;color:#475569;">'
+            f"<strong>Requester notes:</strong><br/>{html.escape(request_comments.strip(), quote=True)}</p>"
+        )
+
+    html_body = f"""<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8" /></head>
+<body style="margin:0;padding:0;background:#f4f6f8;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1e293b;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f6f8;padding:24px 12px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" style="max-width:560px;background:#fff;border-radius:12px;border:1px solid #e2e8f0;">
+        <tr><td style="padding:24px 24px 8px;font-size:18px;font-weight:700;">Planning idea — approval requested</td></tr>
+        <tr><td style="padding:8px 24px 16px;font-size:15px;color:#334155;">
+          Hello {safe_reviewer}, <strong>{safe_requester}</strong> submitted an idea for your review.
+        </td></tr>
+        <tr><td style="padding:0 24px 16px;">
+          <table width="100%" style="font-size:14px;color:#475569;border-collapse:collapse;">
+            <tr><td style="padding:4px 0"><strong>Title</strong></td><td>{safe_title}</td></tr>
+            <tr><td style="padding:4px 0"><strong>Priority</strong></td><td>{safe_priority}</td></tr>
+            <tr><td style="padding:4px 0"><strong>Est. cost</strong></td><td>{safe_cost}</td></tr>
+            <tr><td style="padding:4px 0"><strong>Location</strong></td><td>{safe_loc}</td></tr>
+          </table>
+          <p style="margin:12px 0 0;font-size:14px;color:#475569;"><strong>Description</strong><br/>{safe_desc}</p>
+          {comments_html}
+        </td></tr>
+        <tr><td style="padding:8px 24px 24px;text-align:center;">
+          <a href="{safe_approve}" style="display:inline-block;margin:4px 6px;padding:12px 20px;background:#059669;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px;">Approve</a>
+          <a href="{safe_reject}" style="display:inline-block;margin:4px 6px;padding:12px 20px;background:#e11d48;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px;">Reject</a>
+          <a href="{safe_review}" style="display:inline-block;margin:4px 6px;padding:12px 20px;background:#2563eb;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px;">View details</a>
+        </td></tr>
+        <tr><td style="padding:12px 24px 20px;font-size:12px;color:#64748b;border-top:1px solid #e2e8f0;">
+          Use the buttons above. Do not reply to this message.
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>"""
+
+    msg = _build_message(
+        subject=subject,
+        from_addr=noreply,
+        from_display=display,
+        to_addrs=[to_email],
+        text_body=text,
+        html_body=html_body,
+    )
+    try:
+        await send_smtp_message(settings, msg)
+        return True
+    except Exception:
+        _log.exception("SMTP planning approval failed to=%s", to_email)
+        return False
+
+
 async def send_contact_lead(
     settings: Settings,
     *,

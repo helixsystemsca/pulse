@@ -2,17 +2,17 @@
  * Coloured project span bars: each active project is a segment across the 7 day columns
  * of a week, for dates within [start_date, end_date].
  */
-export type ProjectBarItem = {
-  id: string;
-  name: string;
-  start_date: string;
-  end_date: string;
-  tintClass: string;
-};
+import type { ProjectScheduleOverlayMeta } from "@/lib/schedule/project-overlay-styles";
+
+export type ProjectBarItem = ProjectScheduleOverlayMeta;
 
 export type ProjectWeekSegment = ProjectBarItem & {
   minI: number;
   maxI: number;
+  /** First calendar day in this week segment (YYYY-MM-DD). */
+  segmentStart: string;
+  /** Last calendar day in this week segment. */
+  segmentEnd: string;
 };
 
 function overlaps(a: { minI: number; maxI: number }, b: { minI: number; maxI: number }): boolean {
@@ -53,7 +53,15 @@ export function segmentItemsForWeek(weekDates: string[], projects: ProjectBarIte
       if (inDateRange(d, p.start_date, p.end_date)) hitIdx.push(i);
     }
     if (hitIdx.length === 0) continue;
-    out.push({ ...p, minI: Math.min(...hitIdx), maxI: Math.max(...hitIdx) });
+    const minI = Math.min(...hitIdx);
+    const maxI = Math.max(...hitIdx);
+    out.push({
+      ...p,
+      minI,
+      maxI,
+      segmentStart: weekDates[minI]!,
+      segmentEnd: weekDates[maxI]!,
+    });
   }
   return out;
 }
@@ -61,4 +69,18 @@ export function segmentItemsForWeek(weekDates: string[], projects: ProjectBarIte
 export function projectSegmentsPackedRows(weekDates: string[], projects: ProjectBarItem[] | null | undefined): ProjectWeekSegment[][] {
   const segs = segmentItemsForWeek(weekDates, projects);
   return packNonOverlappingRows(segs);
+}
+
+/** Show centered label when the bar is wide enough or starts the project / week. */
+export function shouldShowBarLabel(seg: ProjectWeekSegment): boolean {
+  const span = seg.maxI - seg.minI + 1;
+  if (span >= 2) return true;
+  if (seg.segmentStart === seg.start_date) return true;
+  return false;
+}
+
+export function truncateBarLabel(name: string, maxLen = 28): string {
+  const t = name.trim();
+  if (t.length <= maxLen) return t;
+  return `${t.slice(0, maxLen - 1)}…`;
 }

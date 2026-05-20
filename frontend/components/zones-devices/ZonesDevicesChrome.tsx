@@ -40,7 +40,7 @@ export function ZonesDevicesChrome({ children }: { children: React.ReactNode }) 
     return () => {
       cancel = true;
     };
-  }, [isZones, session?.sub, session?.company_id, session?.access_token]);
+  }, [isZones, session]);
 
   const tabClass = (active: boolean) =>
     `rounded-lg px-3.5 py-2 text-sm font-semibold transition-colors ${

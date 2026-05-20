@@ -26,6 +26,10 @@ export type PulseShiftApi = {
   shift_code?: string | null;
   is_draft?: boolean;
   published_at?: string | null;
+  locked?: boolean;
+  generated_by?: string | null;
+  confidence_score?: number | null;
+  recommendation_reason?: string | null;
   starts_at: string;
   ends_at: string;
   shift_type: string;
@@ -160,6 +164,10 @@ export function pulseShiftToSchedule(row: PulseShiftApi, fallbackZoneId: string)
     shiftCode: row.shift_code ?? null,
     isDraft: row.is_draft ?? undefined,
     publishedAt: row.published_at ?? null,
+    locked: row.locked ?? false,
+    generatedBy: row.generated_by ?? null,
+    confidenceScore: row.confidence_score ?? null,
+    recommendationReason: row.recommendation_reason ?? null,
     shiftKind: sk,
     projectTaskId: row.project_task_id ?? undefined,
     projectId: row.project_id ?? undefined,

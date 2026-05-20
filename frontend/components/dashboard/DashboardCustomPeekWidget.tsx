@@ -312,6 +312,20 @@ function renderSlice(
     }
   }
 
+  if (sliceId === "quick_open" && page) {
+    return (
+      <>
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">{label}</p>
+        <Link
+          href={page.href}
+          className="mt-2 inline-flex text-sm font-semibold text-sky-700 underline-offset-2 hover:underline dark:text-sky-300"
+        >
+          Open {page.label}
+        </Link>
+      </>
+    );
+  }
+
   return (
     <>
       <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">{label}</p>

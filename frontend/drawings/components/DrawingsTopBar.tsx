@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { ChevronDown, Maximize2, Minimize2, Plus, Save } from "lucide-react";
 import { ProjectSelector } from "./ProjectSelector";
 import { cn } from "@/lib/cn";
@@ -28,6 +29,7 @@ const ctrlAccent = cn(
 );
 
 export function DrawingsTopBar({
+  workspaceSwitcher,
   mapsToolbarDisabled,
   activeProjectId,
   setActiveProjectId,
@@ -43,6 +45,7 @@ export function DrawingsTopBar({
   onEnterFullscreen,
   onExitFullscreen,
 }: {
+  workspaceSwitcher?: ReactNode;
   /** When true, map picker / upload / category controls are disabled (e.g. offline or busy). */
   mapsToolbarDisabled: boolean;
   activeProjectId: string | null;
@@ -73,7 +76,7 @@ export function DrawingsTopBar({
     <div className="shrink-0 bg-white shadow-[0_1px_4px_rgba(0,0,0,0.06)] dark:bg-ds-secondary/30 dark:shadow-none">
       <header className="flex flex-col">
         <div className="flex min-h-[52px] flex-wrap items-center gap-x-2 gap-y-2.5 px-4 py-3 sm:flex-nowrap">
-        <span className={cn(TOOLBAR_TEXT, "shrink-0")}>Drawings</span>
+        {workspaceSwitcher ?? <span className={cn(TOOLBAR_TEXT, "shrink-0")}>Spatial</span>}
 
         <span className="hidden h-5 w-px shrink-0 bg-[#d0d6df] sm:block dark:bg-ds-border" aria-hidden />
 

@@ -1,6 +1,7 @@
 /**
  * Role helpers for JWT/session (multi-role aware). Backend uses same precedence for `role` claim.
  */
+import { getDepartmentBySlug } from "@/config/platform/departments";
 import type { PulseAuthSession } from "@/lib/pulse-session";
 
 const ROLE_PRECEDENCE = ["system_admin", "company_admin", "manager", "supervisor", "lead", "worker", "demo_viewer"] as const;
@@ -136,30 +137,54 @@ export function isCreateRoleLimitedSession(
   );
 }
 
-/** User-facing role title (headers, Workers UI, compliance tables). */
+/** User-facing role title (headers, Workers UI, compliance tables). Never use "Operations" without HR department context. */
 export function humanizeRole(role: string): string {
   const key = role.trim().toLowerCase();
-  if (key === "worker") return "Operations";
+  if (key === "worker") return "Staff";
   if (key === "company_admin") return "Operations / Admin";
   return role.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 /** HR `department` slug for roster grouping (aligns with Team Management invite options). */
-const ROSTER_DEPT_ORDER = ["maintenance", "communications", "reception", "aquatics", "fitness", "admin", "__other__"] as const;
+const ROSTER_DEPT_ORDER = [
+  "unset",
+  "maintenance",
+  "communications",
+  "reception",
+  "aquatics",
+  "fitness",
+  "racquets",
+  "admin",
+  "__other__",
+] as const;
 
 const ROSTER_DEPT_TITLE: Record<(typeof ROSTER_DEPT_ORDER)[number], string> = {
+  unset: "Corporate",
   maintenance: "Maintenance",
   communications: "Communications",
   reception: "Reception",
   aquatics: "Aquatics",
   fitness: "Fitness",
+  racquets: "Racquets",
   admin: "Administration",
   __other__: "Other departments",
 };
 
-export function rosterDepartmentSlug(worker: Pick<{ department?: string | null }, "department">): string {
+export function rosterDepartmentSlug(
+  worker: Pick<{ department?: string | null; roles?: string[]; role?: string }, "department" | "roles" | "role">,
+): string {
   const raw = (worker.department ?? "").trim().toLowerCase();
-  if (!raw) return "maintenance";
+  if (!raw) {
+    // Off-site / IT-style company admins: no facility department slug — not part of Maintenance roster.
+    const rawRoles = roleListFromPrincipal(worker);
+    const hasFacilityOrgRole = rawRoles.some((r) =>
+      ["manager", "supervisor", "lead", "worker"].includes(r),
+    );
+    if (!hasFacilityOrgRole && sessionHasAnyRole(worker, "company_admin")) {
+      return "unset";
+    }
+    return "maintenance";
+  }
   for (const k of ROSTER_DEPT_ORDER) {
     if (k === "__other__") continue;
     if (raw === k) return k;
@@ -175,19 +200,21 @@ export function rosterDepartmentTitle(slug: string): string {
 /** Plural section title for the `worker` API tier under a department (Maintenance → Operations, Communications → Coordinators). */
 export function rosterWorkerTierSectionTitle(departmentSlug: string): string {
   const d = departmentSlug.trim().toLowerCase();
+  if (d === "unset") return "Staff";
   if (d === "maintenance") return "Operations";
   if (d === "communications" || d === "reception") return "Coordinators";
-  if (d === "aquatics" || d === "fitness") return "Program staff";
+  if (d === "aquatics" || d === "fitness" || d === "racquets") return "Program staff";
   return "Staff";
 }
 
 /** Badge / cell label: `worker` role shown by HR department (API role stays `worker`). */
 export function workerRoleDisplayLabel(departmentSlug: string | null | undefined, role: string): string {
   if (role !== "worker") return humanizeRole(role);
-  const d = (departmentSlug ?? "").trim().toLowerCase() || "maintenance";
+  const d = (departmentSlug ?? "").trim().toLowerCase();
+  if (!d || d === "unset") return "Staff";
   if (d === "maintenance") return "Operations";
   if (d === "communications" || d === "reception") return "Coordinator";
-  if (d === "aquatics" || d === "fitness") return "Program staff";
+  if (d === "aquatics" || d === "fitness" || d === "racquets") return "Program staff";
   return "Staff";
 }
 
@@ -206,33 +233,83 @@ export function rosterDepartmentIterateOrder(): readonly string[] {
   return ROSTER_DEPT_ORDER;
 }
 
-/** Sidebar / profile: uses server-provided label for facility tenant admins when present. */
+/** Chrome subtitle: HR team (from `/auth/me` `hr_department`) + role; no maintenance default for `worker`. */
 export function sessionRoleDisplayLabel(
-  session: Pick<PulseAuthSession, "role_display_label" | "role" | "roles"> | null | undefined,
+  session: Pick<PulseAuthSession, "role_display_label" | "role" | "roles" | "hr_department"> | null | undefined,
 ): string {
   if (!session) return "Member";
-  const d = session.role_display_label?.trim();
-  if (d) return d;
-  return humanizeRole(sessionPrimaryRole(session));
+  const override = session.role_display_label?.trim();
+  if (override) return override;
+
+  const prim = sessionPrimaryRole(session);
+  const slug = (session.hr_department ?? "").trim().toLowerCase();
+  const dept = slug ? getDepartmentBySlug(slug) : undefined;
+  const teamName = dept?.name ?? (slug ? rosterDepartmentTitle(slug) : "");
+
+  if (teamName) {
+    const rolePart = prim === "worker" ? workerRoleDisplayLabel(slug, "worker") : humanizeRole(prim);
+    return `${teamName} · ${rolePart}`;
+  }
+
+  if (prim === "worker" || prim === "demo_viewer") {
+    return prim === "demo_viewer" ? humanizeRole("demo_viewer") : workerRoleDisplayLabel(undefined, "worker");
+  }
+  return humanizeRole(prim);
 }
 
 const DISPLAY_ORDER = ["company_admin", "manager", "supervisor", "lead", "worker", "demo_viewer"];
+
+/** Roster buckets in Team Management (subset of platform roles; fixed map keys in WorkersApp). */
+export const ROSTER_GROUP_ROLE_KEYS = ["company_admin", "manager", "supervisor", "lead", "worker"] as const;
+export type RosterGroupRoleKey = (typeof ROSTER_GROUP_ROLE_KEYS)[number];
 
 export function sortRolesForDisplay(roles: string[]): string[] {
   return [...roles].sort((a, b) => DISPLAY_ORDER.indexOf(a) - DISPLAY_ORDER.indexOf(b));
 }
 
+/**
+ * Order of roster sections within a department.
+ * - Administration or Corporate (no department): Company Admin first.
+ * - Communications / reception: Coordinators (`worker` tier) directly under Managers; Company Admin bucket last.
+ * - Other departments: ladder first, Company Admin bucket last so tenant admins on the floor are not visually above the team.
+ */
+export function rosterRoleGroupOrder(departmentSlug: string): RosterGroupRoleKey[] {
+  const d = departmentSlug.trim().toLowerCase();
+  if (d === "admin" || d === "unset") {
+    return ["company_admin", "manager", "supervisor", "lead", "worker"];
+  }
+  if (d === "communications" || d === "reception") {
+    return ["manager", "worker", "supervisor", "lead", "company_admin"];
+  }
+  return ["manager", "supervisor", "lead", "worker", "company_admin"];
+}
+
 export function primaryWorkerGroupKey(
-  p: Pick<{ roles?: string[]; role?: string }, "roles" | "role">,
-): (typeof DISPLAY_ORDER)[number] | "worker" {
+  p: Pick<{ roles?: string[]; role?: string; department?: string | null }, "roles" | "role" | "department">,
+): RosterGroupRoleKey {
   const raw = roleListFromPrincipal(p);
   // `company_admin` is permission-tier, not facility org chart. If the person also has a facility
   // role (manager/supervisor/lead/worker), group by that role instead of listing them under Admins.
   const facilityRoles = raw.filter((r) => r !== "company_admin" && r !== "system_admin");
-  const forGroup = facilityRoles.length ? facilityRoles : raw;
-  const prim = sessionPrimaryRole({ roles: forGroup });
-  if (DISPLAY_ORDER.includes(prim as (typeof DISPLAY_ORDER)[number])) {
-    return prim as (typeof DISPLAY_ORDER)[number];
+  if (facilityRoles.length > 0) {
+    const prim = sessionPrimaryRole({ roles: facilityRoles });
+    if (ROSTER_GROUP_ROLE_KEYS.includes(prim as RosterGroupRoleKey)) {
+      return prim as RosterGroupRoleKey;
+    }
+    return "worker";
+  }
+
+  // Only admin / system tier — no explicit manager/supervisor/lead/worker role on the account.
+  // Standalone "Company Admin" roster: Administration HR dept, or corporate accounts with no facility department.
+  if (sessionHasAnyRole(p, "company_admin")) {
+    const dept = rosterDepartmentSlug(p);
+    if (dept === "admin" || dept === "unset") return "company_admin";
+    return "worker";
+  }
+
+  const prim = sessionPrimaryRole({ roles: raw });
+  if (ROSTER_GROUP_ROLE_KEYS.includes(prim as RosterGroupRoleKey)) {
+    return prim as RosterGroupRoleKey;
   }
   return "worker";
 }

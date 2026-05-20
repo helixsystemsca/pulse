@@ -8,6 +8,7 @@ import type { KioskWidgetDefinition } from "@/lib/project-kiosk/types";
 import { useProjectKioskRealtime } from "@/lib/project-kiosk/useProjectKioskRealtime";
 import { navigateToPulseLogin, pulseApp } from "@/lib/pulse-app";
 import { readSession } from "@/lib/pulse-session";
+import { canShowClassicSidebarItem, firstAccessibleClassicTenantHref } from "@/lib/rbac/session-access";
 import { listProjects, type ProjectRow } from "@/lib/projectsService";
 import { UI } from "@/styles/ui";
 import { buttonVariants } from "@/styles/button-variants";
@@ -43,10 +44,20 @@ export default function OverviewProjectTabPage() {
 
   useEffect(() => {
     if (!ready) return;
-    if (!session?.can_use_pm_features) {
-      router.replace(pulseApp.to("/overview"));
+    if (!isApiMode() || !session) return;
+    if (session.role === "demo_viewer") return;
+    if (!canShowClassicSidebarItem(session, "/overview/project", false)) {
+      router.replace(firstAccessibleClassicTenantHref(session));
+      return;
     }
-  }, [ready, router, session?.can_use_pm_features]);
+    if (!session.can_use_pm_features) {
+      router.replace(
+        canShowClassicSidebarItem(session, "/overview", false)
+          ? pulseApp.to("/overview")
+          : firstAccessibleClassicTenantHref(session),
+      );
+    }
+  }, [ready, router, session]);
 
   useEffect(() => {
     if (!ready || !session?.can_use_pm_features) return;

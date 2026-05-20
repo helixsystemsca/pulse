@@ -5,7 +5,10 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from app.core.permission_feature_matrix import normalize_matrix_slot
+from app.core.tenant_role_assignments import ASSIGNABLE_ROLE_KEYS, normalize_department_slug
 
 _EMPLOYMENT_TYPES = {"full_time", "regular_part_time", "part_time"}
 
@@ -66,6 +69,7 @@ class WorkerRowOut(BaseModel):
     full_name: Optional[str] = None
     role: str
     roles: list[str] = []
+    tenant_role_id: Optional[str] = None
     is_active: bool
     account_status: str = "active"
     phone: Optional[str] = None
@@ -73,6 +77,7 @@ class WorkerRowOut(BaseModel):
     #: Workspace URL segments (`communications`, …); drives `/{slug}/…` access for frontline roles.
     department_slugs: list[str] = Field(default_factory=list)
     job_title: Optional[str] = None
+    matrix_slot: Optional[str] = None
     shift: Optional[str] = None
     #: General Gauger (or similar) — assignable flag on profile, not a roster shift preset.
     gg_assignable: bool = False
@@ -83,6 +88,47 @@ class WorkerRowOut(BaseModel):
     last_login_city: Optional[str] = None
     last_login_region: Optional[str] = None
     last_login_user_agent: Optional[str] = None
+    #: Resolved permission-matrix slot (may differ from stored HR value when auto).
+    resolved_matrix_slot: Optional[str] = None
+    matrix_slot_source: Optional[str] = None
+    matrix_slot_source_kind: Optional[str] = None
+    matrix_slot_inferred: bool = False
+    matrix_slot_display: Optional[str] = None
+    matrix_slot_operational_label: Optional[str] = None
+    matrix_slot_source_label: Optional[str] = None
+    is_unresolved: bool = False
+    assignment_status: Optional[str] = None
+    assigned_department_slug: Optional[str] = None
+    assigned_role_key: Optional[str] = None
+
+
+class WorkerSlotAccessAuditRowOut(BaseModel):
+    id: str
+    email: str
+    full_name: Optional[str] = None
+    department: Optional[str] = None
+    job_title: Optional[str] = None
+    hr_matrix_slot: Optional[str] = None
+    resolved_matrix_slot: str
+    matrix_slot_source: str
+    matrix_slot_display: str
+    matrix_slot_source_label: str = ""
+    is_unresolved: bool = False
+
+
+class WorkerSlotAccessAuditOut(BaseModel):
+    items: list[WorkerSlotAccessAuditRowOut] = Field(default_factory=list)
+    inferred_count: int = 0
+    unresolved_count: int = 0
+
+
+class ApplyDepartmentBaselinesOut(BaseModel):
+    """Result of bulk-assigning department baseline slots to HR records."""
+
+    updated_count: int = 0
+    skipped_explicit: int = 0
+    skipped_no_hr: int = 0
+    by_department: dict[str, int] = Field(default_factory=dict)
 
 
 class WorkerListOut(BaseModel):
@@ -96,9 +142,11 @@ class WorkerDetailOut(BaseModel):
     full_name: Optional[str] = None
     role: str
     roles: list[str] = []
+    tenant_role_id: Optional[str] = None
     avatar_url: Optional[str] = None
     #: Add-on product modules (tenant contract subset) from company admin.
     feature_allow_extra: list[str] = []
+    rbac_permission_extra: list[str] = []
     is_active: bool
     account_status: str = "active"
     phone: Optional[str] = None
@@ -106,6 +154,7 @@ class WorkerDetailOut(BaseModel):
     #: Workspace URL segments (`communications`, …); drives `/{slug}/…` access for frontline roles.
     department_slugs: list[str] = Field(default_factory=list)
     job_title: Optional[str] = None
+    matrix_slot: Optional[str] = None
     shift: Optional[str] = None
     supervisor_id: Optional[str] = None
     supervisor_name: Optional[str] = None
@@ -132,11 +181,21 @@ class WorkerCreateIn(BaseModel):
     email: str = Field(..., min_length=3, max_length=320)
     full_name: Optional[str] = Field(None, max_length=255)
     role: str = Field(..., description="worker | lead | supervisor | manager")
+    tenant_role_id: Optional[str] = None
     phone: Optional[str] = Field(None, max_length=64)
-    department: Optional[str] = Field(None, max_length=128)
-    #: Allowed workspace URL segments (`communications`, …); when omitted, a known `department` slug is used.
+    department: str = Field(..., min_length=1, max_length=128, description="HR / matrix department slug (required).")
+    #: Allowed workspace URL segments (`communications`, …); when omitted, `department` is used.
     department_slugs: Optional[list[str]] = None
+    role_key: str = Field(
+        ...,
+        min_length=1,
+        description="Authoritative matrix role (operations, coordination, team_member, manager, …).",
+    )
     job_title: Optional[str] = Field(None, max_length=255)
+    matrix_slot: Optional[str] = Field(
+        None,
+        description="Deprecated — synced from role_key when omitted.",
+    )
     shift: Optional[str] = Field(None, max_length=64)
     supervisor_id: Optional[str] = None
     start_date: Optional[date] = None
@@ -146,6 +205,41 @@ class WorkerCreateIn(BaseModel):
     training: Optional[list[WorkerTrainingIn]] = None
     #: When false, a join token is still issued but no invite email is sent (share link manually).
     send_email: bool = True
+
+    @field_validator("department", mode="before")
+    @classmethod
+    def _validate_department_create(cls, v: object) -> str:
+        slug = normalize_department_slug(str(v) if v is not None else None)
+        if not slug:
+            raise ValueError("Invalid department — must be a known workspace department slug")
+        return slug
+
+    @field_validator("role_key", mode="before")
+    @classmethod
+    def _validate_role_key_create(cls, v: object) -> str:
+        rk = normalize_matrix_slot(v)
+        if not rk or rk not in ASSIGNABLE_ROLE_KEYS:
+            raise ValueError(f"Invalid role_key — must be one of: {', '.join(sorted(ASSIGNABLE_ROLE_KEYS))}")
+        return rk
+
+    @field_validator("matrix_slot", mode="before")
+    @classmethod
+    def _validate_matrix_slot_create(cls, v: object) -> Optional[str]:
+        if v is None:
+            return None
+        if isinstance(v, str) and not v.strip():
+            return None
+        n = normalize_matrix_slot(v)
+        if not n:
+            raise ValueError("Invalid matrix_slot")
+        return n
+
+    @model_validator(mode="after")
+    def _sync_matrix_slot_from_role_key(self) -> "WorkerCreateIn":
+        if not self.matrix_slot:
+            object.__setattr__(self, "matrix_slot", self.role_key)
+        return self
+
     #: Company / tenant admins only: add roster + HR as an **active** account (no invite; use invite/link flows for pending activation).
     roster_profile_only: bool = False
 
@@ -181,7 +275,12 @@ class WorkerPatchIn(BaseModel):
     phone: Optional[str] = Field(None, max_length=64)
     department: Optional[str] = Field(None, max_length=128)
     department_slugs: Optional[list[str]] = None
+    role_key: Optional[str] = Field(None, description="Update tenant_role_assignments (authoritative).")
     job_title: Optional[str] = Field(None, max_length=255)
+    matrix_slot: Optional[str] = Field(
+        None,
+        description="Synced from role_key when provided; legacy field.",
+    )
     shift: Optional[str] = Field(None, max_length=64)
     supervisor_id: Optional[str] = None
     start_date: Optional[date] = None
@@ -194,6 +293,8 @@ class WorkerPatchIn(BaseModel):
     skills: Optional[list[WorkerSkillIn]] = None
     training: Optional[list[WorkerTrainingIn]] = None
     feature_allow_extra: Optional[list[str]] = None
+    rbac_permission_extra: Optional[list[str]] = None
+    tenant_role_id: Optional[str] = None
 
     @field_validator("email", mode="before")
     @classmethod
@@ -204,6 +305,18 @@ class WorkerPatchIn(BaseModel):
             s = v.strip().lower()
             return s or None
         return str(v).strip().lower() or None
+
+    @field_validator("matrix_slot", mode="before")
+    @classmethod
+    def _validate_matrix_slot_patch(cls, v: object) -> Optional[str]:
+        if v is None:
+            return None
+        if isinstance(v, str) and not v.strip():
+            return None
+        n = normalize_matrix_slot(v)
+        if not n:
+            raise ValueError("Invalid matrix_slot")
+        return n
 
     @field_validator("supervisor_id", mode="before")
     @classmethod

@@ -2,7 +2,13 @@
 
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
-import { isLocalDateToday, isWeekendLocalDate, monthGrid, monthLabel } from "@/lib/schedule/calendar";
+import {
+  buildMonthPickerRange,
+  isLocalDateToday,
+  isWeekendLocalDate,
+  monthGrid,
+  monthLabel,
+} from "@/lib/schedule/calendar";
 import { cn } from "@/lib/cn";
 import { workerHighlightOverlayClass } from "@/lib/schedule/drag-highlight-classes";
 import {
@@ -11,6 +17,7 @@ import {
   scheduleCalendarDragOverAccepts,
   type PaletteDragPayload,
 } from "@/lib/schedule/drag";
+import type { EmployeeDailyAvailabilityEntry } from "@/lib/schedule/employee-availability-types";
 import { evaluateWorkerDrop, type WorkerDayHighlight } from "@/lib/schedule/worker-drag-highlights";
 import type {
   ScheduleDragSession,
@@ -35,6 +42,7 @@ type Props = {
   monthIndex: number;
   onPrevMonth: () => void;
   onNextMonth: () => void;
+  onMonthSelect: (year: number, monthIndex: number) => void;
   shifts: Shift[];
   workers: Worker[];
   zones: Zone[];
@@ -64,6 +72,10 @@ type Props = {
   onOpenWorkerAttendance?: (payload: { workerId: string; date: string; label: string }) => void;
   onPaletteDrop?: (workerId: string, date: string, payload: PaletteDragPayload) => void;
   onRemoveOperationalBadge?: (workerId: string, date: string, code: string) => void;
+  dropAvailabilityOpts?: {
+    employeeAvailabilityIndex?: Record<string, EmployeeDailyAvailabilityEntry[]>;
+    useDailyAvailability?: boolean;
+  };
 };
 
 export function ScheduleCalendarGrid({
@@ -71,6 +83,7 @@ export function ScheduleCalendarGrid({
   monthIndex,
   onPrevMonth,
   onNextMonth,
+  onMonthSelect,
   shifts,
   workers,
   zones,
@@ -96,8 +109,11 @@ export function ScheduleCalendarGrid({
   onPaletteDrop,
   onRemoveOperationalBadge,
   projectBarItems = null,
+  dropAvailabilityOpts,
 }: Props) {
   const cells = useMemo(() => monthGrid(year, monthIndex), [year, monthIndex]);
+  const monthOptions = useMemo(() => buildMonthPickerRange(), []);
+  const monthSelectValue = `${year}-${monthIndex}`;
   const weeks = useMemo(() => {
     const w: (typeof cells)[] = [];
     for (let i = 0; i < cells.length; i += 7) w.push(cells.slice(i, i + 7));
@@ -154,7 +170,24 @@ export function ScheduleCalendarGrid({
       <div
         className={`flex flex-wrap items-center justify-between gap-3 border-b border-pulseShell-border px-4 py-3 sm:px-5 ${scheduleDragLock ? "pointer-events-none" : ""}`}
       >
-        <h2 className="text-lg font-semibold text-ds-foreground">{monthLabel(year, monthIndex)}</h2>
+        <label className="flex min-w-0 flex-col gap-0.5">
+          <span className="sr-only">Schedule month</span>
+          <select
+            className="max-w-[min(100%,14rem)] cursor-pointer rounded-lg border border-pulseShell-border bg-pulseShell-elevated px-3 py-1.5 text-lg font-semibold text-ds-foreground shadow-sm hover:bg-ds-interactive-hover focus:outline-none focus:ring-2 focus:ring-ds-accent/40"
+            value={monthSelectValue}
+            aria-label={`Month: ${monthLabel(year, monthIndex)}`}
+            onChange={(e) => {
+              const [y, m] = e.target.value.split("-").map(Number);
+              if (Number.isFinite(y) && Number.isFinite(m)) onMonthSelect(y, m);
+            }}
+          >
+            {monthOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </label>
         <div className="flex items-center gap-1">
           <button
             type="button"
@@ -273,7 +306,15 @@ export function ScheduleCalendarGrid({
                 if (wp) {
                   const w = workers.find((x) => x.id === wp.workerId);
                   if (w) {
-                    const ev = evaluateWorkerDrop(w, c.date, shifts, settings, timeOffBlocks, workerDropPlacementWindow);
+                    const ev = evaluateWorkerDrop(
+                      w,
+                      c.date,
+                      shifts,
+                      settings,
+                      timeOffBlocks,
+                      workerDropPlacementWindow,
+                      dropAvailabilityOpts,
+                    );
                     if (!ev.ok) {
                       if (ev.needsManagerOverride) {
                         onWorkerDrop(wp.workerId, c.date);

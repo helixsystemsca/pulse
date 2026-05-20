@@ -12,6 +12,7 @@ import {
   scheduleCalendarDragOverAccepts,
   type PaletteDragPayload,
 } from "@/lib/schedule/drag";
+import type { EmployeeDailyAvailabilityEntry } from "@/lib/schedule/employee-availability-types";
 import { evaluateWorkerDrop } from "@/lib/schedule/worker-drag-highlights";
 import type { WorkerDayHighlight } from "@/lib/schedule/worker-drag-highlights";
 import type {
@@ -64,6 +65,10 @@ type Props = {
   onOpenWorkerAttendance?: (payload: { workerId: string; date: string; label: string }) => void;
   onPaletteDrop?: (workerId: string, date: string, payload: PaletteDragPayload) => void;
   onRemoveOperationalBadge?: (workerId: string, date: string, code: string) => void;
+  dropAvailabilityOpts?: {
+    employeeAvailabilityIndex?: Record<string, EmployeeDailyAvailabilityEntry[]>;
+    useDailyAvailability?: boolean;
+  };
 };
 
 export function ScheduleWeekView({
@@ -96,6 +101,7 @@ export function ScheduleWeekView({
   onOpenWorkerAttendance,
   onPaletteDrop,
   onRemoveOperationalBadge,
+  dropAvailabilityOpts,
 }: Props) {
   const [dragOverDate, setDragOverDate] = useState<string | null>(null);
   const [shakeDate, setShakeDate] = useState<string | null>(null);
@@ -262,7 +268,15 @@ export function ScheduleWeekView({
                 if (wp) {
                   const w = workers.find((x) => x.id === wp.workerId);
                   if (w) {
-                    const ev = evaluateWorkerDrop(w, date, shifts, settings, timeOffBlocks, workerDropPlacementWindow);
+                    const ev = evaluateWorkerDrop(
+                      w,
+                      date,
+                      shifts,
+                      settings,
+                      timeOffBlocks,
+                      workerDropPlacementWindow,
+                      dropAvailabilityOpts,
+                    );
                     if (!ev.ok) {
                       if (ev.needsManagerOverride) {
                         onWorkerDrop(wp.workerId, date);

@@ -7,6 +7,7 @@ import { apiFetch } from "@/lib/api";
 export type InventoryVendorRow = {
   id: string;
   company_id: string;
+  department_slug: string;
   name: string;
   contact_name: string | null;
   contact_email: string | null;
@@ -28,6 +29,7 @@ export type InventoryVendorRow = {
 };
 
 export type InventoryVendorCreateBody = {
+  department_slug?: string;
   name: string;
   contact_name?: string | null;
   contact_email?: string | null;
@@ -49,6 +51,7 @@ export type InventoryVendorCreateBody = {
 export type InventoryVendorPatchBody = Partial<InventoryVendorCreateBody>;
 
 export type InventoryVendorListFilters = Partial<{
+  department_slug: string;
   name_contains: string;
   contact_name_contains: string;
   contact_email_contains: string;
@@ -78,6 +81,7 @@ export function buildInventoryVendorsQuery(companyId: string | null, filters: In
   const sp = new URLSearchParams();
   if (companyId) sp.set("company_id", companyId);
   const entries: [string, string][] = [];
+  if (filters.department_slug?.trim()) entries.push(["department_slug", filters.department_slug.trim()]);
   if (filters.name_contains?.trim()) entries.push(["name_contains", filters.name_contains.trim()]);
   if (filters.contact_name_contains?.trim()) entries.push(["contact_name_contains", filters.contact_name_contains.trim()]);
   if (filters.contact_email_contains?.trim()) entries.push(["contact_email_contains", filters.contact_email_contains.trim()]);

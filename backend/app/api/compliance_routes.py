@@ -2,7 +2,7 @@
 Compliance REST API under `/api/compliance`.
 
 Multi-tenant: tenant users are scoped to JWT `company_id`; system admins must pass `company_id` query on each call.
-Requires manager-or-above (`require_manager_or_above`).
+Requires RBAC `compliance.view` / `compliance.manage` (see `require_any_rbac`).
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import and_, exists, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user, get_db, require_manager_or_above
+from app.api.deps import get_current_user, get_db, require_any_rbac
 from app.core.org_module_settings_merge import merge_org_module_settings
 from app.core.user_roles import primary_jwt_role, user_has_any_role
 from app.models.domain import ComplianceRecord, ComplianceRule, Tool, User, UserRole
@@ -52,13 +52,14 @@ async def resolve_compliance_company_id(
 
 CompanyId = Annotated[str, Depends(resolve_compliance_company_id)]
 Db = Annotated[AsyncSession, Depends(get_db)]
-ManagerUser = Annotated[User, Depends(require_manager_or_above)]
+ComplianceReader = Annotated[User, Depends(require_any_rbac("compliance.view", "compliance.manage"))]
+ComplianceWriter = Annotated[User, Depends(require_any_rbac("compliance.manage"))]
 
 
 @router.get("/summary", response_model=ComplianceSummaryOut)
 async def compliance_summary(
     db: Db,
-    user: ManagerUser,
+    user: ComplianceReader,
     cid: CompanyId,
 ) -> ComplianceSummaryOut:
     _ = user
@@ -69,7 +70,7 @@ async def compliance_summary(
 @router.get("", response_model=ComplianceListOut)
 async def list_compliance(
     db: Db,
-    user: ManagerUser,
+    user: ComplianceReader,
     cid: CompanyId,
     status_filter: Optional[str] = Query(None, alias="status"),
     user_id: Optional[str] = Query(None),
@@ -207,7 +208,7 @@ async def _org_module_settings_merged(db: AsyncSession, cid: str) -> dict:
 @router.post("/{record_id}/review", status_code=status.HTTP_204_NO_CONTENT)
 async def mark_reviewed(
     db: Db,
-    user: ManagerUser,
+    user: ComplianceWriter,
     cid: CompanyId,
     record_id: str,
 ) -> None:
@@ -220,7 +221,7 @@ async def mark_reviewed(
 @router.post("/{record_id}/resend", status_code=status.HTTP_204_NO_CONTENT)
 async def resend_acknowledgment(
     db: Db,
-    user: ManagerUser,
+    user: ComplianceWriter,
     cid: CompanyId,
     record_id: str,
 ) -> None:
@@ -244,7 +245,7 @@ async def resend_acknowledgment(
 @router.post("/{record_id}/flag", status_code=status.HTTP_204_NO_CONTENT)
 async def flag_record(
     db: Db,
-    user: ManagerUser,
+    user: ComplianceWriter,
     cid: CompanyId,
     record_id: str,
     body: ComplianceFlagBody,

@@ -3,9 +3,18 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
+
+OperationalImpactLevel = Literal["low", "medium", "high", "critical"]
+StaffingPriority = Literal["low", "normal", "high", "critical"]
+
+
+class ProjectBlackoutWindow(BaseModel):
+    start_date: date
+    end_date: date
+    label: Optional[str] = Field(None, max_length=128)
 
 
 class ProjectCreate(BaseModel):
@@ -19,6 +28,14 @@ class ProjectCreate(BaseModel):
     category_id: Optional[str] = Field(None, description="Optional category id")
     repopulation_frequency: Optional[str] = Field(
         None, description="Once | Quarterly | Semi-Annual | Annual"
+    )
+    show_on_schedule: bool = True
+    overlay_color: Optional[str] = Field(None, max_length=32, description="Hex color e.g. #3b82f6")
+    operational_impact_level: OperationalImpactLevel = "medium"
+    staffing_priority: StaffingPriority = "normal"
+    blackout_windows: Optional[list[ProjectBlackoutWindow]] = None
+    department_slug: Optional[str] = Field(
+        None, max_length=32, description="Schedule/inventory department slug e.g. communications"
     )
 
 
@@ -38,6 +55,12 @@ class ProjectPatch(BaseModel):
     summary: Optional[str] = None
     metrics: Optional[str] = None
     lessons_learned: Optional[str] = None
+    show_on_schedule: Optional[bool] = None
+    overlay_color: Optional[str] = Field(None, max_length=32)
+    operational_impact_level: Optional[OperationalImpactLevel] = None
+    staffing_priority: Optional[StaffingPriority] = None
+    blackout_windows: Optional[list[ProjectBlackoutWindow]] = None
+    department_slug: Optional[str] = Field(None, max_length=32)
 
 
 class CategoryOut(BaseModel):
@@ -80,6 +103,12 @@ class ProjectOut(BaseModel):
     notification_to_supervision: bool = False
     notification_to_lead: bool = False
     notification_to_owner: bool = True
+    show_on_schedule: bool = True
+    overlay_color: Optional[str] = None
+    operational_impact_level: str = "medium"
+    staffing_priority: str = "normal"
+    blackout_windows: Optional[list[ProjectBlackoutWindow]] = None
+    department_slug: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     health_status: str = "On Track"

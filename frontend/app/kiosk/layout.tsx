@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { KioskDisplayShell } from "@/components/kiosk/KioskDisplayShell";
 
 export const metadata: Metadata = {
   title: { template: "%s | Panorama", default: "Kiosk" },
@@ -16,7 +17,7 @@ export const metadata: Metadata = {
 export default function KioskLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-ds-bg text-ds-foreground">
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
+      <KioskDisplayShell>{children}</KioskDisplayShell>
     </div>
   );
 }

@@ -3,27 +3,18 @@
  * left-rail (`pulseTenantSidebarNav` / `pulseSystemSidebarNav`) and top-nav definitions,
  * and marketing-site links. Marketing vs Pulse app hosts are intentionally split.
  *
- * Default app origin: `panorama.helixsystems.ca` (legacy `pulse.helixsystems.ca` host still works for direct visits).
- * Override with `NEXT_PUBLIC_PULSE_APP_URL`. Marketing CTAs rewrite pulse → panorama host.
+ * Default app origin: `panorama.helixsystems.ca` (legacy `pulse.helixsystems.ca` still supported via host list).
+ * Override with `NEXT_PUBLIC_PULSE_APP_URL`.
  */
-const LEGACY_PULSE_APP_HOST = "pulse.helixsystems.ca";
-const CANONICAL_PULSE_APP_HOST = "panorama.helixsystems.ca";
-
-function normalizePulseAppOriginUrl(raw: string): string {
-  let origin = raw.replace(/\/$/, "");
-  if (origin.includes(LEGACY_PULSE_APP_HOST)) {
-    origin = origin.replace(LEGACY_PULSE_APP_HOST, CANONICAL_PULSE_APP_HOST);
-  }
-  return origin;
-}
+import { NAV_VISIBLE_MASTER_FEATURES } from "@/config/platform/master-feature-registry";
+import { resolveAssignedDashboardHomepage } from "@/lib/dashboards/homepage";
+import { isPulseAppHost } from "@/lib/pulse-host";
+import { readSession } from "@/lib/pulse-session";
+import { isProductPath } from "@/lib/route-split-buckets";
 
 function pulseAppOrigin(): string {
-  const envRaw = process.env.NEXT_PUBLIC_PULSE_APP_URL?.trim();
-  if (!envRaw && process.env.NODE_ENV === "development") {
-    return normalizePulseAppOriginUrl("http://localhost:3000");
-  }
-  const raw = envRaw ?? `https://${CANONICAL_PULSE_APP_HOST}`;
-  return normalizePulseAppOriginUrl(raw);
+  const raw = process.env.NEXT_PUBLIC_PULSE_APP_URL ?? "https://panorama.helixsystems.ca";
+  return raw.replace(/\/$/, "");
 }
 
 /**
@@ -70,27 +61,18 @@ export const pulseSystemNav = [
   { href: "/system/logs", label: "System Logs" },
 ] as const;
 
-/**
- * Root left rail — icons by default, expands on hover (tenant / product areas).
- * Links map to routes and `/pulse` section IDs that exist today.
- */
-export const pulseTenantSidebarNav = [
-  { href: "/overview", label: "Dashboard", icon: "layout" as const },
-  { href: "/dashboard/compliance", label: "Inspections & Logs", icon: "scroll-text" as const },
-  { href: "/schedule", label: "Schedule", icon: "calendar" as const },
-  { href: "/monitoring", label: "Monitoring", icon: "activity" as const },
-  { href: "/projects", label: "Projects", icon: "folder-kanban" as const },
-  { href: "/dashboard/maintenance", label: "Work Requests", icon: "clipboard" as const },
-  { href: "/standards", label: "Standards", icon: "list-checks" as const },
-  { href: "/dashboard/team-insights", label: "Team Insights", icon: "sparkles" as const },
-  { href: "/dashboard/workers", label: "Team Management", icon: "user-cog" as const },
-  { href: "/dashboard/inventory", label: "Inventory", icon: "package" as const },
-  { href: "/equipment", label: "Equipment", icon: "wrench" as const },
-  { href: "/drawings", label: "Drawings", icon: "layers" as const },
-  { href: "/devices", label: "Zones & Devices", icon: "map-pin" as const },
-  { href: "/live-map", label: "Live Map", icon: "radio" as const },
-  { href: "/settings", label: "Settings", icon: "settings" as const },
-] as const;
+/** @deprecated Prefer `tenantSidebarNavItemsForSession` — registry-driven shared modules. */
+export const pulseTenantSidebarNav = NAV_VISIBLE_MASTER_FEATURES.filter((m) => !m.platformRoute)
+  .sort((a, b) => a.sortOrder - b.sortOrder)
+  .map((m) => ({
+    href: m.route,
+    label: m.label,
+    icon: m.icon,
+  })) as readonly {
+  href: string;
+  label: string;
+  icon: (typeof NAV_VISIBLE_MASTER_FEATURES)[number]["icon"];
+}[];
 
 /** System admin rail — platform tooling only; product modules live on the tenant rail. */
 export const pulseSystemSidebarNav = [
@@ -107,22 +89,36 @@ export type PulseSidebarIcon =
 /** Absolute URL to a path on the Pulse app host (for `<a href>`, mailto templates, etc.). */
 export function pulseAppHref(path: string): string {
   const p = path.startsWith("/") ? path : `/${path}`;
-  if (typeof window !== "undefined") {
-    const h = window.location.hostname;
-    if (h === "localhost" || h === "127.0.0.1") {
-      return `${window.location.origin}${p}`;
-    }
-  }
   return `${pulseAppOrigin()}${p}`;
 }
 
+function isLocalDevHost(hostname: string): boolean {
+  return hostname === "localhost" || hostname === "127.0.0.1";
+}
+
 /**
- * Send the browser to Pulse app sign-in. Prefer this over `router.replace('/login')` so
- * unauthenticated users on the marketing host land on the configured app host (see `NEXT_PUBLIC_PULSE_APP_URL`).
+ * Login href for the current browser context.
+ * - On the app host, Vercel preview, local dev, or any signed-in product route: same-origin `/login`.
+ * - On the marketing host only: absolute URL to `NEXT_PUBLIC_PULSE_APP_URL/login`.
+ */
+export function pulseLoginHref(): string {
+  if (typeof window === "undefined") {
+    return pulseRoutes.login;
+  }
+  const host = window.location.hostname.toLowerCase();
+  if (isPulseAppHost(host) || isLocalDevHost(host) || isProductPath(window.location.pathname)) {
+    return pulseRoutes.login;
+  }
+  return pulseAppHref(pulseRoutes.login);
+}
+
+/**
+ * Send the browser to sign-in. Logout and session expiry use this — stay on `/login` when already
+ * inside the product app; only cross-origin when browsing the marketing site on a separate host.
  */
 export function navigateToPulseLogin(): void {
   if (typeof window === "undefined") return;
-  window.location.replace(pulseAppHref("/login"));
+  window.location.replace(pulseLoginHref());
 }
 
 /** Open Pulse app overview on the configured app host (after sign-in). */
@@ -188,7 +184,9 @@ export function pulsePostLoginPath(user: PulsePostLoginIdentity): "/system" | "/
 /** Same-origin navigation after successful login / invite / password reset. */
 export function navigateAfterPulseLogin(user: PulsePostLoginIdentity): void {
   if (typeof window === "undefined") return;
-  window.location.assign(pulseAppHref(pulsePostLoginPath(user)));
+  const session = readSession();
+  const path = session ? resolveAssignedDashboardHomepage(session) : pulsePostLoginPath(user);
+  window.location.assign(pulseAppHref(path));
 }
 
 /** Marketing site URL with path and/or hash (e.g. `"/#contact"`). */
@@ -202,9 +200,9 @@ export function helixMarketingHref(pathWithOptionalHash: string): string {
 export const pulseApp = {
   origin: pulseAppOrigin,
 
-  /** Same as `pulseAppHref` — sign-in page on the Pulse host. */
+  /** Sign-in page — same-origin on app deployments; absolute on marketing-only host. */
   login(): string {
-    return pulseAppHref("/login");
+    return pulseLoginHref();
   },
 
   /** Dashboard and other authenticated routes on the Pulse host. */
@@ -212,11 +210,12 @@ export const pulseApp = {
     return pulseAppHref(path);
   },
 
+  /** Tenant leadership / company admin dashboard (`/overview`). */
   admin(): string {
-    return pulseAppHref("/admin");
+    return pulseAppHref("/overview");
   },
 
   workRequests(): string {
-    return pulseAppHref("/work-requests");
+    return pulseAppHref("/dashboard/maintenance");
   },
 };

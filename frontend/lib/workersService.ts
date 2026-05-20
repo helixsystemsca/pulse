@@ -7,6 +7,7 @@ export type WorkerRow = {
   full_name: string | null;
   role: string;
   roles?: string[];
+  tenant_role_id?: string | null;
   is_active: boolean;
   account_status?: string;
   phone: string | null;
@@ -14,6 +15,16 @@ export type WorkerRow = {
   /** Workspace URL slugs (`/{slug}/…`) this worker may access; from HR. */
   department_slugs?: string[] | null;
   job_title: string | null;
+  /** Explicit Team Management permission-matrix slot (overrides job-title inference). */
+  matrix_slot?: string | null;
+  resolved_matrix_slot?: string | null;
+  matrix_slot_source?: string | null;
+  matrix_slot_source_kind?: string | null;
+  matrix_slot_inferred?: boolean;
+  matrix_slot_display?: string | null;
+  matrix_slot_operational_label?: string | null;
+  matrix_slot_source_label?: string | null;
+  is_unresolved?: boolean;
   /** HR shift key; label comes from workers settings `shifts`. */
   shift?: string | null;
   /** GG (or similar) eligibility — stored on scheduling profile, not as a shift preset. */
@@ -35,6 +46,10 @@ export type LoginEventRow = {
   region?: string | null;
   country?: string | null;
   user_agent?: string | null;
+  login_method?: string;
+  session_origin?: string;
+  impersonator_email?: string | null;
+  likely_your_session?: boolean;
 };
 
 export type WorkerCert = {
@@ -67,9 +82,12 @@ export type WorkerDetail = {
   full_name: string | null;
   role: string;
   roles?: string[];
+  tenant_role_id?: string | null;
   avatar_url?: string | null;
   /** Add-on modules from company admin (subset of tenant contract). */
   feature_allow_extra?: string[];
+  /** Per-worker RBAC key overrides (e.g. procedures.edit beyond matrix role). */
+  rbac_permission_extra?: string[];
   is_active: boolean;
   account_status?: string;
   phone: string | null;
@@ -77,6 +95,8 @@ export type WorkerDetail = {
   /** Workspace URL slugs (`/{slug}/…`) this worker may access; from HR. */
   department_slugs?: string[] | null;
   job_title: string | null;
+  matrix_slot?: string | null;
+  assigned_role_key?: string | null;
   shift: string | null;
   supervisor_id: string | null;
   supervisor_name: string | null;
@@ -116,12 +136,16 @@ export type WorkersSettings = {
   /** Company admin: delegated editors may assign per-user contract modules to worker-role users. */
   delegates_can_assign_worker_module_extras?: boolean;
   role_feature_access?: Record<string, string[]>;
+  /** Company admin: department × permission-slot → enabled GLOBAL_SYSTEM_FEATURES keys. */
+  department_role_feature_access?: Record<string, Record<string, string[]>>;
   /** Roles allowed to edit procedures (CMMS SOP library). Company admins can always edit. */
   procedures_edit_roles?: string[];
   /** Roles allowed to PATCH work requests (assignee, zone, category, due date, etc.). Creators and company admins always can. */
   work_request_edit_roles?: string[];
   /** Roles allowed to create/rename/delete facility zones (work-request location list). Company admins always can. */
   zone_manage_roles?: string[];
+  /** Company admin: emails tagged as internal/test in login activity. */
+  login_activity_internal_emails?: string[];
 };
 
 function companyQs(companyId: string | null): string {
@@ -134,13 +158,51 @@ function withCompany(path: string, companyId: string | null): string {
   return path.includes("?") ? `${path}&${qs}` : `${path}?${qs}`;
 }
 
-export async function fetchUserLoginEvents(userId: string): Promise<LoginEventRow[]> {
-  return apiFetch<LoginEventRow[]>(`/api/v1/users/${encodeURIComponent(userId)}/login-events`);
+export async function fetchUserLoginEvents(
+  userId: string,
+  options?: { endUserOnly?: boolean },
+): Promise<LoginEventRow[]> {
+  const qs = options?.endUserOnly ? "?end_user_only=true" : "";
+  return apiFetch<LoginEventRow[]>(`/api/v1/users/${encodeURIComponent(userId)}/login-events${qs}`);
 }
 
 /** system_admin: cross-tenant login history */
-export async function fetchSystemUserLoginEvents(userId: string): Promise<LoginEventRow[]> {
-  return apiFetch<LoginEventRow[]>(`/api/system/users/${encodeURIComponent(userId)}/login-events`);
+export async function fetchSystemUserLoginEvents(
+  userId: string,
+  options?: { endUserOnly?: boolean },
+): Promise<LoginEventRow[]> {
+  const qs = options?.endUserOnly ? "?end_user_only=true" : "";
+  return apiFetch<LoginEventRow[]>(`/api/system/users/${encodeURIComponent(userId)}/login-events${qs}`);
+}
+
+export type WorkerSlotAccessAudit = {
+  items: {
+    id: string;
+    email: string;
+    full_name: string | null;
+    department: string | null;
+    job_title: string | null;
+    hr_matrix_slot: string | null;
+    resolved_matrix_slot: string;
+    matrix_slot_source: string;
+    matrix_slot_display: string;
+    matrix_slot_source_label?: string;
+    is_unresolved?: boolean;
+  }[];
+  inferred_count: number;
+  unresolved_count: number;
+};
+
+export async function fetchWorkerSlotAccessAudit(
+  companyId: string | null,
+): Promise<WorkerSlotAccessAudit> {
+  return apiFetch<WorkerSlotAccessAudit>(withCompany("/api/workers/slot-access-audit", companyId));
+}
+
+export async function applyDepartmentMatrixBaselines(
+  companyId: string | null,
+): Promise<{ updated_count: number; skipped_explicit: number; skipped_no_hr: number; by_department: Record<string, number> }> {
+  return apiFetch(withCompany("/api/workers/apply-department-baselines", companyId), { method: "POST" });
 }
 
 export async function fetchWorkerList(

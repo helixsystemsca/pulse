@@ -29,11 +29,16 @@ import { ModuleSettingsModal } from "@/components/module-settings/ModuleSettings
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageBody } from "@/components/ui/PageBody";
 import { SegmentedControl } from "@/components/schedule/SegmentedControl";
-import { canAccessCompanyConfiguration, managerOrAbove, sessionHasAnyRole } from "@/lib/pulse-roles";
-import { isTenantNavFeatureEnabled } from "@/lib/pulse-nav-features";
-import { isTenantNavPermissionGranted } from "@/lib/pulse-nav-permissions";
+import { canAccessCompanyConfiguration, sessionHasAnyRole } from "@/lib/pulse-roles";
+import {
+  canAccessClassicNavHref,
+  hasRbacPermission,
+  isTenantFullAdminSession,
+} from "@/lib/rbac/session-access";
+import { isUserFeatureEnabled } from "@/lib/features/tenant-features";
 import type { PulseAuthSession } from "@/lib/pulse-session";
-import { readSession } from "@/lib/pulse-session";
+import { usePulseAuth } from "@/hooks/usePulseAuth";
+import { usePermissions } from "@/hooks/usePermissions";
 import { fetchWorkerSettings } from "@/lib/workersService";
 import type {
   WorkRequestDetail,
@@ -211,7 +216,8 @@ function normalizeSettingsRoles(raw: string[] | undefined, fallback: readonly st
 
 function userHasDelegatedWrEditRole(session: PulseAuthSession | null, editRoles: string[]): boolean {
   if (!session) return false;
-  if (session.is_system_admin || sessionHasAnyRole(session, "system_admin", "company_admin")) return true;
+  if (session.is_system_admin || session.role === "system_admin") return true;
+  if (hasRbacPermission(session, "work_requests.edit") || hasRbacPermission(session, "*")) return true;
   if (session.facility_tenant_admin) return true;
   return sessionHasAnyRole(session, ...editRoles);
 }
@@ -235,6 +241,8 @@ export function WorkRequestsApp() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { session } = usePulseAuth();
+  const { can } = usePermissions();
   const hubQ = searchParams.get("hub") ?? "";
   const kindQ = searchParams.get("kind") ?? "";
   const statusQ = searchParams.get("status") ?? "";
@@ -266,12 +274,11 @@ export function WorkRequestsApp() {
     },
     [workItemPrefixes],
   );
-  const session = readSession();
+  const sessionCompanyId = session?.company_id ?? null;
   const canConfigureOrg = canAccessCompanyConfiguration(session);
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
-  const sessionCompanyId = session?.company_id ?? null;
-  const canManage = managerOrAbove(session);
-  const canApprove = sessionHasAnyRole(session, "supervisor", "manager", "company_admin");
+  const canManage = can("work_requests.edit");
+  const canApproveWR = can("work_requests.edit");
   const [wrEditAccessRoles, setWrEditAccessRoles] = useState<string[]>([...DEFAULT_WR_ACCESS_ROLES]);
   const [zoneManageAccessRoles, setZoneManageAccessRoles] = useState<string[]>([...DEFAULT_WR_ACCESS_ROLES]);
   const hasWorkRequestEditRole = useMemo(
@@ -287,15 +294,11 @@ export function WorkRequestsApp() {
     [session, wrEditAccessRoles],
   );
   const canAccessWorkRequests = useMemo(() => {
-    if (isSystemAdmin) return true;
-    // Role-based module access is enforced server-side and reflected in `/auth/me`:
-    // - `enabled_features` controls which modules the tenant can use
-    // - `permissions` controls who can open which modules (configured via Workers & Roles)
-    if (!session) return false;
-    if (!sessionCompanyId) return false;
-    if (!isTenantNavFeatureEnabled("/dashboard/work-requests", session.enabled_features)) return false;
-    return isTenantNavPermissionGranted("/dashboard/work-requests", session.permissions);
-  }, [isSystemAdmin, session, sessionCompanyId]);
+    if (isSystemAdmin || isTenantFullAdminSession(session)) return true;
+    if (!session || !sessionCompanyId) return false;
+    if (can("work_requests.view") || can("work_requests.edit")) return true;
+    return isUserFeatureEnabled(session, "work_requests");
+  }, [isSystemAdmin, session, sessionCompanyId, can]);
 
   const [companyPick, setCompanyPick] = useState<string | null>(null);
   const [companies, setCompanies] = useState<CompanyOption[]>([]);
@@ -315,9 +318,9 @@ export function WorkRequestsApp() {
   const pageSize = 12;
 
   const defaultTab: WorkTab = useMemo(() => {
-    if (session && sessionHasAnyRole(session, "worker") && !canApprove && !hasWorkRequestEditRole) return "my_work";
+    if (session && can("work_requests.view") && !canApproveWR && !hasWorkRequestEditRole) return "my_work";
     return "approval";
-  }, [session, canApprove, hasWorkRequestEditRole]);
+  }, [session, canApproveWR, hasWorkRequestEditRole, can]);
 
   const [tab, setTab] = useState<WorkTab>(defaultTab);
 
@@ -820,7 +823,7 @@ export function WorkRequestsApp() {
     writeMaintenanceQuery(hubCategoryFilter, kindFilter, "overdue");
   }
 
-  const canPickScopeTabs = canApprove || hasWorkRequestEditRole || isSystemAdmin;
+  const canPickScopeTabs = canApproveWR || hasWorkRequestEditRole || isSystemAdmin;
 
   const scopeTabOptions = useMemo((): { value: WorkTab; label: string }[] => {
     const base: { value: WorkTab; label: string }[] = [{ value: "my_work", label: "My work" }];
@@ -858,16 +861,16 @@ export function WorkRequestsApp() {
       });
     }
     // all
-    if (canApprove || hasWorkRequestEditRole || isSystemAdmin) return list;
+    if (canApproveWR || hasWorkRequestEditRole || isSystemAdmin) return list;
     // workers who somehow reach All tab still only see assigned/in-progress
     return list.filter((r) => r.assigned_user_id && me && r.assigned_user_id === me).filter((r) => {
       const s = st(r);
       return s === "assigned" || s === "in_progress";
     });
-  }, [rows, tab, session?.sub, canApprove, hasWorkRequestEditRole, isSystemAdmin]);
+  }, [rows, tab, session?.sub, canApproveWR, hasWorkRequestEditRole, isSystemAdmin]);
 
   async function approveItem(id: string) {
-    if (!effectiveCompanyId || !canApprove) return;
+    if (!effectiveCompanyId || !canApproveWR) return;
     setActionBusy(true);
     try {
       await postWorkRequestStatus(isSystemAdmin ? effectiveCompanyId : null, id, "approved");
@@ -879,7 +882,7 @@ export function WorkRequestsApp() {
   }
 
   async function rejectItem(id: string) {
-    if (!effectiveCompanyId || !canApprove) return;
+    if (!effectiveCompanyId || !canApproveWR) return;
     setActionBusy(true);
     try {
       // No dedicated "rejected" status in the requested model; map to cancelled to avoid creating a new backend state.
@@ -1737,7 +1740,7 @@ export function WorkRequestsApp() {
             style={{ top: menuAnchor.top, left }}
             role="menu"
           >
-            {row.status === "pending_approval" && canApprove ? (
+            {row.status === "pending_approval" && canApproveWR ? (
               <>
                 <button
                   type="button"
@@ -2341,7 +2344,7 @@ export function WorkRequestsApp() {
             ) : null}
 
             <div className="flex flex-wrap gap-2">
-              {detail.status === "pending_approval" && canApprove ? (
+              {detail.status === "pending_approval" && canApproveWR ? (
                 <>
                   <button type="button" className={PRIMARY_BTN} disabled={actionBusy} onClick={() => void approveItem(detail.id)}>
                     Approve

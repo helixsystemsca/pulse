@@ -14,7 +14,7 @@ import {
 import { apiFetch } from "@/lib/api";
 
 /** Internal coordination workspace — API gated by `can_use_pm_features` server-side. */
-export function PmWorkspaceApp() {
+export function PmWorkspaceApp({ hidePageHeader = false }: { hidePageHeader?: boolean } = {}) {
   const { session } = usePulseAuth();
   const allowed = Boolean(session?.can_use_pm_features);
 
@@ -75,15 +75,20 @@ export function PmWorkspaceApp() {
     };
   }, [allowed, selectedId, loadDetail]);
 
-  if (!allowed) {
+  if (!allowed && !hidePageHeader) {
     return (
       <div className="mx-auto max-w-lg rounded-lg border border-ds-border bg-ds-secondary/40 p-6 text-center">
         <h1 className="text-lg font-semibold text-ds-foreground">PM workspace</h1>
         <p className="mt-2 text-sm text-ds-muted">
-          This area is for internal planning only. Your account does not have the PM coordination flag enabled.
+          This area is for internal planning only. Your role needs the PM tools permission (
+          <code className="text-xs">projects.pm.view</code>).
         </p>
       </div>
     );
+  }
+
+  if (!allowed && hidePageHeader) {
+    return null;
   }
 
   if (loading) {
@@ -91,19 +96,21 @@ export function PmWorkspaceApp() {
   }
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-4">
-      <div>
-        <h1 className="text-xl font-bold text-ds-foreground">PM workspace</h1>
-        <p className="text-sm text-ds-muted">
-          Lightweight PMBOK-style coordination (brief, WBS, dependencies, risks, readiness) — separate from public
-          Projects.
-        </p>
-      </div>
+    <div className={hidePageHeader ? "flex flex-col gap-4" : "mx-auto flex max-w-6xl flex-col gap-4"}>
+      {hidePageHeader ? null : (
+        <div>
+          <h1 className="text-xl font-bold text-ds-foreground">PM workspace</h1>
+          <p className="text-sm text-ds-muted">
+            Lightweight PMBOK-style coordination (brief, WBS, dependencies, risks, readiness) — separate from public
+            Projects.
+          </p>
+        </div>
+      )}
       {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
 
       <div className="flex flex-col gap-4 lg:flex-row">
         <aside className="w-full shrink-0 space-y-3 rounded-lg border border-ds-border bg-ds-primary p-3 lg:max-w-xs">
-          <p className="text-xs font-semibold uppercase text-ds-muted">Workspaces</p>
+          <p className="text-xs font-semibold uppercase text-ds-muted">Project workspace</p>
           <form
             className="flex gap-2"
             onSubmit={async (e) => {

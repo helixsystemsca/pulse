@@ -3,14 +3,19 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Annotated
+from typing import Annotated, Optional
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import delete, func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_tenant_user
+from app.core.schedule_department import (
+    DEFAULT_SCHEDULE_DEPARTMENT_SLUG,
+    normalize_schedule_department_slug,
+    primary_department_slug_from_hr,
+)
 from app.core.user_roles import user_has_tenant_full_admin
 from app.services.notifications import seed_default_notification_rules
 from app.core.database import get_db
@@ -33,6 +38,7 @@ from app.models.pulse_models import (
     PulseProjectTaskMaterial,
     PulseTaskDependency,
     PulseTaskStatus,
+    PulseWorkerHR,
 )
 from app.modules.pulse import accountability_service as acc_svc
 from app.modules.pulse import project_automation_engine, project_service as proj_svc
@@ -148,6 +154,20 @@ def _norm_task_skill_names(raw: list[str] | None) -> list[str]:
     return out
 
 
+def _serialize_blackout_windows(raw: object | None) -> list | None:
+    if raw is None:
+        return None
+    if not isinstance(raw, list):
+        return None
+    out: list[dict] = []
+    for item in raw:
+        if hasattr(item, "model_dump"):
+            out.append(item.model_dump(mode="json"))
+        elif isinstance(item, dict):
+            out.append(item)
+    return out or None
+
+
 def _project_out(p: PulseProject) -> ProjectOut:
     st = p.status.value if hasattr(p.status, "value") else str(p.status)
     return ProjectOut(
@@ -180,6 +200,12 @@ def _project_out(p: PulseProject) -> ProjectOut:
         notification_to_supervision=bool(getattr(p, "notification_to_supervision", False)),
         notification_to_lead=bool(getattr(p, "notification_to_lead", False)),
         notification_to_owner=bool(getattr(p, "notification_to_owner", True)),
+        show_on_schedule=bool(getattr(p, "show_on_schedule", True)),
+        overlay_color=getattr(p, "overlay_color", None),
+        operational_impact_level=str(getattr(p, "operational_impact_level", "medium") or "medium"),
+        staffing_priority=str(getattr(p, "staffing_priority", "normal") or "normal"),
+        blackout_windows=getattr(p, "blackout_windows", None),
+        department_slug=getattr(p, "department_slug", None),
         created_at=p.created_at,
         updated_at=p.updated_at,
     )
@@ -551,7 +577,11 @@ def _company_archive_tz(tz_name: str | None) -> ZoneInfo:
 
 
 @router.get("/projects", response_model=list[ProjectOutWithProgress])
-async def list_projects(db: Db, cid: CompanyId) -> list[ProjectOutWithProgress]:
+async def list_projects(
+    db: Db,
+    cid: CompanyId,
+    department_slug: Optional[str] = Query(None, description="Filter by schedule department slug"),
+) -> list[ProjectOutWithProgress]:
     # Jan 1 rollover (company timezone): archive completed projects from prior calendar years.
     now = datetime.now(timezone.utc)
     company = await db.get(Company, cid)
@@ -576,6 +606,7 @@ async def list_projects(db: Db, cid: CompanyId) -> list[ProjectOutWithProgress]:
         )
         await db.commit()
     rows = (await db.execute(select(PulseProject).where(PulseProject.company_id == cid))).scalars().all()
+    dept_filter = normalize_schedule_department_slug(department_slug)
     cat_ids = {str(p.category_id) for p in rows if getattr(p, "category_id", None)}
     cats: dict[str, PulseCategory] = {}
     if cat_ids:
@@ -591,6 +622,10 @@ async def list_projects(db: Db, cid: CompanyId) -> list[ProjectOutWithProgress]:
     out: list[ProjectOutWithProgress] = []
     today = datetime.now(timezone.utc).date()
     for p in rows:
+        if dept_filter:
+            proj_dept = normalize_schedule_department_slug(getattr(p, "department_slug", None))
+            if (proj_dept or DEFAULT_SCHEDULE_DEPARTMENT_SLUG) != dept_filter:
+                continue
         tot_q = await db.scalar(
             select(func.count()).select_from(PulseProjectTask).where(PulseProjectTask.project_id == p.id)
         )
@@ -689,6 +724,12 @@ async def create_project(
             .order_by(PulseProjectTemplateTask.order_index.asc(), PulseProjectTemplateTask.created_at.asc())
         )
         template_tasks = list(rq.scalars().all())
+    actor_hr = await db.get(PulseWorkerHR, str(actor.id))
+    project_dept = (
+        normalize_schedule_department_slug(getattr(body, "department_slug", None))
+        or primary_department_slug_from_hr(actor_hr)
+        or DEFAULT_SCHEDULE_DEPARTMENT_SLUG
+    )
     p = PulseProject(
         company_id=cid,
         name=body.name.strip(),
@@ -703,6 +744,12 @@ async def create_project(
         goal=getattr(template, "default_goal", None) if template else None,
         notes=getattr(template, "default_notes", None) if template else None,
         success_definition=getattr(template, "default_success_definition", None) if template else None,
+        show_on_schedule=bool(getattr(body, "show_on_schedule", True)),
+        overlay_color=(getattr(body, "overlay_color", None) or "").strip() or None,
+        operational_impact_level=str(getattr(body, "operational_impact_level", None) or "medium"),
+        staffing_priority=str(getattr(body, "staffing_priority", None) or "normal"),
+        blackout_windows=_serialize_blackout_windows(getattr(body, "blackout_windows", None)),
+        department_slug=project_dept,
     )
     db.add(p)
     await db.flush()
@@ -1058,6 +1105,28 @@ async def patch_project(
                 p.current_phase = PulseProjectPhase(v)
             except ValueError:
                 raise HTTPException(status_code=400, detail="invalid current_phase")
+    if "overlay_color" in data:
+        raw = data.pop("overlay_color")
+        v = str(raw).strip() if raw is not None else ""
+        p.overlay_color = v or None
+    if "blackout_windows" in data:
+        p.blackout_windows = _serialize_blackout_windows(data.pop("blackout_windows"))
+    if "operational_impact_level" in data:
+        v = str(data.pop("operational_impact_level") or "medium").strip().lower()
+        if v not in ("low", "medium", "high", "critical"):
+            raise HTTPException(status_code=400, detail="invalid operational_impact_level")
+        p.operational_impact_level = v
+    if "staffing_priority" in data:
+        v = str(data.pop("staffing_priority") or "normal").strip().lower()
+        if v not in ("low", "normal", "high", "critical"):
+            raise HTTPException(status_code=400, detail="invalid staffing_priority")
+        p.staffing_priority = v
+    if "department_slug" in data:
+        raw = data.pop("department_slug")
+        norm = normalize_schedule_department_slug(str(raw) if raw is not None else None)
+        if raw is not None and str(raw).strip() and not norm:
+            raise HTTPException(status_code=400, detail="invalid department_slug")
+        p.department_slug = norm or DEFAULT_SCHEDULE_DEPARTMENT_SLUG
     for k, v in data.items():
         if v is not None:
             setattr(p, k, v)

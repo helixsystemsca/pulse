@@ -12,7 +12,8 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.api.deps import require_tenant_user
+from app.api.deps import require_rbac_any, require_tenant_user
+from app.core.rbac.keys import RbacPermissionKey
 from app.core.tenant_feature_access import load_merged_workers_settings, user_has_workers_roster_page_access
 from app.core.user_roles import user_has_any_role, user_participates_in_workforce_operations
 from app.core.database import get_db
@@ -42,6 +43,8 @@ from app.schemas.monitoring import (
 )
 
 router = APIRouter(prefix="/monitoring", tags=["monitoring"])
+
+RequireMonitoringView = Annotated[User, Depends(require_rbac_any(RbacPermissionKey.MONITORING_VIEW))]
 
 
 async def _company_id(user: User = Depends(require_tenant_user)) -> str:
@@ -86,6 +89,7 @@ async def require_people_monitoring_access(
 
 @router.get("/alerts", response_model=list[MonitoringAlertOut])
 async def list_monitoring_alerts(
+    _rbac: RequireMonitoringView,
     db: Db,
     company_id: CompanyId,
     status_filter: Optional[str] = Query(None, alias="status"),
@@ -113,6 +117,7 @@ async def list_monitoring_alerts(
 
 @router.get("/people", response_model=list[PeopleMonitorRowOut])
 async def list_people_monitoring(
+    _rbac: RequireMonitoringView,
     db: Db,
     company_id: CompanyId,
     _: Annotated[User, Depends(require_people_monitoring_access)],
@@ -212,6 +217,7 @@ async def _sensor_for_company(db: AsyncSession, sensor_id: str, company_id: str)
 
 @router.post("/readings/batch", response_model=ReadingBatchOut)
 async def post_readings_batch(
+    _rbac: RequireMonitoringView,
     body: ReadingBatchIn,
     db: Db,
     company_id: CompanyId,
@@ -282,6 +288,7 @@ async def post_readings_batch(
 
 @router.get("/sensors/{sensor_id}", response_model=SensorDetailOut)
 async def get_sensor_detail(
+    _rbac: RequireMonitoringView,
     sensor_id: str,
     db: Db,
     company_id: CompanyId,
@@ -307,6 +314,7 @@ async def get_sensor_detail(
 
 @router.get("/sensors/{sensor_id}/readings", response_model=list[SensorReadingOut])
 async def get_sensor_readings(
+    _rbac: RequireMonitoringView,
     sensor_id: str,
     db: Db,
     company_id: CompanyId,

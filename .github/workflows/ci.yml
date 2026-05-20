@@ -37,6 +37,7 @@ jobs:
           cache-dependency-path: backend/requirements.txt
       - name: Install dependencies
         run: pip install -r requirements.txt -r requirements-dev.txt
+      # Structural Alembic DDL guard: tests/test_migration_ddl_lint.py
       - name: Pytest
         env:
           TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/pulse_ci

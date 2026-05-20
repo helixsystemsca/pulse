@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 /**
  * Team Management (formerly Workers & Roles): role permissions, roster, profile drawer, create user, settings.
@@ -28,6 +28,21 @@ import {
 } from "@/components/ui/ds-form-classes";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { apiFetch, refreshPulseUserFromServer } from "@/lib/api";
+import {
+  debugResolvedAccess,
+  fetchAccessResolutionDebug,
+  fetchAccessSnapshotDebug,
+  type AccessResolutionDebugPayload,
+  type ResolvedAccessAudit,
+} from "@/lib/accessDebugService";
+import type { AccessSnapshot } from "@/lib/access-snapshot";
+import {
+  formatMatrixSlotOperationalLabel,
+  formatSlotSourceLabel,
+  isMatrixSlotInferred,
+  isUnresolvedMatrixSlot,
+  matrixSlotSourceKind,
+} from "@/lib/rbac/matrix-slot-policy";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import {
@@ -36,14 +51,19 @@ import {
   managerOrAbove,
   principalHasAnyRole,
   primaryWorkerGroupKey,
+  ROSTER_GROUP_ROLE_KEYS,
   rosterDepartmentIterateOrder,
   rosterDepartmentSlug,
   rosterDepartmentTitle,
+  rosterRoleGroupOrder,
   rosterRoleSectionTitle,
   sessionHasAnyRole,
   sortRolesForDisplay,
   workerRoleDisplayLabel,
 } from "@/lib/pulse-roles";
+import { canShowTeamManagementNavItem, isTenantFullAdminSession } from "@/lib/rbac/session-access";
+import { TenantRolesPanel } from "@/components/workers/TenantRolesPanel";
+import { fetchTenantRoles, type TenantRoleRow } from "@/lib/tenantRolesService";
 import { parseTimeToMinutes } from "@/lib/schedule/calendar";
 import {
   buildRecurringRowsForDays,
@@ -55,30 +75,68 @@ import {
   ROTATION_WEEKDAY_SHORT,
   shiftWindowFromRosterKey,
 } from "@/lib/workerRotation";
-import type { LoginEventRow, WorkerDetail, WorkerRow, WorkersSettings } from "@/lib/workersService";
+import type {
+  LoginEventRow,
+  WorkerDetail,
+  WorkerRow,
+  WorkersSettings,
+  WorkerSlotAccessAudit,
+} from "@/lib/workersService";
 import {
   createWorker,
   deleteWorker,
   fetchUserLoginEvents,
   fetchWorkerDetail,
   fetchWorkerList,
+  applyDepartmentMatrixBaselines,
+  fetchWorkerSlotAccessAudit,
   fetchWorkerSettings,
   patchWorker,
   patchWorkerSettings,
   resendWorkerInvite,
 } from "@/lib/workersService";
 import { WorkerTrainingMatrixPanel } from "@/components/training/WorkerTrainingMatrixPanel";
+import { AccessDebugModal } from "@/components/workers/AccessDebugModal";
 import { UserProfileAvatarPreview } from "@/components/profile/UserProfileAvatarPreview";
 import { useResolvedAvatarSrc } from "@/lib/useResolvedAvatarSrc";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
 import {
+  expandContractKeysForMatrixFilter,
+  toCanonicalFeatureKey,
+} from "@/lib/features/canonical-features";
+import {
   MODULE_LABEL,
   PRODUCT_MODULE_PERMISSION_SECTIONS,
-  TENANT_PRODUCT_MODULES,
 } from "@/config/platform/tenant-product-modules";
+import {
+  computeLegacyRoleFeatureAccessFromMatrix,
+  DEPARTMENT_BASELINE_SLOTS,
+  legacyRoleBucketForSlot,
+  MASTER_PERMISSION_FEATURE_GROUPS,
+  normalizeDepartmentRoleMatrixFromApi,
+  type PermissionMatrixDepartment,
+  type PermissionMatrixRoleSlot,
+  PERMISSION_MATRIX_DEPARTMENTS,
+  PERMISSION_MATRIX_DEPARTMENT_LABEL,
+  PERMISSION_MATRIX_ROLE_LABEL,
+  PERMISSION_MATRIX_ROLE_SLOTS,
+  toggleModuleForDepartmentMatrixSlot,
+} from "@/config/platform/permission-matrix";
+import {
+  buildBypassPayload,
+  bypassDraftFromProfile,
+  WorkerPermissionBypassPanel,
+  type BypassRowDraft,
+} from "@/components/workers/WorkerPermissionBypassPanel";
 
 type CompanyOption = { id: string; name: string };
+
+function matrixModuleToggleLabel(key: string): string {
+  const canonical = toCanonicalFeatureKey(key);
+  if (canonical && MODULE_LABEL[canonical]) return MODULE_LABEL[canonical];
+  return key;
+}
 
 const PRIMARY_BTN = cn(buttonVariants({ surface: "light", intent: "accent" }), "px-5 py-2.5");
 const FIELD = dsInputStackedClass;
@@ -88,16 +146,16 @@ const SECTION_KICKER = "text-[11px] font-semibold uppercase tracking-wider text-
 const EMPTY_ROTATION_DAYS: boolean[] = [false, false, false, false, false, false, false];
 
 const ROTATION_PRESET_BUTTONS: { label: string; days: boolean[] }[] = [
-  { label: "Sun–Wed", days: [true, true, true, true, false, false, false] },
-  { label: "Tue–Sat", days: [false, false, true, true, true, true, true] },
-  { label: "Mon–Fri", days: [false, true, true, true, true, true, false] },
+  { label: "Sun-Wed", days: [true, true, true, true, false, false, false] },
+  { label: "Tue-Sat", days: [false, false, true, true, true, true, true] },
+  { label: "Mon-Fri", days: [false, true, true, true, true, true, false] },
   { label: "All week", days: [true, true, true, true, true, true, true] },
 ];
 
-const SETTINGS_TABS = ["Roles", "Shifts", "Skill categories", "Certification rules"] as const;
+const SETTINGS_TABS = ["Roles", "Shifts", "Skill categories", "Certification rules", "Login activity"] as const;
 type SettingsTab = (typeof SETTINGS_TABS)[number];
 
-/** Shown when the invite exists but email delivery is uncertain or disabled — share link manually. */
+/** Shown when the invite exists but email delivery is uncertain or disabled - share link manually. */
 type InviteLinkBanner = {
   inviteUrl: string;
   variant: "no_email" | "email_maybe" | "link_only";
@@ -111,31 +169,16 @@ type CreateModalBanner =
   | { kind: "profile"; serverMessage: string }
   | { kind: "error"; message: string };
 
-const PROFILE_ROLE_OPTIONS = ["worker", "lead", "supervisor", "manager", "demo_viewer"] as const;
-
-/** Edit-roles drawer: department-flavored copy; API roles unchanged (`worker` = coordinator OR operations by HR dept). */
-const PROFILE_ROLE_EDIT_GROUPS: {
-  title: string;
-  description: string;
-  roles: readonly (typeof PROFILE_ROLE_OPTIONS)[number][];
-}[] = [
-  {
-    title: "Leadership & supervision",
-    description: "Managers, supervisors, and leads — scheduling, approvals, and oversight for the facility.",
-    roles: ["manager", "supervisor", "lead"],
-  },
-  {
-    title: "Team member",
-    description:
-      "Frontline tier (same API role everywhere). In Team Management, this shows as Operations for Maintenance or Coordinator for Communications / Reception when their HR department matches — set department under Position & shift.",
-    roles: ["worker"],
-  },
-  {
-    title: "Special access",
-    description: "Read-mostly product tour and demos.",
-    roles: ["demo_viewer"],
-  },
-];
+function jwtRolesForMatrixSlot(slot: string, preserveDemoViewer: boolean): string[] {
+  const normalized = slot.trim();
+  const bucket =
+    normalized && (PERMISSION_MATRIX_ROLE_SLOTS as readonly string[]).includes(normalized)
+      ? legacyRoleBucketForSlot(normalized as PermissionMatrixRoleSlot)
+      : "worker";
+  const roles: string[] = [bucket];
+  if (preserveDemoViewer) roles.push("demo_viewer");
+  return sortRolesForDisplay([...new Set(roles)]);
+}
 
 const EMPLOYMENT_TYPE_KEYS = ["full_time", "regular_part_time", "part_time"] as const;
 type EmploymentTypeKey = (typeof EMPLOYMENT_TYPE_KEYS)[number] | "";
@@ -143,6 +186,11 @@ type EmploymentTypeKey = (typeof EMPLOYMENT_TYPE_KEYS)[number] | "";
 function normalizeEmploymentDraft(raw: string | null | undefined): EmploymentTypeKey {
   const s = (raw ?? "").trim();
   return (EMPLOYMENT_TYPE_KEYS as readonly string[]).includes(s) ? (s as EmploymentTypeKey) : "";
+}
+
+/** Full-time and regular part-time use roster shift + weekly rotation; auxiliaries use explicit schedule assignments only. */
+function employmentShowsRotationScheduling(employment: EmploymentTypeKey): boolean {
+  return employment === "full_time" || employment === "regular_part_time";
 }
 
 type EmploymentBucketKey = "full_time" | "regular_part_time" | "part_time" | "unset";
@@ -191,21 +239,20 @@ function splitOperationsRowsByEmployment(items: WorkerRow[]): { key: EmploymentB
 
 function formatRotationReadOnly(profile: WorkerDetail): string {
   const rows = recurringRowsFromApi(profile.recurring_shifts ?? []);
-  if (!rows.length) return "—";
+  if (!rows.length) return "-";
   const days = rotationDaysFromRecurring(rows);
   const bits = ROTATION_WEEKDAY_SHORT.filter((_, i) => days[i]).join(", ");
   const w = rows[0];
-  return `${bits} (${w.start}–${w.end})`;
+  return `${bits} (${w.start}-${w.end})`;
 }
 
 type CreateFormState = {
   full_name: string;
   email: string;
   role: string;
+  role_key: string;
   employment_type: "full_time" | "regular_part_time" | "part_time";
   department: string;
-  /** URL workspace slugs this employee may access (`/{slug}/…`). */
-  workspace_slugs: string[];
   shift: string;
   start_date: string;
   skills: string;
@@ -217,9 +264,9 @@ const CREATE_FORM_EMPTY: CreateFormState = {
   full_name: "",
   email: "",
   role: "worker",
+  role_key: DEPARTMENT_BASELINE_SLOTS.maintenance,
   employment_type: "full_time",
   department: "maintenance",
-  workspace_slugs: ["maintenance"],
   shift: "",
   start_date: "",
   skills: "",
@@ -227,25 +274,21 @@ const CREATE_FORM_EMPTY: CreateFormState = {
   supervisor_id: "",
 };
 
-/** Invite / roster create — HR `department` field (slug). Role options depend on this. */
+/** Invite / roster create - HR `department` field (slug). Role options depend on this. */
 const INVITE_DEPARTMENT_OPTIONS: { value: string; label: string }[] = [
   { value: "maintenance", label: "Maintenance" },
   { value: "reception", label: "Reception" },
   { value: "communications", label: "Communications" },
   { value: "aquatics", label: "Aquatics" },
   { value: "fitness", label: "Fitness" },
-];
-
-const WORKSPACE_ASSIGNMENT_SLUGS: { value: string; label: string }[] = [
-  ...INVITE_DEPARTMENT_OPTIONS,
-  { value: "admin", label: "Administration" },
+  { value: "racquets", label: "Racquets" },
 ];
 
 function isMaintenanceInviteDepartment(department: string): boolean {
   return (department || "maintenance").trim() === "maintenance";
 }
 
-/** API has no `coordinator` role — non-maintenance coordinators use `worker` permissions. */
+/** API has no `coordinator` role - non-maintenance coordinators use `worker` permissions. */
 function effectiveInviteRole(department: string, role: string, createRoleLimited: boolean): string {
   if (!isMaintenanceInviteDepartment(department)) return "worker";
   const allowed = createRoleLimited
@@ -299,13 +342,13 @@ function shiftRosterLabel(
   shifts: { key: string; label: string }[] | undefined,
 ): string {
   const k = key?.trim();
-  if (!k) return "—";
+  if (!k) return "-";
   const row = shifts?.find((s) => s.key === k);
   if (row?.label) return row.label;
   return k.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-/** Roster shift column: soft sky / amber for day bands; deep violet for night (incl. `N*` keys). Legacy `gg_*` → neutral. */
+/** Roster shift column: soft sky / amber for day bands; deep violet for night (incl. `N*` keys). Legacy `gg_*` -> neutral. */
 function shiftRosterBadgeClass(shiftKey: string | null | undefined): string {
   const k = (shiftKey ?? "").trim().toLowerCase();
   if (!k) return "app-badge-slate";
@@ -324,12 +367,74 @@ function certBadge(status: string): string {
 }
 
 function formatLoginWhen(iso: string | null | undefined): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   try {
     return new Date(iso).toLocaleString();
   } catch {
     return iso;
   }
+}
+
+function loginSessionOriginLabel(ev: LoginEventRow): string {
+  if (ev.session_origin === "impersonation") {
+    return ev.impersonator_email ? `Impersonation (${ev.impersonator_email})` : "Impersonation";
+  }
+  if (ev.session_origin === "internal_test") return "Internal test account";
+  if (ev.likely_your_session) return "Likely your session";
+  return "End user";
+}
+
+function loginSessionOriginBadgeClass(ev: LoginEventRow): string {
+  if (ev.session_origin === "impersonation") return "bg-violet-100 text-violet-900 dark:bg-violet-950/50 dark:text-violet-100";
+  if (ev.session_origin === "internal_test") return "bg-amber-100 text-amber-950 dark:bg-amber-950/40 dark:text-amber-100";
+  if (ev.likely_your_session) return "bg-slate-300/80 text-slate-900 dark:bg-slate-600 dark:text-slate-100";
+  return "bg-emerald-100 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-100";
+}
+
+function matrixSlotBadgeClass(kind: string): string {
+  if (kind === "explicit") {
+    return "border-emerald-700/35 bg-emerald-100 text-emerald-950 dark:border-emerald-500/40 dark:bg-emerald-950/50 dark:text-emerald-100";
+  }
+  if (kind === "policy") {
+    return "border-violet-700/35 bg-violet-100 text-violet-950 dark:border-violet-500/40 dark:bg-violet-950/50 dark:text-violet-100";
+  }
+  if (kind === "unresolved") {
+    return "border-red-700/40 bg-red-100 text-red-950 dark:border-red-500/45 dark:bg-red-950/50 dark:text-red-100";
+  }
+  if (kind === "baseline") {
+    return "border-slate-600/30 bg-slate-100 text-slate-900 dark:border-slate-500/35 dark:bg-slate-900/60 dark:text-slate-100";
+  }
+  return "border-amber-800/35 bg-amber-100 text-amber-950 dark:border-amber-500/40 dark:bg-amber-950/50 dark:text-amber-100";
+}
+
+function WorkerMatrixSlotCell({ row }: { row: WorkerRow }) {
+  const slot = row.resolved_matrix_slot ?? row.matrix_slot;
+  const label =
+    row.matrix_slot_operational_label ??
+    row.matrix_slot_display ??
+    formatMatrixSlotOperationalLabel(slot, row.department);
+  const kind = row.matrix_slot_source_kind ?? matrixSlotSourceKind(row.matrix_slot_source);
+  const sourceNote =
+    row.matrix_slot_source_label ??
+    (row.matrix_slot_source ? formatSlotSourceLabel(row.matrix_slot_source) : null);
+  const showSource =
+    sourceNote &&
+    kind !== "explicit" &&
+    kind !== "baseline";
+  return (
+    <span
+      className={cn(
+        "inline-flex max-w-[12rem] flex-col gap-0.5 rounded-md border px-2 py-1 text-[10px] font-semibold leading-tight",
+        matrixSlotBadgeClass(kind),
+      )}
+      title={row.matrix_slot_source ? `Assignment: ${formatSlotSourceLabel(row.matrix_slot_source)}` : undefined}
+    >
+      <span className="truncate">{label}</span>
+      {showSource ? (
+        <span className="text-[9px] font-medium text-inherit/75">{sourceNote}</span>
+      ) : null}
+    </span>
+  );
 }
 
 function formatLoginPlace(row: WorkerRow): string {
@@ -338,18 +443,13 @@ function formatLoginPlace(row: WorkerRow): string {
   if (c && r) return `${c}, ${r}`;
   if (c) return c;
   if (r) return r;
-  return "—";
+  return "-";
 }
 
 function shortenUa(ua: string | null | undefined, max = 72): string {
   const s = (ua ?? "").trim();
-  if (!s) return "—";
-  return s.length > max ? `${s.slice(0, max)}…` : s;
-}
-
-function profileIsWorkerOnly(profile: WorkerDetail): boolean {
-  const r = profile.roles?.length ? [...profile.roles] : profile.role ? [profile.role] : [];
-  return r.length > 0 && r.every((x) => x === "worker");
+  if (!s) return "-";
+  return s.length > max ? `${s.slice(0, max)}...` : s;
 }
 
 const PERMISSION_ROLE_OPTIONS = ["manager", "supervisor", "lead", "worker"] as const;
@@ -364,20 +464,22 @@ export function WorkersApp() {
   const sessionCompanyId = session?.company_id ?? null;
   const createRoleLimited = isCreateRoleLimitedSession(session);
   const isCompanyAdmin = sessionHasAnyRole(session, "company_admin");
-  /** External IT `company_admin` role or in-facility delegate (`facility_tenant_admin` from sysadmin). */
-  const isTenantFullAdmin = isCompanyAdmin || Boolean(session?.facility_tenant_admin);
-  /** Roster delegation / tenant admin, or contract + role matrix grants `team_management`. */
+  const isTenantFullAdmin = isTenantFullAdminSession(session);
+  const canDebugWorkerAccess = isSystemAdmin || isTenantFullAdmin;
+  /** Roster delegation, tenant full admin, or RBAC `team_management.view` with contract module. */
   const canOpenWorkers = Boolean(
-    isSystemAdmin ||
-      session?.workers_roster_access ||
-      (session?.workers_roster_access !== false && isTenantFullAdmin) ||
-      (session?.enabled_features?.includes("team_management") ?? false),
+    isSystemAdmin || canShowTeamManagementNavItem(session, isSystemAdmin),
   );
 
   const [contractFeatureNamesFromApi, setContractFeatureNamesFromApi] = useState<string[]>([]);
   const contractCatalog = useMemo(
     () => session?.contract_enabled_features ?? contractFeatureNamesFromApi,
     [session?.contract_enabled_features, contractFeatureNamesFromApi],
+  );
+
+  const matrixContractKeySet = useMemo(
+    () => expandContractKeysForMatrixFilter(contractCatalog),
+    [contractCatalog],
   );
 
   const [companyPick, setCompanyPick] = useState<string | null>(null);
@@ -399,6 +501,8 @@ export function WorkersApp() {
   const [filterColLastActive, setFilterColLastActive] = useState<"" | "never" | "7d" | "30d" | "90d">("");
   const [filterColGeo, setFilterColGeo] = useState("");
   const [filterColUa, setFilterColUa] = useState("");
+  const [filterInferredAccess, setFilterInferredAccess] = useState(false);
+  const [slotAccessAudit, setSlotAccessAudit] = useState<WorkerSlotAccessAudit | null>(null);
 
   const [fullSettings, setFullSettings] = useState<WorkersSettings>({});
 
@@ -419,17 +523,6 @@ export function WorkersApp() {
 
   const mayEditDelegatedRoleModules = Boolean(!isTenantFullAdmin && delegatedRoleTargetsForMe.length > 0);
 
-  const canDelegateWorkerExtras = useMemo(() => {
-    if (!session) return false;
-    const pd = fullSettings.permission_delegation ?? {};
-    if (!fullSettings.delegates_can_assign_worker_module_extras) return false;
-    return Boolean(
-      (sessionHasAnyRole(session, "manager") && pd.manager) ||
-        (sessionHasAnyRole(session, "supervisor") && pd.supervisor) ||
-        (sessionHasAnyRole(session, "lead") && pd.lead),
-    );
-  }, [session, fullSettings]);
-
   const [profileId, setProfileId] = useState<string | null>(null);
   const [profileDrawerTab, setProfileDrawerTab] = useState<"profile" | "training">("profile");
 
@@ -442,7 +535,10 @@ export function WorkersApp() {
   const [noteDraft, setNoteDraft] = useState("");
   const [supervisorNoteDraft, setSupervisorNoteDraft] = useState("");
   const [profileBusy, setProfileBusy] = useState(false);
-  const [profileRolesDraft, setProfileRolesDraft] = useState<string[]>([]);
+  const [tenantRolesList, setTenantRolesList] = useState<TenantRoleRow[]>([]);
+  const [profileTenantRoleDraft, setProfileTenantRoleDraft] = useState<string>("");
+  const [permissionBypassEnabled, setPermissionBypassEnabled] = useState(false);
+  const [permissionBypassRows, setPermissionBypassRows] = useState<BypassRowDraft[]>([]);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -461,14 +557,18 @@ export function WorkersApp() {
     supervisor: false,
     lead: false,
   });
-  const [assignWorkerExtrasDraft, setAssignWorkerExtrasDraft] = useState(false);
   const [roleFeatureAccessDraft, setRoleFeatureAccessDraft] = useState<Record<string, string[]>>({});
   const [proceduresEditRolesDraft, setProceduresEditRolesDraft] = useState<string[]>(["manager", "supervisor", "lead"]);
   const [workRequestEditRolesDraft, setWorkRequestEditRolesDraft] = useState<string[]>(["manager", "supervisor"]);
   const [zoneManageRolesDraft, setZoneManageRolesDraft] = useState<string[]>(["manager", "supervisor"]);
   const [accessPolicySaving, setAccessPolicySaving] = useState(false);
-  const [permissionsRole, setPermissionsRole] = useState<PermissionRole>("manager");
-  const [extraModulesDraft, setExtraModulesDraft] = useState<string[]>([]);
+  const [permissionsDepartment, setPermissionsDepartment] =
+    useState<PermissionMatrixDepartment>("maintenance");
+  const [permissionsSlot, setPermissionsSlot] = useState<PermissionMatrixRoleSlot>("manager");
+  const [delegatedTargetRole, setDelegatedTargetRole] = useState<PermissionRole>("manager");
+  const [departmentRoleFeatureAccessDraft, setDepartmentRoleFeatureAccessDraft] = useState<
+    Record<string, Record<string, string[]>>
+  >({});
 
   const [basicDraft, setBasicDraft] = useState({
     full_name: "",
@@ -479,14 +579,13 @@ export function WorkersApp() {
   });
   const [positionDraft, setPositionDraft] = useState({
     job_title: "",
+    matrix_slot: "" as string,
     department: "",
-    workspace_slugs: [] as string[],
     shift: "",
     supervisor_id: "",
   });
   const [rotationDaysDraft, setRotationDaysDraft] = useState<boolean[]>(() => [...EMPTY_ROTATION_DAYS]);
   const [shiftTimeDraft, setShiftTimeDraft] = useState({ start: "07:00", end: "15:00" });
-  const [ggAssignableDraft, setGgAssignableDraft] = useState(false);
 
   const [inviteNotice, setInviteNotice] = useState<InviteLinkBanner | null>(null);
   const [inviteLinkCopied, setInviteLinkCopied] = useState(false);
@@ -508,6 +607,14 @@ export function WorkersApp() {
   const [activityRows, setActivityRows] = useState<LoginEventRow[]>([]);
   const [activityLoading, setActivityLoading] = useState(false);
   const [activityError, setActivityError] = useState<string | null>(null);
+  const [activityEndUserOnly, setActivityEndUserOnly] = useState(true);
+
+  const [accessDebugOpen, setAccessDebugOpen] = useState(false);
+  const [accessDebugLoading, setAccessDebugLoading] = useState(false);
+  const [accessDebugError, setAccessDebugError] = useState<string | null>(null);
+  const [accessDebugPayload, setAccessDebugPayload] = useState<AccessResolutionDebugPayload | null>(null);
+  const [accessSnapshotDebug, setAccessSnapshotDebug] = useState<AccessSnapshot | null>(null);
+  const [accessResolvedAudit, setAccessResolvedAudit] = useState<ResolvedAccessAudit | null>(null);
 
   const [createForm, setCreateForm] = useState<CreateFormState>({ ...CREATE_FORM_EMPTY });
 
@@ -566,13 +673,17 @@ export function WorkersApp() {
           lead: Boolean(pdd.lead),
         });
       }
-      setAssignWorkerExtrasDraft(Boolean(st.settings.delegates_can_assign_worker_module_extras));
       const rfa = (st.settings.role_feature_access ?? {}) as Record<string, string[]>;
       const nextDraft: Record<string, string[]> = {};
       for (const role of ["manager", "supervisor", "lead", "worker"] as const) {
         nextDraft[role] = rfa[role]?.length ? [...rfa[role]] : [...cat];
       }
       setRoleFeatureAccessDraft(nextDraft);
+      const matrixCatalog =
+        st.contract_feature_names?.length ? st.contract_feature_names : cat.length ? cat : [];
+      setDepartmentRoleFeatureAccessDraft(
+        normalizeDepartmentRoleMatrixFromApi(st.settings.department_role_feature_access, matrixCatalog, nextDraft),
+      );
       setProceduresEditRolesDraft(
         Array.isArray(st.settings.procedures_edit_roles) && st.settings.procedures_edit_roles.length
           ? [...st.settings.procedures_edit_roles]
@@ -602,21 +713,69 @@ export function WorkersApp() {
     return () => window.clearTimeout(t);
   }, [loadList]);
 
-  const openLoginActivity = useCallback(async (target: Pick<WorkerRow, "id" | "full_name" | "email">) => {
-    setActivityUserId(target.id);
-    setActivityLabel(target.full_name ?? target.email);
-    setActivityLoading(true);
-    setActivityError(null);
-    setActivityRows([]);
-    try {
-      const rows = await fetchUserLoginEvents(target.id);
-      setActivityRows(rows);
-    } catch (e: unknown) {
-      setActivityError(parseClientApiError(e).message);
-    } finally {
-      setActivityLoading(false);
+  useEffect(() => {
+    if (!dataEnabled || !effectiveCompanyId || !isTenantFullAdmin) {
+      setSlotAccessAudit(null);
+      return;
     }
-  }, []);
+    void fetchWorkerSlotAccessAudit(apiCompany)
+      .then(setSlotAccessAudit)
+      .catch(() => setSlotAccessAudit(null));
+  }, [dataEnabled, effectiveCompanyId, apiCompany, isTenantFullAdmin]);
+
+  const loadLoginActivity = useCallback(
+    async (userId: string, endUserOnly: boolean) => {
+      setActivityLoading(true);
+      setActivityError(null);
+      try {
+        const rows = await fetchUserLoginEvents(userId, { endUserOnly });
+        setActivityRows(rows);
+      } catch (e: unknown) {
+        setActivityError(parseClientApiError(e).message);
+      } finally {
+        setActivityLoading(false);
+      }
+    },
+    [],
+  );
+
+  const openLoginActivity = useCallback(
+    async (target: Pick<WorkerRow, "id" | "full_name" | "email">) => {
+      setActivityUserId(target.id);
+      setActivityLabel(target.full_name ?? target.email);
+      setActivityRows([]);
+      await loadLoginActivity(target.id, activityEndUserOnly);
+    },
+    [activityEndUserOnly, loadLoginActivity],
+  );
+
+  const openAccessDebugger = useCallback(async () => {
+    if (!profileId) return;
+    setAccessDebugOpen(true);
+    setAccessDebugLoading(true);
+    setAccessDebugError(null);
+    setAccessDebugPayload(null);
+    setAccessSnapshotDebug(null);
+    setAccessResolvedAudit(null);
+    try {
+      const dept =
+        profile?.department_slugs?.[0] ??
+        profile?.department ??
+        "communications";
+      const [d, resolved, snap] = await Promise.all([
+        fetchAccessResolutionDebug(profileId),
+        debugResolvedAccess(profileId, typeof dept === "string" ? dept : "communications"),
+        fetchAccessSnapshotDebug(profileId),
+      ]);
+      setAccessDebugPayload(d);
+      setAccessSnapshotDebug(snap);
+      setAccessResolvedAudit(resolved);
+    } catch (e: unknown) {
+      setAccessDebugError(parseClientApiError(e).message);
+    } finally {
+      setAccessDebugLoading(false);
+    }
+  }, [profileId, profile?.department, profile?.department_slugs]);
 
   const loadProfile = useCallback(async () => {
     if (!profileId || !effectiveCompanyId) return;
@@ -640,20 +799,22 @@ export function WorkersApp() {
 
   useEffect(() => {
     if (!profile) {
-      setProfileRolesDraft([]);
+      setPermissionBypassEnabled(false);
+      setPermissionBypassRows([]);
       return;
     }
-    const base = profile.roles?.length ? [...profile.roles] : profile.role ? [profile.role] : ["worker"];
-    setProfileRolesDraft(sortRolesForDisplay([...new Set(base)]));
+    setProfileTenantRoleDraft(profile.tenant_role_id ?? "");
+    const bypass = bypassDraftFromProfile(profile.rbac_permission_extra);
+    setPermissionBypassEnabled(bypass.enabled);
+    setPermissionBypassRows(bypass.rows);
   }, [profile]);
 
   useEffect(() => {
-    if (!profile) {
-      setExtraModulesDraft([]);
-      return;
-    }
-    setExtraModulesDraft([...(profile.feature_allow_extra ?? [])]);
-  }, [profile?.id, profile]);
+    if (!isTenantFullAdmin) return;
+    void fetchTenantRoles(apiCompany ?? undefined)
+      .then((r) => setTenantRolesList(r.items))
+      .catch(() => setTenantRolesList([]));
+  }, [isTenantFullAdmin, apiCompany]);
 
   useEffect(() => {
     if (!profile) return;
@@ -664,22 +825,16 @@ export function WorkersApp() {
       start_date: profile.start_date ? profile.start_date.slice(0, 10) : "",
       employment_type: normalizeEmploymentDraft(profile.employment_type),
     });
-    const wsFromProfile = profile.department_slugs?.length
-      ? [...new Set(profile.department_slugs.map((s) => s.trim().toLowerCase()).filter(Boolean))]
-      : profile.department
-        ? [profile.department.trim().toLowerCase()].filter(Boolean)
-        : [];
     setPositionDraft({
       job_title: profile.job_title ?? "",
+      matrix_slot: profile.matrix_slot ?? "",
       department: profile.department ?? "",
-      workspace_slugs: wsFromProfile,
       shift:
         normalizeEmploymentDraft(profile.employment_type) === "part_time" ? "" : (profile.shift ?? ""),
       supervisor_id: profile.supervisor_id ?? "",
     });
     setRotationDaysDraft(rotationDaysFromRecurring(recurringRowsFromApi(profile.recurring_shifts ?? [])));
     setShiftTimeDraft(editableShiftWindowFromProfile(profile, fullSettings.shifts ?? []));
-    setGgAssignableDraft(Boolean(profile.gg_assignable));
   }, [profile, fullSettings.shifts]);
 
   /** HR fields (not roles/modules): company admin, or manager/supervisor for non-admin profiles, or lead for workers. */
@@ -798,7 +953,7 @@ export function WorkersApp() {
       if (filterColGeo.trim()) {
         const needle = filterColGeo.trim().toLowerCase();
         const place = formatLoginPlace(row).toLowerCase();
-        if (place === "—") return false;
+        if (place === "-") return false;
         if (!place.includes(needle)) return false;
       }
       if (filterColUa.trim()) {
@@ -806,10 +961,12 @@ export function WorkersApp() {
         const ua = (row.last_login_user_agent ?? "").toLowerCase();
         if (!ua.includes(needle)) return false;
       }
+      if (filterInferredAccess && !isMatrixSlotInferred(row)) return false;
       return true;
     });
   }, [
     list,
+    filterInferredAccess,
     filterColName,
     filterColRole,
     filterColShift,
@@ -841,15 +998,14 @@ export function WorkersApp() {
     ],
   );
 
-  /** Department (category) → role ladder (sub-category) → rows. Maintenance workers keep employment sub-buckets. */
+  /** Department (category) -> role ladder (sub-category) -> rows. Maintenance workers keep employment sub-buckets. */
   const groupedByDepartment = useMemo(() => {
-    const roleOrder = ["company_admin", "manager", "supervisor", "lead", "worker"] as const;
     const byDept = new Map<string, Map<string, WorkerRow[]>>();
 
     const ensureDept = (slug: string) => {
       if (!byDept.has(slug)) {
         const m = new Map<string, WorkerRow[]>();
-        for (const r of roleOrder) m.set(r, []);
+        for (const r of ROSTER_GROUP_ROLE_KEYS) m.set(r, []);
         byDept.set(slug, m);
       }
       return byDept.get(slug)!;
@@ -867,6 +1023,7 @@ export function WorkersApp() {
       .map((deptSlug) => {
         const roleMap = byDept.get(deptSlug);
         if (!roleMap) return null;
+        const roleOrder = rosterRoleGroupOrder(deptSlug);
         const roleGroups = roleOrder
           .map((role) => ({ role, items: roleMap.get(role) ?? [] }))
           .filter((g) => g.items.length > 0);
@@ -878,7 +1035,7 @@ export function WorkersApp() {
 
   const canDeleteInvitedFromList = isTenantFullAdmin || isSystemAdmin;
 
-  /** People who can supervise others in the facility org chart — managers/supervisors only.
+  /** People who can supervise others in the facility org chart - managers/supervisors only.
    * `company_admin` is permission-tier only (not facility hierarchy); admins who are workers belong with workers. */
   const supervisors = useMemo(
     () =>
@@ -905,12 +1062,16 @@ export function WorkersApp() {
     });
   }
 
+  function toggleMasterMatrixModule(dept: PermissionMatrixDepartment, slot: PermissionMatrixRoleSlot, mod: string) {
+    setDepartmentRoleFeatureAccessDraft((prev) => toggleModuleForDepartmentMatrixSlot(prev, dept, slot, mod));
+  }
+
   useEffect(() => {
     if (!mayEditDelegatedRoleModules || delegatedRoleTargetsForMe.length === 0) return;
-    if (!delegatedRoleTargetsForMe.includes(permissionsRole)) {
-      setPermissionsRole(delegatedRoleTargetsForMe[0]!);
+    if (!delegatedRoleTargetsForMe.includes(delegatedTargetRole)) {
+      setDelegatedTargetRole(delegatedRoleTargetsForMe[0]!);
     }
-  }, [mayEditDelegatedRoleModules, delegatedRoleTargetsForMe, permissionsRole]);
+  }, [mayEditDelegatedRoleModules, delegatedRoleTargetsForMe, delegatedTargetRole]);
 
   async function deleteInvitedWorkerFromList(row: WorkerRow) {
     if (!canDeleteInvitedFromList) return;
@@ -1007,12 +1168,14 @@ export function WorkersApp() {
     if (!effectiveCompanyId || !isTenantFullAdmin) return;
     setAccessPolicySaving(true);
     try {
+      const rfaSync = computeLegacyRoleFeatureAccessFromMatrix(departmentRoleFeatureAccessDraft, contractCatalog);
       const r = await patchWorkerSettings(apiCompany, {
         ...fullSettings,
         workers_page_delegation: delegationDraft,
         permission_delegation: permissionDelegationDraft,
-        delegates_can_assign_worker_module_extras: assignWorkerExtrasDraft,
-        role_feature_access: roleFeatureAccessDraft,
+        delegates_can_assign_worker_module_extras: false,
+        department_role_feature_access: departmentRoleFeatureAccessDraft,
+        role_feature_access: rfaSync,
         procedures_edit_roles: proceduresEditRolesDraft,
         work_request_edit_roles: workRequestEditRolesDraft,
         zone_manage_roles: zoneManageRolesDraft,
@@ -1020,6 +1183,18 @@ export function WorkersApp() {
       setContractFeatureNamesFromApi(r.contract_feature_names ?? []);
       setFullSettings(r.settings);
       setSettingsDraft(r.settings);
+      const cat = session?.contract_enabled_features ?? [];
+      const rfaNext = (r.settings.role_feature_access ?? {}) as Record<string, string[]>;
+      const nextDraft: Record<string, string[]> = {};
+      for (const role of ["manager", "supervisor", "lead", "worker"] as const) {
+        nextDraft[role] = rfaNext[role]?.length ? [...rfaNext[role]] : [...cat];
+      }
+      setRoleFeatureAccessDraft(nextDraft);
+      const matrixCatalog =
+        r.contract_feature_names?.length ? r.contract_feature_names : cat.length ? cat : [];
+      setDepartmentRoleFeatureAccessDraft(
+        normalizeDepartmentRoleMatrixFromApi(r.settings.department_role_feature_access, matrixCatalog, nextDraft),
+      );
       await refreshPulseUserFromServer();
       refresh();
     } finally {
@@ -1039,31 +1214,19 @@ export function WorkersApp() {
       setContractFeatureNamesFromApi(r.contract_feature_names ?? []);
       setFullSettings(r.settings);
       setSettingsDraft(r.settings);
+      const rfaNext = (r.settings.role_feature_access ?? {}) as Record<string, string[]>;
+      setRoleFeatureAccessDraft((prev) => {
+        const next = { ...prev };
+        for (const k of delegatedRoleTargetsForMe) {
+          const v = rfaNext[k];
+          next[k] = Array.isArray(v) ? [...v] : [...(next[k] ?? [])];
+        }
+        return next;
+      });
       await refreshPulseUserFromServer();
       refresh();
     } finally {
       setAccessPolicySaving(false);
-    }
-  }
-
-  async function saveExtraModules() {
-    if (
-      !profileId ||
-      !profile ||
-      (!isTenantFullAdmin && (!canDelegateWorkerExtras || !profileIsWorkerOnly(profile))) ||
-      principalHasAnyRole(profile, "company_admin")
-    ) {
-      return;
-    }
-    setProfileBusy(true);
-    try {
-      await patchWorker(apiCompany, profileId, { feature_allow_extra: extraModulesDraft });
-      await loadProfile();
-      await loadList();
-      await refreshPulseUserFromServer();
-      refresh();
-    } finally {
-      setProfileBusy(false);
     }
   }
 
@@ -1110,45 +1273,81 @@ export function WorkersApp() {
     if (trim(positionDraft.job_title) !== (profile.job_title ?? "").trim()) {
       payload.job_title = trim(positionDraft.job_title) || null;
     }
+    const curMatrixSlot = profile.matrix_slot ?? "";
+    const deptSlug = trim(positionDraft.department).toLowerCase();
+    const effectiveRoleKey =
+      positionDraft.matrix_slot.trim() ||
+      DEPARTMENT_BASELINE_SLOTS[deptSlug as keyof typeof DEPARTMENT_BASELINE_SLOTS] ||
+      "team_member";
+    const curRoleKey = profile.assigned_role_key ?? profile.matrix_slot ?? "";
+    if (positionDraft.matrix_slot !== curMatrixSlot) {
+      payload.matrix_slot = positionDraft.matrix_slot.trim() || null;
+      payload.role_key = effectiveRoleKey;
+    } else if (trim(positionDraft.department) !== (profile.department ?? "").trim() && effectiveRoleKey !== curRoleKey) {
+      payload.role_key = effectiveRoleKey;
+    }
     if (trim(positionDraft.department) !== (profile.department ?? "").trim()) {
       payload.department = trim(positionDraft.department) || null;
     }
-    const wsNorm = [
-      ...new Set((positionDraft.workspace_slugs ?? []).map((x) => trim(x).toLowerCase()).filter(Boolean)),
-    ].sort();
+    const primaryDept = trim(positionDraft.department).toLowerCase();
+    const wsNorm = primaryDept ? [primaryDept] : [];
     const prevWs = [...(profile.department_slugs ?? [])].map((x) => trim(x).toLowerCase()).sort();
     const sameWs = wsNorm.length === prevWs.length && wsNorm.every((s, i) => s === prevWs[i]);
     if (!sameWs) {
       payload.department_slugs = wsNorm.length ? wsNorm : null;
     }
     const auxiliaryEmployment = basicDraft.employment_type === "part_time";
+    const rotationScheduling = employmentShowsRotationScheduling(basicDraft.employment_type);
     if (auxiliaryEmployment) {
       if ((profile.shift ?? "").trim()) {
         payload.shift = null;
       }
-    } else if (trim(positionDraft.shift) !== (profile.shift ?? "").trim()) {
-      payload.shift = trim(positionDraft.shift) || null;
+      const prevRotation = recurringRowsFromApi(profile.recurring_shifts ?? []);
+      if (prevRotation.length > 0) {
+        payload.recurring_shifts = [];
+      }
+    } else {
+      if (trim(positionDraft.shift) !== (profile.shift ?? "").trim()) {
+        payload.shift = trim(positionDraft.shift) || null;
+      }
+      if (rotationScheduling) {
+        const rotationSelected = rotationDaysDraft.some(Boolean);
+        const win = { start: padHm(shiftTimeDraft.start), end: padHm(shiftTimeDraft.end) };
+        if (rotationSelected && parseTimeToMinutes(win.start) === parseTimeToMinutes(win.end)) {
+          window.alert(
+            "Shift start and end cannot be the same. For overnight shifts use a later start and earlier end (e.g. 22:00-06:00).",
+          );
+          return;
+        }
+        const nextRotation = buildRecurringRowsForDays(rotationDaysDraft, win);
+        const prevRotation = recurringRowsFromApi(profile.recurring_shifts ?? []);
+        if (canonicalRecurringJson(prevRotation) !== canonicalRecurringJson(nextRotation)) {
+          payload.recurring_shifts = nextRotation;
+        }
+      }
     }
     const sid = trim(positionDraft.supervisor_id);
     const curSid = profile.supervisor_id ?? "";
     if (sid !== curSid) {
       payload.supervisor_id = sid || null;
     }
-    const rotationSelected = rotationDaysDraft.some(Boolean);
-    const win = { start: padHm(shiftTimeDraft.start), end: padHm(shiftTimeDraft.end) };
-    if (rotationSelected && parseTimeToMinutes(win.start) === parseTimeToMinutes(win.end)) {
-      window.alert("Shift start and end cannot be the same. For overnight shifts use a later start and earlier end (e.g. 22:00–06:00).");
-      return;
+    const preserveDemo = Boolean(profile.roles?.includes("demo_viewer"));
+    const nextRoles = jwtRolesForMatrixSlot(effectiveRoleKey, preserveDemo);
+    const curRoles = sortRolesForDisplay(profile.roles?.length ? profile.roles : [profile.role]);
+    if (JSON.stringify(nextRoles) !== JSON.stringify(curRoles)) {
+      payload.roles = nextRoles;
     }
-    const nextRotation = buildRecurringRowsForDays(rotationDaysDraft, win);
-    const prevRotation = recurringRowsFromApi(profile.recurring_shifts ?? []);
-    if (canonicalRecurringJson(prevRotation) !== canonicalRecurringJson(nextRotation)) {
-      payload.recurring_shifts = nextRotation;
+
+    if (isTenantFullAdmin && !principalHasAnyRole(profile, "company_admin")) {
+      const bypass = buildBypassPayload(permissionBypassEnabled, permissionBypassRows);
+      const curExtras = [...(profile.feature_allow_extra ?? [])].sort().join(",");
+      const nextExtras = [...bypass.feature_allow_extra].sort().join(",");
+      if (curExtras !== nextExtras) payload.feature_allow_extra = bypass.feature_allow_extra;
+      const curPerm = [...(profile.rbac_permission_extra ?? [])].sort().join(",");
+      const nextPerm = [...bypass.rbac_permission_extra].sort().join(",");
+      if (curPerm !== nextPerm) payload.rbac_permission_extra = bypass.rbac_permission_extra;
     }
-    const curGg = Boolean(profile.gg_assignable);
-    if (ggAssignableDraft !== curGg) {
-      payload.gg_assignable = ggAssignableDraft;
-    }
+
     if (Object.keys(payload).length === 0) return;
     setProfileBusy(true);
     try {
@@ -1157,32 +1356,6 @@ export function WorkersApp() {
       await loadList();
       await refreshPulseUserFromServer();
       refresh();
-    } finally {
-      setProfileBusy(false);
-    }
-  }
-
-  function toggleProfileRole(key: string, on: boolean) {
-    setProfileRolesDraft((prev) => {
-      const set = new Set(prev);
-      if (on) set.add(key);
-      else set.delete(key);
-      const next = sortRolesForDisplay([...set]);
-      if (next.length < 1) return prev;
-      return next;
-    });
-  }
-
-  async function saveProfileRoles() {
-    if (!profileId || !profile || !isTenantFullAdmin) return;
-    if (principalHasAnyRole(profile, "company_admin")) return;
-    const uniq = [...new Set(profileRolesDraft.map((r) => r.trim()).filter(Boolean))];
-    if (uniq.length < 1) return;
-    setProfileBusy(true);
-    try {
-      await patchWorker(apiCompany, profileId, { roles: uniq });
-      await loadProfile();
-      await loadList();
     } finally {
       setProfileBusy(false);
     }
@@ -1226,20 +1399,19 @@ export function WorkersApp() {
     });
     const departmentSlug = createForm.department.trim() || "maintenance";
     const role = effectiveInviteRole(departmentSlug, createForm.role, createRoleLimited);
-    const workspaceSlugs = [
-      ...new Set(
-        [...(createForm.workspace_slugs ?? []), departmentSlug]
-          .map((s) => s.trim().toLowerCase())
-          .filter(Boolean),
-      ),
-    ];
+    const roleKey =
+      createForm.role_key.trim() ||
+      DEPARTMENT_BASELINE_SLOTS[departmentSlug as keyof typeof DEPARTMENT_BASELINE_SLOTS] ||
+      "team_member";
+    const department_slugs = departmentSlug ? [departmentSlug] : [];
     return {
       email: createForm.email.trim(),
       full_name: createForm.full_name.trim() || null,
       role,
+      role_key: roleKey,
       employment_type: createForm.employment_type || null,
-      department: departmentSlug || null,
-      department_slugs: workspaceSlugs.length ? workspaceSlugs : [departmentSlug],
+      department: departmentSlug,
+      department_slugs: department_slugs.length ? department_slugs : [departmentSlug],
       shift: createForm.employment_type === "part_time" ? null : createForm.shift || null,
       start_date: createForm.start_date || null,
       supervisor_id: createForm.supervisor_id.trim() || null,
@@ -1386,7 +1558,7 @@ export function WorkersApp() {
               <div className="min-w-0 space-y-2">
                   <p className="text-base font-bold leading-snug tracking-tight text-ds-foreground">
                     {inviteNotice.variant === "no_email"
-                      ? "Invite created — email not sent from server"
+                      ? "Invite created - email not sent from server"
                       : inviteNotice.variant === "link_only"
                         ? "Join link ready"
                         : "Invite queued"}
@@ -1395,7 +1567,7 @@ export function WorkersApp() {
                     {inviteNotice.variant === "no_email"
                       ? "Outbound email is not configured. Copy the join link below and send it to the person directly."
                       : inviteNotice.variant === "link_only"
-                        ? "No invite email was sent for this action. Copy the URL below and send it yourself (personal email, SMS, etc.). This is a new activation link—any older link for this person no longer works."
+                        ? "No invite email was sent for this action. Copy the URL below and send it yourself (personal email, SMS, etc.). This is a new activation link-any older link for this person no longer works."
                         : "If outbound email is configured, they should receive the invite shortly. You can still share the link below as a backup."}
                   </p>
                   <div className="pt-1">
@@ -1452,7 +1624,7 @@ export function WorkersApp() {
             value={companyPick ?? ""}
             onChange={(e) => setCompanyPick(e.target.value || null)}
           >
-            <option value="">Select company…</option>
+            <option value="">Select company...</option>
             {companies.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -1505,9 +1677,10 @@ export function WorkersApp() {
                 <p className="mt-1 text-xs text-ds-muted">
                   Choose which operational roles may adjust <strong className="font-semibold text-ds-foreground">module access</strong> for
                   people in roles below them (for example, a manager sets modules for supervisors, leads, and workers).
-                  This is separate from opening this page (see above). Turning on &quot;Individual worker modules&quot; lets
-                  those delegates assign extra contract modules to <strong className="font-semibold text-ds-foreground">worker-role</strong>{" "}
-                  accounts only.
+                  This is separate from opening this page (see above). Product modules are configured per{" "}
+                  <strong className="font-semibold text-ds-foreground">department × role slot</strong> in the{" "}
+                  <strong className="font-semibold text-ds-foreground">Permissions</strong> card below (same catalog everywhere;
+                  contract governs visibility).
                 </p>
                 <div className="mt-4 space-y-2">
                   {(
@@ -1529,19 +1702,11 @@ export function WorkersApp() {
                       {label} may edit downstream role access
                     </label>
                   ))}
-                  <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-ds-foreground">
-                    <input
-                      type="checkbox"
-                      className={dsCheckboxClass}
-                      checked={assignWorkerExtrasDraft}
-                      onChange={(e) => setAssignWorkerExtrasDraft(e.target.checked)}
-                    />
-                    Delegates may assign extra modules to individual worker-role users
-                  </label>
                 </div>
                 <p className="mt-3 text-xs text-ds-muted">
-                  Save with <strong className="font-semibold text-ds-foreground">Save permissions</strong> in the card below (or save any
-                  policy change there).
+                  Save with <strong className="font-semibold text-ds-foreground">Save permissions</strong> in the{" "}
+                  <strong className="font-semibold text-ds-foreground">Permissions</strong> card below (or save any policy
+                  change there).
                 </p>
               </Card>
             ) : null}
@@ -1550,53 +1715,78 @@ export function WorkersApp() {
               <Card variant="secondary" padding="md">
                 <h2 className="text-sm font-bold tracking-tight text-ds-foreground">Permissions</h2>
                 <p className="mt-1 text-xs text-ds-muted">
-                  Your organization&apos;s Pulse modules come from the contract (set by the system admin). Pick a role,
-                  then turn contract modules on or off for people in that role.
+                  Same module catalog for every workplace department - only the saved toggles differ. This matrix is
+                  the default for sidebar and product access by HR{" "}
+                  <span className="font-semibold text-ds-foreground">department</span> and workplace{" "}
+                  <span className="font-semibold text-ds-foreground">role slot</span> (manager, coordination, supervisor,
+                  ...).                   <span className="font-semibold text-ds-foreground">Access overlays</span> (below) are legacy labels/toggles
+                  and{" "}
+                  <span className="font-semibold text-ds-foreground">do not change</span> which modules appear in Pulse.
+                  Modules outside your contract stay hidden everywhere.
                 </p>
-                <label className={`${LABEL} mt-4 block`}>Role</label>
-                <select
-                  className={FIELD}
-                  value={permissionsRole}
-                  onChange={(e) => setPermissionsRole(e.target.value as PermissionRole)}
-                >
-                  {PERMISSION_ROLE_OPTIONS.map((role) => (
-                    <option key={role} value={role}>
-                      {humanizeRole(role)}
-                    </option>
-                  ))}
-                </select>
+                <div className="mt-4 space-y-4">
+                  <div>
+                    <label className={`block ${dsLabelClass}`}>Department</label>
+                    <select
+                      className={`${FIELD} mt-1.5`}
+                      value={permissionsDepartment}
+                      onChange={(e) => setPermissionsDepartment(e.target.value as PermissionMatrixDepartment)}
+                    >
+                      {PERMISSION_MATRIX_DEPARTMENTS.map((d) => (
+                        <option key={d} value={d}>
+                          {PERMISSION_MATRIX_DEPARTMENT_LABEL[d]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={`block ${dsLabelClass}`}>Role slot</label>
+                    <select
+                      className={`${FIELD} mt-1.5`}
+                      value={permissionsSlot}
+                      onChange={(e) => setPermissionsSlot(e.target.value as PermissionMatrixRoleSlot)}
+                    >
+                      {PERMISSION_MATRIX_ROLE_SLOTS.map((s) => (
+                        <option key={s} value={s}>
+                          {PERMISSION_MATRIX_ROLE_LABEL[s]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
                 <div className="mt-4 space-y-6">
-                  {PRODUCT_MODULE_PERMISSION_SECTIONS.map((section) => {
-                    const mods = section.keys.filter((m) => contractCatalog.includes(m));
+                  {MASTER_PERMISSION_FEATURE_GROUPS.map((section) => {
+                    const mods = section.keys.filter((k) => matrixContractKeySet.has(k));
                     if (mods.length === 0) return null;
                     return (
                       <div key={section.id}>
-                        <h3 className={`${SECTION_KICKER} text-ds-foreground`}>{section.label}</h3>
+                        <h3 className="text-xs font-bold uppercase tracking-wide text-ds-foreground">{section.label}</h3>
                         {section.description ? (
                           <p className="mt-1 text-[11px] leading-snug text-ds-muted">{section.description}</p>
                         ) : null}
-                        <div className="mt-3 space-y-3">
+                        <div className="mt-3 space-y-2">
                           {mods.map((mod) => {
-                            const on = (roleFeatureAccessDraft[permissionsRole] ?? []).includes(mod);
+                            const on = (
+                              departmentRoleFeatureAccessDraft[permissionsDepartment]?.[permissionsSlot] ?? []
+                            ).includes(mod);
                             return (
                               <div
-                                key={`${permissionsRole}-${mod}`}
+                                key={`${section.id}-${mod}`}
                                 className="ds-inset-panel flex items-center justify-between gap-3 px-3 py-3"
                               >
                                 <p className="min-w-0 text-sm font-semibold text-ds-foreground">
-                                  {MODULE_LABEL[mod] ?? mod}
+                                  {matrixModuleToggleLabel(mod)}
                                 </p>
                                 <button
                                   type="button"
                                   role="switch"
                                   aria-checked={on}
+                                  aria-label={`${matrixModuleToggleLabel(mod)}: ${on ? "on" : "off"}`}
                                   disabled={!isTenantFullAdmin}
-                                  onClick={() =>
-                                    isTenantFullAdmin ? toggleRoleModule(permissionsRole, mod) : undefined
-                                  }
+                                  onClick={() => toggleMasterMatrixModule(permissionsDepartment, permissionsSlot, mod)}
                                   className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
                                     on ? "bg-ds-success" : "bg-ds-border"
-                                  } disabled:opacity-45`}
+                                  }`}
                                 >
                                   <span
                                     className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-ds-primary shadow transition-transform ${
@@ -1618,13 +1808,15 @@ export function WorkersApp() {
                   disabled={accessPolicySaving}
                   onClick={() => void saveAccessPolicy()}
                 >
-                  {accessPolicySaving ? "Saving…" : "Save permissions"}
+                  {accessPolicySaving ? "Saving..." : "Save permissions"}
                 </button>
-                <div className="ds-inset-panel mt-4 px-3 py-2 text-xs text-ds-muted">
-                  Changes apply to all users with the {humanizeRole(permissionsRole)} role after you save.
-                </div>
               </Card>
             ) : null}
+
+            {isTenantFullAdmin && contractCatalog.length > 0 ? (
+              <TenantRolesPanel apiCompanyId={apiCompany ?? undefined} canEdit={isTenantFullAdmin} />
+            ) : null}
+
 
             {isTenantFullAdmin ? (
               <Card variant="secondary" padding="md">
@@ -1740,8 +1932,8 @@ export function WorkersApp() {
                 <label className={`${LABEL} mt-4 block`}>Role</label>
                 <select
                   className={FIELD}
-                  value={permissionsRole}
-                  onChange={(e) => setPermissionsRole(e.target.value as PermissionRole)}
+                  value={delegatedTargetRole}
+                  onChange={(e) => setDelegatedTargetRole(e.target.value as PermissionRole)}
                 >
                   {delegatedRoleTargetsForMe.map((role) => (
                     <option key={role} value={role}>
@@ -1761,10 +1953,10 @@ export function WorkersApp() {
                         ) : null}
                         <div className="mt-3 space-y-3">
                           {mods.map((mod) => {
-                            const on = (roleFeatureAccessDraft[permissionsRole] ?? []).includes(mod);
+                            const on = (roleFeatureAccessDraft[delegatedTargetRole] ?? []).includes(mod);
                             return (
                               <div
-                                key={`del-${permissionsRole}-${mod}`}
+                                key={`del-${delegatedTargetRole}-${mod}`}
                                 className="ds-inset-panel flex items-center justify-between gap-3 px-3 py-3"
                               >
                                 <p className="min-w-0 text-sm font-semibold text-ds-foreground">
@@ -1774,7 +1966,7 @@ export function WorkersApp() {
                                   type="button"
                                   role="switch"
                                   aria-checked={on}
-                                  onClick={() => toggleRoleModule(permissionsRole, mod)}
+                                  onClick={() => toggleRoleModule(delegatedTargetRole, mod)}
                                   className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
                                     on ? "bg-ds-success" : "bg-ds-border"
                                   }`}
@@ -1799,19 +1991,14 @@ export function WorkersApp() {
                   disabled={accessPolicySaving}
                   onClick={() => void saveDelegatedRoleModules()}
                 >
-                  {accessPolicySaving ? "Saving…" : "Save team module access"}
+                  {accessPolicySaving ? "Saving..." : "Save team module access"}
                 </button>
               </Card>
             ) : null}
 
-            {!isTenantFullAdmin && !mayEditDelegatedRoleModules && !canDelegateWorkerExtras ? (
+            {!isTenantFullAdmin && !mayEditDelegatedRoleModules ? (
               <p className="ds-inset-panel px-3 py-2 text-xs text-ds-muted">
                 Workers settings and contract-scoped module access are managed by a company administrator.
-              </p>
-            ) : !isTenantFullAdmin && !mayEditDelegatedRoleModules && canDelegateWorkerExtras ? (
-              <p className="ds-inset-panel px-3 py-2 text-xs text-ds-muted">
-                You can assign extra contract modules to individual <strong className="font-semibold text-ds-foreground">worker-role</strong>{" "}
-                profiles from their detail drawer (Extra module access).
               </p>
             ) : null}
           </div>
@@ -1822,12 +2009,21 @@ export function WorkersApp() {
                 <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ds-muted" />
                 <input
                   type="search"
-                  placeholder="Search workers or roles…"
+                  placeholder="Search workers or roles..."
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
                   className={`${dsInputClass} py-2 pl-9 pr-3`}
                 />
               </div>
+              <label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs text-ds-muted">
+                <input
+                  type="checkbox"
+                  className={dsCheckboxClass}
+                  checked={filterInferredAccess}
+                  onChange={(e) => setFilterInferredAccess(e.target.checked)}
+                />
+                Inferred access only
+              </label>
               {rosterColumnFiltersActive ? (
                 <button
                   type="button"
@@ -1840,12 +2036,39 @@ export function WorkersApp() {
                     setFilterColLastActive("");
                     setFilterColGeo("");
                     setFilterColUa("");
+                    setFilterInferredAccess(false);
                   }}
                 >
                   Clear column filters
                 </button>
               ) : null}
             </div>
+            {slotAccessAudit && (slotAccessAudit.unresolved_count > 0 || slotAccessAudit.inferred_count > 0) ? (
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-500/40 bg-slate-500/10 px-3 py-2 text-xs text-slate-100">
+                <span>
+                  {slotAccessAudit.inferred_count} worker{slotAccessAudit.inferred_count === 1 ? "" : "s"} without explicit
+                  matrix slot
+                  {slotAccessAudit.unresolved_count > 0
+                    ? ` (${slotAccessAudit.unresolved_count} unresolved)`
+                    : ""}
+                  .
+                </span>
+                {canEditWorkerBasics ? (
+                  <button
+                    type="button"
+                    className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-3 py-1 text-[11px]")}
+                    onClick={() => {
+                      void applyDepartmentMatrixBaselines(apiCompany).then(() => {
+                        void fetchWorkerSlotAccessAudit(apiCompany).then(setSlotAccessAudit);
+                        void loadList();
+                      });
+                    }}
+                  >
+                    Apply department baselines
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
             <p className="mb-3 text-xs leading-relaxed text-ds-muted">
               Roster is grouped by HR <span className="font-medium text-ds-foreground">department</span>, then{" "}
               <span className="font-medium text-ds-foreground">role</span> (e.g. Maintenance → Managers → Operations with
@@ -1857,7 +2080,7 @@ export function WorkersApp() {
             {listLoading ? (
               <div className="flex items-center gap-2 py-16 text-pulse-muted">
                 <Loader2 className="h-5 w-5 animate-spin" />
-                Loading roster…
+                Loading roster...
               </div>
             ) : listError ? (
               <p className="text-sm text-ds-danger">{listError}</p>
@@ -1895,11 +2118,17 @@ export function WorkersApp() {
                                   type="search"
                                   value={filterColName}
                                   onChange={(e) => setFilterColName(e.target.value)}
-                                  placeholder="Filter…"
+                                  placeholder="Filter..."
                                   className={cn(dsInputClass, "py-1.5 text-xs")}
                                   aria-label="Filter by name or email"
                                   autoComplete="off"
                                 />
+                              </th>
+                              <th className="min-w-[9rem] px-2 py-2 align-bottom">
+                                <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-ds-muted">
+                                  Matrix slot
+                                </label>
+                                <p className="text-[9px] font-normal normal-case text-ds-muted">Resolved access row</p>
                               </th>
                               <th className="min-w-[7rem] px-2 py-2 align-bottom">
                                 <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-ds-muted">
@@ -1915,7 +2144,7 @@ export function WorkersApp() {
                                   {(["company_admin", "manager", "supervisor", "lead", "worker"] as const).map((rk) => (
                                     <option key={rk} value={rk}>
                                       {rk === "worker"
-                                        ? "Workers (Operations, coordinators, …)"
+                                        ? "Workers (field roles: coordinator, operations, ...)"
                                         : humanizeRole(rk)}
                                     </option>
                                   ))}
@@ -1932,7 +2161,7 @@ export function WorkersApp() {
                                   aria-label="Filter by shift"
                                 >
                                   <option value="">Any</option>
-                                  <option value="__none__">None / —</option>
+                                  <option value="__none__">None / -</option>
                                   {(fullSettings.shifts ?? []).map((s) => (
                                     <option key={s.key} value={s.key}>
                                       {s.label || s.key}
@@ -1985,7 +2214,7 @@ export function WorkersApp() {
                                   type="search"
                                   value={filterColGeo}
                                   onChange={(e) => setFilterColGeo(e.target.value)}
-                                  placeholder="City, region…"
+                                  placeholder="City, region..."
                                   className={cn(dsInputClass, "py-1.5 text-xs")}
                                   aria-label="Filter by last sign-in location"
                                   autoComplete="off"
@@ -1999,7 +2228,7 @@ export function WorkersApp() {
                                   type="search"
                                   value={filterColUa}
                                   onChange={(e) => setFilterColUa(e.target.value)}
-                                  placeholder="Contains…"
+                                  placeholder="Contains..."
                                   className={cn(dsInputClass, "py-1.5 text-xs")}
                                   aria-label="Filter by browser or device"
                                   autoComplete="off"
@@ -2016,7 +2245,7 @@ export function WorkersApp() {
                             className="border-b-2 border-[color-mix(in_srgb,var(--ds-accent)_30%,var(--ds-border))] bg-[color-mix(in_srgb,var(--ds-surface-secondary)_90%,transparent)]"
                           >
                             <td
-                              colSpan={7}
+                              colSpan={8}
                               className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.14em] text-ds-foreground"
                             >
                               {dept.deptLabel}
@@ -2090,6 +2319,9 @@ export function WorkersApp() {
                               </div>
                             </td>
                             <td className="px-4 py-3">
+                              <WorkerMatrixSlotCell row={row} />
+                            </td>
+                            <td className="px-4 py-3">
                               <div className="flex flex-wrap gap-1">
                                 {sortRolesForDisplay(row.roles?.length ? [...row.roles] : [row.role]).map((r) => (
                                   <span
@@ -2105,7 +2337,7 @@ export function WorkersApp() {
                               {(() => {
                                 const shiftKey = rosterShiftKeyForDisplay(row);
                                 const hasGG = Boolean(row.gg_assignable);
-                                if (!shiftKey && !hasGG) return "—";
+                                if (!shiftKey && !hasGG) return "-";
                                 return (
                                   <div className="flex flex-wrap items-center gap-1">
                                     {shiftKey ? (
@@ -2243,7 +2475,7 @@ export function WorkersApp() {
               {createBusy === "link" ? (
                 <>
                   <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
-                  Generating…
+                  Generating...
                 </>
               ) : (
                 "Generate link"
@@ -2258,7 +2490,7 @@ export function WorkersApp() {
               {createBusy === "invite" ? (
                 <>
                   <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
-                  Sending…
+                  Sending...
                 </>
               ) : (
                 "Send invite"
@@ -2277,7 +2509,7 @@ export function WorkersApp() {
                 {createBusy === "profile" ? (
                   <>
                     <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
-                    Saving…
+                    Saving...
                   </>
                 ) : (
                   "Create profile"
@@ -2428,10 +2660,10 @@ export function WorkersApp() {
                 const department = e.target.value;
                 setCreateForm((f) => {
                   const next: CreateFormState = { ...f, department };
-                  const ws = f.workspace_slugs.includes(department)
-                    ? f.workspace_slugs
-                    : [...f.workspace_slugs, department];
-                  next.workspace_slugs = ws;
+                  const baseline =
+                    DEPARTMENT_BASELINE_SLOTS[department as keyof typeof DEPARTMENT_BASELINE_SLOTS] ??
+                    "team_member";
+                  next.role_key = baseline;
                   if (!isMaintenanceInviteDepartment(department)) {
                     next.role = "worker";
                   } else if (createRoleLimited) {
@@ -2473,35 +2705,22 @@ export function WorkersApp() {
               )}
             </select>
           </div>
-          <div className="sm:col-span-2">
-            <label className={LABEL}>Department workspaces</label>
-            <p className="mb-2 text-xs text-ds-muted-foreground">
-              Choose which departmental hubs this employee can open (Workspaces menu and URL paths).
-            </p>
-            <div className="flex flex-wrap gap-3">
-              {WORKSPACE_ASSIGNMENT_SLUGS.map((o) => (
-                <label key={o.value} className="inline-flex cursor-pointer items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={createForm.workspace_slugs.includes(o.value)}
-                    onChange={(e) => {
-                      setCreateForm((f) => {
-                        const on = e.target.checked;
-                        let next = on
-                          ? [...f.workspace_slugs, o.value]
-                          : f.workspace_slugs.filter((s) => s !== o.value);
-                        const primary = f.department.trim() || "maintenance";
-                        if (!next.includes(primary)) next = [...next, primary];
-                        if (next.length < 1) next = [primary];
-                        return { ...f, workspace_slugs: [...new Set(next)] };
-                      });
-                    }}
-                    className="h-4 w-4 rounded border-ds-border"
-                  />
-                  <span>{o.label}</span>
-                </label>
+          <div>
+            <label className={LABEL}>Operational role (matrix)</label>
+            <select
+              className={FIELD}
+              value={createForm.role_key}
+              onChange={(e) => setCreateForm((f) => ({ ...f, role_key: e.target.value }))}
+            >
+              {PERMISSION_MATRIX_ROLE_SLOTS.map((s) => (
+                <option key={s} value={s}>
+                  {PERMISSION_MATRIX_ROLE_LABEL[s]}
+                </option>
               ))}
-            </div>
+            </select>
+            <p className="mt-1 text-[11px] text-pulse-muted">
+              Department × role determines module access. Required for new workers.
+            </p>
           </div>
           <div>
             <label className={LABEL}>Employment type</label>
@@ -2530,7 +2749,7 @@ export function WorkersApp() {
                 value={createForm.shift}
                 onChange={(e) => setCreateForm((f) => ({ ...f, shift: e.target.value }))}
               >
-                <option value="">—</option>
+                <option value="">-</option>
                 {(fullSettings.shifts ?? []).map((s) => (
                   <option key={s.key} value={s.key}>
                     {s.label}
@@ -2546,7 +2765,7 @@ export function WorkersApp() {
               value={createForm.supervisor_id}
               onChange={(e) => setCreateForm((f) => ({ ...f, supervisor_id: e.target.value }))}
             >
-              <option value="">—</option>
+              <option value="">-</option>
               {supervisors.map((s) => (
                 <option key={s.id} value={s.id}>
                   {(s.full_name ?? s.email) +
@@ -2616,7 +2835,7 @@ export function WorkersApp() {
                   {inviteLinkBusyId === profileId ? (
                     <span className="inline-flex items-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                      Working…
+                      Working...
                     </span>
                   ) : (
                     "Resend invite"
@@ -2644,11 +2863,11 @@ export function WorkersApp() {
                 disabled={profileBusy}
                 onClick={() => void saveProfileHr()}
               >
-                {profileBusy ? "Saving…" : "Save profile details"}
+                {profileBusy ? "Saving..." : "Save profile details"}
               </button>
             ) : null}
             <button type="button" className={PRIMARY_BTN} disabled={profileBusy} onClick={() => void saveProfileNotes()}>
-              {profileBusy ? "Saving…" : "Save notes"}
+              {profileBusy ? "Saving..." : "Save notes"}
             </button>
           </div>
         }
@@ -2656,39 +2875,55 @@ export function WorkersApp() {
         {profileLoading || !profile ? (
           <div className="flex items-center gap-2 text-pulse-muted">
             <Loader2 className="h-5 w-5 animate-spin" />
-            Loading…
+            Loading...
           </div>
         ) : (
           <div className="space-y-8" id="worker-profile-title">
-            <div className="flex flex-wrap gap-2 border-b border-ds-border pb-3" role="tablist" aria-label="Profile sections">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={profileDrawerTab === "profile"}
-                className={cn(
-                  "rounded-lg px-3 py-2 text-sm font-semibold transition-colors",
-                  profileDrawerTab === "profile"
-                    ? "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm"
-                    : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground",
-                )}
-                onClick={() => setProfileDrawerTab("profile")}
-              >
-                Profile
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={profileDrawerTab === "training"}
-                className={cn(
-                  "rounded-lg px-3 py-2 text-sm font-semibold transition-colors",
-                  profileDrawerTab === "training"
-                    ? "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm"
-                    : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground",
-                )}
-                onClick={() => setProfileDrawerTab("training")}
-              >
-                Training matrix
-              </button>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ds-border pb-3">
+              <div className="flex flex-wrap gap-2" role="tablist" aria-label="Profile sections">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={profileDrawerTab === "profile"}
+                  className={cn(
+                    "rounded-lg px-3 py-2 text-sm font-semibold transition-colors",
+                    profileDrawerTab === "profile"
+                      ? "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm"
+                      : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground",
+                  )}
+                  onClick={() => setProfileDrawerTab("profile")}
+                >
+                  Profile
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={profileDrawerTab === "training"}
+                  className={cn(
+                    "rounded-lg px-3 py-2 text-sm font-semibold transition-colors",
+                    profileDrawerTab === "training"
+                      ? "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm"
+                      : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground",
+                  )}
+                  onClick={() => setProfileDrawerTab("training")}
+                >
+                  Training matrix
+                </button>
+              </div>
+              {canDebugWorkerAccess ? (
+                <button
+                  type="button"
+                  className={cn(
+                    buttonVariants({ surface: "light", intent: "secondary" }),
+                    "shrink-0 px-3 py-1.5 text-xs font-semibold",
+                  )}
+                  disabled={profileBusy}
+                  title="Inspect production access resolution layers for this user"
+                  onClick={() => void openAccessDebugger()}
+                >
+                  Debug access
+                </button>
+              ) : null}
             </div>
 
             {profileDrawerTab === "training" ? (
@@ -2816,7 +3051,7 @@ export function WorkersApp() {
                           }
                         }}
                       >
-                        <option value="">— Not set —</option>
+                        <option value="">- Not set -</option>
                         <option value="full_time">Full time</option>
                         <option value="regular_part_time">Regular part time</option>
                         <option value="part_time">Auxiliary</option>
@@ -2834,11 +3069,11 @@ export function WorkersApp() {
                     </p>
                     <p>
                       <span className="text-pulse-muted">Phone: </span>
-                      {profile.phone ?? "—"}
+                      {profile.phone ?? "-"}
                     </p>
                     <p>
                       <span className="text-pulse-muted">Start date: </span>
-                      {profile.start_date ?? "—"}
+                      {profile.start_date ?? "-"}
                     </p>
                     <p className="sm:col-span-2">
                       <span className="text-pulse-muted">Employment: </span>
@@ -2848,146 +3083,19 @@ export function WorkersApp() {
                           ? "Regular part time"
                           : normalizeEmploymentDraft(profile.employment_type) === "part_time"
                             ? "Auxiliary"
-                            : "—"}
+                            : "-"}
                     </p>
                   </>
                 )}
               </div>
             </section>
 
-            {isTenantFullAdmin && !principalHasAnyRole(profile, "company_admin") ? (
-              <section>
-                <h3 className={SECTION_KICKER}>Edit roles</h3>
-                <p className="mt-1 text-xs text-pulse-muted">
-                  Facility roles are grouped for clarity. <span className="font-medium text-ds-foreground">Team member</span> is
-                  always the <span className="font-mono text-ds-foreground">worker</span> permission tier; Communications
-                  coordinators get the same tier — set their <span className="font-medium text-ds-foreground">department</span>{" "}
-                  under Position &amp; shift so the roster shows Coordinator instead of Operations. At least one role is
-                  required.
-                </p>
-                <div className="ds-inset-panel mt-3 divide-y divide-ds-border/80 p-0">
-                  {PROFILE_ROLE_EDIT_GROUPS.map((group) => (
-                    <div key={group.title} className="space-y-2 px-3 py-3 sm:px-4">
-                      <div>
-                        <p className="text-[11px] font-bold uppercase tracking-wide text-ds-foreground">{group.title}</p>
-                        <p className="mt-1 text-xs leading-relaxed text-ds-muted">{group.description}</p>
-                      </div>
-                      <div className="space-y-2">
-                        {group.roles.map((key) => (
-                          <label
-                            key={key}
-                            className="flex cursor-pointer items-center gap-2 rounded-lg border border-transparent px-1 py-0.5 text-sm text-ds-foreground hover:border-ds-border/60 hover:bg-ds-secondary/30"
-                          >
-                            <input
-                              type="checkbox"
-                              className={dsCheckboxClass}
-                              checked={profileRolesDraft.includes(key)}
-                              onChange={(e) => toggleProfileRole(key, e.target.checked)}
-                            />
-                            <span>
-                              {key === "worker"
-                                ? workerRoleDisplayLabel(positionDraft.department || profile.department, key)
-                                : humanizeRole(key)}
-                            </span>
-                          </label>
-                        ))}
-                      </div>
-                      {group.roles.includes("worker") ? (
-                        <div className="mt-2 rounded-lg border border-ds-border/80 bg-ds-secondary/20 px-2 py-2.5">
-                          <p className="text-[10px] font-bold uppercase tracking-wide text-ds-muted">
-                            Primary department (roster label)
-                          </p>
-                          <p className="mt-1 text-[11px] leading-snug text-ds-muted">
-                            {canEditWorkerBasics
-                              ? "Choose where this team member sits org-wide. Matches the Department field under Position & shift — save there to persist."
-                              : "Department is edited by someone with roster HR access (Position & shift)."}
-                          </p>
-                          {canEditWorkerBasics ? (
-                            <div className="mt-2 flex flex-wrap gap-1.5">
-                              {INVITE_DEPARTMENT_OPTIONS.map((o) => {
-                                const active =
-                                  (positionDraft.department || "").trim().toLowerCase() === o.value;
-                                return (
-                                  <button
-                                    key={o.value}
-                                    type="button"
-                                    onClick={() =>
-                                      setPositionDraft((d) => {
-                                        const slug = o.value;
-                                        let ws = [...d.workspace_slugs];
-                                        if (!ws.map((x) => x.toLowerCase()).includes(slug)) ws = [...ws, slug];
-                                        return { ...d, department: slug, workspace_slugs: [...new Set(ws)] };
-                                      })
-                                    }
-                                    className={cn(
-                                      "rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors",
-                                      active
-                                        ? "border-[var(--ds-accent)] bg-[var(--ds-accent)]/12 text-ds-foreground"
-                                        : "border-ds-border text-ds-muted hover:border-ds-border hover:bg-ds-secondary/50",
-                                    )}
-                                  >
-                                    {o.label}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          ) : (
-                            <p className="mt-2 text-xs font-medium text-ds-foreground">
-                              {(profile.department ?? "").trim() || "—"}
-                            </p>
-                          )}
-                        </div>
-                      ) : null}
-                    </div>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "mt-3 px-4 py-2 text-sm font-semibold")}
-                  disabled={profileBusy}
-                  onClick={() => void saveProfileRoles()}
-                >
-                  {profileBusy ? "Saving…" : "Save roles"}
-                </button>
-              </section>
-            ) : null}
 
-            {(isTenantFullAdmin || (canDelegateWorkerExtras && profileIsWorkerOnly(profile))) &&
-            !principalHasAnyRole(profile, "company_admin") &&
-            contractCatalog.length > 0 ? (
-              <section>
-                <h3 className={SECTION_KICKER}>Extra module access</h3>
-                <p className="mt-1 text-xs text-pulse-muted">
-                  {isTenantFullAdmin
-                    ? "Grant additional Panorama modules from your organization's contract (on top of this person's role defaults)."
-                    : "Assign additional contract modules for this worker (within the organization contract). Company administrators control who may do this."}
-                </p>
-                <div className="ds-inset-panel mt-3 flex flex-col gap-1.5 p-3">
-                  {TENANT_PRODUCT_MODULES.filter((m) => contractCatalog.includes(m)).map((mod) => (
-                    <label key={mod} className="flex cursor-pointer items-center gap-2 text-sm text-ds-foreground">
-                      <input
-                        type="checkbox"
-                        className={dsCheckboxClass}
-                        checked={extraModulesDraft.includes(mod)}
-                        onChange={(e) => {
-                          setExtraModulesDraft((prev) =>
-                            e.target.checked ? [...new Set([...prev, mod])].sort() : prev.filter((x) => x !== mod),
-                          );
-                        }}
-                      />
-                      {MODULE_LABEL[mod] ?? mod}
-                    </label>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "mt-3 px-4 py-2 text-sm font-semibold")}
-                  disabled={profileBusy}
-                  onClick={() => void saveExtraModules()}
-                >
-                  {profileBusy ? "Saving…" : "Save module access"}
-                </button>
-              </section>
+            {profile && list.find((r) => r.id === profile.id)?.is_unresolved ? (
+              <div className="mb-4 rounded-lg border border-red-500/50 bg-red-500/15 px-3 py-2.5 text-sm text-red-50">
+                Authorization is unresolved for this worker. Set HR department and matrix slot, or use Apply department
+                baselines in Team Management.
+              </div>
             ) : null}
 
             <section>
@@ -3005,59 +3113,68 @@ export function WorkersApp() {
                       onChange={(e) => setPositionDraft((d) => ({ ...d, job_title: e.target.value }))}
                     />
                   </div>
-                  <div className="sm:col-span-2">
+                  <div>
                     <label className={LABEL} htmlFor="worker-profile-department">
                       Department
                     </label>
-                    <input
+                    <select
                       id="worker-profile-department"
                       className={FIELD}
                       value={positionDraft.department}
-                      onChange={(e) => {
-                        const department = e.target.value;
-                        setPositionDraft((d) => {
-                          const slug = department.trim().toLowerCase();
-                          let ws = [...d.workspace_slugs];
-                          if (WORKSPACE_ASSIGNMENT_SLUGS.some((o) => o.value === slug) && !ws.map((x) => x.toLowerCase()).includes(slug)) {
-                            ws = [...ws, slug];
-                          }
-                          return { ...d, department, workspace_slugs: ws };
-                        });
-                      }}
-                    />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <span className={LABEL}>Department workspaces</span>
-                    <p className="mt-1 text-xs text-pulse-muted">
-                      Which departmental hubs this person can open (Workspaces menu and <span className="font-mono">/{`{slug}`}/…</span> URLs).
-                    </p>
-                    <div className="mt-2 flex flex-wrap gap-3">
-                      {WORKSPACE_ASSIGNMENT_SLUGS.map((o) => (
-                        <label key={o.value} className="inline-flex cursor-pointer items-center gap-2 text-sm text-ds-foreground">
-                          <input
-                            type="checkbox"
-                            className={dsCheckboxClass}
-                            checked={positionDraft.workspace_slugs.includes(o.value)}
-                            onChange={(e) => {
-                              setPositionDraft((d) => {
-                                const on = e.target.checked;
-                                let next = on
-                                  ? [...d.workspace_slugs, o.value]
-                                  : d.workspace_slugs.filter((s) => s !== o.value);
-                                const primary = d.department.trim().toLowerCase() || "maintenance";
-                                if (!next.map((x) => x.toLowerCase()).includes(primary)) {
-                                  next = [...next, primary];
-                                }
-                                if (next.length < 1) next = [primary];
-                                return { ...d, workspace_slugs: [...new Set(next)] };
-                              });
-                            }}
-                          />
+                      onChange={(e) => setPositionDraft((d) => ({ ...d, department: e.target.value }))}
+                    >
+                      <option value="">Select department</option>
+                      {INVITE_DEPARTMENT_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>
                           {o.label}
-                        </label>
+                        </option>
                       ))}
-                    </div>
+                    </select>
                   </div>
+                  <div>
+                    <label className={LABEL} htmlFor="worker-profile-matrix-slot">
+                      Role
+                    </label>
+                    <select
+                      id="worker-profile-matrix-slot"
+                      className={FIELD}
+                      value={positionDraft.matrix_slot}
+                      onChange={(e) => setPositionDraft((d) => ({ ...d, matrix_slot: e.target.value }))}
+                    >
+                      <option value="">Auto (department baseline)</option>
+                      {PERMISSION_MATRIX_ROLE_SLOTS.map((s) => (
+                        <option key={s} value={s}>
+                          {PERMISSION_MATRIX_ROLE_LABEL[s]}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-1 text-[11px] text-pulse-muted">
+                      Matrix row for module access. Enabled modules are viewable; edit rights follow role and Team
+                      Management work-request settings.
+                    </p>
+                    {!positionDraft.matrix_slot.trim() && positionDraft.department ? (
+                      <p className="mt-1 text-xs text-pulse-muted">
+                        Auto uses{" "}
+                        <span className="font-mono">
+                          {DEPARTMENT_BASELINE_SLOTS[
+                            positionDraft.department as keyof typeof DEPARTMENT_BASELINE_SLOTS
+                          ] ?? "team_member"}
+                        </span>{" "}
+                        for this department unless job title implies a higher slot.
+                      </p>
+                    ) : null}
+                  </div>
+                  {isTenantFullAdmin && !principalHasAnyRole(profile, "company_admin") ? (
+                    <div className="sm:col-span-2">
+                      <WorkerPermissionBypassPanel
+                        enabled={permissionBypassEnabled}
+                        onEnabledChange={setPermissionBypassEnabled}
+                        rows={permissionBypassRows}
+                        onRowsChange={setPermissionBypassRows}
+                        disabled={profileBusy}
+                      />
+                    </div>
+                  ) : null}
                   {basicDraft.employment_type === "part_time" ? null : (
                     <div>
                       <label className={LABEL} htmlFor="worker-profile-shift">
@@ -3074,7 +3191,7 @@ export function WorkersApp() {
                           setShiftTimeDraft({ start: padHm(preset.start), end: padHm(preset.end) });
                         }}
                       >
-                        <option value="">—</option>
+                        <option value="">-</option>
                         {(fullSettings.shifts ?? []).map((s) => (
                           <option key={s.key} value={s.key}>
                             {s.label}
@@ -3096,7 +3213,7 @@ export function WorkersApp() {
                       value={positionDraft.supervisor_id}
                       onChange={(e) => setPositionDraft((d) => ({ ...d, supervisor_id: e.target.value }))}
                     >
-                      <option value="">—</option>
+                      <option value="">-</option>
                       {profile.supervisor_id &&
                       !profileSupervisorOptions.some((s) => s.id === profile.supervisor_id) ? (
                         <option value={profile.supervisor_id}>
@@ -3113,6 +3230,8 @@ export function WorkersApp() {
                       ))}
                     </select>
                   </div>
+                  {employmentShowsRotationScheduling(basicDraft.employment_type) ? (
+                    <>
                   <div className="grid gap-3 sm:col-span-2 sm:grid-cols-2">
                     <div>
                       <label className={LABEL} htmlFor="worker-profile-shift-start">
@@ -3139,26 +3258,9 @@ export function WorkersApp() {
                       />
                     </div>
                     <p className="text-xs text-pulse-muted sm:col-span-2">
-                      Used for weekly rotation blocks and schedule labels (same clock times group as D1, D2, A1… on
-                      each day). Overnight: end earlier on the clock than start (e.g. 22:00 → 06:00).
+                      Used for weekly rotation blocks and schedule labels (same clock times group as D1, D2, A1... on
+                      each day). Overnight: end earlier on the clock than start (e.g. 22:00–06:00).
                     </p>
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className="flex cursor-pointer items-start gap-2 text-sm text-ds-foreground">
-                      <input
-                        type="checkbox"
-                        className={dsCheckboxClass}
-                        checked={ggAssignableDraft}
-                        onChange={(e) => setGgAssignableDraft(e.target.checked)}
-                      />
-                      <span>
-                        <span className="font-medium">GG assignable</span>
-                        <span className="mt-0.5 block text-[11px] text-pulse-muted">
-                          Eligible for GG-style assignments. This is separate from day / afternoon / night roster
-                          shifts.
-                        </span>
-                      </span>
-                    </label>
                   </div>
                   <div className="sm:col-span-2">
                     <span className={LABEL}>Weekly rotation (schedule)</span>
@@ -3208,28 +3310,50 @@ export function WorkersApp() {
                       ))}
                     </div>
                   </div>
+                    </>
+                  ) : basicDraft.employment_type === "part_time" ? (
+                    <p className="text-xs text-pulse-muted sm:col-span-2">
+                      Auxiliary workers are scheduled per shift in the scheduler. Weekly rotation and default shift
+                      times here are for full-time and RPT only.
+                    </p>
+                  ) : null}
                 </div>
               ) : (
                 <div className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
                   <p>
                     <span className="text-pulse-muted">Job title: </span>
-                    {profile.job_title ?? "—"}
+                    {profile.job_title ?? "-"}
+                  </p>
+                  <p className="flex flex-wrap items-center gap-2">
+                    <span className="text-pulse-muted">Role: </span>
+                    {(() => {
+                      const row = list.find((r) => r.id === profile.id);
+                      if (row?.matrix_slot_display) {
+                        return <WorkerMatrixSlotCell row={row} />;
+                      }
+                      return profile.matrix_slot
+                        ? formatMatrixSlotOperationalLabel(profile.matrix_slot, profile.department)
+                        : formatMatrixSlotOperationalLabel(
+                            row?.resolved_matrix_slot,
+                            profile.department,
+                          );
+                    })()}
                   </p>
                   <p>
                     <span className="text-pulse-muted">Department: </span>
-                    {profile.department ?? "—"}
+                    {profile.department ?? "-"}
                   </p>
                   <p className="sm:col-span-2">
-                    <span className="text-pulse-muted">Workspaces: </span>
+                    <span className="text-pulse-muted">HR department tags: </span>
                     {(profile.department_slugs?.length ? profile.department_slugs : profile.department ? [profile.department] : [])
-                      .join(", ") || "—"}
+                      .join(", ") || "-"}
                   </p>
                   <p className="flex flex-wrap items-center gap-2">
                     <span className="text-pulse-muted">Shift: </span>
                     {(() => {
                       const sk = rosterShiftKeyForDisplay(profile);
                       const hasGG = Boolean(profile.gg_assignable);
-                      if (!sk && !hasGG) return "—";
+                      if (!sk && !hasGG) return "-";
                       return (
                         <span className="inline-flex flex-wrap items-center gap-1.5">
                           {sk ? (
@@ -3251,26 +3375,39 @@ export function WorkersApp() {
                       );
                     })()}
                   </p>
-                  <p className="sm:col-span-2">
-                    <span className="text-pulse-muted">Shift hours: </span>
-                    {(() => {
-                      const sk = rosterShiftKeyForDisplay(profile);
-                      if (!sk) return "—";
-                      const rows = recurringRowsFromApi(profile.recurring_shifts ?? []);
-                      if (rows.length && rows.every((r) => r.start === rows[0]!.start && r.end === rows[0]!.end)) {
-                        return `${padHm(rows[0]!.start)}–${padHm(rows[0]!.end)}`;
-                      }
-                      const w = shiftWindowFromRosterKey(sk, fullSettings.shifts ?? []);
-                      return `${padHm(w.start)}–${padHm(w.end)} (preset from roster shift)`;
-                    })()}
-                  </p>
+                  {employmentShowsRotationScheduling(
+                    normalizeEmploymentDraft(profile.employment_type),
+                  ) ? (
+                    <>
+                      <p className="sm:col-span-2">
+                        <span className="text-pulse-muted">Shift hours: </span>
+                        {(() => {
+                          const sk = rosterShiftKeyForDisplay(profile);
+                          if (!sk) return "-";
+                          const rows = recurringRowsFromApi(profile.recurring_shifts ?? []);
+                          if (
+                            rows.length &&
+                            rows.every((r) => r.start === rows[0]!.start && r.end === rows[0]!.end)
+                          ) {
+                            return `${padHm(rows[0]!.start)}-${padHm(rows[0]!.end)}`;
+                          }
+                          const w = shiftWindowFromRosterKey(sk, fullSettings.shifts ?? []);
+                          return `${padHm(w.start)}-${padHm(w.end)} (preset from roster shift)`;
+                        })()}
+                      </p>
+                      <p className="sm:col-span-2">
+                        <span className="text-pulse-muted">Weekly rotation: </span>
+                        {formatRotationReadOnly(profile)}
+                      </p>
+                    </>
+                  ) : normalizeEmploymentDraft(profile.employment_type) === "part_time" ? (
+                    <p className="sm:col-span-2 text-xs text-ds-muted">
+                      Shift times and weekly rotation are managed in the scheduler for auxiliary workers.
+                    </p>
+                  ) : null}
                   <p>
                     <span className="text-pulse-muted">Supervisor: </span>
-                    {profile.supervisor_name ?? "—"}
-                  </p>
-                  <p className="sm:col-span-2">
-                    <span className="text-pulse-muted">Weekly rotation: </span>
-                    {formatRotationReadOnly(profile)}
+                    {profile.supervisor_name ?? "-"}
                   </p>
                 </div>
               )}
@@ -3362,7 +3499,7 @@ export function WorkersApp() {
                   Avg completion (h):{" "}
                   {profile.work_summary.avg_completion_hours != null
                     ? profile.work_summary.avg_completion_hours
-                    : "—"}
+                    : "-"}
                 </p>
               </div>
             </section>
@@ -3467,15 +3604,33 @@ export function WorkersApp() {
         wide
       >
         <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-ds-border bg-ds-secondary/20 px-3 py-2">
+            <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-ds-foreground">
+              <input
+                type="checkbox"
+                className="rounded border-ds-border"
+                checked={activityEndUserOnly}
+                onChange={(e) => {
+                  const on = e.target.checked;
+                  setActivityEndUserOnly(on);
+                  if (activityUserId) void loadLoginActivity(activityUserId, on);
+                }}
+              />
+              Show end-user sign-ins only
+            </label>
+            <p className="text-[10px] text-ds-muted">
+              Hides impersonation and internal test accounts. Rows matching your IP are labeled &quot;Likely your session&quot;.
+            </p>
+          </div>
           {activityLoading ? (
             <div className="flex items-center gap-2 text-sm text-ds-muted">
               <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-              Loading…
+              Loading...
             </div>
           ) : null}
           {activityError ? <p className="text-sm text-ds-danger">{activityError}</p> : null}
           {!activityLoading && !activityError && activityRows.length === 0 ? (
-            <p className="text-sm text-ds-muted">No recorded logins yet.</p>
+            <p className="text-sm text-ds-muted">No recorded logins match this filter.</p>
           ) : null}
           {!activityLoading && activityRows.length > 0 ? (
             <div className="overflow-x-auto rounded-lg border border-ds-border">
@@ -3483,6 +3638,7 @@ export function WorkersApp() {
                 <thead>
                   <tr className={dataTableHeadRowClass}>
                     <th className="px-3 py-2">When</th>
+                    <th className="px-3 py-2">Type</th>
                     <th className="px-3 py-2">IP</th>
                     <th className="px-3 py-2">Location</th>
                     <th className="px-3 py-2">User agent</th>
@@ -3490,13 +3646,29 @@ export function WorkersApp() {
                 </thead>
                 <tbody>
                   {activityRows.map((ev) => (
-                    <tr key={ev.id} className={dataTableBodyRow()}>
+                    <tr
+                      key={ev.id}
+                      className={cn(
+                        dataTableBodyRow(),
+                        ev.likely_your_session && "bg-slate-100/60 dark:bg-slate-800/40",
+                      )}
+                    >
                       <td className="px-3 py-2 text-ds-foreground">{formatLoginWhen(ev.timestamp)}</td>
+                      <td className="px-3 py-2">
+                        <span
+                          className={cn(
+                            "inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                            loginSessionOriginBadgeClass(ev),
+                          )}
+                        >
+                          {loginSessionOriginLabel(ev)}
+                        </span>
+                      </td>
                       <td className="px-3 py-2 text-ds-muted">{ev.ip_address}</td>
                       <td className="px-3 py-2 text-ds-muted">
-                        {[ev.city, ev.region].filter(Boolean).join(", ") || "—"}
+                        {[ev.city, ev.region].filter(Boolean).join(", ") || "-"}
                       </td>
-                      <td className="max-w-[18rem] px-3 py-2 break-all text-ds-muted">{ev.user_agent || "—"}</td>
+                      <td className="max-w-[18rem] px-3 py-2 break-all text-ds-muted">{ev.user_agent || "-"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -3629,8 +3801,49 @@ export function WorkersApp() {
               />
             </div>
           ) : null}
+
+          {settingsTab === "Login activity" && isTenantFullAdmin ? (
+            <div className="space-y-2">
+              <p className="text-xs text-pulse-muted">
+                Emails listed here are tagged as <strong>Internal test account</strong> in login history (your QA
+                logins). One email per line.
+              </p>
+              <label className={LABEL}>Internal test account emails</label>
+              <textarea
+                className={`${FIELD} min-h-[120px] font-mono text-xs`}
+                placeholder="you@company.com"
+                value={(settingsDraft.login_activity_internal_emails ?? []).join("\n")}
+                onChange={(e) =>
+                  setSettingsDraft((s) => ({
+                    ...s,
+                    login_activity_internal_emails: e.target.value
+                      .split(/[\n,;]+/)
+                      .map((x) => x.trim().toLowerCase())
+                      .filter(Boolean),
+                  }))
+                }
+              />
+            </div>
+          ) : null}
         </div>
       </PulseDrawer>
+
+      <AccessDebugModal
+        open={accessDebugOpen}
+        loading={accessDebugLoading}
+        error={accessDebugError}
+        debug={accessDebugPayload}
+        accessSnapshot={accessSnapshotDebug}
+        resolvedAudit={accessResolvedAudit}
+        viewerSession={session}
+        onClose={() => {
+          setAccessDebugOpen(false);
+          setAccessDebugPayload(null);
+          setAccessSnapshotDebug(null);
+          setAccessResolvedAudit(null);
+          setAccessDebugError(null);
+        }}
+      />
     </div>
   );
 }

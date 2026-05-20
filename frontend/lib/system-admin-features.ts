@@ -1,8 +1,10 @@
 /**
  * Labels and ordering for `GLOBAL_SYSTEM_FEATURES` (backend `system_catalog.py`).
- * Keep keys in sync with tenant sidebar gating in `pulse-nav-features.ts`.
+ * Keep keys in sync with tenant sidebar gating in `@/lib/rbac/session-access` (classic rail) and
+ * `platform-workspace-modules` (scoped /{department}/{module} links merged into the tenant rail).
  */
 export const SYSTEM_ADMIN_FEATURE_ORDER = [
+  "dashboard",
   "compliance",
   "schedule",
   "monitoring",
@@ -11,25 +13,20 @@ export const SYSTEM_ADMIN_FEATURE_ORDER = [
   "procedures",
   "team_insights",
   "team_management",
+  "messaging",
   "inventory",
   "equipment",
   "comms_assets",
   "comms_advertising_mapper",
-  "comms_publication_builder",
   "comms_indesign_pipeline",
   "comms_campaign_planner",
   "drawings",
   "zones_devices",
   "live_map",
-  "workspace_maintenance",
-  "workspace_communications",
-  "workspace_reception",
-  "workspace_aquatics",
-  "workspace_fitness",
-  "workspace_admin",
 ] as const;
 
 export const SYSTEM_ADMIN_FEATURE_LABELS: Record<string, string> = {
+  dashboard: "Leadership dashboard",
   compliance: "Inspections & Logs",
   schedule: "Schedule",
   monitoring: "Monitoring",
@@ -38,6 +35,7 @@ export const SYSTEM_ADMIN_FEATURE_LABELS: Record<string, string> = {
   procedures: "Procedures",
   team_insights: "Team Insights",
   team_management: "Team Management",
+  messaging: "Messaging",
   inventory: "Inventory",
   equipment: "Equipment",
   drawings: "Drawings",
@@ -45,15 +43,8 @@ export const SYSTEM_ADMIN_FEATURE_LABELS: Record<string, string> = {
   live_map: "Live Map",
   comms_assets: "Communications · Assets",
   comms_advertising_mapper: "Communications · Advertising mapper",
-  comms_publication_builder: "Communications · Publication pipeline",
   comms_indesign_pipeline: "Communications · RTF / TXT → InDesign",
   comms_campaign_planner: "Communications · Campaign planner",
-  workspace_maintenance: "Workspace · Maintenance",
-  workspace_communications: "Workspace · Communications",
-  workspace_reception: "Workspace · Reception",
-  workspace_aquatics: "Workspace · Aquatics",
-  workspace_fitness: "Workspace · Fitness",
-  workspace_admin: "Workspace · Administration",
 };
 
 export function systemAdminFeatureLabel(key: string): string {

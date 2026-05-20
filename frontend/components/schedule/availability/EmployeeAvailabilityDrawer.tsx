@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { PulseDrawer } from "@/components/schedule/PulseDrawer";
+import { auxiliaryWorkers } from "@/lib/schedule/availability-supervisor-local";
 import { normalizeWeekdayKey } from "@/lib/schedule/recurring";
 import type { WeekdayKey, Worker, WorkerSchedulingConstraints } from "@/lib/schedule/types";
 import { buttonVariants } from "@/styles/button-variants";
@@ -24,7 +25,7 @@ type Props = {
 };
 
 export function EmployeeAvailabilityDrawer({ open, onClose, workers, setWorkers }: Props) {
-  const active = useMemo(() => workers.filter((w) => w.active), [workers]);
+  const active = useMemo(() => auxiliaryWorkers(workers), [workers]);
   const [workerId, setWorkerId] = useState<string>(active[0]?.id ?? "");
 
   useEffect(() => {
@@ -90,7 +91,7 @@ export function EmployeeAvailabilityDrawer({ open, onClose, workers, setWorkers 
       wide
       placement="center"
       title="Employee availability"
-      subtitle="Recurring windows, unavailable days, and shift restrictions feed the operational scheduling layer."
+      subtitle="Weekly windows and shift restrictions for auxiliary and part-time roster members (not full-time recurring schedules)."
       footer={
         <div className="flex flex-wrap justify-end gap-2">
           <button type="button" className={buttonVariants({ surface: "light", intent: "secondary" })} onClick={onClose}>
@@ -103,7 +104,9 @@ export function EmployeeAvailabilityDrawer({ open, onClose, workers, setWorkers 
       }
     >
       {!w ? (
-        <p className="text-sm text-ds-muted">No workers available.</p>
+        <p className="text-sm text-ds-muted">
+          No auxiliary or part-time employees on this roster. Set employment type to Part-time or Regular part-time on the worker profile.
+        </p>
       ) : (
         <div className="space-y-6 px-1">
           <label className="block text-xs font-semibold uppercase tracking-wide text-ds-muted">

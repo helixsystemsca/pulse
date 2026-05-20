@@ -10,9 +10,10 @@ TENANT_EMPTY_FEATURES_MARKER = "_tenant_empty_feature_canvas"
 
 # Product-facing catalog (system admin UI). Order is mirrored in `frontend/lib/system-admin-features.ts`
 # and grouped for Team Management in `frontend/config/platform/tenant-product-modules.ts`.
-# (toggleable items only — not Dashboard or Settings).
+# Settings stays pinned; leadership `/overview` is toggleable via `dashboard`.
 # Keys must stay in sync with `frontend/lib/pulse-nav-features.ts` (classic nav) where applicable.
 GLOBAL_SYSTEM_FEATURES: tuple[str, ...] = (
+    "dashboard",
     "compliance",
     "schedule",
     "monitoring",
@@ -21,24 +22,17 @@ GLOBAL_SYSTEM_FEATURES: tuple[str, ...] = (
     "procedures",
     "team_insights",
     "team_management",
+    "messaging",
     "inventory",
     "equipment",
     "drawings",
     "zones_devices",
     "live_map",
-    # Communications workspace (Team Management + system-admin contract; platform nav also checks these).
+    # Communications tools (scoped routes /communications/… share these contract keys).
     "comms_assets",
     "comms_advertising_mapper",
-    "comms_publication_builder",
     "comms_indesign_pipeline",
     "comms_campaign_planner",
-    # Department workspace hubs (sidebar Workspaces + platform /{slug}/… routing visibility per role).
-    "workspace_maintenance",
-    "workspace_communications",
-    "workspace_reception",
-    "workspace_aquatics",
-    "workspace_fitness",
-    "workspace_admin",
 )
 
 _LEGACY_FEATURE_ALIASES: dict[str, tuple[str, ...]] = {
@@ -47,6 +41,14 @@ _LEGACY_FEATURE_ALIASES: dict[str, tuple[str, ...]] = {
     # Legacy `workers` row: roster page + team insights (historical mapping preserved)
     "workers": ("team_management", "team_insights"),
     "floor_plan": ("zones_devices",),
+    # Removed per-department workspace_* contract flags — ignore stale DB rows.
+    "workspace_maintenance": (),
+    "workspace_communications": (),
+    "workspace_reception": (),
+    "workspace_aquatics": (),
+    "workspace_fitness": (),
+    "workspace_racquets": (),
+    "workspace_admin": (),
 }
 
 _GLOBAL_SET = frozenset(GLOBAL_SYSTEM_FEATURES)

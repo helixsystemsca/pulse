@@ -3,7 +3,7 @@
 from collections.abc import Awaitable, Callable
 from typing import Annotated, Optional
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,7 +21,11 @@ from app.core.events.engine import event_engine
 from app.core.features.service import FeatureFlagService
 from app.core.inference.engine import InferenceEngine
 from app.core.permissions.service import PermissionService
+from app.core.rbac.observability import log_rbac_denial
+from app.core.rbac.registry import assert_known_rbac_keys
+from app.core.rbac.resolve import effective_rbac_permission_keys
 from app.core.state.manager import StateManager
+from app.core.tenant_feature_access import contract_and_effective_features_for_me
 from app.models.domain import User, UserAccountStatus, UserRole
 from app.schemas.auth import TokenPayload
 from sqlalchemy import select
@@ -212,6 +216,13 @@ def require_company_access(company_id: str) -> Callable[..., Awaitable[User]]:
 
 
 def require_permission(permission: str) -> Callable[..., Awaitable[User]]:
+    """
+    Legacy `PermissionService` gate.
+
+    Prefer `require_rbac_any` / `require_rbac_all` for tenant product APIs — they use the same
+    `/auth/me` flat keys (`effective_rbac_permission_keys`) as the SPA.
+    """
+
     async def _inner(
         user: User = Depends(get_current_user),
         db: AsyncSession = Depends(get_db),
@@ -226,6 +237,101 @@ def require_permission(permission: str) -> Callable[..., Awaitable[User]]:
         return user
 
     return _inner
+
+
+def require_rbac_any(*permission_keys: str) -> Callable[..., Awaitable[User]]:
+    """
+    Tenant API guard: flat RBAC keys come from the matrix-driven ``enabled_features`` bridge (and ``feature_allow_extra``),
+    ∩ contract — same resolver as ``/auth/me`` (overlay ``tenant_role_grants`` rows do not widen this set).
+    """
+    assert_known_rbac_keys(*permission_keys)
+
+    async def _inner(
+        request: Request,
+        user: User = Depends(require_tenant_user),
+        db: AsyncSession = Depends(get_db),
+    ) -> User:
+        contract_feats, eff_feats, _, _ = await contract_and_effective_features_for_me(db, user)
+        resolved = set(
+            await effective_rbac_permission_keys(
+                db,
+                user,
+                contract_feature_names=contract_feats,
+                effective_feature_names=eff_feats,
+            )
+        )
+        if "*" in resolved:
+            return user
+        if any(k in resolved for k in permission_keys):
+            return user
+        sample = sorted(resolved)[:24]
+        log_rbac_denial(
+            user_id=str(user.id),
+            company_id=str(user.company_id) if user.company_id else None,
+            required_any_of=tuple(permission_keys),
+            held_keys_sample=sample,
+            mode="any",
+            route=str(request.url.path),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "rbac_permission_required",
+                "required_any_of": list(permission_keys),
+                "resolution": "none_of_required_keys_in_effective_set",
+            },
+        )
+
+    return _inner
+
+
+def require_rbac_all(*permission_keys: str) -> Callable[..., Awaitable[User]]:
+    """Tenant API guard: user must hold every listed flat RBAC key (still subject to contract filtering in resolver)."""
+    assert_known_rbac_keys(*permission_keys)
+
+    async def _inner(
+        request: Request,
+        user: User = Depends(require_tenant_user),
+        db: AsyncSession = Depends(get_db),
+    ) -> User:
+        contract_feats, eff_feats, _, _ = await contract_and_effective_features_for_me(db, user)
+        resolved = set(
+            await effective_rbac_permission_keys(
+                db,
+                user,
+                contract_feature_names=contract_feats,
+                effective_feature_names=eff_feats,
+            )
+        )
+        if "*" in resolved:
+            return user
+        missing = [k for k in permission_keys if k not in resolved]
+        if not missing:
+            return user
+        sample = sorted(resolved)[:24]
+        log_rbac_denial(
+            user_id=str(user.id),
+            company_id=str(user.company_id) if user.company_id else None,
+            required_any_of=tuple(permission_keys),
+            held_keys_sample=sample,
+            mode="all",
+            route=str(request.url.path),
+            extra={"missing_all_of": missing},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "rbac_permission_required_all",
+                "required_all_of": list(permission_keys),
+                "missing": missing,
+            },
+        )
+
+    return _inner
+
+
+# Back-compat name used in early RBAC wiring drafts.
+require_any_rbac = require_rbac_any
 
 
 def get_permission_service(db: Annotated[AsyncSession, Depends(get_db)]) -> PermissionService:

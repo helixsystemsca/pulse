@@ -1,7 +1,7 @@
 """Pulse product domain: CMMS work requests, scheduling, worker profiles, beacons."""
 
 import enum
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time, timezone
 from typing import Any, Optional
 from uuid import uuid4
 
@@ -14,8 +14,10 @@ from sqlalchemy import (
     ForeignKey,
     Float,
     Integer,
+    Numeric,
     String,
     Text,
+    Time,
     UniqueConstraint,
     text,
 )
@@ -1111,6 +1113,18 @@ class PulseProject(Base):
     notification_to_owner: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, server_default=text("true")
     )
+    show_on_schedule: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=text("true")
+    )
+    overlay_color: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    operational_impact_level: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="medium", server_default="medium"
+    )
+    staffing_priority: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="normal", server_default="normal"
+    )
+    blackout_windows: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)
+    department_slug: Mapped[Optional[str]] = mapped_column(String(32), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
@@ -1503,6 +1517,10 @@ class PulseScheduleShift(Base):
     shift_code: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
     is_draft: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     published_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    locked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    generated_by: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    confidence_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    recommendation_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     shift_type: Mapped[str] = mapped_column(String(64), default="shift", nullable=False)
@@ -1510,6 +1528,7 @@ class PulseScheduleShift(Base):
     requires_ticketed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     shift_kind: Mapped[str] = mapped_column(String(32), default="workforce", nullable=False)
     display_label: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    department_slug: Mapped[Optional[str]] = mapped_column(String(32), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
@@ -1653,6 +1672,8 @@ class PulseWorkerHR(Base):
     #: Workspace URL segments (`communications`, …) this employee may access under `/{slug}/…`.
     department_slugs: Mapped[Optional[list[Any]]] = mapped_column(JSONB, nullable=True)
     job_title: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    #: Explicit Team Management permission-matrix slot (overrides job-title inference when set).
+    matrix_slot: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     shift: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     supervisor_user_id: Mapped[Optional[str]] = mapped_column(
         UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
@@ -1801,6 +1822,70 @@ class NotificationLog(Base):
     )
 
 
+class StaffingRequirement(Base):
+    """Operational staffing demand target (inferred or manual). Separate from assigned shifts."""
+
+    __tablename__ = "staffing_requirements"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    shift_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    required_count: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    required_certifications: Mapped[list[str]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'[]'::jsonb")
+    )
+    zone_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("zones.id", ondelete="SET NULL"), nullable=True
+    )
+    event_id: Mapped[Optional[str]] = mapped_column(UUID(as_uuid=False), nullable=True)
+    source: Mapped[str] = mapped_column(String(64), nullable=False, default="inferred")
+    confidence_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.5)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+
+
+class EmployeeAvailability(Base):
+    """
+    Per-day auxiliary availability for the manual schedule builder.
+    Blank days (no row) mean potentially eligible for pickup — not unavailable.
+    """
+
+    __tablename__ = "employee_availability"
+    __table_args__ = (
+        UniqueConstraint(
+            "company_id",
+            "employee_id",
+            "date",
+            "status",
+            "restriction_type",
+            name="uq_employee_availability_day_slot",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    employee_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    start_time: Mapped[Optional[time]] = mapped_column(Time, nullable=True)
+    end_time: Mapped[Optional[time]] = mapped_column(Time, nullable=True)
+    restriction_type: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    source: Mapped[str] = mapped_column(String(64), nullable=False, server_default="manual")
+    imported_from: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+
+
 class PulseUserFeedback(Base):
     """End-user product feedback routed to tenant administrators (messages inbox)."""
 
@@ -1825,3 +1910,90 @@ class PulseUserFeedback(Base):
         UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class PlanningIdeaStatus(str, enum.Enum):
+    idea = "idea"
+    awaiting_review = "awaiting_review"
+    approved = "approved"
+    deferred = "deferred"
+    rejected = "rejected"
+    converted = "converted"
+
+
+class PlanningIdeaApprovalStatus(str, enum.Enum):
+    pending = "pending"
+    approved = "approved"
+    rejected = "rejected"
+
+
+class PlanningIdeaPriority(str, enum.Enum):
+    low = "low"
+    medium = "medium"
+    high = "high"
+    critical = "critical"
+
+
+class PlanningIdea(Base):
+    """Pre-project intake backlog — tenant-scoped planning ideas before formal project approval."""
+
+    __tablename__ = "planning_ideas"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    title: Mapped[str] = mapped_column(String(512), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    location: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    category: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    estimated_cost: Mapped[Optional[float]] = mapped_column(Numeric(14, 2), nullable=True)
+    priority: Mapped[str] = mapped_column(String(16), nullable=False, default="medium", server_default="medium")
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="idea", server_default="idea", index=True)
+    created_by_user_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    linked_project_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("pulse_projects.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+    converted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class PlanningIdeaApproval(Base):
+    """Manager approval request for a planning idea (tokenized email workflow)."""
+
+    __tablename__ = "planning_idea_approvals"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    planning_idea_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("planning_ideas.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    requested_by_user_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    requested_to_user_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=False
+    )
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending", server_default="pending", index=True)
+    request_comments: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    reviewer_comments: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    requested_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    responded_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    email_sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    approval_token_hash: Mapped[str] = mapped_column(String(128), nullable=False, unique=True, index=True)

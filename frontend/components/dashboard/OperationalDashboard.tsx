@@ -1137,7 +1137,7 @@ function DashboardBody({
 }: {
   model: DashboardViewModel;
   session: PulseAuthSession | null | undefined;
-  dashboardContext: "operations" | "admin";
+  dashboardContext: string;
   workOrdersHref: string;
   readOnly?: boolean;
 }) {
@@ -1153,10 +1153,12 @@ function DashboardBody({
     const t = window.setInterval(() => setNow(new Date()), 1000);
     return () => window.clearInterval(t);
   }, []);
+  const isDeptDashboard = dashboardContext.startsWith("dept_");
   const canEditLayout = useMemo(() => {
     if (readOnly || isKiosk) return false;
+    if (isDeptDashboard) return true;
     return canAccessCompanyConfiguration(session);
-  }, [isKiosk, readOnly, session]);
+  }, [isDeptDashboard, isKiosk, readOnly, session]);
 
   /** Kiosk fullscreen uses the same persisted layout as the in-app dashboard (not a separate TV layout). */
   const layoutStorageKey = useMemo(() => {
@@ -1348,8 +1350,9 @@ function DashboardBody({
   /** Stable while the set of built-in widget ids is unchanged — avoids re-hydrating layout on every `model` tick. */
   const builtinWidgetIdsSignature = [...allWidgetKeys].sort().join("|");
 
-  const defaultLayout = useMemo(
-    (): Layout => [
+  const defaultLayout = useMemo((): Layout => {
+    if (isDeptDashboard) return [];
+    return [
       { i: "important_dates", x: 0, y: 0, w: 5, h: 12, minW: 3, minH: 6 },
       { i: "notifications_work_orders", x: 5, y: 0, w: 6, h: 12, minW: 4, minH: 6 },
       { i: "training_compliance", x: 11, y: 0, w: 5, h: 12, minW: 3, minH: 8 },
@@ -1359,9 +1362,8 @@ function DashboardBody({
       { i: "facility_schedule", x: 0, y: 22, w: 8, h: 9, minW: 4, minH: 5 },
       { i: "routine_assignments", x: 8, y: 22, w: 8, h: 9, minW: 4, minH: 5 },
       { i: "pool_readings", x: 0, y: 31, w: 16, h: 10, minW: 6, minH: 6 },
-    ],
-    [],
-  );
+    ];
+  }, [isDeptDashboard]);
 
   const [layout, setLayout] = useState<Layout>(defaultLayout);
   const [isInteracting, setIsInteracting] = useState(false);
@@ -1629,12 +1631,35 @@ function DashboardBody({
         </div>
       ) : null}
 
+      {isDeptDashboard && layout.length === 0 && layoutHydrated && !editMode ? (
+        <div className="rounded-xl border border-dashed border-ds-border bg-[color-mix(in_srgb,var(--ds-text-primary)_3%,transparent)] px-6 py-10 text-center">
+          <p className="text-base font-semibold text-ds-foreground">Your dashboard is empty</p>
+          <p className="mx-auto mt-2 max-w-md text-sm text-ds-muted">
+            Use the pencil to edit layout, then add widgets from the modules unlocked for your role.
+          </p>
+          {canEditLayout ? (
+            <Button
+              type="button"
+              variant="secondary"
+              className="mt-4"
+              onClick={() => {
+                setEditMode(true);
+                setShowAddWidget(true);
+              }}
+            >
+              Add your first widget
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+
       <div
         ref={containerRef as any}
         className={cn(
           "pulse-dashboard-grid min-w-0",
           isKiosk && "min-h-0 flex-1 overflow-y-auto overscroll-contain",
           editMode && "pulse-dashboard-edit",
+          isDeptDashboard && layout.length === 0 && !editMode && "hidden",
         )}
       >
           {mounted ? (
@@ -1808,8 +1833,9 @@ function DashboardBody({
                 <div>
                   <p className={UI.header}>Add Widget</p>
                   <p className={`mt-1 ${UI.subheader}`}>
-                    Re-enable a built-in card, or build a compact &quot;peek&quot; from another Pulse page (pick slices and
-                    options).
+                    {isDeptDashboard
+                      ? "Build a compact peek from a module you have unlocked (pick slices and options)."
+                      : 'Re-enable a built-in card, or build a compact "peek" from another Pulse page (pick slices and options).'}
                   </p>
                 </div>
                 <Button
@@ -1837,32 +1863,36 @@ function DashboardBody({
                   <span>Custom page peek…</span>
                   <span className="text-xs font-semibold text-blue-600">New</span>
                 </Button>
-                <p className={`pt-2 text-[11px] font-semibold uppercase tracking-wider ${UI.subheader}`}>
-                  Built-in cards
-                </p>
-                {availableToAdd.length === 0 ? (
-                  <p className={`text-sm ${UI.subheader}`}>All built-in widgets are already on the board.</p>
-                ) : (
-                  availableToAdd.map((key) => {
-                    const ww = (widgetRegistry as Record<string, any>)[key] as { title: string } | null | undefined;
-                    if (!ww) return null;
-                    return (
-                      <Button
-                        key={key}
-                        type="button"
-                        variant="secondary"
-                        className="flex w-full items-center justify-between text-left text-sm font-semibold"
-                        onClick={() => {
-                          addWidget(key);
-                          setShowAddWidget(false);
-                        }}
-                      >
-                        <span>{ww.title}</span>
-                        <span className="text-gray-500">Add</span>
-                      </Button>
-                    );
-                  })
-                )}
+                {!isDeptDashboard ? (
+                  <>
+                    <p className={`pt-2 text-[11px] font-semibold uppercase tracking-wider ${UI.subheader}`}>
+                      Built-in cards
+                    </p>
+                    {availableToAdd.length === 0 ? (
+                      <p className={`text-sm ${UI.subheader}`}>All built-in widgets are already on the board.</p>
+                    ) : (
+                      availableToAdd.map((key) => {
+                        const ww = (widgetRegistry as Record<string, any>)[key] as { title: string } | null | undefined;
+                        if (!ww) return null;
+                        return (
+                          <Button
+                            key={key}
+                            type="button"
+                            variant="secondary"
+                            className="flex w-full items-center justify-between text-left text-sm font-semibold"
+                            onClick={() => {
+                              addWidget(key);
+                              setShowAddWidget(false);
+                            }}
+                          >
+                            <span>{ww.title}</span>
+                            <span className="text-gray-500">Add</span>
+                          </Button>
+                        );
+                      })
+                    )}
+                  </>
+                ) : null}
               </div>
             </Card>
           </div>
@@ -1873,6 +1903,7 @@ function DashboardBody({
           open={showPeekWizard}
           mode={peekWizardMode}
           initialConfig={peekWizardInitial}
+          session={session ?? null}
           onClose={() => {
             setShowPeekWizard(false);
             setPeekWizardInitial(null);
@@ -1900,7 +1931,8 @@ export function OperationalDashboard({
   readOnly?: boolean;
   /** Optional bearer token for kiosk links (`?token=`) when no session exists. */
   tokenOverride?: string | null;
-  dashboardContext?: "operations" | "admin";
+  /** Storage namespace for layout/widgets (`operations`, `admin`, or `dept_{slug}`). */
+  dashboardContext?: string;
 }) {
   const { session } = usePulseAuth();
   const [liveModel, setLiveModel] = useState<DashboardViewModel | null>(null);

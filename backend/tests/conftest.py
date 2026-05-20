@@ -2,16 +2,19 @@
 Test harness: auto-provisioned PostgreSQL (Docker if TEST_DATABASE_URL unset), httpx ASGI client,
 transactional isolation per test, seeded tenant + IoT graph.
 
-No manual migration step: `provision_test_database` runs `alembic upgrade head` once per session.
+Schema comes from `alembic upgrade head` (see `pytest_configure`), not ad-hoc create_all in tests.
 """
 
 from __future__ import annotations
 
 import os
 import uuid
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
+from typing import AsyncIterator
+from unittest.mock import patch
 
 import pytest
 import pytest_asyncio
@@ -22,6 +25,29 @@ from sqlalchemy.ext.asyncio import AsyncSession
 os.environ.setdefault("SECRET_KEY", "pytest-secret-key-at-least-32-characters-long!!")
 os.environ.setdefault("REQUIRE_HTTPS", "false")
 os.environ.setdefault("ENVIRONMENT", "development")
+
+_TEST_DB_INFO = None
+_TEST_DB_CONFIGURE_ERROR: str | None = None
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """
+    Migrate the test database before collection imports `app.main`.
+
+    Otherwise module-level `import app.main` binds `app.core.database.engine` to an
+    unmigrated database and RBAC bootstrap fails with UndefinedTableError.
+    """
+    global _TEST_DB_INFO, _TEST_DB_CONFIGURE_ERROR
+    from tests.db_lifecycle import TestDbUnavailable, provision_test_database
+
+    try:
+        _TEST_DB_INFO = provision_test_database()
+    except TestDbUnavailable as exc:
+        msg = str(exc)
+        # CI sets TEST_DATABASE_URL — fail before collection imports unmigrated app.main.
+        if os.environ.get("TEST_DATABASE_URL", "").strip():
+            pytest.exit(msg, returncode=1)
+        _TEST_DB_CONFIGURE_ERROR = msg
 
 
 @dataclass
@@ -50,17 +76,14 @@ def anyio_backend() -> str:
 
 @pytest.fixture(scope="session")
 def test_database():
-    from tests.db_lifecycle import TestDbUnavailable, provision_test_database
-
-    try:
-        info = provision_test_database()
-    except TestDbUnavailable as e:
-        pytest.exit(str(e), returncode=1)
+    if _TEST_DB_CONFIGURE_ERROR:
+        pytest.exit(_TEST_DB_CONFIGURE_ERROR, returncode=1)
+    if _TEST_DB_INFO is None:
+        pytest.exit("Test database was not provisioned in pytest_configure.", returncode=1)
     from app.core.config import get_settings
 
-    get_settings.cache_clear()
-    yield info
-    info.teardown()
+    yield _TEST_DB_INFO
+    _TEST_DB_INFO.teardown()
     get_settings.cache_clear()
 
 
@@ -69,6 +92,33 @@ def app(test_database):
     from app.main import app as fastapi_app
 
     return fastapi_app
+
+
+class _TestAsyncSessionLocal:
+    """Async sessionmaker stand-in: yields the pytest session without closing it."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    def __call__(self) -> "_TestAsyncSessionLocal":
+        return self
+
+    async def __aenter__(self) -> AsyncSession:
+        return self._session
+
+    async def __aexit__(self, *args: object) -> None:
+        return None
+
+
+@asynccontextmanager
+async def _bind_feature_gate_session(session: AsyncSession) -> AsyncIterator[None]:
+    """FeatureGateMiddleware uses AsyncSessionLocal, not get_db — share the test transaction."""
+    from app.core.features.cache import clear_all
+
+    maker = _TestAsyncSessionLocal(session)
+    with patch("app.middleware.feature_gate.AsyncSessionLocal", maker):
+        yield
+    clear_all()
 
 
 @pytest_asyncio.fixture
@@ -94,12 +144,16 @@ async def db_session(test_database, app):
             yield session
 
         app.dependency_overrides[get_db] = override_get_db
-        try:
-            yield session
-        finally:
-            app.dependency_overrides.pop(get_db, None)
-            await session.close()
-            await trans.rollback()
+        async with _bind_feature_gate_session(session):
+            from app.core.rbac.catalog_sync import sync_rbac_catalog_permissions
+
+            await sync_rbac_catalog_permissions(session)
+            try:
+                yield session
+            finally:
+                app.dependency_overrides.pop(get_db, None)
+                await session.close()
+                await trans.rollback()
 
 
 @pytest_asyncio.fixture
@@ -134,13 +188,15 @@ async def seeded_tenant(db_session: AsyncSession) -> TenantSeed:
     sensor_warn = str(uuid.uuid4())
     sensor_crit = str(uuid.uuid4())
     gateway_id = str(uuid.uuid4())
-    worker_email = f"worker_{suffix}@pytest.test"
-    manager_email = f"manager_{suffix}@pytest.test"
+    worker_email = f"worker_{suffix}@example.com"
+    manager_email = f"manager_{suffix}@example.com"
     password = "pytest-pass-12345"
 
     db = db_session
-    company = Company(id=company_id, name=f"Pytest Co {suffix}")
+    company = Company(id=company_id, name=f"Pytest Co {suffix}", theme={})
     db.add(company)
+    await db.flush()
+
     worker = User(
         id=worker_id,
         company_id=company_id,
@@ -262,8 +318,7 @@ async def seeded_tenant(db_session: AsyncSession) -> TenantSeed:
 
     svc = DeviceService(db)
     _, gateway_secret = await svc.rotate_gateway_ingest_secret(company_id=company_id, gateway_id=gateway_id)
-
-    await db.commit()
+    await db.flush()
 
     worker_token = create_access_token(
         subject=worker_id,

@@ -5,7 +5,7 @@
 
 export type DepartmentId = string;
 
-/** Lucide icon name subset mapped in `PlatformAppSideNav` (extend as needed). */
+/** Lucide icon name subset used by the tenant sidebar for platform routes (extend as needed). */
 export type PlatformIconKey =
   | "wrench"
   | "megaphone"
@@ -32,7 +32,7 @@ export type Department = {
   icon?: PlatformIconKey;
   /** Optional CSS color token or hex for future chrome theming. */
   accentColor?: string;
-  /** Module ids enabled for this department in the org (config-driven, not UI-hardcoded). */
+  /** Module ids this department may host (mirrors {@link PLATFORM_MODULES} for the slug). */
   enabledModuleIds: readonly string[];
 };
 
@@ -43,12 +43,12 @@ export type PlatformModule = {
   icon?: PlatformIconKey;
   /** URL segment after `/${department.slug}/`. */
   route: string;
-  /** Departments that may surface this module in nav (intersected with `Department.enabledModuleIds`). */
+  /** Departments that may surface this module in nav (organizational routing; visibility uses RBAC + contract). */
   allowedDepartmentSlugs: readonly string[];
   requiredCapabilities?: readonly string[];
   /**
-   * When set, the department rail hides this module unless `session.enabled_features` includes this key
-   * (same catalog as Team Management / system-admin contract). Omitted = not gated by contract features.
+   * When set, workspace rail requires this company contract key plus matching `rbac_permissions`
+   * (see `platform-workspace-modules`). Omitted = not gated by contract modules.
    */
   tenantNavFeatureKey?: string;
   /**

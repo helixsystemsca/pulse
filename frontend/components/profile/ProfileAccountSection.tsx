@@ -8,6 +8,7 @@ import { Card } from "@/components/pulse/Card";
 import { REDUCED_EFFECTS_CHANGED_EVENT, REDUCED_EFFECTS_STORAGE_KEY, useReducedEffects } from "@/hooks/useReducedEffects";
 import { apiFetch } from "@/lib/api";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
+import { DashboardHomepagePicker } from "@/components/dashboards/DashboardHomepagePicker";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
 
@@ -85,6 +86,7 @@ export function ProfileAccountSection({
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
+        <DashboardHomepagePicker onToast={onToast} />
         <Card padding="lg" variant="secondary" className="transition-[box-shadow] duration-200 hover:shadow-md">
           <div className="flex items-start justify-between gap-3">
             <div>

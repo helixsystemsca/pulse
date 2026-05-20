@@ -5,10 +5,15 @@ import { ComingSoonCard } from "@/components/platform/ComingSoonCard";
 import { CommunicationsIndesignPipelineTool } from "@/components/platform/communications/CommunicationsIndesignPipelineTool";
 import { AdvertisingMapperPage } from "@/modules/communications/advertising-mapper/AdvertisingMapperPage";
 import { CampaignPlannerPage } from "@/modules/communications/campaign-planner/CampaignPlannerPage";
-import { PublicationBuilderPage } from "@/modules/communications/publication-builder/PublicationBuilderPage";
 import type { Metadata } from "next";
 
 type PageProps = { params: { department: string; module: string } };
+
+function normalizePath(path: string): string {
+  const base = path.split("?")[0] ?? path;
+  if (base.endsWith("/") && base.length > 1) return base.slice(0, -1);
+  return base;
+}
 
 export function generateMetadata({ params }: PageProps): Metadata {
   const dept = getDepartmentBySlug(params.department);
@@ -23,22 +28,22 @@ export default function PlatformModulePage({ params }: PageProps) {
   const dept = getDepartmentBySlug(dSlug);
   const mod = getPlatformModuleByDepartmentRoute(dSlug, mRoute);
   if (!dept || !mod) notFound();
-  if (!dept.enabledModuleIds.includes(mod.id)) notFound();
 
+  const platformPath = normalizePath(`/${dSlug}/${mRoute}`);
   const canon = mod.canonicalPulseHref;
   const suppress = mod.suppressCanonicalForDepartments?.includes(dSlug) ?? false;
-  if (canon && !suppress) redirect(canon);
+  if (canon && !suppress) {
+    const target = normalizePath(canon);
+    if (target !== platformPath) redirect(canon);
+  }
 
-  if (mod.id === "mod_advertising_mapper") {
+  if (mod.id === "advertising_mapper") {
     return <AdvertisingMapperPage />;
   }
-  if (mod.id === "mod_publication_builder") {
-    return <PublicationBuilderPage />;
-  }
-  if (mod.id === "mod_campaign_planner") {
+  if (mod.id === "comms_campaign_planner") {
     return <CampaignPlannerPage />;
   }
-  if (mod.id === "mod_indesign_pipeline") {
+  if (mod.id === "xplor_indesign") {
     return <CommunicationsIndesignPipelineTool />;
   }
 
