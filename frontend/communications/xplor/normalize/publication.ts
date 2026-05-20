@@ -2,7 +2,6 @@ import type { PublicationEntry, PublicationSession } from "../schema/publication
 import { normalizeDatesInText } from "./text-cleanup";
 import {
   formatAgeRange,
-  formatInstructor,
   formatLocation,
   formatProgramText,
   formatSessionDays,
@@ -38,7 +37,8 @@ function normalizeSession(session: PublicationSession, ageRange: string): Public
 
 export function normalizePublicationEntry(entry: PublicationEntry): PublicationEntry {
   const ageRange = formatAgeRange(entry.ageRange);
-  const instructor = formatInstructor(entry.instructor);
+  /** Preserve raw instructor field for Xplor tag fidelity; UI/export apply display formatters. */
+  const instructor = entry.instructor.trim();
   const sessions = entry.sessions
     .map((s) => normalizeSession(s, ageRange))
     .filter((s) => s.rawLine.length > 0);

@@ -13,6 +13,8 @@ type XplorPreviewCardProps = {
   entry: PublicationEntry;
   index?: number;
   className?: string;
+  /** Editorial = full-width brochure flow; card = compact widget (legacy). */
+  layout?: "editorial" | "card";
 };
 
 function SessionMetadataRow({ session }: { session: PublicationSession }) {
@@ -28,7 +30,7 @@ function SessionMetadataRow({ session }: { session: PublicationSession }) {
 
   return (
     <div
-      className="flex flex-wrap items-baseline gap-x-4 gap-y-0 font-mono text-xs leading-snug text-ds-foreground"
+      className="flex w-full min-w-0 flex-wrap items-baseline gap-x-4 gap-y-0 font-mono text-xs leading-snug text-ds-foreground"
       role="row"
     >
       {session.days ? (
@@ -60,28 +62,40 @@ function SessionMetadataRow({ session }: { session: PublicationSession }) {
   );
 }
 
-export function XplorPreviewCard({ entry, index, className }: XplorPreviewCardProps) {
+export function XplorPreviewCard({ entry, index, className, layout = "editorial" }: XplorPreviewCardProps) {
   const groups = entry.sessionGroups.length
     ? entry.sessionGroups
     : [{ ageGroup: entry.ageRange, sessions: entry.sessions }];
 
   const instructorName = formatInstructor(entry.instructor);
   const showInstructor = hasInstructorName(entry.instructor);
+  const isEditorial = layout === "editorial";
 
   return (
     <article
       className={cn(
-        "overflow-hidden rounded-xl border border-ds-border bg-gradient-to-b from-ds-secondary/40 to-ds-primary",
-        "shadow-sm",
+        isEditorial
+          ? "w-full max-w-none border-0 bg-transparent shadow-none"
+          : "overflow-hidden rounded-xl border border-ds-border bg-gradient-to-b from-ds-secondary/40 to-ds-primary shadow-sm",
         className,
       )}
     >
-      <div className="space-y-3 px-4 py-4 text-sm leading-relaxed text-ds-foreground">
+      <div
+        className={cn(
+          "w-full max-w-none space-y-3 text-sm leading-relaxed text-ds-foreground",
+          isEditorial ? "px-0 py-2" : "px-4 py-4",
+        )}
+      >
         {entry.ageRange ? (
           <p className="text-[11px] font-bold uppercase tracking-widest text-[var(--ds-accent)]">{entry.ageRange}</p>
         ) : null}
 
-        <h3 className="font-serif text-lg font-semibold leading-snug text-ds-foreground">
+        <h3
+          className={cn(
+            "font-serif font-semibold leading-snug text-ds-foreground",
+            isEditorial ? "text-xl" : "text-lg",
+          )}
+        >
           {entry.title || `Program ${(index ?? 0) + 1}`}
         </h3>
 
@@ -92,7 +106,7 @@ export function XplorPreviewCard({ entry, index, className }: XplorPreviewCardPr
         ) : null}
 
         {entry.description ? (
-          <p className="whitespace-pre-wrap text-ds-foreground/90">{entry.description}</p>
+          <p className="max-w-none whitespace-pre-wrap text-ds-foreground/90">{entry.description}</p>
         ) : null}
 
         {entry.location ? (
@@ -110,7 +124,7 @@ export function XplorPreviewCard({ entry, index, className }: XplorPreviewCardPr
         ) : null}
 
         {groups.map((group) => (
-          <div key={`${entry.id}-${group.ageGroup}`} className="space-y-2">
+          <div key={`${entry.id}-${group.ageGroup}`} className="w-full space-y-2">
             {group.ageGroup && group.ageGroup !== entry.ageRange ? (
               <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--ds-accent)]">{group.ageGroup}</p>
             ) : null}

@@ -3,7 +3,11 @@
 import { LayoutGrid, Rows3 } from "lucide-react";
 import { SplitPreviewLayout } from "@/components/communications/SplitPreviewLayout";
 import { cn } from "@/lib/cn";
-import type { PublicationDocument, PublicationWarning } from "@/communications/xplor/schema/publication";
+import type { PublicationDocument } from "@/communications/xplor/schema/publication";
+import {
+  warningPreviewLabel,
+  warningsForPreviewDisplay,
+} from "@/communications/xplor/preview/ui-warnings";
 import { XplorPreviewCard } from "./XplorPreviewCard";
 
 type XplorProgramPreviewProps = {
@@ -14,10 +18,6 @@ type XplorProgramPreviewProps = {
   className?: string;
 };
 
-function warningLabel(w: PublicationWarning | string): string {
-  return typeof w === "string" ? w : w.message;
-}
-
 export function XplorProgramPreview({
   document,
   rawTaggedSample,
@@ -26,10 +26,11 @@ export function XplorProgramPreview({
   className,
 }: XplorProgramPreviewProps) {
   const entries = document.entries;
-  const warnings = [
-    ...document.warnings.map(warningLabel),
-    ...entries.flatMap((e) => e.warnings.map(warningLabel)),
-  ];
+
+  const previewWarnings = [
+    ...warningsForPreviewDisplay(document.warnings),
+    ...entries.flatMap((e) => warningsForPreviewDisplay(e.warnings)),
+  ].map(warningPreviewLabel);
 
   if (!entries.length) {
     return (
@@ -39,16 +40,16 @@ export function XplorProgramPreview({
     );
   }
 
-  const cards = (
-    <div className="grid gap-4 sm:grid-cols-2">
+  const editorialPrograms = (
+    <div className="flex w-full min-w-0 max-w-none flex-col gap-10">
       {entries.map((entry, index) => (
-        <XplorPreviewCard key={entry.id} entry={entry} index={index} />
+        <XplorPreviewCard key={entry.id} entry={entry} index={index} layout="editorial" />
       ))}
     </div>
   );
 
   return (
-    <div className={cn("space-y-3", className)}>
+    <div className={cn("w-full min-w-0 max-w-none space-y-3", className)}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs font-bold uppercase tracking-wide text-ds-muted">
           QA preview · {entries.length} program{entries.length === 1 ? "" : "s"} · confidence{" "}
@@ -66,26 +67,27 @@ export function XplorProgramPreview({
         ) : null}
       </div>
 
-      {warnings.length > 0 ? (
+      {previewWarnings.length > 0 ? (
         <ul className="max-h-32 overflow-y-auto rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:text-amber-100">
-          {warnings.slice(0, 12).map((w, i) => (
+          {previewWarnings.slice(0, 12).map((w, i) => (
             <li key={`${w}-${i}`}>{w}</li>
           ))}
-          {warnings.length > 12 ? <li>…and {warnings.length - 12} more</li> : null}
+          {previewWarnings.length > 12 ? <li>…and {previewWarnings.length - 12} more</li> : null}
         </ul>
       ) : null}
 
       {compareMode && rawTaggedSample ? (
         <SplitPreviewLayout
+          flatRight
           leftTitle="Source tags"
           rightTitle="Normalized schema"
           left={
             <pre className="whitespace-pre-wrap font-mono text-[11px] leading-relaxed text-ds-muted">{rawTaggedSample}</pre>
           }
-          right={cards}
+          right={editorialPrograms}
         />
       ) : (
-        <div className="max-h-[min(520px,60vh)] overflow-y-auto pr-1">{cards}</div>
+        <div className="max-h-[min(520px,60vh)] w-full min-w-0 overflow-y-auto">{editorialPrograms}</div>
       )}
     </div>
   );

@@ -16,10 +16,6 @@ function validateEntry(entry: PublicationEntry): PublicationEntry {
     warnings.push(warn("missing_age", "Age range is empty", "ageRange"));
     confidence -= 0.1;
   }
-  if (!entry.instructor.trim()) {
-    warnings.push(warn("missing_instructor", "Instructor not specified", "instructor"));
-    confidence -= 0.05;
-  }
   if (!entry.location.trim()) {
     warnings.push(warn("missing_location", "Location not specified", "location"));
     confidence -= 0.05;
