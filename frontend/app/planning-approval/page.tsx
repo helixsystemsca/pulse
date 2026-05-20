@@ -168,7 +168,7 @@ function PlanningApprovalContent() {
                   type="button"
                   disabled={busy}
                   className={cn(
-                    buttonVariants({ variant: "primary" }),
+                    buttonVariants({ surface: "light", intent: "primary" }),
                     "flex-1 bg-emerald-600 hover:bg-emerald-700",
                     preselectApprove && !busy && "ring-2 ring-emerald-400 ring-offset-2",
                   )}
@@ -180,7 +180,7 @@ function PlanningApprovalContent() {
                   type="button"
                   disabled={busy}
                   className={cn(
-                    buttonVariants({ variant: "secondary" }),
+                    buttonVariants({ surface: "light", intent: "secondary" }),
                     "flex-1 border-rose-300 text-rose-800 hover:bg-rose-50 dark:border-rose-800 dark:text-rose-200",
                     preselectReject && !busy && "ring-2 ring-rose-400 ring-offset-2",
                   )}
