@@ -13,6 +13,7 @@ and keep ``revision`` identifiers concise (≤32 chars recommended; see ``alembi
 from alembic import op
 
 import app.models  # noqa: F401 — register all ORM mappers
+import app.models.rbac_models  # noqa: F401 — RBAC tables on metadata before create_all
 from app.models.base import Base
 
 revision = "1000_alpha_baseline"

@@ -2,7 +2,7 @@
 Test harness: auto-provisioned PostgreSQL (Docker if TEST_DATABASE_URL unset), httpx ASGI client,
 transactional isolation per test, seeded tenant + IoT graph.
 
-No manual migration step: `provision_test_database` runs `alembic upgrade head` once per session.
+Schema comes from `alembic upgrade head` (see `pytest_configure`), not ad-hoc create_all in tests.
 """
 
 from __future__ import annotations
@@ -21,12 +21,29 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.rbac.catalog_sync import sync_rbac_catalog_permissions
-
 # Env before any app import (pydantic loads .env; process env wins over .env file).
 os.environ.setdefault("SECRET_KEY", "pytest-secret-key-at-least-32-characters-long!!")
 os.environ.setdefault("REQUIRE_HTTPS", "false")
 os.environ.setdefault("ENVIRONMENT", "development")
+
+_TEST_DB_INFO = None
+_TEST_DB_CONFIGURE_ERROR: str | None = None
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """
+    Migrate the test database before collection imports `app.main`.
+
+    Otherwise module-level `import app.main` binds `app.core.database.engine` to an
+    unmigrated database and RBAC bootstrap fails with UndefinedTableError.
+    """
+    global _TEST_DB_INFO, _TEST_DB_CONFIGURE_ERROR
+    from tests.db_lifecycle import TestDbUnavailable, provision_test_database
+
+    try:
+        _TEST_DB_INFO = provision_test_database()
+    except TestDbUnavailable as exc:
+        _TEST_DB_CONFIGURE_ERROR = str(exc)
 
 
 @dataclass
@@ -55,17 +72,14 @@ def anyio_backend() -> str:
 
 @pytest.fixture(scope="session")
 def test_database():
-    from tests.db_lifecycle import TestDbUnavailable, provision_test_database
-
-    try:
-        info = provision_test_database()
-    except TestDbUnavailable as e:
-        pytest.exit(str(e), returncode=1)
+    if _TEST_DB_CONFIGURE_ERROR:
+        pytest.exit(_TEST_DB_CONFIGURE_ERROR, returncode=1)
+    if _TEST_DB_INFO is None:
+        pytest.exit("Test database was not provisioned in pytest_configure.", returncode=1)
     from app.core.config import get_settings
 
-    get_settings.cache_clear()
-    yield info
-    info.teardown()
+    yield _TEST_DB_INFO
+    _TEST_DB_INFO.teardown()
     get_settings.cache_clear()
 
 
@@ -127,6 +141,8 @@ async def db_session(test_database, app):
 
         app.dependency_overrides[get_db] = override_get_db
         async with _bind_feature_gate_session(session):
+            from app.core.rbac.catalog_sync import sync_rbac_catalog_permissions
+
             await sync_rbac_catalog_permissions(session)
             try:
                 yield session

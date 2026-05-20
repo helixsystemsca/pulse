@@ -17,6 +17,15 @@ from pathlib import Path
 
 BACKEND_ROOT = Path(__file__).resolve().parent.parent
 
+# Fail fast in CI when alembic did not produce the RBAC schema tests depend on.
+REQUIRED_PUBLIC_TABLES: tuple[str, ...] = (
+    "rbac_catalog_permissions",
+    "tenant_roles",
+    "tenant_role_grants",
+    "companies",
+    "users",
+)
+
 DOCKER_IMAGE = os.environ.get("HELIX_TEST_POSTGRES_IMAGE", "postgres:16-alpine")
 DOCKER_PASSWORD = os.environ.get("HELIX_TEST_POSTGRES_PASSWORD", "pytest_helix_pg_secret")
 DOCKER_DB = os.environ.get("HELIX_TEST_POSTGRES_DB", "helix_pytest")
@@ -178,6 +187,65 @@ def _start_docker_postgres() -> TestDbInfo:
         raise
 
 
+def assert_schema_ready(async_url: str) -> None:
+    """Verify Alembic left a usable schema (avoids 100+ cascading UndefinedTable errors)."""
+    import psycopg
+
+    dsn = _async_to_sync_dsn(async_url)
+    missing: list[str] = []
+    with psycopg.connect(dsn, connect_timeout=5) as conn:
+        for table in REQUIRED_PUBLIC_TABLES:
+            row = conn.execute(
+                "SELECT 1 FROM information_schema.tables "
+                "WHERE table_schema = 'public' AND table_name = %s LIMIT 1",
+                (table,),
+            ).fetchone()
+            if not row:
+                missing.append(table)
+    if missing:
+        raise TestDbUnavailable(
+            "Test DB schema incomplete after `alembic upgrade head`. Missing tables: "
+            f"{', '.join(missing)}. "
+            "Ensure migrations ran against the same DATABASE_URL pytest uses."
+        )
+
+
+def reload_database_engine() -> None:
+    """
+    Recreate the async engine after DATABASE_URL is set and migrations finish.
+
+    Pytest collection imports `app.main` before session fixtures run; without a reload the
+    engine may bind to the wrong database or one that has not been migrated yet.
+    """
+    import asyncio
+    import importlib
+    import sys
+
+    if "app.core.config" in sys.modules:
+        from app.core.config import get_settings
+
+        get_settings.cache_clear()
+
+    if "app.core.database" not in sys.modules:
+        return
+
+    db_mod = sys.modules["app.core.database"]
+
+    async def _dispose() -> None:
+        await db_mod.engine.dispose()
+
+    try:
+        asyncio.run(_dispose())
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        try:
+            loop.run_until_complete(_dispose())
+        finally:
+            loop.close()
+
+    importlib.reload(db_mod)
+
+
 def _run_alembic_upgrade(async_url: str) -> None:
     env = os.environ.copy()
     env["DATABASE_URL"] = async_url
@@ -209,10 +277,14 @@ def provision_test_database() -> TestDbInfo:
         _ping_postgres(explicit, timeout_s=15.0)
         os.environ["DATABASE_URL"] = explicit
         _run_alembic_upgrade(explicit)
+        assert_schema_ready(explicit)
+        reload_database_engine()
         return info
 
     info = _start_docker_postgres()
     os.environ["DATABASE_URL"] = info.async_url
     os.environ["TEST_DATABASE_URL"] = info.async_url
     _run_alembic_upgrade(info.async_url)
+    assert_schema_ready(info.async_url)
+    reload_database_engine()
     return info

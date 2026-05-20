@@ -41,7 +41,9 @@ export function PlanningIdeaApprovalRequestModal({ open, idea, onClose, onSubmit
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedIdea) return;
+    if (!selectedIdea) {
+      return;
+    }
     if (!reviewerId.trim() || busy) return;
     setBusy(true);
     setErr(null);
