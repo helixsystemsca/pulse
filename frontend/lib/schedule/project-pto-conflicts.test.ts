@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { assessPtoApprovalWarnings, projectsOverlappingPto } from "./project-pto-conflicts";
 import type { ProjectScheduleOverlayMeta } from "./project-overlay-styles";
-import type { ScheduleSettings, Shift } from "./schedule/types";
+import type { ScheduleSettings, Shift } from "./types";
 
 const baseProject = (overrides: Partial<ProjectScheduleOverlayMeta> & Pick<ProjectScheduleOverlayMeta, "id" | "name">): ProjectScheduleOverlayMeta => ({
   start_date: "2026-05-01",

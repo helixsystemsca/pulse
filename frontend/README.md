@@ -12,7 +12,7 @@ NEXT_PUBLIC_PULSE_APP_URL=https://your-pulse-app-host.example
 
 Copy `.env.example` to `.env.local` for local dev. In production, set the same variable on Vercel / Netlify / your server.
 
-Default in code (if unset): `https://app.helixsystems.ca` — change via env to match your real Pulse deployment.
+Default in code: `https://panorama.helixsystems.ca` (dev without env: `http://localhost:3000`). Set `NEXT_PUBLIC_PULSE_APP_URL` on the marketing deploy (Vercel, etc.); legacy `pulse.helixsystems.ca` in that env is rewritten to panorama for CTAs.
 
 ## Commands
 
