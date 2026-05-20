@@ -14,6 +14,7 @@ from sqlalchemy import (
     ForeignKey,
     Float,
     Integer,
+    Numeric,
     String,
     Text,
     Time,
@@ -1909,3 +1910,56 @@ class PulseUserFeedback(Base):
         UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class PlanningIdeaStatus(str, enum.Enum):
+    idea = "idea"
+    reviewing = "reviewing"
+    awaiting_approval = "awaiting_approval"
+    approved = "approved"
+    deferred = "deferred"
+    rejected = "rejected"
+    converted = "converted"
+
+
+class PlanningIdeaPriority(str, enum.Enum):
+    low = "low"
+    medium = "medium"
+    high = "high"
+    critical = "critical"
+
+
+class PlanningIdea(Base):
+    """Pre-project intake backlog — tenant-scoped planning ideas before formal project approval."""
+
+    __tablename__ = "planning_ideas"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    title: Mapped[str] = mapped_column(String(512), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    location: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    category: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    estimated_cost: Mapped[Optional[float]] = mapped_column(Numeric(14, 2), nullable=True)
+    priority: Mapped[str] = mapped_column(String(16), nullable=False, default="medium", server_default="medium")
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="idea", server_default="idea", index=True)
+    created_by_user_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    linked_project_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("pulse_projects.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+    converted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)

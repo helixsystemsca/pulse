@@ -222,6 +222,20 @@ export const MASTER_FEATURES: readonly MasterFeatureDef[] = [
 
   // —— Planning ——
   {
+    key: "planning_workspace",
+    label: "Planning",
+    icon: "calendar",
+    route: "/planning",
+    feature: "projects",
+    rbacAnyOf: ["projects.view"],
+    navVisible: true,
+    sortOrder: 99,
+    navDomain: "Planning",
+    navGroup: "Projects",
+    navOrder: 15,
+    navAlias: true,
+  },
+  {
     key: "schedule",
     label: "Schedule",
     icon: "calendar",

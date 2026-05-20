@@ -143,6 +143,9 @@ function classicNavGate(href: string): NavGate {
       ],
     };
   }
+  if (h === "/planning" || h.startsWith("/planning/")) {
+    return { kind: "module", companyModules: ["projects"], rbacAnyOf: ["projects.view"] };
+  }
   if (h === "/project-management" || h.startsWith("/project-management/")) {
     return { kind: "module", companyModules: ["projects"], rbacAnyOf: ["projects.pm.view"] };
   }
