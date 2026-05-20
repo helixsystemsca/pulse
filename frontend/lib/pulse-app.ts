@@ -3,12 +3,27 @@
  * left-rail (`pulseTenantSidebarNav` / `pulseSystemSidebarNav`) and top-nav definitions,
  * and marketing-site links. Marketing vs Pulse app hosts are intentionally split.
  *
- * Default app origin: `panorama.helixsystems.ca` (legacy `pulse.helixsystems.ca` still supported via host list).
- * Override with `NEXT_PUBLIC_PULSE_APP_URL`.
+ * Default app origin: `panorama.helixsystems.ca` (legacy `pulse.helixsystems.ca` host still works for direct visits).
+ * Override with `NEXT_PUBLIC_PULSE_APP_URL`. Marketing CTAs rewrite pulse → panorama host.
  */
+const LEGACY_PULSE_APP_HOST = "pulse.helixsystems.ca";
+const CANONICAL_PULSE_APP_HOST = "panorama.helixsystems.ca";
+
+function normalizePulseAppOriginUrl(raw: string): string {
+  let origin = raw.replace(/\/$/, "");
+  if (origin.includes(LEGACY_PULSE_APP_HOST)) {
+    origin = origin.replace(LEGACY_PULSE_APP_HOST, CANONICAL_PULSE_APP_HOST);
+  }
+  return origin;
+}
+
 function pulseAppOrigin(): string {
-  const raw = process.env.NEXT_PUBLIC_PULSE_APP_URL ?? "https://panorama.helixsystems.ca";
-  return raw.replace(/\/$/, "");
+  const envRaw = process.env.NEXT_PUBLIC_PULSE_APP_URL?.trim();
+  if (!envRaw && process.env.NODE_ENV === "development") {
+    return normalizePulseAppOriginUrl("http://localhost:3000");
+  }
+  const raw = envRaw ?? `https://${CANONICAL_PULSE_APP_HOST}`;
+  return normalizePulseAppOriginUrl(raw);
 }
 
 /**
@@ -92,6 +107,12 @@ export type PulseSidebarIcon =
 /** Absolute URL to a path on the Pulse app host (for `<a href>`, mailto templates, etc.). */
 export function pulseAppHref(path: string): string {
   const p = path.startsWith("/") ? path : `/${path}`;
+  if (typeof window !== "undefined") {
+    const h = window.location.hostname;
+    if (h === "localhost" || h === "127.0.0.1") {
+      return `${window.location.origin}${p}`;
+    }
+  }
   return `${pulseAppOrigin()}${p}`;
 }
 
