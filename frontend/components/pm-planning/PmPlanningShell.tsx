@@ -21,7 +21,7 @@ export type PmPlanningEmbeddedProps = {
 };
 
 export type PmPlanningShellProps =
-  | { variant?: "demo" }
+  | { variant?: "demo"; hideWorkspaceLink?: boolean }
   | { variant: "embedded"; embedded: PmPlanningEmbeddedProps };
 
 /** PM planning tabs — demo (`/pm/planning`) or embedded on a project. Gated by `session.can_use_pm_features`. */
@@ -31,6 +31,8 @@ export function PmPlanningShell(props: PmPlanningShellProps = {}) {
 
   const isEmbedded = props.variant === "embedded";
   const embedded = isEmbedded ? props.embedded : null;
+  const hideWorkspaceLink =
+    props.variant !== "embedded" && "hideWorkspaceLink" in props && props.hideWorkspaceLink === true;
 
   const [tab, setTab] = useState<PmPlanningTab>("gantt");
   const [whatIf, setWhatIf] = useState(false);
@@ -107,13 +109,17 @@ export function PmPlanningShell(props: PmPlanningShellProps = {}) {
         <div>
           <h1 className="text-xl font-bold text-ds-foreground">{meta.name}</h1>
           <p className="text-sm text-[var(--pm-color-muted)]">{meta.code}</p>
-          {!isEmbedded ? (
+          {!isEmbedded && !hideWorkspaceLink ? (
             <Link
-              href="/dashboard/pm-workspace"
+              href="/project-management?tab=workspace"
               className="mt-1 inline-block text-xs font-semibold text-[var(--pm-color-primary)] hover:underline"
             >
               Coordination workspace →
             </Link>
+          ) : !isEmbedded && hideWorkspaceLink ? (
+            <p className="mt-1 text-xs text-[var(--pm-color-muted)]">
+              Demo schedule for CPM/Gantt what-if — use Workspace tab for coordination projects.
+            </p>
           ) : (
             <p className="mt-1 text-xs text-[var(--pm-color-muted)]">
               Gantt and CPM use task planned dates, estimates, and predecessors. What-if changes are not saved to tasks.

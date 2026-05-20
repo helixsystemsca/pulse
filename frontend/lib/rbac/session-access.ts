@@ -10,6 +10,7 @@ import {
   LEGACY_PLATFORM_ROUTE_ALIASES,
 } from "@/config/platform/legacy-platform-routes";
 import { getMasterFeatureForPath, MASTER_FEATURES } from "@/config/platform/master-feature-registry";
+import { canAccessProjectManagement } from "@/lib/features/pm-project-management";
 import {
   LEGACY_DASHBOARD_VIEW_PERMISSION,
   rbacKeyGrantedByLegacyDashboardView,
@@ -142,6 +143,9 @@ function classicNavGate(href: string): NavGate {
       ],
     };
   }
+  if (h === "/project-management" || h.startsWith("/project-management/")) {
+    return { kind: "module", companyModules: ["projects"], rbacAnyOf: ["projects.pm.view"] };
+  }
   if (h === "/dashboard/pm-workspace" || h.startsWith("/dashboard/pm-workspace/")) {
     return { kind: "module", companyModules: ["projects"], rbacAnyOf: ["projects.pm.view"] };
   }
@@ -205,11 +209,25 @@ function classicNavGate(href: string): NavGate {
  * Classic tenant left-rail / product entry: contract module(s) ∩ RBAC (any of `rbacAnyOf`).
  * System admin shell is handled separately in `AppSideNav`.
  */
+function isPmProjectManagementHref(h: string): boolean {
+  return (
+    h === "/project-management" ||
+    h.startsWith("/project-management/") ||
+    h === "/dashboard/pm-workspace" ||
+    h.startsWith("/dashboard/pm-workspace/") ||
+    h === "/pm/planning" ||
+    h.startsWith("/pm/planning/")
+  );
+}
+
 export function canAccessClassicNavHref(session: PulseAuthSession | null, href: string): boolean {
   if (!session) return false;
   if (session.is_system_admin === true || session.role === "system_admin") return true;
 
   const h = normalizeHref(href);
+  if (isPmProjectManagementHref(h)) {
+    return canAccessProjectManagement(session);
+  }
   if ((h === "/overview" || h.startsWith("/overview/")) && isTenantFullAdminSession(session)) {
     return true;
   }

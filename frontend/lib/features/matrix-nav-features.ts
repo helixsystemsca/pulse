@@ -9,6 +9,7 @@ export const NAV_MATRIX_FEATURE_KEYS = [
   "schedule_availability",
   "schedule_coverage",
   "schedule_shift_definitions",
+  "project_management",
   "pm_workspace",
   "pm_planning",
   "standards_my_procedures",
@@ -28,7 +29,7 @@ export const MATRIX_LICENSABLE_CHILDREN: Partial<Record<string, readonly Canonic
     "schedule_coverage",
     "schedule_shift_definitions",
   ],
-  projects: ["projects", "pm_workspace", "pm_planning"],
+  projects: ["projects", "project_management", "pm_workspace", "pm_planning"],
   procedures: [
     "procedures",
     "standards_training",

@@ -69,15 +69,17 @@ describe("buildNavigationTree", () => {
     const withPm = buildNavigationTree(
       session({
         contract_features: ["projects", "schedule"],
-        enabled_features: ["projects", "schedule", "pm_workspace", "pm_planning"],
+        enabled_features: ["projects", "schedule", "project_management"],
         rbac_permissions: ["projects.view", "projects.pm.view", "schedule.view"],
+        can_use_pm_features: true,
       }),
     );
     const planningPm = withPm
       .find((d) => d.domain === "Planning")
       ?.groups.flatMap((g) => g.items.map((i) => i.key)) ?? [];
-    expect(planningPm).toContain("pm_workspace");
-    expect(planningPm).toContain("pm_planning");
+    expect(planningPm).toContain("project_management");
+    expect(planningPm).not.toContain("pm_workspace");
+    expect(planningPm).not.toContain("pm_planning");
 
     const projectsOnly = buildNavigationTree(
       session({
@@ -89,8 +91,7 @@ describe("buildNavigationTree", () => {
     const planningLimited =
       projectsOnly.find((d) => d.domain === "Planning")?.groups.flatMap((g) => g.items.map((i) => i.key)) ?? [];
     expect(planningLimited).toContain("projects");
-    expect(planningLimited).not.toContain("pm_workspace");
-    expect(planningLimited).not.toContain("pm_planning");
+    expect(planningLimited).not.toContain("project_management");
   });
 
   it("filters dashboard flyout by granular dashboard permissions", () => {

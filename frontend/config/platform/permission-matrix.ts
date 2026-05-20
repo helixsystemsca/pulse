@@ -129,7 +129,7 @@ const PLANNING_SCHEDULE_KEYS = [
   "schedule_shift_definitions",
 ] as const;
 
-const PLANNING_PROJECT_KEYS = ["projects", "pm_workspace", "pm_planning"] as const;
+const PLANNING_PROJECT_KEYS = ["projects", "project_management", "pm_workspace", "pm_planning"] as const;
 
 const STANDARDS_PROGRAM_KEYS = [
   "procedures",
@@ -187,7 +187,7 @@ export const MASTER_PERMISSION_FEATURE_GROUPS: PermissionFeatureGroup[] = [
   {
     id: "planning_projects",
     label: "Planning · Projects",
-    description: "Project list, PM workspace, and PM planning routes.",
+    description: "Project list and Project Management (workspace + planning). Legacy pm_workspace / pm_planning keys still apply.",
     keys: [...PLANNING_PROJECT_KEYS],
   },
   {

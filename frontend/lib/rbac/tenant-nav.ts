@@ -12,6 +12,10 @@ import {
   type MasterFeatureIcon,
 } from "@/config/platform/master-feature-registry";
 import { readAccessSnapshot, snapshotHasCapability, snapshotHasFeature } from "@/lib/access-snapshot";
+import {
+  isProjectManagementFeatureEnabled,
+  sessionHasPmToolsPermission,
+} from "@/lib/features/pm-project-management";
 import { isTenantFeatureOnContract, isUserFeatureEnabled } from "@/lib/features/tenant-features";
 import type { PulseAuthSession } from "@/lib/pulse-session";
 
@@ -30,6 +34,16 @@ export function isTenantFullAdminSession(session: PulseAuthSession | null): bool
     session.role === "company_admin" ||
     Boolean(session.roles?.includes("company_admin"))
   );
+}
+
+function canShowProjectManagement(session: PulseAuthSession | null, isSystemAdmin: boolean): boolean {
+  if (!session) return false;
+  if (isSystemAdmin) return true;
+  if (!Boolean(session.can_use_pm_features)) return false;
+  if (!isTenantFeatureOnContract(session, "projects")) return false;
+  if (isTenantFullAdminSession(session)) return true;
+  if (!isProjectManagementFeatureEnabled(session)) return false;
+  return sessionHasPmToolsPermission(session);
 }
 
 function canShowTeamManagement(session: PulseAuthSession | null, isSystemAdmin: boolean): boolean {
@@ -78,6 +92,28 @@ export function explainMasterFeatureVisibility(
   }
   if (feature.key === "settings") {
     return session ? { visible: true } : { visible: false, reason: "No session — Settings is gated on an authenticated tenant session." };
+  }
+  if (feature.key === "project_management") {
+    if (isSystemAdmin) return { visible: true };
+    if (!session) return { visible: false, reason: "No session." };
+    if (!Boolean(session.can_use_pm_features)) {
+      return { visible: false, reason: "PM tools are disabled for this user (System → Users toggle)." };
+    }
+    if (!isTenantFeatureOnContract(session, "projects")) {
+      return { visible: false, reason: 'Projects module is not on the tenant contract.' };
+    }
+    if (isTenantFullAdminSession(session)) return { visible: true };
+    if (!isProjectManagementFeatureEnabled(session)) {
+      return {
+        visible: false,
+        reason:
+          "Project Management needs `project_management` or legacy `pm_workspace` / `pm_planning` in enabled_features.",
+      };
+    }
+    if (!sessionHasPmToolsPermission(session)) {
+      return { visible: false, reason: "Missing RBAC key `projects.pm.view`." };
+    }
+    return { visible: true };
   }
   if (feature.key === "team_management") {
     if (isSystemAdmin) return { visible: true };
@@ -163,6 +199,9 @@ export function isMasterFeatureVisibleForSession(
   // Authorization only — `feature.moduleCategory` is never consulted here.
   if (!feature.navVisible) return false;
   if (feature.key === "settings") return Boolean(session);
+  if (feature.key === "project_management") {
+    return canShowProjectManagement(session, isSystemAdmin);
+  }
   if (feature.key === "team_management") {
     return canShowTeamManagement(session, isSystemAdmin);
   }

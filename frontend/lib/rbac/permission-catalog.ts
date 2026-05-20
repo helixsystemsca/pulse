@@ -203,8 +203,8 @@ export const RBAC_PERMISSION_CATALOG: readonly RbacPermissionMeta[] = [
   { key: "projects.view", label: "View projects", description: "Project list and project dashboards.", module: "projects", category: "Operations" },
   {
     key: "projects.pm.view",
-    label: "PM workspace & planning",
-    description: "PM workspace, planning boards, and critical-path tools.",
+    label: "Project Management",
+    description: "Project Management page (workspace and planning / CPM tools).",
     module: "projects",
     category: "Operations",
   },

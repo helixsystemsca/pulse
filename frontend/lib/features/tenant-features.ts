@@ -54,6 +54,13 @@ export function userEnabledFeatureSet(session: PulseAuthSession | null): Set<Can
 
 const STANDARDS_SUB_FEATURES = ["standards_training", "standards_certifications", "standards_compliance"] as const;
 
+const PM_LEGACY_MATRIX_KEYS = ["pm_workspace", "pm_planning"] as const;
+
+function projectManagementMatrixEnabled(enabled: Set<CanonicalFeatureKey>): boolean {
+  if (enabled.has("project_management")) return true;
+  return PM_LEGACY_MATRIX_KEYS.some((k) => enabled.has(k));
+}
+
 function legacyStandardsBundleEnabled(session: PulseAuthSession | null, enabled: Set<CanonicalFeatureKey>): boolean {
   return enabled.has("procedures") || enabled.has("standards");
 }
@@ -74,6 +81,14 @@ export function isUserFeatureEnabled(session: PulseAuthSession | null, featureKe
   const snap = readAccessSnapshot(session);
   if (snap) {
     if (snapshotHasFeature(snap, featureKey)) return true;
+    if (
+      featureKey === "project_management" &&
+      (snap.features.includes("project_management") ||
+        snap.features.includes("pm_workspace") ||
+        snap.features.includes("pm_planning"))
+    ) {
+      return true;
+    }
     if ((STANDARDS_SUB_FEATURES as readonly string[]).includes(featureKey)) {
       return snapshotHasFeature(snap, "procedures") || snapshotHasFeature(snap, "standards");
     }
@@ -83,6 +98,7 @@ export function isUserFeatureEnabled(session: PulseAuthSession | null, featureKe
   if (!canonicalFeatureOnContract(session, featureKey)) return false;
   const enabled = userEnabledFeatureSet(session);
   if (enabled.has(canonical)) return true;
+  if (featureKey === "project_management" && projectManagementMatrixEnabled(enabled)) return true;
   if (featureKey.startsWith("dashboard_") && enabled.has("dashboard")) return true;
   if ((STANDARDS_SUB_FEATURES as readonly string[]).includes(featureKey) && legacyStandardsBundleEnabled(session, enabled)) {
     return true;
