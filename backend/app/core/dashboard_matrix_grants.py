@@ -6,9 +6,7 @@ from typing import Iterable
 
 from app.core.features.canonical_catalog import (
     CANONICAL_PRODUCT_FEATURES,
-    _CANONICAL_TO_CONTRACT,
     canonicalize_feature_keys,
-    to_canonical_feature_key,
 )
 
 _DASHBOARD_SURFACE_KEYS = frozenset(
@@ -50,17 +48,16 @@ def augment_canonical_dashboard_grants(
     """
     Inject baseline dashboard flyout keys for department × matrix-slot pairs.
 
-    - Matrix cell lists a flyout (or parent ``dashboard``) → grant implied flyouts for that slot.
-    - Tenant contract explicitly names a flyout (e.g. ``dashboard_operations``) → grant when licensed.
-    - Do not grant flyouts only because ``canonical_keys_from_contract`` expanded ``dashboard``
-      into every ``dashboard_*`` child while the matrix cell lists unrelated modules (e.g. inventory).
+    - Matrix cell lists a flyout key explicitly → grant that flyout.
+    - Tenant contract explicitly names a flyout (e.g. ``dashboard_operations``) → grant for the slot.
+    - Parent ``dashboard`` on the matrix row does **not** auto-expand to dept flyouts (Team Management
+      toggles are authoritative).
     """
     if "dashboard" not in contract_canonical:
         return canonical_features
     grants = _BASELINE_SLOT_DASHBOARD_GRANTS.get((department, slot))
     if not grants:
         return canonical_features
-    contract_set = set(contract_canonical)
     feature_set = set(canonical_features)
     explicit_contract = (
         set(canonicalize_feature_keys(contract_names))
@@ -69,19 +66,6 @@ def augment_canonical_dashboard_grants(
     )
     out = set(canonical_features)
     for key in grants:
-        if key in feature_set:
+        if key in feature_set or key in explicit_contract:
             out.add(key)
-            continue
-        if key in explicit_contract:
-            out.add(key)
-            continue
-        parent_contract = _CANONICAL_TO_CONTRACT.get(key)
-        if parent_contract:
-            parent_canonical = to_canonical_feature_key(parent_contract)
-            if (
-                parent_canonical
-                and parent_canonical in contract_set
-                and parent_canonical in feature_set
-            ):
-                out.add(key)
     return sorted(out)

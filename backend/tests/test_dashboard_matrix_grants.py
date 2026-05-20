@@ -28,13 +28,24 @@ def test_no_dashboard_contract_skips_grant() -> None:
     assert "dashboard_operations" not in out
 
 
-def test_communications_coordination_grants_dept_dashboard_when_only_parent_on_contract() -> None:
-    """Lisa-style: contract has `dashboard` only; matrix cell has `dashboard`."""
+def test_communications_coordination_matrix_dashboard_does_not_implicitly_grant_dept_flyout() -> None:
+    """Matrix `dashboard` is the parent module only — dept flyouts require an explicit matrix toggle."""
     out = augment_canonical_dashboard_grants(
         "communications",
         "coordination",
         ["dashboard"],
         contract_canonical=frozenset({"dashboard"}),
+        contract_names=["dashboard"],
+    )
+    assert out == ["dashboard"]
+
+
+def test_communications_coordination_grants_dept_dashboard_when_matrix_lists_flyout() -> None:
+    out = augment_canonical_dashboard_grants(
+        "communications",
+        "coordination",
+        ["dashboard_dept_communications"],
+        contract_canonical=frozenset({"dashboard", "dashboard_dept_communications"}),
         contract_names=["dashboard"],
     )
     assert "dashboard_dept_communications" in out
