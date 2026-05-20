@@ -1,1 +1,2 @@
-export { looksLikeXplorTaggedText, parseXplorTaggedText } from "./parse/tagged-parser";
+export { looksLikeXplorTaggedText } from "./ingest";
+export { parseXplorTaggedText } from "./parse/tagged-parser";
