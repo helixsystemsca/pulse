@@ -116,6 +116,8 @@ RBAC_KEY_REQUIRES_COMPANY_FEATURE: dict[str, str | None] = {
     "team_management.view": "team_management",
     "messaging.view": "messaging",
     "schedule.view": "schedule",
+    "scheduling.project_overlays.view": "schedule",
+    "scheduling.pto_conflict_visibility.view": "schedule",
     "monitoring.view": "monitoring",
     "projects.view": "projects",
     "projects.pm.view": "projects",

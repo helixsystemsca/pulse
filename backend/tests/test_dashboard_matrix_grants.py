@@ -12,6 +12,7 @@ def test_maintenance_operations_gets_operations_dashboard() -> None:
         "operations",
         ["compliance", "monitoring"],
         contract_canonical=contract,
+        contract_names=["dashboard", "dashboard_operations", "compliance", "monitoring"],
     )
     assert "dashboard_operations" in out
     assert "compliance" in out
@@ -34,5 +35,6 @@ def test_communications_coordination_grants_dept_dashboard_when_only_parent_on_c
         "coordination",
         ["dashboard"],
         contract_canonical=frozenset({"dashboard"}),
+        contract_names=["dashboard"],
     )
     assert "dashboard_dept_communications" in out

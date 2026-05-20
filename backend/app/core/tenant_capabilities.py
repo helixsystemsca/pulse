@@ -79,6 +79,7 @@ def resolve_tenant_feature_list(
             assignment.role_key,
             matrix_feats,
             contract_canonical=set(contract_canonical),
+            contract_names=contract_names,
         )
 
     overlay_feats: list[str] = []
