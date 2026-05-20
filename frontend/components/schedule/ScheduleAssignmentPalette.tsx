@@ -144,8 +144,6 @@ export function ScheduleAssignmentPalette({
         companyId={companyId}
         badgeConfig={badgeConfig}
         onBadgeConfigChange={onBadgeConfigChange}
-        shiftDefinitions={shiftDefinitions}
-        onShiftDefinitionsChange={onShiftDefinitionsChange}
       />
     </>
   );

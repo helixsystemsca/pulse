@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SettingsGear } from "@/components/settings/SettingsGear";
 import { cn } from "@/lib/cn";
@@ -208,7 +208,11 @@ export function ScheduleApp() {
     [companyId],
   );
 
+  const searchParams = useSearchParams();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsInitialTab, setSettingsInitialTab] = useState<
+    "Shift definitions" | "Organization" | undefined
+  >(undefined);
   const [timeOffOpen, setTimeOffOpen] = useState(false);
   const [dragSession, setDragSession] = useState<ScheduleDragSession | null>(null);
   const [placementDutyRole, setPlacementDutyRole] = useState<string>("worker");
@@ -313,6 +317,17 @@ export function ScheduleApp() {
       cancelled = true;
     };
   }, [hydrated, schedulePath, scheduleDepartmentSlug]);
+
+  useEffect(() => {
+    const settings = searchParams.get("settings");
+    if (settings === "shift-definitions") {
+      setSettingsInitialTab("Shift definitions");
+      setSettingsOpen(true);
+    }
+    const availability = searchParams.get("availability");
+    if (availability === "supervisor") setAvailabilitySupervisorOpen(true);
+    if (availability === "employee") setEmployeeAvailabilityOpen(true);
+  }, [searchParams]);
 
   const reloadPulseSchedule = useCallback(async () => {
     if (!isApiMode()) return;
@@ -1748,7 +1763,13 @@ export function ScheduleApp() {
 
       <ScheduleSettingsModal
         open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
+        onClose={() => {
+          setSettingsOpen(false);
+          setSettingsInitialTab(undefined);
+        }}
+        initialTab={settingsInitialTab}
+        shiftDefinitions={shiftDefinitions}
+        onShiftDefinitionsChange={setShiftDefinitions}
         onAvailabilitySeeded={() => void reloadPulseSchedule()}
       />
 

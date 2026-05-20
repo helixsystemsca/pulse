@@ -235,7 +235,7 @@ describe("buildNavigationTree", () => {
     expect(tree[0]!.domain).toBe("Planning");
   });
 
-  it("hides schedule flyouts unless explicitly enabled in matrix", () => {
+  it("shows only Schedule in Planning nav (availability/coverage/shift-definitions are in-page)", () => {
     const base = session({
       contract_features: ["schedule"],
       enabled_features: ["schedule"],
@@ -244,19 +244,16 @@ describe("buildNavigationTree", () => {
     const withScheduleOnly = buildNavigationTree(base);
     const scheduleGroup = withScheduleOnly[0]?.groups.find((g) => g.group === "Scheduling");
     const labelsOnlySchedule = (scheduleGroup?.items ?? []).map((i) => i.label);
-    expect(labelsOnlySchedule).toContain("Schedule");
-    expect(labelsOnlySchedule).not.toContain("Availability");
+    expect(labelsOnlySchedule).toEqual(["Schedule"]);
 
-    const withFlyouts = buildNavigationTree(
+    const withLegacyFlyoutKeys = buildNavigationTree(
       session({
         ...base,
-        enabled_features: ["schedule", "schedule_availability", "schedule_coverage"],
+        enabled_features: ["schedule", "schedule_availability", "schedule_coverage", "schedule_shift_definitions"],
       }),
     );
-    const flyoutGroup = withFlyouts[0]?.groups.find((g) => g.group === "Scheduling");
+    const flyoutGroup = withLegacyFlyoutKeys[0]?.groups.find((g) => g.group === "Scheduling");
     const flyoutLabels = (flyoutGroup?.items ?? []).map((i) => i.label);
-    expect(flyoutLabels).toContain("Availability");
-    expect(flyoutLabels).toContain("Coverage");
-    expect(flyoutLabels).not.toContain("Shift definitions");
+    expect(flyoutLabels).toEqual(["Schedule"]);
   });
 });

@@ -10,16 +10,30 @@ import { resolvePlacementBandOptions } from "@/lib/schedule/placement-panel-opti
 import type { PlacementBandOption, ShiftTypeConfig } from "@/lib/schedule/types";
 import { PulseDrawer } from "./PulseDrawer";
 import { ScheduleDevToolsPanel } from "./ScheduleDevToolsPanel";
+import { ShiftDefinitionsSettingsPanel } from "./ShiftDefinitionsSettingsPanel";
+import type { ScheduleShiftDefinitionRow } from "@/lib/schedule/palette-config";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
 
-const TABS = ["Organization", "General", "Placement panel", "Roles", "Shift types", "Staffing", "Dev tools"] as const;
+const TABS = [
+  "Organization",
+  "General",
+  "Placement panel",
+  "Roles",
+  "Shift types",
+  "Shift definitions",
+  "Staffing",
+  "Dev tools",
+] as const;
 type Tab = (typeof TABS)[number];
 
 type Props = {
   open: boolean;
   onClose: () => void;
   onAvailabilitySeeded?: () => void;
+  initialTab?: Tab;
+  shiftDefinitions?: ScheduleShiftDefinitionRow[];
+  onShiftDefinitionsChange?: (rows: ScheduleShiftDefinitionRow[]) => void;
 };
 
 function newRoleId(): string {
@@ -32,7 +46,14 @@ const LABEL =
   "text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400";
 const PRIMARY_BTN = cn(buttonVariants({ surface: "light", intent: "accent" }), "px-5 py-2.5");
 
-export function ScheduleSettingsModal({ open, onClose, onAvailabilitySeeded }: Props) {
+export function ScheduleSettingsModal({
+  open,
+  onClose,
+  onAvailabilitySeeded,
+  initialTab,
+  shiftDefinitions = [],
+  onShiftDefinitionsChange,
+}: Props) {
   const { session } = usePulseAuth();
   const isDev = process.env.NODE_ENV !== "production";
   const visibleTabs = isDev ? TABS : TABS.filter((t) => t !== "Dev tools");
@@ -53,10 +74,11 @@ export function ScheduleSettingsModal({ open, onClose, onAvailabilitySeeded }: P
 
   useEffect(() => {
     if (open) {
-      setTab("Organization");
+      const tabs = isDev ? TABS : TABS.filter((t) => t !== "Dev tools");
+      setTab(initialTab && (tabs as readonly string[]).includes(initialTab) ? initialTab : "Organization");
       setRoleError(null);
     }
-  }, [open]);
+  }, [open, initialTab, isDev]);
 
   if (!open) return null;
 
@@ -519,6 +541,15 @@ export function ScheduleSettingsModal({ open, onClose, onAvailabilitySeeded }: P
                 </div>
               ))}
             </div>
+          ) : null}
+
+          {tab === "Shift definitions" && onShiftDefinitionsChange ? (
+            <ShiftDefinitionsSettingsPanel
+              shiftDefinitions={shiftDefinitions}
+              onShiftDefinitionsChange={onShiftDefinitionsChange}
+            />
+          ) : tab === "Shift definitions" ? (
+            <p className="text-sm text-ds-muted">Shift definitions are not available in this view.</p>
           ) : null}
 
           {tab === "Staffing" ? (

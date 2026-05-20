@@ -181,7 +181,7 @@ export const MASTER_PERMISSION_FEATURE_GROUPS: PermissionFeatureGroup[] = [
     id: "planning_schedule",
     label: "Planning · Scheduling",
     description:
-      "Workforce schedule plus flyout tools. Availability, coverage, and shift definitions are off until enabled here.",
+      "Workforce schedule. Availability and coverage are opened from the Schedule page; shift definitions are under Schedule settings.",
     keys: [...PLANNING_SCHEDULE_KEYS],
   },
   {
