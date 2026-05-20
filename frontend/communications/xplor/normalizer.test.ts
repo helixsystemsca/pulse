@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyOcrPhraseFixes,
   normalizeAgeText,
   normalizeDatesInText,
   normalizeMoneyInText,
@@ -16,7 +17,7 @@ describe("normalizer", () => {
 
   it("normalizes dates and times", () => {
     expect(normalizeDatesInText("Jul 06")).toBe("Jul 6");
-    expect(normalizeDatesInText("Jun 24-Jun 24")).toBe("Jun 24");
+    expect(normalizeDatesInText("Jul 06-Jul 10")).toBe("Jul 6–10");
     expect(normalizeTimesInText("9:00am-12:00pm")).toBe("9am-12pm");
   });
 
@@ -27,6 +28,10 @@ describe("normalizer", () => {
 
   it("strips location label", () => {
     expect(stripLocationLabel("Location: Pool Deck")).toBe("Pool Deck");
+  });
+
+  it("fixes common OCR phrases", () => {
+    expect(applyOcrPhraseFixes("One along for camp")).toBe("Come along for camp");
   });
 
   it("normalizes session line composite", () => {

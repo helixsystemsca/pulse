@@ -1,24 +1,26 @@
-export type { XplorParseResult, XplorPipelineResult, XplorProgram, XplorTaggedBlock } from "./types";
-export { exportProgramsToTaggedText } from "./exporter";
-export { looksLikeXplorTaggedText, parseXplorTaggedText } from "./parser";
+export type * from "./schema/publication";
+export { ingestPublicationSource, looksLikeXplorTaggedText } from "./ingest";
+export { parseXplorTaggedText } from "./parse/tagged-parser";
+export { parseSessionBlob, parseSessionLines, stripTagCorruption } from "./parse/session-parser";
+export { mapProgramsToPublicationEntries } from "./schema/map-from-xplor";
+export { normalizePublicationEntries } from "./normalize/publication";
 export {
+  applyOcrPhraseFixes,
   normalizeAgeText,
+  normalizeFreeformLine,
   normalizePrograms,
   normalizeSessionLine,
   preserveUtf8Typography,
 } from "./normalizer";
+export { validatePublicationDocument } from "./validation";
+export { groupSessionsByAge, attachSessionGroups } from "./export/group-sessions";
+export {
+  exportPublicationToIndesignTxt,
+  exportPublicationToIndesignRtf,
+  exportLegacyXplorTaggedText,
+  exportProgramsToTaggedText,
+} from "./exporter";
+export { runPublicationPipeline, runXplorPipeline } from "./pipeline";
 
-import { exportProgramsToTaggedText } from "./exporter";
-import { looksLikeXplorTaggedText, parseXplorTaggedText } from "./parser";
-import { normalizePrograms } from "./normalizer";
-import type { XplorPipelineResult } from "./types";
-
-/** Full pipeline: parse → normalize → export tagged text. */
-export function runXplorPipeline(raw: string): XplorPipelineResult {
-  const parse = parseXplorTaggedText(raw);
-  const programs = normalizePrograms(parse.programs);
-  const exportText = exportProgramsToTaggedText(programs, parse.preamble);
-  return { parse, programs, exportText };
-}
-
-export { looksLikeXplorTaggedText as isXplorTaggedInput };
+export { looksLikeXplorTaggedText as isXplorTaggedInput } from "./ingest";
+export { stripRtfToPlain } from "./ingest/rtf";

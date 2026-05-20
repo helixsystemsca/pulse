@@ -1,105 +1,62 @@
-/**
- * Deterministic Xplor field normalization (no AI, no locale surprises).
- */
+import { attachSessionGroups } from "./export/group-sessions";
+import { normalizePublicationEntries } from "./normalize/publication";
+import { mapProgramsToPublicationEntries } from "./schema/map-from-xplor";
+import type { XplorProgram } from "./schema/publication";
 
-import type { XplorProgram } from "./types";
+export {
+  applyOcrPhraseFixes,
+  collapseWhitespace,
+  normalizeAgeText,
+  normalizeDatesInText,
+  normalizeFreeformLine,
+  normalizeMoneyInText,
+  normalizeTimesInText,
+  preserveUtf8Typography,
+  stripLocationLabel,
+} from "./normalize/text-cleanup";
 
-/** Preserve typographic punctuation; only strip known mojibake control chars. */
-export function preserveUtf8Typography(text: string): string {
-  return text
-    .replace(/\u0000/g, "")
-    .replace(/[\u2018\u2019]/g, "'")
-    .replace(/[\u201C\u201D]/g, '"')
-    .replace(/\u2013|\u2014/g, "-")
-    .replace(/\u00A0/g, " ")
-    .normalize("NFC");
-}
+import { normalizeFreeformLine as normalizeSessionLineImpl } from "./normalize/text-cleanup";
 
-/** Jul 06 → Jul 6; Jun 24-Jun 24 → Jun 24 */
-export function normalizeDatesInText(text: string): string {
-  let s = text;
-  s = s.replace(
-    /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+0(\d)\b/gi,
-    (_, mon: string, d: string) => `${mon} ${d}`,
-  );
-  s = s.replace(
-    /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})\s*-\s*(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\2\b/gi,
-    (_, mon: string, d: string) => `${mon} ${d}`,
-  );
-  return s;
-}
-
-/** 9:00am → 9am; 10:30pm stays */
-export function normalizeTimesInText(text: string): string {
-  return text.replace(/\b(\d{1,2}):00\s*(am|pm)\b/gi, (_, h: string, ap: string) => `${h}${ap}`);
-}
-
-/** $0 → Free; $24/1 → $24 */
-export function normalizeMoneyInText(text: string): string {
-  let s = text.replace(/\$0\b/g, "Free");
-  s = s.replace(/\$(\d+(?:\.\d{2})?)\/\d+\b/g, (_, amount: string) => `$${amount}`);
-  return s;
-}
-
-/** 16 - yrs → 16 yrs+ (single-age malformed pattern; ranges like 3 - 5 yrs kept). */
-export function normalizeAgeText(age: string): string {
-  let s = preserveUtf8Typography(age.trim());
-  const singleMalformed = s.match(/^(\d+)\s*-\s*yrs\s*$/i);
-  if (singleMalformed) return `${singleMalformed[1]} yrs+`;
-  return normalizeDatesInText(normalizeTimesInText(normalizeMoneyInText(s)));
-}
-
-export function stripLocationLabel(location: string): string {
-  return preserveUtf8Typography(location)
-    .replace(/^Location:\s*/i, "")
-    .trim();
-}
-
+/** @deprecated Alias for normalizeFreeformLine */
 export function normalizeSessionLine(line: string): string {
-  return normalizeDatesInText(normalizeTimesInText(normalizeMoneyInText(preserveUtf8Typography(line.trim()))));
+  return normalizeSessionLineImpl(line);
 }
 
 export function normalizeProgram(program: XplorProgram): XplorProgram {
-  const instructor = preserveUtf8Typography(program.instructor.trim());
-  const sessions = program.sessions
-    .map(normalizeSessionLine)
-    .map((s) => s.trim())
-    .filter(Boolean);
-  const extraFees = normalizeMoneyInText(preserveUtf8Typography(program.extraFees.trim()));
-
+  const [entry] = normalizePublicationEntries(mapProgramsToPublicationEntries([program]));
+  if (!entry) return program;
   return {
-    ...program,
-    age: normalizeAgeText(program.age),
-    title: preserveUtf8Typography(program.title.trim()),
-    description: normalizeDatesInText(
-      normalizeTimesInText(normalizeMoneyInText(preserveUtf8Typography(program.description.trim()))),
-    ),
-    location: stripLocationLabel(program.location),
-    instructor,
-    sessions,
-    extraFees,
-    extraBlocks: program.extraBlocks
-      .map((b) => ({
-        ...b,
-        content: normalizeDatesInText(
-          normalizeTimesInText(normalizeMoneyInText(preserveUtf8Typography(b.content.trim()))),
-        ),
-      }))
-      .filter((b) => b.content),
+    id: entry.id,
+    age: entry.ageRange,
+    title: entry.title,
+    description: entry.description,
+    location: entry.location,
+    instructor: entry.instructor,
+    sessions: entry.sessions.map((s) => s.rawLine),
+    extraFees: entry.extraFees,
+    extraBlocks: (entry.sourceMetadata.unmappedBlocks ?? []).map((b) => ({
+      style: b.style,
+      content: b.content,
+    })),
   };
 }
 
 export function normalizePrograms(programs: XplorProgram[]): XplorProgram[] {
-  return programs.map(normalizeProgram).filter((p) => {
-    return (
-      p.age ||
-      p.title ||
-      p.description ||
-      p.location ||
-      p.instructor ||
-      p.sessions.length ||
-      p.extraFees ||
-      p.extraBlocks.length
-    );
-  });
+  const entries = attachSessionGroups(
+    normalizePublicationEntries(mapProgramsToPublicationEntries(programs)),
+  );
+  return entries.map((e) => ({
+    id: e.id,
+    age: e.ageRange,
+    title: e.title,
+    description: e.description,
+    location: e.location,
+    instructor: e.instructor,
+    sessions: e.sessions.map((s) => s.rawLine),
+    extraFees: e.extraFees,
+    extraBlocks: (e.sourceMetadata.unmappedBlocks ?? []).map((b) => ({
+      style: b.style,
+      content: b.content,
+    })),
+  }));
 }

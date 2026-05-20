@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseXplorTaggedText } from "./parser";
-import { normalizePrograms } from "./normalizer";
-import { exportProgramsToTaggedText } from "./exporter";
+import { runPublicationPipeline } from "./pipeline";
 
 const SAMPLE = `<pstyle:Eventage>3 - 5 yrs
 <pstyle:Eventname>Tiny Timbers - Crafty Critters
@@ -22,16 +21,25 @@ describe("parseXplorTaggedText", () => {
     expect(programs[0]!.sessions.length).toBeGreaterThanOrEqual(1);
     expect(programs[0]!.extraFees).toContain("$24");
   });
+});
 
-  it("normalizes and exports with cleaned ordering", () => {
-    const { programs } = parseXplorTaggedText(SAMPLE);
-    const normalized = normalizePrograms(programs);
-    const out = exportProgramsToTaggedText(normalized);
-    expect(out.indexOf("<pstyle:Eventage>")).toBeLessThan(out.indexOf("<pstyle:Eventname>"));
-    expect(out).toContain("Jul 6");
-    expect(out).toContain("9am");
-    expect(out).not.toContain("Location:");
-    expect(out).not.toMatch(/<pstyle:Instructor>\s*\n/);
-    expect(out).toContain("Free");
+describe("runPublicationPipeline", () => {
+  it("normalizes and exports InDesign paragraph styles", () => {
+    const { export: exp, document } = runPublicationPipeline(SAMPLE);
+    expect(exp.taggedTxt).toContain("<pstyle:ProgramTitle>");
+    expect(exp.taggedTxt).toContain("Jul 6");
+    expect(exp.taggedTxt).toContain("9am");
+    expect(exp.taggedTxt).not.toContain("Location:");
+    expect(exp.taggedTxt).toContain("Free");
+    expect(document.entries[0]!.sessions[0]!.time).toContain("9");
+  });
+
+  it("applies OCR phrase fix in description", () => {
+    const raw = `<pstyle:Eventage>3 - 5 yrs
+<pstyle:Eventname>Test
+<pstyle:Eventdescription>One along for fun.
+<pstyle:Eventdetail>M-F 9am Jul 6 $10 12345`;
+    const { document } = runPublicationPipeline(raw);
+    expect(document.entries[0]!.description).toContain("Come along");
   });
 });

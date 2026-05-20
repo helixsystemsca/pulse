@@ -3,27 +3,35 @@
 import { LayoutGrid, Rows3 } from "lucide-react";
 import { SplitPreviewLayout } from "@/components/communications/SplitPreviewLayout";
 import { cn } from "@/lib/cn";
-import type { XplorProgram } from "@/communications/xplor/types";
+import type { PublicationDocument, PublicationWarning } from "@/communications/xplor/schema/publication";
 import { XplorPreviewCard } from "./XplorPreviewCard";
 
 type XplorProgramPreviewProps = {
-  programs: XplorProgram[];
+  document: PublicationDocument;
   rawTaggedSample?: string;
-  warnings?: string[];
   compareMode?: boolean;
   onCompareModeChange?: (value: boolean) => void;
   className?: string;
 };
 
+function warningLabel(w: PublicationWarning | string): string {
+  return typeof w === "string" ? w : w.message;
+}
+
 export function XplorProgramPreview({
-  programs,
+  document,
   rawTaggedSample,
-  warnings = [],
   compareMode = false,
   onCompareModeChange,
   className,
 }: XplorProgramPreviewProps) {
-  if (!programs.length) {
+  const entries = document.entries;
+  const warnings = [
+    ...document.warnings.map(warningLabel),
+    ...entries.flatMap((e) => e.warnings.map(warningLabel)),
+  ];
+
+  if (!entries.length) {
     return (
       <p className="rounded-lg border border-dashed border-ds-border bg-ds-secondary/20 px-4 py-8 text-center text-sm text-ds-muted">
         No structured programs detected. Paste Xplor-tagged text (pstyle:Eventage, Eventname, …) or upload a .txt export.
@@ -33,8 +41,8 @@ export function XplorProgramPreview({
 
   const cards = (
     <div className="grid gap-4 sm:grid-cols-2">
-      {programs.map((program, index) => (
-        <XplorPreviewCard key={program.id} program={program} index={index} />
+      {entries.map((entry, index) => (
+        <XplorPreviewCard key={entry.id} entry={entry} index={index} />
       ))}
     </div>
   );
@@ -43,7 +51,8 @@ export function XplorProgramPreview({
     <div className={cn("space-y-3", className)}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs font-bold uppercase tracking-wide text-ds-muted">
-          Brochure preview · {programs.length} program{programs.length === 1 ? "" : "s"}
+          QA preview · {entries.length} program{entries.length === 1 ? "" : "s"} · confidence{" "}
+          {(document.confidence * 100).toFixed(0)}%
         </p>
         {onCompareModeChange ? (
           <button
@@ -58,17 +67,18 @@ export function XplorProgramPreview({
       </div>
 
       {warnings.length > 0 ? (
-        <ul className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:text-amber-100">
-          {warnings.map((w) => (
-            <li key={w}>{w}</li>
+        <ul className="max-h-32 overflow-y-auto rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:text-amber-100">
+          {warnings.slice(0, 12).map((w, i) => (
+            <li key={`${w}-${i}`}>{w}</li>
           ))}
+          {warnings.length > 12 ? <li>…and {warnings.length - 12} more</li> : null}
         </ul>
       ) : null}
 
       {compareMode && rawTaggedSample ? (
         <SplitPreviewLayout
           leftTitle="Source tags"
-          rightTitle="Normalized cards"
+          rightTitle="Normalized schema"
           left={
             <pre className="whitespace-pre-wrap font-mono text-[11px] leading-relaxed text-ds-muted">{rawTaggedSample}</pre>
           }
