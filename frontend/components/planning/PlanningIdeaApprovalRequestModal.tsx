@@ -37,13 +37,16 @@ export function PlanningIdeaApprovalRequestModal({ open, idea, onClose, onSubmit
 
   if (!open || !idea) return null;
 
+  const selectedIdea = idea;
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (!selectedIdea) return;
     if (!reviewerId.trim() || busy) return;
     setBusy(true);
     setErr(null);
     try {
-      const result = await requestPlanningIdeaApproval(idea.id, {
+      const result = await requestPlanningIdeaApproval(selectedIdea.id, {
         requested_to_user_id: reviewerId,
         comments: comments.trim() || null,
       });
@@ -61,10 +64,10 @@ export function PlanningIdeaApprovalRequestModal({ open, idea, onClose, onSubmit
   }
 
   return (
-    <PulseDrawer open={open} onClose={onClose} title="Request approval" side="right">
+    <PulseDrawer open={open} onClose={onClose} title="Request approval">
       <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-4 p-4">
         <p className="text-sm text-ds-muted">
-          Send <strong className="text-ds-foreground">{idea.title}</strong> to a manager for review before it can
+          Send <strong className="text-ds-foreground">{selectedIdea.title}</strong> to a manager for review before it can
           become a project.
         </p>
 

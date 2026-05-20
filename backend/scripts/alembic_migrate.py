@@ -117,8 +117,9 @@ def main() -> int:
             else:
                 _direct_realign_orphan_revision(conn, stored)
 
-    _log.info("running alembic upgrade head")
+    _log.info("STARTUP: running alembic upgrade head")
     command.upgrade(cfg, "head")
+    _log.info("STARTUP: alembic upgrade head complete")
     return 0
 
 

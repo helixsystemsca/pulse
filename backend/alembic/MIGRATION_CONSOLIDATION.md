@@ -48,8 +48,17 @@ alembic -c alembic.ini upgrade head && uvicorn app.main:app ...
 With:
 
 ```bash
-python scripts/alembic_migrate.py && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+bash scripts/render_start.sh
 ```
+
+Or split for faster port binding (recommended on Render):
+
+- **Pre-Deploy Command:** `cd backend && python scripts/alembic_migrate.py`
+- **Start Command:** `cd backend && exec uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips='*'`
+
+**Health check path:** `/health` (returns `{"status":"ok"}`; no auth, no DB).
+
+Avoid chaining migrations in the same process as uvicorn if deploy logs show “no open ports detected” while migrations run — Render’s port scan can time out before the server listens.
 
 (`alembic_migrate.py` stamps `1000_alpha_baseline` when `alembic_version` still references an archived revision such as `0128_rbac_audit_events`, then runs `upgrade head`.)
 

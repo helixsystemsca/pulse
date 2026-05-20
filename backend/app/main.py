@@ -124,14 +124,35 @@ if not _cors_origins and not settings.cors_origin_regex_pattern:
     )
 
 
+_startup_log = logging.getLogger("pulse.startup")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with AsyncSessionLocal() as db:
-        await sync_rbac_catalog_permissions(db)
-        await db.commit()
-    async with AsyncSessionLocal() as db:
-        await ensure_bootstrap_system_admin(db)
-    yield
+    _startup_log.info("STARTUP STEP 1: rbac catalog sync begin")
+    try:
+        async with AsyncSessionLocal() as db:
+            await sync_rbac_catalog_permissions(db)
+            await db.commit()
+        _startup_log.info("STARTUP STEP 1: rbac catalog sync complete")
+    except Exception:
+        _startup_log.exception("STARTUP STEP 1: rbac catalog sync failed")
+        raise
+
+    _startup_log.info("STARTUP STEP 2: bootstrap system admin begin")
+    try:
+        async with AsyncSessionLocal() as db:
+            await ensure_bootstrap_system_admin(db)
+        _startup_log.info("STARTUP STEP 2: bootstrap system admin complete")
+    except Exception:
+        _startup_log.exception("STARTUP STEP 2: bootstrap system admin failed")
+        raise
+
+    _startup_log.info("STARTUP STEP 3: application ready (lifespan yield)")
+    try:
+        yield
+    finally:
+        _startup_log.info("STARTUP SHUTDOWN: lifespan teardown")
 
 
 _doc_kwargs: dict = {}
@@ -149,6 +170,12 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Health checks (no /api prefix — easy for load balancers and platform probes).
 app.include_router(health_router)
+
+
+@app.get("/", include_in_schema=False)
+async def root_probe() -> dict[str, str]:
+    """Minimal root for platform probes that hit ``/`` instead of ``/health``."""
+    return {"status": "ok"}
 
 # First registered sits innermost (just above routes); last registered is outermost.
 app.add_middleware(SlowAPIMiddleware)
@@ -244,4 +271,6 @@ app.include_router(monitoring_router, prefix="/api/v1")
 app.include_router(telemetry_positions_router, prefix="/api/v1")
 app.include_router(search_router, prefix="/api/v1")
 
+_startup_log.info("STARTUP STEP 4: register_modules begin")
 register_modules(app)
+_startup_log.info("STARTUP STEP 4: register_modules complete")
