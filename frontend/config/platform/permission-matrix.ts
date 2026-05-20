@@ -3,6 +3,8 @@
  * `department_role_feature_access` on workers settings).
  */
 
+import { expandContractKeysForMatrixFilter } from "@/lib/features/canonical-features";
+
 export const PERMISSION_MATRIX_DEPARTMENTS = [
   "maintenance",
   "communications",
@@ -473,7 +475,9 @@ export function normalizeDepartmentRoleMatrixFromApi(
     return seed;
   }
   const obj = raw as Record<string, Record<string, unknown>>;
-  const cat = new Set(contractCatalog);
+  // Contract rows often store parent `dashboard` only; matrix toggles use flyout keys
+  // (dashboard_operations, dashboard_dept_*). Must match expandContractKeysForMatrixFilter.
+  const cat = expandContractKeysForMatrixFilter(contractCatalog);
   for (const d of PERMISSION_MATRIX_DEPARTMENTS) {
     const row = obj[d];
     if (!row || typeof row !== "object") continue;

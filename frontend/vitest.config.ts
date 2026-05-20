@@ -12,6 +12,12 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["lib/**/*.test.ts", "modules/**/*.test.ts", "spatial-engine/**/*.test.ts"],
+    include: [
+      "lib/**/*.test.ts",
+      "modules/**/*.test.ts",
+      "spatial-engine/**/*.test.ts",
+      "communications/**/*.test.ts",
+      "lib/features/**/*.test.ts",
+    ],
   },
 });
