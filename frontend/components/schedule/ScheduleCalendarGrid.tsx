@@ -83,6 +83,7 @@ export function ScheduleCalendarGrid({
   monthIndex,
   onPrevMonth,
   onNextMonth,
+  onMonthSelect,
   shifts,
   workers,
   zones,
