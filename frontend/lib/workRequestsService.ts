@@ -21,6 +21,7 @@ export type WorkRequestRow = {
   part_name?: string | null;
   zone_id: string | null;
   location_name: string | null;
+  sub_location?: string | null;
   category: string | null;
   priority: string;
   status: string;
@@ -32,6 +33,8 @@ export type WorkRequestRow = {
   is_overdue: boolean;
   completed_at: string | null;
   created_by_user_id: string | null;
+  created_by_name?: string | null;
+  created_by_department?: string | null;
   /** Workflow metadata (future-ready; may be null/absent on older servers). */
   approved_by_user_id?: string | null;
   approved_at?: string | null;
@@ -95,6 +98,7 @@ function buildListQuery(params: {
   date_to?: string;
   due_after?: string;
   due_before?: string;
+  unassigned_only?: boolean;
   limit?: number;
   offset?: number;
 }): string {
@@ -111,6 +115,7 @@ function buildListQuery(params: {
   if (params.date_to) sp.set("date_to", params.date_to);
   if (params.due_after) sp.set("due_after", params.due_after);
   if (params.due_before) sp.set("due_before", params.due_before);
+  if (params.unassigned_only) sp.set("unassigned_only", "true");
   if (params.limit != null) sp.set("limit", String(params.limit));
   if (params.offset != null) sp.set("offset", String(params.offset));
   const q = sp.toString();
@@ -137,6 +142,7 @@ export async function createWorkRequest(
     equipment_id?: string | null;
     part_id?: string | null;
     zone_id?: string | null;
+    sub_location?: string | null;
     category?: string | null;
     priority?: string;
     assigned_user_id?: string | null;

@@ -45,6 +45,7 @@ import type {
   WorkRequestRow,
   WrSettings,
 } from "@/lib/workRequestsService";
+import { fetchWorkRequestKpiSummary } from "@/lib/work-requests/kpi-summary";
 import {
   createWorkRequest,
   fetchWorkRequestDetail,
@@ -58,6 +59,13 @@ import {
 } from "@/lib/workRequestsService";
 import { createPmPlan, type PmPlanFrequency } from "@/lib/pmPlansService";
 import { useModuleSettings, useModuleSettingsOptional } from "@/providers/ModuleSettingsProvider";
+import { getDepartmentBySlug } from "@/config/platform/departments";
+import { WorkRequestAssetTargetField } from "@/components/work-requests/WorkRequestAssetTargetField";
+import {
+  WorkRequestCreateSubmitButton,
+  type WorkRequestCreateSubmitPhase,
+} from "@/components/work-requests/WorkRequestCreateSubmitButton";
+import { WORK_REQUEST_SUB_LOCATIONS } from "@/lib/work-requests/sub-locations";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
 
@@ -72,6 +80,20 @@ const PRIMARY_BTN = cn(buttonVariants({ surface: "light", intent: "accent" }), "
 const FIELD =
   "mt-1.5 w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100 dark:placeholder:text-gray-500";
 const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-muted";
+const CREATE_FIELD_INVALID =
+  "border-red-500 ring-2 ring-red-500/35 focus:border-red-500 focus:ring-red-500/45 dark:border-red-400 dark:ring-red-400/30";
+
+type CreateFormFieldKey = "title" | "sub_location";
+
+function validateCreateForm(form: {
+  title: string;
+  sub_location: string;
+}): { valid: boolean; invalid: CreateFormFieldKey[] } {
+  const invalid: CreateFormFieldKey[] = [];
+  if (!form.title.trim()) invalid.push("title");
+  if (!form.sub_location.trim()) invalid.push("sub_location");
+  return { valid: invalid.length === 0, invalid };
+}
 
 function initials(name: string | null | undefined, email: string | null | undefined): string {
   if (name?.trim()) {
@@ -86,6 +108,17 @@ function initials(name: string | null | undefined, email: string | null | undefi
 function formatDue(iso: string | null): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+/** Submitter department for list/detail — full label, never abbreviated. */
+function formatDepartmentLabel(raw: string | null | undefined): string {
+  const t = (raw ?? "").trim();
+  if (!t) return "—";
+  const known = getDepartmentBySlug(t.toLowerCase());
+  if (known) return known.name;
+  return t
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function statusBadgeClass(display: string): string {
@@ -375,12 +408,18 @@ export function WorkRequestsApp() {
     equipment_id: "",
     part_id: "",
     zone_id: "",
+    sub_location: "",
     category: "",
     priority: "medium",
-    assigned_user_id: "",
     due_date: "",
     attachmentsNotes: "",
   });
+  const [createSubmitPhase, setCreateSubmitPhase] = useState<WorkRequestCreateSubmitPhase>("idle");
+  const [createInvalidFields, setCreateInvalidFields] = useState<Set<CreateFormFieldKey>>(
+    () => new Set(),
+  );
+  const createTitleRef = useRef<HTMLInputElement>(null);
+  const createSubLocationRef = useRef<HTMLSelectElement>(null);
 
   const PM_SUGGESTIONS = useMemo(
     () => [
@@ -586,6 +625,14 @@ export function WorkRequestsApp() {
   }, [dataEnabled, searchParams, pathname, router]);
 
   useEffect(() => {
+    if (!createOpen) {
+      setCreateSubmitPhase("idle");
+      setCreateInvalidFields(new Set());
+      return;
+    }
+  }, [createOpen]);
+
+  useEffect(() => {
     if (!createOpen || !createForm.equipment_id) {
       setWrPartOptions([]);
       return;
@@ -675,7 +722,7 @@ export function WorkRequestsApp() {
         const companyId = isSystemAdmin ? effectiveCompanyId : null;
         const due_after = dateFrom ? `${dateFrom}T00:00:00.000Z` : undefined;
         const due_before = dateTo ? `${dateTo}T23:59:59.999Z` : undefined;
-        const common = {
+        const summary = await fetchWorkRequestKpiSummary({
           companyId,
           q: qDebounced || undefined,
           priority: priorityFilter || undefined,
@@ -684,19 +731,12 @@ export function WorkRequestsApp() {
           kind: kindFilter || undefined,
           due_after,
           due_before,
-          limit: 1,
-          offset: 0,
-        };
-        const [pendingRes, inProgressRes, overdueRes] = await Promise.all([
-          fetchWorkRequestList({ ...common, status: "pending_approval" }),
-          fetchWorkRequestList({ ...common, status: "in_progress" }),
-          fetchWorkRequestList({ ...common, status: "overdue" }),
-        ]);
+        });
         if (!cancelled) {
           setKpiSummary({
-            pending: pendingRes.total,
-            inProgress: inProgressRes.total,
-            overdueAny: overdueRes.total,
+            pending: summary.pendingApproval,
+            inProgress: summary.inProgress,
+            overdueAny: summary.overdueAny,
           });
         }
       } catch {
@@ -936,9 +976,34 @@ export function WorkRequestsApp() {
     }
   }
 
+  function focusFirstCreateInvalid(fields: CreateFormFieldKey[]) {
+    const first = fields[0];
+    if (first === "title") createTitleRef.current?.focus();
+    else if (first === "sub_location") createSubLocationRef.current?.focus();
+  }
+
+  function triggerCreateSubmitError(fields?: CreateFormFieldKey[]) {
+    if (fields?.length) {
+      setCreateInvalidFields(new Set(fields));
+      focusFirstCreateInvalid(fields);
+    }
+    setCreateSubmitPhase("error");
+    window.setTimeout(() => setCreateSubmitPhase("idle"), 1000);
+  }
+
   async function onCreateSubmit() {
-    if (!effectiveCompanyId || !createForm.title.trim()) return;
-    setActionBusy(true);
+    if (!effectiveCompanyId) return;
+    if (createSubmitPhase === "loading" || createSubmitPhase === "success") return;
+
+    const { valid, invalid } = validateCreateForm(createForm);
+    if (!valid) {
+      triggerCreateSubmitError(invalid);
+      return;
+    }
+
+    setCreateInvalidFields(new Set());
+    setCreateSubmitPhase("loading");
+
     try {
       let attachments: unknown[] | null = null;
       if (createForm.attachmentsNotes.trim()) {
@@ -954,14 +1019,17 @@ export function WorkRequestsApp() {
         equipment_id: createForm.equipment_id || null,
         part_id: createForm.part_id || null,
         zone_id: createForm.zone_id || null,
+        sub_location: createForm.sub_location || null,
         category: createForm.category.trim() || null,
         priority: createForm.priority,
-        assigned_user_id: createForm.assigned_user_id || null,
         due_date: createForm.due_date ? `${createForm.due_date}T12:00:00.000Z` : null,
         attachments,
       });
-      // Workflow default: pending approval, regardless of who created it.
       await postWorkRequestStatus(isSystemAdmin ? effectiveCompanyId : null, created.id, "pending_approval");
+
+      setCreateSubmitPhase("success");
+      await new Promise((resolve) => window.setTimeout(resolve, 700));
+
       setCreateOpen(false);
       setCreateForm({
         title: "",
@@ -970,15 +1038,16 @@ export function WorkRequestsApp() {
         equipment_id: "",
         part_id: "",
         zone_id: "",
+        sub_location: "",
         category: "",
         priority: "medium",
-        assigned_user_id: "",
         due_date: "",
         attachmentsNotes: "",
       });
+      setCreateSubmitPhase("idle");
       await loadList();
-    } finally {
-      setActionBusy(false);
+    } catch {
+      triggerCreateSubmitError();
     }
   }
 
@@ -1514,13 +1583,14 @@ export function WorkRequestsApp() {
               <p className="p-6 text-sm text-rose-600">{listError}</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-[1100px] w-full border-collapse text-left text-sm">
+                <table className="min-w-[1220px] w-full border-collapse text-left text-sm">
                   <thead>
                     <tr className="app-table-head-row border-pulse-border">
                       <th className="px-4 py-3">Status</th>
                       <th className="px-4 py-3">Priority</th>
                       <th className="px-4 py-3">Work item</th>
                       <th className="px-4 py-3">Location</th>
+                      <th className="px-4 py-3">Department</th>
                       <th className="px-4 py-3">Category</th>
                       <th className="px-4 py-3">Description</th>
                       <th className="px-4 py-3">Assigned To</th>
@@ -1572,6 +1642,9 @@ export function WorkRequestsApp() {
                             ) : null}
                           </td>
                           <td className="px-4 py-3 align-top text-pulse-navy">{row.location_name ?? "—"}</td>
+                          <td className="px-4 py-3 align-top text-pulse-navy">
+                            {formatDepartmentLabel(row.created_by_department)}
+                          </td>
                           <td className="px-4 py-3 align-top text-pulse-navy">{row.category ?? "—"}</td>
                           <td className="max-w-[220px] px-4 py-3 align-top text-pulse-muted">{short}</td>
                           <td className="px-4 py-3 align-top">
@@ -1831,7 +1904,10 @@ export function WorkRequestsApp() {
         open={createOpen}
         title="New work request"
         subtitle="Create a maintenance task for your team"
-        onClose={() => setCreateOpen(false)}
+        onClose={() => {
+          if (createSubmitPhase === "loading" || createSubmitPhase === "success") return;
+          setCreateOpen(false);
+        }}
         wide
         placement="center"
         labelledBy="wr-create-title"
@@ -1839,14 +1915,17 @@ export function WorkRequestsApp() {
           <div className="flex flex-wrap justify-end gap-3">
             <button
               type="button"
-              className="text-sm font-semibold text-pulse-muted hover:text-pulse-navy"
+              className="text-sm font-semibold text-pulse-muted hover:text-pulse-navy disabled:opacity-50"
+              disabled={createSubmitPhase === "loading" || createSubmitPhase === "success"}
               onClick={() => setCreateOpen(false)}
             >
               Cancel
             </button>
-            <button type="button" className={PRIMARY_BTN} disabled={actionBusy} onClick={() => void onCreateSubmit()}>
-              {actionBusy ? "Saving…" : "Create request"}
-            </button>
+            <WorkRequestCreateSubmitButton
+              phase={createSubmitPhase}
+              disabled={!effectiveCompanyId}
+              onClick={() => void onCreateSubmit()}
+            />
           </div>
         }
       >
@@ -1855,11 +1934,26 @@ export function WorkRequestsApp() {
             New work request
           </p>
           <div>
-            <label className={LABEL}>Title</label>
+            <label className={LABEL} htmlFor="wr-create-title-input">
+              Title <span className="text-red-600 dark:text-red-400">*</span>
+            </label>
             <input
-              className={FIELD}
+              id="wr-create-title-input"
+              ref={createTitleRef}
+              className={cn(FIELD, createInvalidFields.has("title") && CREATE_FIELD_INVALID)}
               value={createForm.title}
-              onChange={(e) => setCreateForm((f) => ({ ...f, title: e.target.value }))}
+              aria-invalid={createInvalidFields.has("title")}
+              aria-required
+              onChange={(e) => {
+                setCreateForm((f) => ({ ...f, title: e.target.value }));
+                if (createInvalidFields.has("title")) {
+                  setCreateInvalidFields((prev) => {
+                    const next = new Set(prev);
+                    next.delete("title");
+                    return next;
+                  });
+                }
+              }}
             />
           </div>
           <div>
@@ -1870,39 +1964,23 @@ export function WorkRequestsApp() {
               onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))}
             />
           </div>
+          <WorkRequestAssetTargetField
+            assets={assets}
+            equipment={equipmentOptions}
+            toolId={createForm.tool_id}
+            equipmentId={createForm.equipment_id}
+            labelClassName={LABEL}
+            fieldClassName={FIELD}
+            onSelect={({ tool_id, equipment_id }) =>
+              setCreateForm((f) => ({
+                ...f,
+                tool_id,
+                equipment_id,
+                part_id: equipment_id === f.equipment_id ? f.part_id : "",
+              }))
+            }
+          />
           <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className={LABEL}>Asset</label>
-              <select
-                className={FIELD}
-                value={createForm.tool_id}
-                onChange={(e) => setCreateForm((f) => ({ ...f, tool_id: e.target.value }))}
-              >
-                <option value="">Select asset…</option>
-                {assets.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className={LABEL}>Equipment</label>
-              <select
-                className={FIELD}
-                value={createForm.equipment_id}
-                onChange={(e) =>
-                  setCreateForm((f) => ({ ...f, equipment_id: e.target.value, part_id: "" }))
-                }
-              >
-                <option value="">None</option>
-                {equipmentOptions.map((eq) => (
-                  <option key={eq.id} value={eq.id}>
-                    {eq.name}
-                  </option>
-                ))}
-              </select>
-            </div>
             <div>
               <label className={LABEL}>Part (optional)</label>
               <select
@@ -1934,8 +2012,36 @@ export function WorkRequestsApp() {
                 ))}
               </select>
             </div>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className={LABEL} htmlFor="wr-create-sub-location">
+                Sub location <span className="text-red-600 dark:text-red-400">*</span>
+              </label>
+              <select
+                id="wr-create-sub-location"
+                ref={createSubLocationRef}
+                className={cn(FIELD, createInvalidFields.has("sub_location") && CREATE_FIELD_INVALID)}
+                value={createForm.sub_location}
+                aria-invalid={createInvalidFields.has("sub_location")}
+                aria-required
+                onChange={(e) => {
+                  setCreateForm((f) => ({ ...f, sub_location: e.target.value }));
+                  if (createInvalidFields.has("sub_location")) {
+                    setCreateInvalidFields((prev) => {
+                      const next = new Set(prev);
+                      next.delete("sub_location");
+                      return next;
+                    });
+                  }
+                }}
+              >
+                <option value="">Select area…</option>
+                {WORK_REQUEST_SUB_LOCATIONS.map((loc) => (
+                  <option key={loc} value={loc}>
+                    {loc}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div>
               <label className={LABEL}>Category</label>
               <input
@@ -1957,23 +2063,6 @@ export function WorkRequestsApp() {
                 <option value="critical">Critical</option>
               </select>
             </div>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className={LABEL}>Assign to</label>
-              <select
-                className={FIELD}
-                value={createForm.assigned_user_id}
-                onChange={(e) => setCreateForm((f) => ({ ...f, assigned_user_id: e.target.value }))}
-              >
-                <option value="">Unassigned</option>
-                {workers.map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.full_name ?? w.email}
-                  </option>
-                ))}
-              </select>
-            </div>
             <div>
               <label className={LABEL}>Due date</label>
               <input
@@ -1984,6 +2073,9 @@ export function WorkRequestsApp() {
               />
             </div>
           </div>
+          <p className="text-xs text-pulse-muted">
+            New requests are submitted unassigned. Leadership assigns after approval.
+          </p>
           <div>
             <label className={LABEL}>Attachments (optional — one note per line)</label>
             <textarea
@@ -2222,6 +2314,16 @@ export function WorkRequestsApp() {
                     {formatDue(detail.due_date)}
                   </p>
                 )}
+              </div>
+              <div>
+                <h3 className={LABEL}>Submitted by</h3>
+                <p className="mt-1.5 text-sm text-pulse-navy">{detail.created_by_name?.trim() || "—"}</p>
+              </div>
+              <div>
+                <h3 className={LABEL}>Department</h3>
+                <p className="mt-1.5 text-sm text-pulse-navy">
+                  {formatDepartmentLabel(detail.created_by_department)}
+                </p>
               </div>
               <div>
                 <h3 className={LABEL}>Priority</h3>

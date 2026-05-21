@@ -836,6 +836,7 @@ class PulseWorkRequest(Base):
     zone_id: Mapped[Optional[str]] = mapped_column(
         UUID(as_uuid=False), ForeignKey("zones.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    sub_location: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
     category: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     work_request_kind: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
     priority: Mapped[PulseWorkRequestPriority] = mapped_column(

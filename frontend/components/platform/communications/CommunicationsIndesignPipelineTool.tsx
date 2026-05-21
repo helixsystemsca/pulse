@@ -44,19 +44,15 @@ export function CommunicationsIndesignPipelineTool() {
     }
   }, []);
 
-  const downloadBlob = useCallback(
-    (content: string, ext: "txt" | "rtf") => {
-      const mime = ext === "rtf" ? "application/rtf" : "text/plain;charset=utf-8";
-      const blob = new Blob([content], { type: mime });
-      const a = document.createElement("a");
-      const safe = title.replace(/[^\w\-]+/g, "_").slice(0, 80) || "indesign_handoff";
-      a.href = URL.createObjectURL(blob);
-      a.download = `${safe}.${ext}`;
-      a.click();
-      URL.revokeObjectURL(a.href);
-    },
-    [title],
-  );
+  const downloadTxt = useCallback(() => {
+    const blob = new Blob([exportTxt], { type: "text/plain;charset=utf-8" });
+    const a = document.createElement("a");
+    const safe = title.replace(/[^\w\-]+/g, "_").slice(0, 80) || "indesign_handoff";
+    a.href = URL.createObjectURL(blob);
+    a.download = `${safe}.txt`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }, [exportTxt, title]);
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -64,8 +60,9 @@ export function CommunicationsIndesignPipelineTool() {
         <h1 className="text-xl font-bold tracking-tight text-ds-foreground">Xplor → InDesign publication pipeline</h1>
         <p className="mt-1 text-sm text-ds-muted">
           Normalize Xplor/OCR tagged text into deterministic paragraph-style export for Adobe InDesign (File → Place).
-          React preview is for QA only — final output is tagged <span className="font-mono">.txt</span> /{" "}
-          <span className="font-mono">.rtf</span> mapped to InDesign styles.
+          React preview is for QA only — final output is tagged <span className="font-mono">.txt</span> for InDesign
+          (File → Place). Upload <span className="font-mono">.rtf</span> or <span className="font-mono">.txt</span> from
+          Xplor.
         </p>
       </div>
 
@@ -139,22 +136,11 @@ export function CommunicationsIndesignPipelineTool() {
             type="button"
             className="inline-flex items-center gap-2 rounded-lg bg-[var(--ds-accent)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
             disabled={!exportTxt.trim()}
-            onClick={() => downloadBlob(exportTxt, "txt")}
+            onClick={downloadTxt}
           >
             <FileDown className="h-4 w-4" aria-hidden />
             Download tagged .txt
           </button>
-          {pipeline?.export.taggedRtf ? (
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 rounded-lg border border-ds-border bg-ds-secondary px-4 py-2 text-sm font-semibold text-ds-foreground disabled:opacity-50"
-              disabled={!pipeline.export.taggedRtf.trim()}
-              onClick={() => downloadBlob(pipeline.export.taggedRtf, "rtf")}
-            >
-              <FileDown className="h-4 w-4" aria-hidden />
-              Download tagged .rtf
-            </button>
-          ) : null}
         </div>
       </Card>
 

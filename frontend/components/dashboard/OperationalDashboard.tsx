@@ -45,6 +45,7 @@ import { FacilityScheduleOpsWidget } from "@/components/dashboard/widgets/ops/Fa
 import { RoutineAssignmentsOpsWidget } from "@/components/dashboard/widgets/ops/RoutineAssignmentsOpsWidget";
 import { isUserFeatureEnabled } from "@/lib/features/tenant-features";
 import { fetchWorkRequestKpiSummary } from "@/lib/work-requests/kpi-summary";
+import { hasRbacPermission } from "@/lib/rbac/session-access";
 import {
   buildOperationalNotificationItems,
   notificationCountsFromAlerts,
@@ -2056,10 +2057,16 @@ export function OperationalDashboard({
       const welcome = welcomeFromSession(auth?.email ?? session?.email, auth?.full_name ?? session?.full_name);
 
       let wrKpi: DashboardViewModel["workRequests"]["kpi"] = null;
-      if (auth && isUserFeatureEnabled(auth, "work_requests")) {
-        const companyId = auth.is_system_admin && auth.company_id ? auth.company_id : null;
+      const canWrKpi =
+        auth &&
+        isUserFeatureEnabled(auth, "work_requests") &&
+        (hasRbacPermission(auth, "work_requests.view") ||
+          hasRbacPermission(auth, "work_requests.edit"));
+      if (canWrKpi) {
+        const companyId =
+          auth.is_system_admin && auth.company_id ? String(auth.company_id) : null;
         try {
-          wrKpi = await fetchWorkRequestKpiSummary(companyId);
+          wrKpi = await fetchWorkRequestKpiSummary({ companyId });
         } catch {
           wrKpi = null;
         }

@@ -24,8 +24,10 @@ from app.models.domain import EquipmentPart, FacilityEquipment, Tool, User, User
 from app.core.org_module_settings_merge import merge_org_module_settings
 from app.core.tenant_feature_access import load_merged_workers_settings
 from app.core.work_request_access import user_may_edit_work_request
+from app.core.work_request_sub_locations import normalize_sub_location
 from app.models.pulse_models import (
     PulseOrgModuleSettings,
+    PulseWorkerHR,
     PulseWorkOrderType,
     PulseWorkRequest,
     PulseWorkRequestActivity,
@@ -143,6 +145,14 @@ async def _users_map(db: AsyncSession, cid: str) -> dict[str, User]:
     return {u.id: u for u in uq.scalars().all()}
 
 
+async def _hr_map(db: AsyncSession, user_ids: list[str]) -> dict[str, PulseWorkerHR]:
+    ids = [uid for uid in user_ids if uid]
+    if not ids:
+        return {}
+    q = await db.execute(select(PulseWorkerHR).where(PulseWorkerHR.user_id.in_(ids)))
+    return {h.user_id: h for h in q.scalars().all()}
+
+
 async def _resolve_wr_part_equipment_ids(
     db: AsyncSession, cid: str, part_id: Optional[str], equipment_id: Optional[str]
 ) -> tuple[Optional[str], Optional[str]]:
@@ -206,6 +216,7 @@ def _row_out(
     wr: PulseWorkRequest,
     *,
     users: dict[str, User],
+    hr: dict[str, PulseWorkerHR],
     tools: dict[str, Tool],
     zones: dict[str, Zone],
     equipment: dict[str, FacilityEquipment],
@@ -217,6 +228,8 @@ def _row_out(
     eq = equipment.get(wr.equipment_id) if wr.equipment_id else None
     pr = parts.get(wr.part_id) if wr.part_id else None
     au = users.get(wr.assigned_user_id) if wr.assigned_user_id else None
+    creator = users.get(wr.created_by_user_id) if wr.created_by_user_id else None
+    creator_hr = hr.get(wr.created_by_user_id) if wr.created_by_user_id else None
     disp = display_status(wr, now)
     overdue = disp == "overdue"
     return WorkRequestRowOut(
@@ -233,6 +246,7 @@ def _row_out(
         part_name=pr.name if pr else None,
         zone_id=wr.zone_id,
         location_name=z.name if z else None,
+        sub_location=wr.sub_location,
         category=wr.category,
         priority=wr.priority.value,
         status=wr.status.value,
@@ -244,6 +258,8 @@ def _row_out(
         is_overdue=overdue,
         completed_at=wr.completed_at,
         created_by_user_id=wr.created_by_user_id,
+        created_by_name=creator.full_name if creator else None,
+        created_by_department=(creator_hr.department.strip() if creator_hr and creator_hr.department else None),
         created_at=wr.created_at,
         updated_at=wr.updated_at,
     )
@@ -348,6 +364,10 @@ async def list_work_requests(
         False,
         description="When true and `status` is not set, omit completed and cancelled rows (active list + counts).",
     ),
+    unassigned_only: bool = Query(
+        False,
+        description="When true, only rows with no assignee (approval queue / open intake).",
+    ),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ) -> WorkRequestListOut:
@@ -375,6 +395,8 @@ async def list_work_requests(
         conds.append(PulseWorkRequest.zone_id == zone_id)
     if assigned_user_id:
         conds.append(PulseWorkRequest.assigned_user_id == assigned_user_id)
+    if unassigned_only:
+        conds.append(PulseWorkRequest.assigned_user_id.is_(None))
     if date_from:
         conds.append(PulseWorkRequest.created_at >= date_from)
     if date_to:
@@ -442,11 +464,14 @@ async def list_work_requests(
     rows = list((await db.execute(stmt)).scalars().all())
 
     users = await _users_map(db, cid)
+    creator_ids = [wr.created_by_user_id for wr in rows if wr.created_by_user_id]
+    hr = await _hr_map(db, creator_ids)
     tools, zones = await _tool_zone_maps(db, cid)
     equipment = await _equipment_map(db, cid)
     parts = await _equipment_parts_map(db, cid)
     items = [
-        _row_out(wr, users=users, tools=tools, zones=zones, equipment=equipment, parts=parts, now=now) for wr in rows
+        _row_out(wr, users=users, hr=hr, tools=tools, zones=zones, equipment=equipment, parts=parts, now=now)
+        for wr in rows
     ]
 
     occ_stmt = select(func.count()).select_from(PulseWorkRequest).where(
@@ -479,6 +504,9 @@ async def create_wr(
         raise HTTPException(status_code=400, detail="Unknown equipment")
     if body.zone_id and not await pulse_svc.zone_in_company(db, cid, body.zone_id):
         raise HTTPException(status_code=400, detail="Unknown zone")
+    sub_location = normalize_sub_location(body.sub_location)
+    if body.sub_location and body.sub_location.strip() and not sub_location:
+        raise HTTPException(status_code=400, detail="Invalid sub_location")
     if body.assigned_user_id and not await pulse_svc._user_in_company(db, cid, body.assigned_user_id):
         raise HTTPException(status_code=400, detail="Unknown assignee")
 
@@ -494,8 +522,6 @@ async def create_wr(
         due = default_due_date_for_priority(eff_priority, settings)
 
     assignee_id = body.assigned_user_id
-    if assignee_id is None and wr_rules.get("autoAssignTechnician"):
-        assignee_id = user.id
 
     att = body.attachments if body.attachments is not None else []
     wr = PulseWorkRequest(
@@ -507,6 +533,7 @@ async def create_wr(
         equipment_id=resolved_equipment_id,
         part_id=resolved_part_id,
         zone_id=body.zone_id,
+        sub_location=sub_location,
         category=body.category,
         priority=eff_priority,
         assigned_user_id=assignee_id,
@@ -528,10 +555,11 @@ async def _detail(db: AsyncSession, cid: str, wr_id: str, _: Optional[str] = Non
     wr = await _get_wr(db, cid, wr_id)
     now = datetime.now(timezone.utc)
     users = await _users_map(db, cid)
+    hr = await _hr_map(db, [wr.created_by_user_id] if wr.created_by_user_id else [])
     tools, zones = await _tool_zone_maps(db, cid)
     equipment = await _equipment_map(db, cid)
     parts = await _equipment_parts_map(db, cid)
-    base = _row_out(wr, users=users, tools=tools, zones=zones, equipment=equipment, parts=parts, now=now)
+    base = _row_out(wr, users=users, hr=hr, tools=tools, zones=zones, equipment=equipment, parts=parts, now=now)
 
     cq = await db.execute(
         select(PulseWorkRequestComment)
@@ -625,6 +653,15 @@ async def patch_wr(
             raise HTTPException(status_code=400, detail="Unknown equipment")
     if "zone_id" in data and data["zone_id"] and not await pulse_svc.zone_in_company(db, cid, data["zone_id"]):
         raise HTTPException(status_code=400, detail="Unknown zone")
+    if "sub_location" in data:
+        raw_sub = data["sub_location"]
+        if raw_sub is None or (isinstance(raw_sub, str) and not raw_sub.strip()):
+            data["sub_location"] = None
+        else:
+            normalized = normalize_sub_location(str(raw_sub))
+            if not normalized:
+                raise HTTPException(status_code=400, detail="Invalid sub_location")
+            data["sub_location"] = normalized
     if "assigned_user_id" in data and data["assigned_user_id"]:
         if not await pulse_svc._user_in_company(db, cid, data["assigned_user_id"]):
             raise HTTPException(status_code=400, detail="Unknown assignee")

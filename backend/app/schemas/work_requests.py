@@ -41,6 +41,7 @@ class WorkRequestRowOut(BaseModel):
     part_name: Optional[str] = None
     zone_id: Optional[str]
     location_name: Optional[str]
+    sub_location: Optional[str] = None
     category: Optional[str]
     priority: str
     status: str
@@ -52,6 +53,8 @@ class WorkRequestRowOut(BaseModel):
     is_overdue: bool
     completed_at: Optional[datetime]
     created_by_user_id: Optional[str]
+    created_by_name: Optional[str] = None
+    created_by_department: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
@@ -75,6 +78,7 @@ class WorkRequestCreateIn(BaseModel):
     equipment_id: Optional[str] = None
     part_id: Optional[str] = None
     zone_id: Optional[str] = None
+    sub_location: Optional[str] = Field(None, max_length=64)
     category: Optional[str] = Field(None, max_length=128)
     priority: PulseWorkRequestPriority = PulseWorkRequestPriority.medium
     assigned_user_id: Optional[str] = None
@@ -89,6 +93,7 @@ class WorkRequestPatchIn(BaseModel):
     equipment_id: Optional[str] = None
     part_id: Optional[str] = None
     zone_id: Optional[str] = None
+    sub_location: Optional[str] = Field(None, max_length=64)
     category: Optional[str] = Field(None, max_length=128)
     priority: Optional[PulseWorkRequestPriority] = None
     status: Optional[PulseWorkRequestStatus] = None
