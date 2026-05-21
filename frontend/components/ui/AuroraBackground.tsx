@@ -95,7 +95,7 @@ const CURRENT_LAYERS = [
     x: ["-6%", "10%", "-4%"],
     y: [0, 24, -16, 0],
   },
-] as const;
+];
 
 function AuroraBlob({
   config,
@@ -154,8 +154,8 @@ function WaterCurrents({ animate }: { animate: boolean }) {
           animate={
             animate
               ? {
-                  x: layer.x,
-                  y: layer.y,
+                  x: [...layer.x],
+                  y: [...layer.y],
                   opacity: [0.45, 0.75, 0.5, 0.7, 0.45],
                 }
               : { opacity: 0.55 }
