@@ -6,7 +6,18 @@ import { useEffect } from "react";
 import { useReducedEffects } from "@/hooks/useReducedEffects";
 import { cn } from "@/lib/cn";
 
-const NOISE_TILE = `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E")`;
+const NOISE_TILE = `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.45'/%3E%3C/svg%3E")`;
+
+/** Panorama ocean palette — light undersea, not deep navy. */
+const OCEAN = {
+  surface: "#eef9fc",
+  shallow: "#d4f1f0",
+  mid: "#a8e6df",
+  deep: "#6ec9be",
+  verdigris: "#1ea896",
+  aqua: "#7dd9ce",
+  foam: "#f0fdff",
+} as const;
 
 type AuroraBlobConfig = {
   id: string;
@@ -18,44 +29,42 @@ type AuroraBlobConfig = {
 
 const BLOBS: AuroraBlobConfig[] = [
   {
-    id: "indigo-nw",
-    className:
-      "left-[-12%] top-[-8%] h-[min(52rem,68vh)] w-[min(52rem,62vw)] bg-[radial-gradient(circle_at_40%_38%,rgba(79,70,229,0.38),rgba(30,27,75,0.12)_52%,transparent_72%)]",
-    parallax: 18,
-    duration: 34,
-    drift: { x: [0, 42, -18, 0], y: [0, 28, -12, 0] },
+    id: "aqua-nw",
+    className: `left-[-14%] top-[-10%] h-[min(50rem,66vh)] w-[min(50rem,60vw)] bg-[radial-gradient(circle_at_38%_40%,color-mix(in_srgb,${OCEAN.aqua}_72%,white),color-mix(in_srgb,${OCEAN.verdigris}_28%,transparent)_55%,transparent_72%)]`,
+    parallax: 14,
+    duration: 36,
+    drift: { x: [0, 38, -16, 0], y: [0, 24, -10, 0] },
   },
   {
     id: "cyan-ne",
     className:
-      "right-[-10%] top-[4%] h-[min(44rem,58vh)] w-[min(44rem,54vw)] bg-[radial-gradient(circle_at_58%_42%,rgba(34,211,238,0.28),rgba(14,116,144,0.1)_55%,transparent_72%)]",
-    parallax: 24,
-    duration: 38,
-    drift: { x: [0, -36, 14, 0], y: [0, 22, -16, 0] },
-  },
-  {
-    id: "blue-center",
-    className:
-      "left-[28%] top-[38%] h-[min(40rem,52vh)] w-[min(46rem,58vw)] bg-[radial-gradient(circle_at_50%_50%,rgba(96,165,250,0.22),rgba(30,58,138,0.08)_58%,transparent_74%)]",
-    parallax: 12,
-    duration: 42,
-    drift: { x: [0, 28, -22, 0], y: [0, -20, 18, 0] },
-  },
-  {
-    id: "navy-sw",
-    className:
-      "bottom-[-14%] left-[8%] h-[min(48rem,60vh)] w-[min(50rem,64vw)] bg-[radial-gradient(circle_at_42%_62%,rgba(30,58,95,0.42),rgba(15,23,42,0.16)_54%,transparent_72%)]",
-    parallax: 16,
-    duration: 36,
-    drift: { x: [0, 24, -30, 0], y: [0, -26, 10, 0] },
-  },
-  {
-    id: "indigo-se",
-    className:
-      "bottom-[-6%] right-[-6%] h-[min(38rem,48vh)] w-[min(42rem,50vw)] bg-[radial-gradient(circle_at_60%_55%,rgba(67,56,202,0.26),rgba(23,37,84,0.1)_56%,transparent_70%)]",
+      "right-[-12%] top-[2%] h-[min(42rem,56vh)] w-[min(44rem,52vw)] bg-[radial-gradient(circle_at_62%_38%,rgba(186,230,253,0.75),rgba(125,217,206,0.35)_52%,transparent_70%)]",
     parallax: 20,
     duration: 40,
-    drift: { x: [0, -32, 20, 0], y: [0, 18, -22, 0] },
+    drift: { x: [0, -32, 12, 0], y: [0, 18, -14, 0] },
+  },
+  {
+    id: "teal-center",
+    className: `left-[24%] top-[42%] h-[min(38rem,50vh)] w-[min(44rem,56vw)] bg-[radial-gradient(circle_at_50%_48%,color-mix(in_srgb,${OCEAN.verdigris}_42%,${OCEAN.shallow}),rgba(110,201,190,0.2)_58%,transparent_74%)]`,
+    parallax: 10,
+    duration: 44,
+    drift: { x: [0, 26, -20, 0], y: [0, -18, 16, 0] },
+  },
+  {
+    id: "blue-depth-sw",
+    className:
+      "bottom-[-16%] left-[4%] h-[min(46rem,58vh)] w-[min(48rem,62vw)] bg-[radial-gradient(circle_at_44%_58%,rgba(94,178,214,0.45),rgba(30,120,142,0.18)_54%,transparent_72%)]",
+    parallax: 12,
+    duration: 38,
+    drift: { x: [0, 22, -28, 0], y: [0, -22, 8, 0] },
+  },
+  {
+    id: "foam-se",
+    className:
+      "bottom-[-4%] right-[-8%] h-[min(36rem,46vh)] w-[min(40rem,48vw)] bg-[radial-gradient(circle_at_58%_52%,rgba(240,253,255,0.85),rgba(125,217,206,0.35)_56%,transparent_72%)]",
+    parallax: 16,
+    duration: 42,
+    drift: { x: [0, -28, 18, 0], y: [0, 14, -18, 0] },
   },
 ];
 
@@ -77,7 +86,7 @@ function AuroraBlob({
 
   return (
     <motion.div
-      className={cn("absolute rounded-full blur-[88px] will-change-transform sm:blur-[100px]", config.className)}
+      className={cn("absolute rounded-full blur-[72px] will-change-transform sm:blur-[88px]", config.className)}
       style={{ x: parallaxX, y: parallaxY }}
       aria-hidden
     >
@@ -95,13 +104,87 @@ function AuroraBlob({
   );
 }
 
+function SurfaceReflections({
+  smoothX,
+  smoothY,
+  animate,
+}: {
+  smoothX: ReturnType<typeof useSpring>;
+  smoothY: ReturnType<typeof useSpring>;
+  animate: boolean;
+}) {
+  const glintX = useTransform(smoothX, (v) => v * 28);
+  const glintY = useTransform(smoothY, (v) => v * 18);
+  const glint2X = useTransform(smoothX, (v) => v * -22);
+  const glint2Y = useTransform(smoothY, (v) => v * 14);
+  const beamX = useTransform(smoothX, (v) => v * -12);
+  const beamY = useTransform(smoothY, (v) => v * 8);
+
+  return (
+    <>
+      {/* Sunlight through water — top-down shafts */}
+      <motion.div
+        className="absolute inset-0 opacity-[0.55]"
+        style={{ x: beamX, y: beamY }}
+        aria-hidden
+      >
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_85%_42%_at_50%_-8%,rgba(255,255,255,0.92),rgba(224,247,252,0.45)_38%,transparent_68%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_55%_30%_at_72%_0%,rgba(186,230,253,0.5),transparent_58%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_45%_28%_at_22%_4%,rgba(125,217,206,0.42),transparent_55%)]" />
+      </motion.div>
+
+      {/* Slow-moving caustic glints */}
+      <motion.div
+        className="absolute left-[8%] top-[12%] h-[38%] w-[44%] rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.55)_0%,rgba(125,217,206,0.2)_42%,transparent_70%)] blur-2xl"
+        style={{ x: glintX, y: glintY }}
+        initial={false}
+        animate={animate ? { opacity: [0.35, 0.62, 0.4], scale: [1, 1.06, 1] } : { opacity: 0.45 }}
+        transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
+        aria-hidden
+      />
+      <motion.div
+        className="absolute right-[10%] top-[18%] h-[32%] w-[36%] rounded-full bg-[radial-gradient(circle,rgba(240,253,255,0.7)_0%,rgba(94,178,214,0.18)_48%,transparent_72%)] blur-3xl"
+        style={{ x: glint2X, y: glint2Y }}
+        initial={false}
+        animate={animate ? { opacity: [0.28, 0.52, 0.32], x: [0, 24, -12, 0] } : { opacity: 0.38 }}
+        transition={{ duration: 11, repeat: Infinity, ease: "easeInOut" }}
+        aria-hidden
+      />
+
+      {/* Horizontal shimmer band — underwater light ripple */}
+      <motion.div
+        className="absolute left-[-10%] right-[-10%] top-[28%] h-[22%] bg-[linear-gradient(105deg,transparent_8%,rgba(255,255,255,0.42)_32%,rgba(186,230,253,0.28)_48%,rgba(255,255,255,0.35)_62%,transparent_88%)] blur-xl"
+        initial={false}
+        animate={
+          animate
+            ? {
+                x: ["-4%", "6%", "-2%"],
+                opacity: [0.22, 0.38, 0.26],
+              }
+            : { opacity: 0.28 }
+        }
+        transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
+        aria-hidden
+      />
+
+      {/* Subtle wave highlight near “surface” */}
+      <motion.div
+        className="absolute inset-x-0 top-0 h-[min(28rem,38vh)] bg-[linear-gradient(180deg,rgba(255,255,255,0.75)_0%,rgba(224,247,252,0.35)_42%,transparent_100%)]"
+        initial={false}
+        animate={animate ? { opacity: [0.65, 0.85, 0.7] } : { opacity: 0.75 }}
+        transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
+        aria-hidden
+      />
+    </>
+  );
+}
+
 export type AuroraBackgroundProps = {
   className?: string;
 };
 
 /**
- * Full-viewport aurora mesh for auth / marketing shells — slow gradients, soft parallax, vignette + grain.
- * Pointer-events none; place behind content (`z-0`) with foreground at `z-10+`.
+ * Light undersea aurora for auth shells — aqua/teal depth, surface reflections, soft parallax.
  */
 export function AuroraBackground({ className }: AuroraBackgroundProps) {
   const { reduced } = useReducedEffects();
@@ -122,17 +205,21 @@ export function AuroraBackground({ className }: AuroraBackgroundProps) {
     return () => window.removeEventListener("mousemove", onMove);
   }, [mouseX, mouseY, reduced]);
 
+  const animate = !reduced;
+
   return (
     <div
       className={cn("pointer-events-none absolute inset-0 z-0 overflow-hidden", className)}
       aria-hidden
     >
-      {/* Deep navy base */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[#060b14] via-[#0b1224] to-[#070d18]" />
-
-      {/* Soft horizon glow */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_90%_55%_at_50%_100%,rgba(30,58,95,0.35),transparent_62%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_45%_at_50%_0%,rgba(56,189,248,0.08),transparent_55%)]" />
+      {/* Shallow water column */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: `linear-gradient(180deg, ${OCEAN.surface} 0%, ${OCEAN.shallow} 32%, ${OCEAN.mid} 68%, color-mix(in srgb, ${OCEAN.deep} 88%, ${OCEAN.verdigris}) 100%)`,
+        }}
+      />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_120%_80%_at_50%_110%,color-mix(in_srgb,#3d8f9e_35%,transparent),transparent_58%)]" />
 
       {BLOBS.map((blob) => (
         <AuroraBlob
@@ -140,16 +227,17 @@ export function AuroraBackground({ className }: AuroraBackgroundProps) {
           config={blob}
           smoothX={smoothX}
           smoothY={smoothY}
-          animate={!reduced}
+          animate={animate}
         />
       ))}
 
-      {/* Vignette */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(4,8,18,0.55)_72%,rgba(2,5,12,0.88)_100%)]" />
+      <SurfaceReflections smoothX={smoothX} smoothY={smoothY} animate={animate} />
 
-      {/* Film grain */}
+      {/* Soft edge depth — light vignette only */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(76,96,133,0.06)_78%,rgba(60,90,110,0.14)_100%)]" />
+
       <div
-        className="absolute inset-0 opacity-[0.04] mix-blend-soft-light"
+        className="absolute inset-0 opacity-[0.028] mix-blend-soft-light"
         style={{
           backgroundImage: NOISE_TILE,
           backgroundSize: "200px 200px",

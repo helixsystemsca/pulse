@@ -203,10 +203,10 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <h1 className="mt-5 text-center font-headline text-[1.5rem] font-extrabold leading-tight tracking-tight text-white sm:mt-6 sm:text-[1.65rem] md:text-3xl">
+            <h1 className="mt-5 text-center font-headline text-[1.5rem] font-extrabold leading-tight tracking-tight text-[#2f3d52] dark:text-ds-foreground sm:mt-6 sm:text-[1.65rem] md:text-3xl">
               Facility Platform
             </h1>
-            <p className="mt-1.5 text-center text-sm font-medium text-white/65">
+            <p className="mt-1.5 text-center text-sm font-medium text-[#5a6d82] dark:text-ds-muted">
               Access only for verified users.
             </p>
 
@@ -338,7 +338,7 @@ export default function LoginPage() {
 
             <div className="relative mt-5 sm:mt-6">
               <div className="h-px w-full bg-[color-mix(in_srgb,#4c6085_14%,transparent)] dark:bg-ds-border" />
-              <p className="absolute left-1/2 top-1/2 w-max -translate-x-1/2 -translate-y-1/2 bg-[#0b1224] px-3 text-[10px] font-bold uppercase tracking-[0.2em] text-white/40">
+              <p className="absolute left-1/2 top-1/2 w-max -translate-x-1/2 -translate-y-1/2 bg-[#eef9fc] px-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[color-mix(in_srgb,var(--ds-text-primary)_38%,transparent)] dark:bg-[var(--ds-bg)] dark:text-ds-muted">
                 Secure link
               </p>
             </div>
