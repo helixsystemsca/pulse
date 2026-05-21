@@ -731,6 +731,22 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
     );
   }
 
+  /** Login aurora — transparent shell so `AuroraBackground` shows through; card/form unchanged. */
+  .login-web-canvas--aurora.auth-background {
+    background-color: transparent;
+    background-image: none;
+  }
+
+  .login-web-canvas--aurora.auth-background::before,
+  .login-web-canvas--aurora.auth-background::after {
+    display: none;
+  }
+
+  .dark .login-web-canvas--aurora.auth-background {
+    background-color: transparent;
+    background-image: none;
+  }
+
   .auth-shell-inner {
     position: relative;
     z-index: 1;
