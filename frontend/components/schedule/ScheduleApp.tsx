@@ -99,6 +99,7 @@ import { ScheduleLegendPanel, type ScheduleProjectLegendItem } from "./ScheduleL
 import { ScheduleMyShiftsView } from "./ScheduleMyShiftsView";
 import { SchedulePersonnel } from "./SchedulePersonnel";
 import { ScheduleReports } from "./ScheduleReports";
+import { ScheduleRoutinesBoard } from "./ScheduleRoutinesBoard";
 import { ScheduleSettingsModal } from "./ScheduleSettingsModal";
 import { AvailabilityOverrideModal } from "./operational/AvailabilityOverrideModal";
 import { ScheduleTrashDropZone } from "./ScheduleTrashDropZone";
@@ -1382,7 +1383,9 @@ export function ScheduleApp() {
                 workspaceView={workspaceView}
                 onWorkspaceViewChange={(v) => {
                   setWorkspaceView(v);
-                  if (v !== "calendar") {
+                  if (v === "routines") {
+                    setTimeScale("day");
+                  } else if (v !== "calendar") {
                     setTimeScale("month");
                   }
                 }}
@@ -1442,7 +1445,14 @@ export function ScheduleApp() {
               searchQuery={sidebarSearch}
               onSearchChange={setSidebarSearch}
               workspaceView={workspaceView}
-              onWorkspaceViewChange={setWorkspaceView}
+              onWorkspaceViewChange={(v) => {
+                setWorkspaceView(v);
+                if (v === "routines") {
+                  setTimeScale("day");
+                } else if (v !== "calendar") {
+                  setTimeScale("month");
+                }
+              }}
               zones={zones}
               facilityFilterIds={facilityFilterIds}
               onFacilityFilterToggle={(id) =>
@@ -1710,6 +1720,16 @@ export function ScheduleApp() {
             />
           ) : null}
           {workspaceView === "reports" ? <ScheduleReports /> : null}
+          {workspaceView === "routines" ? (
+            <ScheduleRoutinesBoard
+              focusDate={focusDate}
+              onFocusDateChange={setFocusDate}
+              workers={workers}
+              shifts={shiftsForView}
+              zones={zones}
+              shiftTypes={shiftTypes}
+            />
+          ) : null}
           </div>
       </div>
 

@@ -144,6 +144,28 @@ export async function createRoutineRun(body: {
   });
 }
 
+export type RoutineAssignmentCreateBody = {
+  routine_id: string;
+  primary_user_id: string;
+  date: string;
+  shift_id: string;
+  item_assignments?: Array<{
+    routine_item_id: string;
+    assigned_to_user_id: string;
+    reason?: string | null;
+  }>;
+  extras?: Array<{ label: string; assigned_to_user_id?: string | null }>;
+};
+
+export async function createRoutineAssignment(
+  body: RoutineAssignmentCreateBody,
+): Promise<{ id: string }> {
+  return apiFetch<{ id: string }>("/api/v1/routines/assignments", {
+    method: "POST",
+    json: body,
+  });
+}
+
 export async function listMyRoutineAssignments(params?: { shift_id?: string }): Promise<RoutineAssignmentDetail[]> {
   const sp = new URLSearchParams();
   if (params?.shift_id) sp.set("shift_id", params.shift_id);

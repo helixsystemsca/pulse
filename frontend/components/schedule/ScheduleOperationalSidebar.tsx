@@ -16,7 +16,7 @@ import {
 import { cn } from "@/lib/cn";
 import type { Zone } from "@/lib/schedule/types";
 
-export type ScheduleWorkspaceView = "calendar" | "my-shifts" | "personnel" | "reports";
+export type ScheduleWorkspaceView = "calendar" | "my-shifts" | "personnel" | "reports" | "routines";
 
 type Props = {
   /** `inline` — single compact row for the unified control card. `header` is legacy; prefer `inline`. */
@@ -74,6 +74,7 @@ export function ScheduleOperationalSidebar({
       ["my-shifts", "My shifts", User],
       ["personnel", "Personnel", Users],
       ["reports", "Reports", BarChart2],
+      ["routines", "Routines", ClipboardList],
     ] as const
   ).map(([key, label, Icon]) => (
     <button
