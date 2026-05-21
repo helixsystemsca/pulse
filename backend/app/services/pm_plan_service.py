@@ -9,6 +9,7 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.work_requests.work_order_number import allocate_work_order_number
 from app.models.pulse_models import (
     PulsePmPlan,
     PulseWorkOrderSource,
@@ -119,8 +120,10 @@ async def create_pm_plan_and_first_work_request(
     db.add(plan)
     await db.flush()
 
+    wo_num = await allocate_work_order_number(db, str(company_id))
     wr = PulseWorkRequest(
         company_id=str(company_id),
+        work_order_number=wo_num,
         title=plan.title,
         description=plan.description,
         status=PulseWorkRequestStatus.open,
@@ -161,8 +164,10 @@ async def sync_pm_plan_after_work_request_completed(db: AsyncSession, wr: PulseW
 async def create_due_work_request_for_plan(db: AsyncSession, plan: PulsePmPlan) -> PulseWorkRequest | None:
     if await has_open_work_request_for_plan(db, pm_plan_id=str(plan.id)):
         return None
+    wo_num = await allocate_work_order_number(db, str(plan.company_id))
     wr = PulseWorkRequest(
         company_id=str(plan.company_id),
+        work_order_number=wo_num,
         title=plan.title,
         description=plan.description,
         status=PulseWorkRequestStatus.open,

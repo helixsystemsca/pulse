@@ -65,7 +65,14 @@ import {
   WorkRequestCreateSubmitButton,
   type WorkRequestCreateSubmitPhase,
 } from "@/components/work-requests/WorkRequestCreateSubmitButton";
+import { WorkRequestReviewModal } from "@/components/work-requests/WorkRequestReviewModal";
 import { WORK_REQUEST_SUB_LOCATIONS } from "@/lib/work-requests/sub-locations";
+import { workRequestDisplayId } from "@/lib/work-requests/display-id";
+import {
+  isPendingApproval,
+  isApprovedAwaitingWork,
+  workflowStatus,
+} from "@/lib/work-requests/workflow-status";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
 
@@ -123,6 +130,10 @@ function formatDepartmentLabel(raw: string | null | undefined): string {
 
 function statusBadgeClass(display: string): string {
   switch (display) {
+    case "pending_approval":
+      return "bg-amber-50 text-amber-900 ring-1 ring-amber-200/80 dark:bg-amber-700 dark:text-white dark:ring-amber-500/40";
+    case "approved":
+      return "bg-violet-50 text-violet-900 ring-1 ring-violet-200/80 dark:bg-violet-700 dark:text-white dark:ring-violet-500/40";
     case "overdue":
       return "bg-[#fdebeb] text-[#c53030] ring-1 ring-red-200/80 dark:bg-red-600 dark:text-white dark:ring-red-500/45";
     case "in_progress":
@@ -295,29 +306,19 @@ export function WorkRequestsApp() {
     ],
   );
 
-  const workItemDisplayId = useCallback(
-    (row: WorkRequestRow): string => {
-      const raw = (row.display_id ?? row.id).trim();
-      if (/^[A-Z]{2,5}-\d{1,8}$/.test(raw)) return raw;
-      const k = (row.category_key ?? "").toLowerCase();
-      let prefix = workItemPrefixes.issue;
-      if (k === "preventative") prefix = workItemPrefixes.preventative;
-      else if (k === "setup") prefix = workItemPrefixes.setup;
-      return `${prefix}-${row.id.slice(0, 6).toUpperCase()}`;
-    },
-    [workItemPrefixes],
-  );
+  const workItemDisplayId = useCallback((row: WorkRequestRow) => workRequestDisplayId(row), []);
   const sessionCompanyId = session?.company_id ?? null;
   const canConfigureOrg = canAccessCompanyConfiguration(session);
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
   const canManage = can("work_requests.edit");
-  const canApproveWR = can("work_requests.edit");
   const [wrEditAccessRoles, setWrEditAccessRoles] = useState<string[]>([...DEFAULT_WR_ACCESS_ROLES]);
   const [zoneManageAccessRoles, setZoneManageAccessRoles] = useState<string[]>([...DEFAULT_WR_ACCESS_ROLES]);
   const hasWorkRequestEditRole = useMemo(
     () => userHasDelegatedWrEditRole(session, wrEditAccessRoles),
     [session, wrEditAccessRoles],
   );
+  /** Matches Workers → Work request editing roles (+ RBAC edit + admins). */
+  const canApproveWR = isSystemAdmin || canManage || hasWorkRequestEditRole;
   const canManageZones = useMemo(
     () => userCanManageFacilityZones(session, zoneManageAccessRoles),
     [session, zoneManageAccessRoles],
@@ -400,6 +401,9 @@ export function WorkRequestsApp() {
   const [holdNoteDraft, setHoldNoteDraft] = useState("");
   const [assignModalForId, setAssignModalForId] = useState<string | null>(null);
   const [assignPickUserId, setAssignPickUserId] = useState("");
+  const [reviewModalForId, setReviewModalForId] = useState<string | null>(null);
+  const [reviewAssignUserId, setReviewAssignUserId] = useState("");
+  const [reviewSubmitPhase, setReviewSubmitPhase] = useState<WorkRequestCreateSubmitPhase>("idle");
 
   const [createForm, setCreateForm] = useState({
     title: "",
@@ -631,6 +635,13 @@ export function WorkRequestsApp() {
       return;
     }
   }, [createOpen]);
+
+  useEffect(() => {
+    if (!reviewModalForId) {
+      setReviewSubmitPhase("idle");
+      setReviewAssignUserId("");
+    }
+  }, [reviewModalForId]);
 
   useEffect(() => {
     if (!createOpen || !createForm.equipment_id) {
@@ -886,17 +897,16 @@ export function WorkRequestsApp() {
   const filteredRows = useMemo(() => {
     const me = session?.sub ?? null;
     const list = [...rows];
-    const st = (r: WorkRequestRow) => (isWorkItemStatus(r.status) ? r.status : ("pending_approval" as WorkItemStatus));
 
     if (tab === "my_work") {
       return list.filter((r) => r.assigned_user_id && me && r.assigned_user_id === me).filter((r) => {
-        const s = st(r);
-        return s === "assigned" || s === "in_progress";
+        const s = workflowStatus(r);
+        return s === "assigned" || s === "approved" || s === "in_progress";
       });
     }
     if (tab === "approval") {
       return list.filter((r) => {
-        const s = st(r);
+        const s = workflowStatus(r);
         return s === "pending_approval" || s === "approved";
       });
     }
@@ -904,18 +914,27 @@ export function WorkRequestsApp() {
     if (canApproveWR || hasWorkRequestEditRole || isSystemAdmin) return list;
     // workers who somehow reach All tab still only see assigned/in-progress
     return list.filter((r) => r.assigned_user_id && me && r.assigned_user_id === me).filter((r) => {
-      const s = st(r);
-      return s === "assigned" || s === "in_progress";
+      const s = workflowStatus(r);
+      return s === "assigned" || s === "approved" || s === "in_progress";
     });
   }, [rows, tab, session?.sub, canApproveWR, hasWorkRequestEditRole, isSystemAdmin]);
 
-  async function approveItem(id: string) {
-    if (!effectiveCompanyId || !canApproveWR) return;
+  function openReviewModal(row: Pick<WorkRequestRow, "id" | "assigned_user_id">) {
+    setReviewAssignUserId(row.assigned_user_id ?? "");
+    setReviewSubmitPhase("idle");
+    setReviewModalForId(row.id);
+    setMenuFor(null);
+    setMenuAnchor(null);
+  }
+
+  async function reviewAndAssignItem(id: string, userId: string): Promise<boolean> {
+    if (!effectiveCompanyId || !canApproveWR || !userId.trim()) return false;
     setActionBusy(true);
     try {
-      await postWorkRequestStatus(isSystemAdmin ? effectiveCompanyId : null, id, "approved");
+      await postWorkRequestAssign(isSystemAdmin ? effectiveCompanyId : null, id, userId);
       await loadList();
       if (detailId === id) await loadDetail();
+      return true;
     } finally {
       setActionBusy(false);
     }
@@ -943,7 +962,6 @@ export function WorkRequestsApp() {
     setActionBusy(true);
     try {
       await postWorkRequestAssign(isSystemAdmin ? effectiveCompanyId : null, id, userId);
-      await postWorkRequestStatus(isSystemAdmin ? effectiveCompanyId : null, id, userId ? "assigned" : "approved");
       await loadList();
       if (detailId === id) await loadDetail();
       return true;
@@ -1025,8 +1043,6 @@ export function WorkRequestsApp() {
         due_date: createForm.due_date ? `${createForm.due_date}T12:00:00.000Z` : null,
         attachments,
       });
-      await postWorkRequestStatus(isSystemAdmin ? effectiveCompanyId : null, created.id, "pending_approval");
-
       setCreateSubmitPhase("success");
       await new Promise((resolve) => window.setTimeout(resolve, 700));
 
@@ -1262,6 +1278,50 @@ export function WorkRequestsApp() {
       ? rows.find((x) => x.id === assignModalForId) ?? (detail?.id === assignModalForId ? detail : null)
       : null;
   const canSaveAssign = assignTargetWr != null && canEditWorkRequest(assignTargetWr);
+
+  const reviewTargetWr =
+    reviewModalForId != null
+      ? rows.find((x) => x.id === reviewModalForId) ?? (detail?.id === reviewModalForId ? detail : null)
+      : null;
+
+  async function onReviewApprove() {
+    if (!reviewModalForId || reviewSubmitPhase === "loading" || reviewSubmitPhase === "success") return;
+    if (!reviewAssignUserId.trim()) {
+      setReviewSubmitPhase("error");
+      window.setTimeout(() => setReviewSubmitPhase("idle"), 1000);
+      return;
+    }
+    setReviewSubmitPhase("loading");
+    try {
+      const ok = await reviewAndAssignItem(reviewModalForId, reviewAssignUserId);
+      if (!ok) {
+        setReviewSubmitPhase("error");
+        window.setTimeout(() => setReviewSubmitPhase("idle"), 1000);
+        return;
+      }
+      setReviewSubmitPhase("success");
+      await new Promise((resolve) => window.setTimeout(resolve, 700));
+      setReviewModalForId(null);
+      setReviewAssignUserId("");
+      setReviewSubmitPhase("idle");
+    } catch {
+      setReviewSubmitPhase("error");
+      window.setTimeout(() => setReviewSubmitPhase("idle"), 1000);
+    }
+  }
+
+  async function onReviewReject() {
+    if (!reviewModalForId || !canApproveWR) return;
+    setActionBusy(true);
+    try {
+      await rejectItem(reviewModalForId);
+      setReviewModalForId(null);
+      setReviewAssignUserId("");
+      setReviewSubmitPhase("idle");
+    } finally {
+      setActionBusy(false);
+    }
+  }
 
   const detailMetaDirty = useMemo(() => {
     if (!detail) return false;
@@ -1588,18 +1648,20 @@ export function WorkRequestsApp() {
                     <tr className="app-table-head-row border-pulse-border">
                       <th className="px-4 py-3">Status</th>
                       <th className="px-4 py-3">Priority</th>
-                      <th className="px-4 py-3">Work item</th>
+                      <th className="px-4 py-3">Title</th>
                       <th className="px-4 py-3">Location</th>
                       <th className="px-4 py-3">Department</th>
                       <th className="px-4 py-3">Category</th>
                       <th className="px-4 py-3">Description</th>
                       <th className="px-4 py-3">Assigned To</th>
                       <th className="px-4 py-3">Due Date</th>
+                      <th className="px-4 py-3 text-right">WO #</th>
                       <th className="px-4 py-3 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredRows.map((row) => {
+                      const wf = workflowStatus(row);
                       const desc = (row.description ?? "").replace(/\s+/g, " ").trim();
                       const short = desc.length > 72 ? `${desc.slice(0, 72)}…` : desc || "—";
                       const overdueStyle = row.is_overdue ? "font-semibold text-[#c53030]" : "text-pulse-navy";
@@ -1611,10 +1673,10 @@ export function WorkRequestsApp() {
                         >
                           <td className="px-4 py-3 align-top">
                             <span
-                              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold capitalize ${statusBadgeClass(row.display_status)}`}
+                              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold capitalize ${statusBadgeClass(wf)}`}
                             >
-                              <StatusIcon display={row.display_status} />
-                              {row.display_status.replace(/_/g, " ")}
+                              <StatusIcon display={wf} />
+                              {wf.replace(/_/g, " ")}
                             </span>
                           </td>
                           <td className="px-4 py-3 align-top">
@@ -1626,8 +1688,7 @@ export function WorkRequestsApp() {
                             </span>
                           </td>
                           <td className="px-4 py-3 align-top">
-                            <p className="font-semibold text-pulse-navy">{workItemDisplayId(row)}</p>
-                            <p className="mt-0.5 font-semibold text-pulse-navy">{row.title}</p>
+                            <p className="font-semibold text-pulse-navy">{row.title}</p>
                             <p className="text-xs text-pulse-muted">{row.asset_name ?? row.asset_tag ?? row.tool_id ?? ""}</p>
                             {row.equipment_name ? (
                               <p className="mt-0.5 text-xs text-pulse-muted">
@@ -1661,6 +1722,11 @@ export function WorkRequestsApp() {
                           </td>
                           <td className={`px-4 py-3 align-top tabular-nums ${overdueStyle}`}>
                             {formatDue(row.due_date)}
+                          </td>
+                          <td className="px-4 py-3 text-right align-top">
+                            <span className="font-mono text-xs font-bold tabular-nums tracking-tight text-pulse-navy dark:text-gray-100">
+                              {workItemDisplayId(row)}
+                            </span>
                           </td>
                           <td className="relative px-4 py-3 text-right align-top" onClick={(e) => e.stopPropagation()}>
                             <button
@@ -1813,25 +1879,16 @@ export function WorkRequestsApp() {
             style={{ top: menuAnchor.top, left }}
             role="menu"
           >
-            {row.status === "pending_approval" && canApproveWR ? (
-              <>
-                <button
-                  type="button"
-                  className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-ds-interactive-hover dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
-                  onClick={() => void approveItem(row.id)}
-                >
-                  Approve
-                </button>
-                <button
-                  type="button"
-                  className="block w-full px-3 py-2 text-left text-sm text-rose-700 hover:bg-ds-interactive-hover dark:text-rose-200 dark:hover:bg-ds-interactive-hover"
-                  onClick={() => void rejectItem(row.id)}
-                >
-                  Reject
-                </button>
-              </>
+            {isPendingApproval(row) && canApproveWR ? (
+              <button
+                type="button"
+                className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-ds-interactive-hover dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
+                onClick={() => openReviewModal(row)}
+              >
+                Review
+              </button>
             ) : null}
-            {canEditWorkRequest(row) && !terminalRowStatus(row.status) ? (
+            {canEditWorkRequest(row) && !terminalRowStatus(row.status) && !(isPendingApproval(row) && canApproveWR) ? (
               <button
                 type="button"
                 className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-ds-interactive-hover dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
@@ -1845,7 +1902,7 @@ export function WorkRequestsApp() {
                 Assign…
               </button>
             ) : null}
-            {row.status === "assigned" ? (
+            {isApprovedAwaitingWork(row) ? (
               <button
                 type="button"
                 className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-ds-interactive-hover dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
@@ -1854,7 +1911,7 @@ export function WorkRequestsApp() {
                 Start work
               </button>
             ) : null}
-            {row.status !== "pending_approval" && !terminalRowStatus(row.status) ? (
+            {!isPendingApproval(row) && !terminalRowStatus(row.status) ? (
               <button
                 type="button"
                 className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-ds-interactive-hover dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
@@ -2446,30 +2503,23 @@ export function WorkRequestsApp() {
             ) : null}
 
             <div className="flex flex-wrap gap-2">
-              {detail.status === "pending_approval" && canApproveWR ? (
-                <>
-                  <button type="button" className={PRIMARY_BTN} disabled={actionBusy} onClick={() => void approveItem(detail.id)}>
-                    Approve
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-[10px] border border-rose-200 bg-rose-50 px-5 py-2.5 text-sm font-semibold text-rose-800 shadow-sm hover:bg-rose-100 disabled:opacity-50 dark:border-rose-500/35 dark:bg-rose-950/40 dark:text-rose-100"
-                    disabled={actionBusy}
-                    onClick={() => void rejectItem(detail.id)}
-                  >
-                    Reject
-                  </button>
-                </>
-              ) : null}
-              {detail.status === "approved" && canEditWorkRequest(detail) ? (
-                <span className="text-sm text-pulse-muted">Assign a worker to move this item to Assigned.</span>
-              ) : null}
-              {detail.status === "assigned" ? (
-                <button type="button" className={PRIMARY_BTN} disabled={actionBusy} onClick={() => void startItem(detail.id)}>
-                  Start
+              {detail && isPendingApproval(detail) && canApproveWR ? (
+                <button type="button" className={PRIMARY_BTN} disabled={actionBusy} onClick={() => openReviewModal(detail)}>
+                  Review
                 </button>
               ) : null}
-              {detail.status === "in_progress" ? (
+              {detail && isApprovedAwaitingWork(detail) && canEditWorkRequest(detail) ? (
+                <span className="text-sm text-pulse-muted">Approved and assigned — assignee can start work when ready.</span>
+              ) : null}
+              {detail &&
+              isApprovedAwaitingWork(detail) &&
+              session?.sub &&
+              detail.assigned_user_id === session.sub ? (
+                <button type="button" className={PRIMARY_BTN} disabled={actionBusy} onClick={() => void startItem(detail.id)}>
+                  Start work
+                </button>
+              ) : null}
+              {detail?.status === "in_progress" ? (
                 <button type="button" className={PRIMARY_BTN} disabled={actionBusy} onClick={() => void completeItem(detail.id)}>
                   Complete
                 </button>
@@ -2789,6 +2839,26 @@ export function WorkRequestsApp() {
           </div>
         )}
       </PulseDrawer>
+
+      {reviewTargetWr ? (
+        <WorkRequestReviewModal
+          open={Boolean(reviewModalForId)}
+          onClose={() => {
+            if (reviewSubmitPhase === "loading" || reviewSubmitPhase === "success") return;
+            setReviewModalForId(null);
+          }}
+          workItemLabel={workItemDisplayId(reviewTargetWr)}
+          title={reviewTargetWr.title}
+          description={reviewTargetWr.description}
+          workers={workers}
+          assigneeId={reviewAssignUserId}
+          onAssigneeChange={setReviewAssignUserId}
+          submitPhase={reviewSubmitPhase}
+          onApprove={() => void onReviewApprove()}
+          onReject={() => void onReviewReject()}
+          rejectBusy={actionBusy}
+        />
+      ) : null}
 
       {assignModalForId ? (
         <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">

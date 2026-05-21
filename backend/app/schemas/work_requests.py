@@ -30,6 +30,8 @@ class WorkRequestActivityOut(BaseModel):
 class WorkRequestRowOut(BaseModel):
     id: str
     company_id: str
+    work_order_number: int
+    display_id: str
     title: str
     description: Optional[str]
     tool_id: Optional[str]

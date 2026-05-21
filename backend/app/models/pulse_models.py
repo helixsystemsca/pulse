@@ -805,11 +805,15 @@ class PulsePmPlan(Base):
 
 class PulseWorkRequest(Base):
     __tablename__ = "pulse_work_requests"
+    __table_args__ = (
+        UniqueConstraint("company_id", "work_order_number", name="uq_pulse_work_requests_company_wo_number"),
+    )
 
     id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
     company_id: Mapped[str] = mapped_column(
         UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    work_order_number: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     tool_id: Mapped[Optional[str]] = mapped_column(

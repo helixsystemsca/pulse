@@ -6,7 +6,8 @@ import { apiFetch } from "@/lib/api";
 export type WorkRequestRow = {
   id: string;
   company_id: string;
-  /** Optional human-readable work item code from server (e.g. ISS-1024). */
+  /** Sequential code from server (e.g. WO#0001). */
+  work_order_number?: number;
   display_id?: string | null;
   /** Optional category for multi-stage workflow. */
   category_key?: "issue" | "preventative" | "setup" | null;

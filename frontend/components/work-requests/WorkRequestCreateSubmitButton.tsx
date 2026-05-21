@@ -11,6 +11,9 @@ type WorkRequestCreateSubmitButtonProps = {
   phase: WorkRequestCreateSubmitPhase;
   onClick: () => void;
   disabled?: boolean;
+  idleLabel?: string;
+  loadingLabel?: string;
+  successSrLabel?: string;
 };
 
 const labelMotion = {
@@ -24,6 +27,9 @@ export function WorkRequestCreateSubmitButton({
   phase,
   onClick,
   disabled = false,
+  idleLabel = "Create request",
+  loadingLabel = "Saving",
+  successSrLabel = "Request created",
 }: WorkRequestCreateSubmitButtonProps) {
   const pending = phase === "loading" || phase === "success";
   const locked = disabled || pending;
@@ -90,7 +96,7 @@ export function WorkRequestCreateSubmitButton({
             {...labelMotion}
           >
             <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
-            <span className="text-sm font-semibold">Saving</span>
+            <span className="text-sm font-semibold">{loadingLabel}</span>
           </motion.span>
         ) : phase === "success" ? (
           <motion.span
@@ -101,7 +107,7 @@ export function WorkRequestCreateSubmitButton({
             transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
           >
             <Check className="h-5 w-5" strokeWidth={2.5} aria-hidden />
-            <span className="sr-only">Request created</span>
+            <span className="sr-only">{successSrLabel}</span>
           </motion.span>
         ) : phase === "error" ? (
           <motion.span
@@ -118,7 +124,7 @@ export function WorkRequestCreateSubmitButton({
             className="text-sm font-semibold"
             {...labelMotion}
           >
-            Create request
+            {idleLabel}
           </motion.span>
         )}
       </AnimatePresence>

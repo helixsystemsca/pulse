@@ -20,6 +20,7 @@ from app.models.pm_models import (
     PulseWorkRequestChecklistItem,
     PulseWorkRequestPartLine,
 )
+from app.modules.work_requests.work_order_number import allocate_work_order_number
 from app.models.pulse_models import (
     PulseWorkOrderSource,
     PulseWorkOrderType,
@@ -169,8 +170,10 @@ async def create_auto_pm_work_order(db: AsyncSession, task: PmTask, *, company_i
         _log.warning("Skipping PM WO — equipment %s missing or wrong company", task.equipment_id)
         return None
 
+    wo_num = await allocate_work_order_number(db, str(company_id))
     wr = PulseWorkRequest(
         company_id=str(company_id),
+        work_order_number=wo_num,
         title=task.name,
         description=task.description,
         equipment_id=task.equipment_id,

@@ -284,8 +284,12 @@ async def create_work_order(
 ) -> WorkOrderOut:
     ot = PulseWorkOrderType(body.type)
     st = _parse_wo_status(body.status)
+    from app.modules.work_requests.work_order_number import allocate_work_order_number
+
+    wo_num = await allocate_work_order_number(db, cid)
     wr = PulseWorkRequest(
         company_id=cid,
+        work_order_number=wo_num,
         title=body.title,
         description=body.description,
         zone_id=body.zone_id,

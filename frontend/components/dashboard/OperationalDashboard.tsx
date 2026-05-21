@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertTriangle, Check, Monitor, Pencil, Plus, Settings } from "lucide-react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { GridLayout, useContainerWidth, verticalCompactor, type Layout, type LayoutItem } from "react-grid-layout";
@@ -11,7 +12,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { apiFetch, isApiMode } from "@/lib/api";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
-import { pulseTenantNav } from "@/lib/pulse-app";
+import { pulseApp, pulseTenantNav } from "@/lib/pulse-app";
 import { canAccessPulseTenantApis, readSession, type PulseAuthSession } from "@/lib/pulse-session";
 import { canAccessCompanyConfiguration, sessionHasAnyRole } from "@/lib/pulse-roles";
 import { getServerDate, getServerNow } from "@/lib/serverTime";
@@ -1211,12 +1212,16 @@ function DashboardBody({
       notifications_work_orders: {
         title: "Work requests",
         accent: "none" as const,
+        shellHeaderRight: (
+          <Link
+            href={pulseApp.to(workOrdersHref)}
+            className="inline-flex items-center justify-center rounded-lg border border-[color-mix(in_srgb,var(--ds-accent)_35%,transparent)] bg-[color-mix(in_srgb,var(--ds-accent)_10%,transparent)] px-2.5 py-1 text-[10px] font-semibold text-[var(--ds-accent)] transition hover:bg-[color-mix(in_srgb,var(--ds-accent)_18%,transparent)]"
+          >
+            Open work requests
+          </Link>
+        ),
         render: () => (
-          <NotificationsWorkOrdersOpsWidget
-            model={model}
-            workOrdersHref={workOrdersHref}
-            kpiLoading={workRequestKpiLoading}
-          />
+          <NotificationsWorkOrdersOpsWidget model={model} kpiLoading={workRequestKpiLoading} />
         ),
       },
       training_compliance: {
@@ -1788,6 +1793,7 @@ function DashboardBody({
                   | {
                       title: string;
                       accent?: string;
+                      shellHeaderRight?: ReactNode;
                       render: (ctx?: WidgetRenderContext) => ReactNode;
                     }
                   | null
@@ -1795,17 +1801,22 @@ function DashboardBody({
                 if (!w) return <div key={item.i} />;
 
                 const headerRight =
-                  !readOnly && editMode ? (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={() => removeWidget(item.i)}
-                      className="h-5 min-w-5 px-0 text-[11px] leading-none"
-                      aria-label={`Remove ${w.title}`}
-                      title="Remove widget"
-                    >
-                      ×
-                    </Button>
+                  w.shellHeaderRight || (!readOnly && editMode) ? (
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      {w.shellHeaderRight ?? null}
+                      {!readOnly && editMode ? (
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={() => removeWidget(item.i)}
+                          className="h-5 min-w-5 px-0 text-[11px] leading-none"
+                          aria-label={`Remove ${w.title}`}
+                          title="Remove widget"
+                        >
+                          ×
+                        </Button>
+                      ) : null}
+                    </div>
                   ) : null;
 
                 return (
@@ -1833,7 +1844,9 @@ function DashboardBody({
                             ? "px-2 py-0"
                             : item.i === "workforce"
                               ? "px-1 py-0.5"
-                              : undefined
+                              : item.i === "notifications_work_orders"
+                                ? "px-2 py-2"
+                                : undefined
                       }
                     >
                       {w.render(buildWidgetContext(item))}

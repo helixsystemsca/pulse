@@ -59,6 +59,10 @@ async def _publish_wr_assigned_xp_event(*, cid: str, wr: PulseWorkRequest, assig
             },
         )
     )
+from app.modules.work_requests.work_order_number import (
+    allocate_work_order_number,
+    format_work_order_display_id,
+)
 from app.modules.work_requests.helpers import (
     default_due_date_for_priority,
     display_status,
@@ -232,9 +236,12 @@ def _row_out(
     creator_hr = hr.get(wr.created_by_user_id) if wr.created_by_user_id else None
     disp = display_status(wr, now)
     overdue = disp == "overdue"
+    wo_disp = format_work_order_display_id(wr.work_order_number) or f"WO#{wr.work_order_number:04d}"
     return WorkRequestRowOut(
         id=wr.id,
         company_id=wr.company_id,
+        work_order_number=wr.work_order_number,
+        display_id=wo_disp,
         title=wr.title,
         description=wr.description,
         tool_id=wr.tool_id,
@@ -524,9 +531,11 @@ async def create_wr(
     assignee_id = body.assigned_user_id
 
     att = body.attachments if body.attachments is not None else []
+    wo_num = await allocate_work_order_number(db, cid)
     wr = PulseWorkRequest(
         id=str(uuid4()),
         company_id=cid,
+        work_order_number=wo_num,
         title=body.title.strip(),
         description=body.description,
         tool_id=body.tool_id,

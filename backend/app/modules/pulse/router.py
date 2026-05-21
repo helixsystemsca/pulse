@@ -380,9 +380,13 @@ async def create_work_request(
         if not pr or pr.company_id != cid:
             raise HTTPException(status_code=400, detail="Unknown procedure")
 
+    from app.modules.work_requests.work_order_number import allocate_work_order_number
+
     att = body.attachments if body.attachments is not None else []
+    wo_num = await allocate_work_order_number(db, cid)
     wr = PulseWorkRequest(
         company_id=cid,
+        work_order_number=wo_num,
         title=body.title,
         description=body.description,
         tool_id=body.tool_id,
