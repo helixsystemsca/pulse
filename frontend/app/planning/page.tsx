@@ -1,21 +1,33 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { PlanningWorkspaceShell } from "@/components/planning/PlanningWorkspaceShell";
+import { canAccessProjectManagement } from "@/lib/features/pm-project-management";
+import { projectManagementPlanningHref } from "@/lib/features/planning-workspace";
 import { navigateToPulseLogin } from "@/lib/pulse-app";
 import { readSession } from "@/lib/pulse-session";
 
 function PlanningPageInner() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [ready, setReady] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!readSession()) {
+    const session = readSession();
+    if (!session) {
       navigateToPulseLogin();
       return;
     }
+    if (canAccessProjectManagement(session)) {
+      const legacyTab = searchParams.get("tab");
+      const view = searchParams.get("view") ?? legacyTab;
+      router.replace(projectManagementPlanningHref(view));
+      return;
+    }
     setReady(true);
-  }, []);
+  }, [router, searchParams]);
 
   useEffect(() => {
     if (!toast) return;
@@ -41,7 +53,7 @@ function PlanningPageInner() {
           {toast}
         </div>
       ) : null}
-      <PlanningWorkspaceShell onToast={setToast} />
+      <PlanningWorkspaceShell onToast={setToast} viewQueryKey="tab" />
     </>
   );
 }

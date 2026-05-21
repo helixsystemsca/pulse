@@ -114,11 +114,12 @@ export function PmPlanningShell(props: PmPlanningShellProps = {}) {
               href="/project-management?tab=workspace"
               className="mt-1 inline-block text-xs font-semibold text-[var(--pm-color-primary)] hover:underline"
             >
-              Coordination workspace →
+              Project Management workspace →
             </Link>
           ) : !isEmbedded && hideWorkspaceLink ? (
             <p className="mt-1 text-xs text-[var(--pm-color-muted)]">
-              Demo schedule for CPM/Gantt what-if — use Workspace tab for coordination projects.
+              Demo schedule for CPM/Gantt what-if — use the Workspace tab for coordination projects and Planning for
+              the idea backlog.
             </p>
           ) : (
             <p className="mt-1 text-xs text-[var(--pm-color-muted)]">

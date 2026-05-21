@@ -228,7 +228,7 @@ export const MASTER_FEATURES: readonly MasterFeatureDef[] = [
     route: "/planning",
     feature: "projects",
     rbacAnyOf: ["projects.view"],
-    navVisible: true,
+    navVisible: false,
     sortOrder: 99,
     navDomain: "Planning",
     navGroup: "Projects",

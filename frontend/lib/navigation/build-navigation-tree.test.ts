@@ -78,6 +78,7 @@ describe("buildNavigationTree", () => {
       .find((d) => d.domain === "Planning")
       ?.groups.flatMap((g) => g.items.map((i) => i.key)) ?? [];
     expect(planningPm).toContain("project_management");
+    expect(planningPm).not.toContain("planning_workspace");
     expect(planningPm).not.toContain("pm_workspace");
     expect(planningPm).not.toContain("pm_planning");
 

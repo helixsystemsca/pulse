@@ -43,6 +43,8 @@ import { Co2MonitoringOpsWidget } from "@/components/dashboard/widgets/ops/Co2Mo
 import { PoolReadingsOpsWidget } from "@/components/dashboard/widgets/ops/PoolReadingsOpsWidget";
 import { FacilityScheduleOpsWidget } from "@/components/dashboard/widgets/ops/FacilityScheduleOpsWidget";
 import { RoutineAssignmentsOpsWidget } from "@/components/dashboard/widgets/ops/RoutineAssignmentsOpsWidget";
+import { isUserFeatureEnabled } from "@/lib/features/tenant-features";
+import { fetchWorkRequestKpiSummary } from "@/lib/work-requests/kpi-summary";
 import {
   buildOperationalNotificationItems,
   notificationCountsFromAlerts,
@@ -226,6 +228,13 @@ export type DashboardViewModel = {
     newest: { title: string; subtitle: string; tag: WorkTag } | null;
     oldest: { title: string; subtitle: string; tag: WorkTag } | null;
     critical: { title: string; subtitle: string }[];
+    /** Leadership snapshot — pending / in progress / overdue / active total (from work-requests API). */
+    kpi: {
+      pendingApproval: number;
+      inProgress: number;
+      overdueAny: number;
+      total: number;
+    } | null;
   };
   equipment: {
     activeCount: number;
@@ -657,6 +666,7 @@ function demoModel(): DashboardViewModel {
       counts: { onSite: 1, onShiftNow: 1, upcomingToday: 1, onScheduleToday: 0, offSite: 1 },
     },
     workRequests: {
+      kpi: { pendingApproval: 2, inProgress: 4, overdueAny: 1, total: 12 },
       awaitingCount: 7,
       newest: {
         title: "Cooling Pump Skid 7",
@@ -1103,6 +1113,7 @@ function buildLiveModel(
       newest,
       oldest,
       critical,
+      kpi: null,
     },
     equipment: {
       activeCount: activeTools.length,
@@ -1134,12 +1145,14 @@ function DashboardBody({
   dashboardContext,
   workOrdersHref,
   readOnly = false,
+  workRequestKpiLoading = false,
 }: {
   model: DashboardViewModel;
   session: PulseAuthSession | null | undefined;
   dashboardContext: string;
   workOrdersHref: string;
   readOnly?: boolean;
+  workRequestKpiLoading?: boolean;
 }) {
   const pathname = usePathname();
   const isKiosk = pathname.startsWith("/kiosk/");
@@ -1195,9 +1208,15 @@ function DashboardBody({
         render: () => <ImportantDatesOpsWidget />,
       },
       notifications_work_orders: {
-        title: "Work orders",
+        title: "Work requests",
         accent: "none" as const,
-        render: () => <NotificationsWorkOrdersOpsWidget model={model} workOrdersHref={workOrdersHref} />,
+        render: () => (
+          <NotificationsWorkOrdersOpsWidget
+            model={model}
+            workOrdersHref={workOrdersHref}
+            kpiLoading={workRequestKpiLoading}
+          />
+        ),
       },
       training_compliance: {
         title: "Training compliance",
@@ -1341,7 +1360,7 @@ function DashboardBody({
         render: () => <RoutineAssignmentsOpsWidget />,
       },
     } as const;
-  }, [model, workOrdersHref]);
+  }, [model, workOrdersHref, workRequestKpiLoading]);
 
   const allWidgetKeys = useMemo(() => {
     return Object.keys(widgetRegistry).filter((k) => (widgetRegistry as Record<string, unknown>)[k] != null);
@@ -1354,7 +1373,7 @@ function DashboardBody({
     if (isDeptDashboard) return [];
     return [
       { i: "important_dates", x: 0, y: 0, w: 5, h: 12, minW: 3, minH: 6 },
-      { i: "notifications_work_orders", x: 5, y: 0, w: 6, h: 12, minW: 4, minH: 6 },
+      { i: "notifications_work_orders", x: 5, y: 0, w: 6, h: 8, minW: 4, minH: 5 },
       { i: "training_compliance", x: 11, y: 0, w: 5, h: 12, minW: 3, minH: 8 },
       { i: "workforce", x: 0, y: 12, w: 6, h: 10, minW: 4, minH: 6 },
       { i: "low_inventory", x: 6, y: 12, w: 5, h: 10, minW: 3, minH: 6 },
@@ -2035,7 +2054,23 @@ export function OperationalDashboard({
         trainingMatrix,
       );
       const welcome = welcomeFromSession(auth?.email ?? session?.email, auth?.full_name ?? session?.full_name);
-      const withWelcome: DashboardViewModel = { ...model, welcomeName: welcome, bannerNote: null };
+
+      let wrKpi: DashboardViewModel["workRequests"]["kpi"] = null;
+      if (auth && isUserFeatureEnabled(auth, "work_requests")) {
+        const companyId = auth.is_system_admin && auth.company_id ? auth.company_id : null;
+        try {
+          wrKpi = await fetchWorkRequestKpiSummary(companyId);
+        } catch {
+          wrKpi = null;
+        }
+      }
+
+      const withWelcome: DashboardViewModel = {
+        ...model,
+        welcomeName: welcome,
+        bannerNote: null,
+        workRequests: { ...model.workRequests, kpi: wrKpi },
+      };
       readyPayload = notificationCountsFromAlerts(withWelcome.alerts);
       setLiveModel(withWelcome);
       useOperationalNotificationsStore.getState().setItems(withWelcome.alerts);
@@ -2131,6 +2166,7 @@ export function OperationalDashboard({
       dashboardContext={dashboardContext}
       workOrdersHref={workOrdersHref}
       readOnly={readOnly}
+      workRequestKpiLoading={loading}
     />
   );
 }

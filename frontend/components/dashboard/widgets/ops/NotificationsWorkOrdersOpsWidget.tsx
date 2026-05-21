@@ -1,65 +1,102 @@
 "use client";
 
 import Link from "next/link";
-import { AlertTriangle, ClipboardList } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 import type { DashboardViewModel } from "@/components/dashboard/OperationalDashboard";
 import { pulseApp } from "@/lib/pulse-app";
+import { cn } from "@/lib/cn";
+
+const KPI_TEAL = "var(--ds-palette-verdigris)";
+const KPI_AMBER = "var(--ds-warning)";
+/** Lobster pink — matches training matrix “not complete” accent. */
+const KPI_LOBSTER = "#e85d6f";
+
+function KpiCell({
+  label,
+  value,
+  indicatorColor,
+  loading,
+}: {
+  label: string;
+  value: number | null;
+  indicatorColor: string;
+  loading: boolean;
+}) {
+  return (
+    <div className="flex min-w-0 flex-1 flex-col rounded-lg border border-[color-mix(in_srgb,var(--ds-text-primary)_10%,transparent)] bg-[color-mix(in_srgb,var(--ds-text-primary)_3%,transparent)] px-2.5 py-2">
+      <div className="flex items-center gap-1.5">
+        <span
+          className="h-2 w-2 shrink-0 rounded-full"
+          style={{ backgroundColor: indicatorColor }}
+          aria-hidden
+        />
+        <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]">
+          {label}
+        </span>
+      </div>
+      <p className="mt-1.5 flex min-h-[1.75rem] items-center text-xl font-bold tabular-nums text-[color-mix(in_srgb,var(--ds-text-primary)_92%,transparent)]">
+        {loading ? (
+          <Loader2 className="h-5 w-5 animate-spin text-[color-mix(in_srgb,var(--ds-text-primary)_40%,transparent)]" aria-hidden />
+        ) : (
+          (value ?? "—")
+        )}
+      </p>
+    </div>
+  );
+}
 
 export function NotificationsWorkOrdersOpsWidget({
   model,
   workOrdersHref,
+  kpiLoading = false,
 }: {
   model: DashboardViewModel;
   workOrdersHref: string;
+  kpiLoading?: boolean;
 }) {
+  const kpi = model.workRequests.kpi;
+
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="min-h-0 flex-1 rounded-xl border border-[color-mix(in_srgb,var(--ops-dash-widget-bg,#fff)_65%,var(--ops-dash-border,#cbd5e1))] bg-[var(--ops-dash-widget-bg,#ffffff)] p-3 shadow-sm dark:border-white/[0.07] dark:bg-[color-mix(in_srgb,#0f172a_96%,#1e293b)]">
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <ClipboardList className="h-3.5 w-3.5 text-[color-mix(in_srgb,var(--ds-text-primary)_48%,transparent)]" aria-hidden />
-            <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]">
-              Work orders
-            </p>
-          </div>
+      <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-[color-mix(in_srgb,var(--ops-dash-widget-bg,#fff)_65%,var(--ops-dash-border,#cbd5e1))] bg-[var(--ops-dash-widget-bg,#ffffff)] p-3 shadow-sm dark:border-white/[0.07] dark:bg-[color-mix(in_srgb,#0f172a_96%,#1e293b)]">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]">
+            Work requests
+          </p>
           <Link
             href={pulseApp.to(workOrdersHref)}
-            className="text-[11px] font-semibold text-[var(--ds-accent)] underline-offset-2 hover:underline"
+            className="inline-flex items-center justify-center rounded-lg border border-[color-mix(in_srgb,var(--ds-accent)_35%,transparent)] bg-[color-mix(in_srgb,var(--ds-accent)_10%,transparent)] px-3 py-1.5 text-[11px] font-semibold text-[var(--ds-accent)] transition hover:bg-[color-mix(in_srgb,var(--ds-accent)_18%,transparent)]"
           >
-            Open queue →
+            Open work requests
           </Link>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <span className="rounded-lg bg-[color-mix(in_srgb,var(--ds-text-primary)_6%,transparent)] px-2 py-1 text-[11px] font-semibold tabular-nums text-[color-mix(in_srgb,var(--ds-text-primary)_85%,transparent)]">
-            Awaiting <span className="ml-1 text-[var(--ds-accent)]">{model.workRequests.awaitingCount}</span>
-          </span>
-          <span className="rounded-lg bg-[color-mix(in_srgb,var(--ds-danger)_12%,transparent)] px-2 py-1 text-[11px] font-semibold tabular-nums text-[color-mix(in_srgb,var(--ds-text-primary)_85%,transparent)]">
-            Critical <span className="ml-1 text-[var(--ds-danger)]">{model.workRequests.critical.length}</span>
-          </span>
-        </div>
-        <div className="mt-3 space-y-2 overflow-auto">
-          {model.workRequests.newest ? (
-            <div className="rounded-lg border border-[color-mix(in_srgb,var(--ds-text-primary)_10%,transparent)] bg-[color-mix(in_srgb,var(--ds-text-primary)_3%,transparent)] px-2.5 py-2">
-              <p className="text-[11px] font-bold uppercase tracking-wide text-[color-mix(in_srgb,var(--ds-text-primary)_48%,transparent)]">Newest</p>
-              <p className="mt-1 text-xs font-semibold text-[color-mix(in_srgb,var(--ds-text-primary)_92%,transparent)]">{model.workRequests.newest.title}</p>
-              <p className="mt-0.5 line-clamp-2 text-[11px] text-[color-mix(in_srgb,var(--ds-text-primary)_58%,transparent)]">{model.workRequests.newest.subtitle}</p>
-            </div>
-          ) : (
-            <p className="text-xs text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]">No open work orders.</p>
-          )}
-          {model.workRequests.critical.slice(0, 3).map((row) => (
-            <div
-              key={row.title}
-              className="flex gap-2 rounded-lg border border-[color-mix(in_srgb,var(--ds-danger)_28%,transparent)] bg-[color-mix(in_srgb,var(--ds-danger)_8%,transparent)] px-2.5 py-2 text-xs"
-            >
-              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--ds-danger)]" aria-hidden />
-              <div className="min-w-0">
-                <p className="font-semibold text-[color-mix(in_srgb,var(--ds-text-primary)_94%,transparent)]">{row.title}</p>
-                <p className="mt-0.5 line-clamp-2 text-[11px] text-[color-mix(in_srgb,var(--ds-text-primary)_58%,transparent)]">{row.subtitle}</p>
-              </div>
-            </div>
-          ))}
+
+        <div className={cn("grid grid-cols-2 gap-2 sm:grid-cols-4")}>
+          <KpiCell
+            label="Pending approval"
+            value={kpi?.pendingApproval ?? null}
+            indicatorColor={KPI_AMBER}
+            loading={kpiLoading}
+          />
+          <KpiCell
+            label="In progress"
+            value={kpi?.inProgress ?? null}
+            indicatorColor={KPI_TEAL}
+            loading={kpiLoading}
+          />
+          <KpiCell
+            label="Overdue"
+            value={kpi?.overdueAny ?? null}
+            indicatorColor={KPI_LOBSTER}
+            loading={kpiLoading}
+          />
+          <KpiCell
+            label="Total active"
+            value={kpi?.total ?? null}
+            indicatorColor="color-mix(in srgb, var(--ds-accent) 88%, var(--ds-palette-iron-grey))"
+            loading={kpiLoading}
+          />
         </div>
       </div>
     </div>
