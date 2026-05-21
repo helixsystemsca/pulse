@@ -1,5 +1,14 @@
 export type * from "./schema/publication";
-export { ingestPublicationSource, looksLikeXplorTaggedText } from "./ingest";
+export {
+  detectInputFormat,
+  extractPlainTextFromRaw,
+  extractTextFromFile,
+  ingestPublicationSource,
+  looksLikeXplorTaggedText,
+  normalizeInputText,
+  preprocessInput,
+  type PublicationInputFormat,
+} from "./ingest";
 export { parseXplorTaggedText } from "./parse/tagged-parser";
 export { parseSessionBlob, parseSessionLines, stripTagCorruption } from "./parse/session-parser";
 export { mapProgramsToPublicationEntries } from "./schema/map-from-xplor";

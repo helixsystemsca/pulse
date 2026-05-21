@@ -78,10 +78,7 @@ function extractDates(text: string): { startDate: string; endDate: string; rest:
   return { startDate, endDate, rest: rest.trim() };
 }
 
-function extractPrice(text: string): { price: string; sessionCount: number | null; rest: string } {
-  const m = text.match(PRICE_PATTERN);
-  if (!m) return { price: "", sessionCount: null, rest: text };
-  const raw = m[1] ?? "";
+function parsePriceToken(raw: string): { price: string; sessionCount: number | null } {
   let sessionCount: number | null = null;
   let price = raw;
   const slash = raw.match(/\$([\d.,]+)\/(\d+)/);
@@ -89,8 +86,25 @@ function extractPrice(text: string): { price: string; sessionCount: number | nul
     price = `$${slash[1]}/${slash[2]}`;
     sessionCount = parseInt(slash[2]!, 10);
   }
-  if (/^Free$/i.test(price) || /^\$0/i.test(raw)) price = "Free";
-  const rest = text.replace(m[0], " ").trim();
+  if (/^Free$/i.test(price) || /^\$0(?:\/\d+)?$/i.test(raw)) price = "Free";
+  return { price, sessionCount };
+}
+
+function extractPrice(text: string): { price: string; sessionCount: number | null; rest: string } {
+  const m = text.match(PRICE_PATTERN);
+  if (m) {
+    const raw = m[1] ?? "";
+    const { price, sessionCount } = parsePriceToken(raw);
+    const rest = text.replace(m[0], " ").trim();
+    return { price, sessionCount, rest };
+  }
+
+  const fallback = text.match(/\$\d+(?:\/\d+)?/);
+  if (!fallback) return { price: "", sessionCount: null, rest: text };
+
+  const raw = fallback[0];
+  const { price, sessionCount } = parsePriceToken(raw);
+  const rest = text.replace(raw, " ").trim();
   return { price, sessionCount, rest };
 }
 

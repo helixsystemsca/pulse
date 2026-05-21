@@ -97,7 +97,18 @@ export function parseXplorTaggedText(raw: string): XplorParseResult {
         preambleLines.push(trimmed);
         continue;
       }
-      if (lastField) {
+      if (lastField === "instructor") {
+        const continuingInstructor =
+          /^Instructor:\s*/i.test(trimmed) ||
+          /^Instructor:\s*$/i.test(current.instructor.trim());
+        if (continuingInstructor) {
+          appendToField(current, "instructor", trimmed);
+        } else {
+          warnings.push(
+            `Ignored orphan line after Instructor tag: ${trimmed.slice(0, 60)}`,
+          );
+        }
+      } else if (lastField) {
         appendToField(current, lastField, trimmed);
       } else {
         warnings.push(`Orphan line without pstyle: ${trimmed.slice(0, 60)}`);
@@ -127,8 +138,13 @@ export function parseXplorTaggedText(raw: string): XplorParseResult {
       continue;
     }
 
-    appendToField(current, mapped, content);
-    lastField = mapped;
+    if (mapped === "instructor") {
+      if (content) appendToField(current, "instructor", content);
+      lastField = content ? mapped : null;
+    } else {
+      appendToField(current, mapped, content);
+      lastField = mapped;
+    }
   }
 
   pushProgram(programs, current);

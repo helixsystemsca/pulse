@@ -84,13 +84,40 @@ export function normalizeMoneyInText(text: string): string {
   return s;
 }
 
+const AGE_YEAR_UNIT = "(?:yrs?|years?)";
+
+/**
+ * Age-only normalization — do not run date/time/money passes (they can corrupt ranges).
+ * Preserves numeric digits; converts open-ended trailing "-" to "+ YEARS".
+ */
 export function normalizeAgeText(age: string): string {
-  let s = applyOcrPhraseFixes(age.trim());
-  const singleMalformed = s.match(/^(\d+)\s*-\s*yrs\s*$/i);
-  if (singleMalformed) return `${singleMalformed[1]} yrs+`;
-  return collapseWhitespace(
-    normalizeDatesInText(normalizeTimesInText(normalizeMoneyInText(s))),
+  const s = applyOcrPhraseFixes(age.trim());
+  if (!s) return "";
+
+  const fullRange = s.match(
+    new RegExp(`^(\\d+)\\s*${AGE_YEAR_UNIT}\\s*-\\s*(\\d+)\\s*${AGE_YEAR_UNIT}\\s*$`, "i"),
   );
+  if (fullRange) return `${fullRange[1]}–${fullRange[2]} YEARS`;
+
+  const simpleRange = s.match(
+    new RegExp(`^(\\d+)\\s*-\\s*(\\d+)\\s*${AGE_YEAR_UNIT}\\s*$`, "i"),
+  );
+  if (simpleRange) return `${simpleRange[1]}–${simpleRange[2]} YEARS`;
+
+  const openEndedTrailing = s.match(
+    new RegExp(`^(\\d+)\\s*${AGE_YEAR_UNIT}\\s*-\\s*$`, "i"),
+  );
+  if (openEndedTrailing) return `${openEndedTrailing[1]}+ YEARS`;
+
+  const openEndedLeading = s.match(
+    new RegExp(`^(\\d+)\\s*-\\s*${AGE_YEAR_UNIT}\\s*$`, "i"),
+  );
+  if (openEndedLeading) return `${openEndedLeading[1]}+ YEARS`;
+
+  const plusForm = s.match(new RegExp(`^(\\d+)\\+\\s*${AGE_YEAR_UNIT}\\s*$`, "i"));
+  if (plusForm) return `${plusForm[1]}+ YEARS`;
+
+  return collapseWhitespace(s);
 }
 
 export function stripLocationLabel(location: string): string {

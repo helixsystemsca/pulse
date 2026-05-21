@@ -5,7 +5,7 @@
 import { attachSessionGroups } from "./export/group-sessions";
 import { countExportParagraphs, exportPublicationToIndesignTxt } from "./export/indesign-tagged";
 import { exportPublicationToIndesignRtf } from "./export/indesign-rtf";
-import { ingestPublicationSource } from "./ingest";
+import { preprocessInput } from "./ingest";
 import { normalizePublicationEntries } from "./normalize/publication";
 import { parseXplorTaggedText } from "./parse/tagged-parser";
 import { mapProgramsToPublicationEntries } from "./schema/map-from-xplor";
@@ -55,8 +55,11 @@ function buildDocument(plainText: string): PublicationDocument {
 }
 
 /** InDesign-first publication pipeline. */
-export function runPublicationPipeline(raw: string): PublicationPipelineResult {
-  const { plainText, isXplorTagged } = ingestPublicationSource(raw);
+export function runPublicationPipeline(
+  raw: string,
+  options?: { filename?: string | null },
+): PublicationPipelineResult {
+  const { plainText, isXplorTagged } = preprocessInput(raw, { filename: options?.filename });
   if (!isXplorTagged) {
     return {
       plainText,

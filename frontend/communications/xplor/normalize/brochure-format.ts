@@ -34,7 +34,7 @@ export function formatLocation(location: string): string {
   return stripLocationLabel(location);
 }
 
-/** Age range for brochure header (e.g. 16 - yrs → 16 yrs+). */
+/** Age range for brochure header (e.g. 60 yrs - → 60+ YEARS). */
 export function formatAgeRange(age: string): string {
   return normalizeAgeText(age);
 }

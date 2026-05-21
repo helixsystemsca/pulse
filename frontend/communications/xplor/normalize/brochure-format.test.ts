@@ -18,10 +18,13 @@ describe("brochure-format", () => {
     expect(formatInstructor("Instructor: Jane Doe")).toBe("Jane Doe");
   });
 
-  it("normalizes age 16 - yrs", () => {
-    expect(formatAgeRange("16 - yrs")).toBe("16 yrs+");
-    expect(formatAgeRange("18 - yrs")).toBe("18 yrs+");
-    expect(formatAgeRange("3 - 5 yrs")).toBe("3 - 5 yrs");
+  it("normalizes open-ended and ranged ages", () => {
+    expect(formatAgeRange("60 yrs -")).toBe("60+ YEARS");
+    expect(formatAgeRange("18 yrs -")).toBe("18+ YEARS");
+    expect(formatAgeRange("16 - yrs")).toBe("16+ YEARS");
+    expect(formatAgeRange("5 yrs - 8 yrs")).toBe("5–8 YEARS");
+    expect(formatAgeRange("18+ yrs")).toBe("18+ YEARS");
+    expect(formatAgeRange("3 - 5 yrs")).toBe("3–5 YEARS");
   });
 
   it("collapses duplicate and triple date ranges", () => {

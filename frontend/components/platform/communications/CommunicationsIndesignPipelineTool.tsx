@@ -5,8 +5,12 @@ import { FileDown, FileUp, Sparkles } from "lucide-react";
 import { XplorProgramPreview } from "@/components/communications/xplor/XplorProgramPreview";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
-import { isXplorTaggedInput, runPublicationPipeline } from "@/communications/xplor";
-import { stripRtfToPlain } from "@/communications/xplor/rtf";
+import {
+  extractTextFromFile,
+  isXplorTaggedInput,
+  preprocessInput,
+  runPublicationPipeline,
+} from "@/communications/xplor";
 
 const ACCEPT = ".rtf,.txt,text/plain,application/rtf";
 
@@ -18,26 +22,26 @@ export function CommunicationsIndesignPipelineTool() {
   const [compareMode, setCompareMode] = useState(false);
   const [showQaPreview, setShowQaPreview] = useState(true);
 
-  const plainText = useMemo(() => stripRtfToPlain(body), [body]);
+  const preprocessed = useMemo(() => (body.trim() ? preprocessInput(body, { filename: sourceName }) : null), [body, sourceName]);
 
   const pipeline = useMemo(() => {
-    if (!plainText.trim()) return null;
-    if (!isXplorTaggedInput(plainText)) return null;
-    return runPublicationPipeline(plainText);
-  }, [plainText]);
+    if (!preprocessed?.plainText.trim()) return null;
+    if (!isXplorTaggedInput(preprocessed.plainText)) return null;
+    return runPublicationPipeline(body, { filename: sourceName });
+  }, [body, sourceName, preprocessed?.plainText]);
 
-  const exportTxt = pipeline?.export.taggedTxt ?? plainText;
+  const exportTxt = pipeline?.export.taggedTxt ?? preprocessed?.plainText ?? "";
   const hasPublication = Boolean(pipeline?.document.entries.length);
 
-  const onFile = useCallback((file: File | null) => {
+  const onFile = useCallback(async (file: File | null) => {
     if (!file) return;
     setSourceName(file.name);
-    const reader = new FileReader();
-    reader.onload = () => {
-      const text = typeof reader.result === "string" ? reader.result : "";
-      setBody(text);
-    };
-    reader.readAsText(file);
+    try {
+      const { plainText } = await extractTextFromFile(file);
+      setBody(plainText);
+    } catch {
+      setBody("");
+    }
   }, []);
 
   const downloadBlob = useCallback(
@@ -89,6 +93,12 @@ export function CommunicationsIndesignPipelineTool() {
             {sourceName ? (
               <span className="text-xs text-ds-muted">
                 Loaded <span className="font-mono text-ds-foreground">{sourceName}</span>
+                {preprocessed?.sourceFormat ? (
+                  <span className="text-ds-muted">
+                    {" "}
+                    · {preprocessed.sourceFormat === "rtf" ? "RTF → plain text" : "plain text"}
+                  </span>
+                ) : null}
               </span>
             ) : null}
           </div>
@@ -148,7 +158,7 @@ export function CommunicationsIndesignPipelineTool() {
         </div>
       </Card>
 
-      {plainText.trim() && showQaPreview ? (
+      {(preprocessed?.plainText ?? "").trim() && showQaPreview ? (
         <Card className="space-y-4 p-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2 text-ds-foreground">
@@ -166,7 +176,7 @@ export function CommunicationsIndesignPipelineTool() {
           {hasPublication ? (
             <XplorProgramPreview
               document={pipeline!.document}
-              rawTaggedSample={plainText.slice(0, 4000)}
+              rawTaggedSample={(preprocessed?.plainText ?? "").slice(0, 4000)}
               compareMode={compareMode}
               onCompareModeChange={setCompareMode}
             />
@@ -179,7 +189,7 @@ export function CommunicationsIndesignPipelineTool() {
         </Card>
       ) : null}
 
-      {plainText.trim() && !showQaPreview ? (
+      {(preprocessed?.plainText ?? "").trim() && !showQaPreview ? (
         <button
           type="button"
           className="text-sm font-semibold text-[var(--ds-accent)] hover:underline"

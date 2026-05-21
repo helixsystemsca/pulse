@@ -25,6 +25,19 @@ describe("parseSessionBlob", () => {
     expect(s.price).toBe("Free");
   });
 
+  it("parses optional and compact prices", () => {
+    const withSlash = parseSessionBlob("M-F 9am Jul 6 $8/9 123456", { index: 0 });
+    expect(withSlash.price).toBe("$8/9");
+    expect(withSlash.sessionCount).toBe(9);
+
+    const plain = parseSessionBlob("M-F 9am Jul 6 $12 123457", { index: 0 });
+    expect(plain.price).toBe("$12");
+
+    const missing = parseSessionBlob("M-F 9am Jul 6 123458", { index: 0 });
+    expect(missing.price).toBe("");
+    expect(missing.warnings.some((w) => w.code === "missing_price")).toBe(true);
+  });
+
   it("handles partial schedule with warning", () => {
     const s = parseSessionBlob("187651", { index: 0 });
     expect(s.programCode).toBe("187651");

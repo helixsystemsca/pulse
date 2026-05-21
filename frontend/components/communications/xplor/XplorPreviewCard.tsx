@@ -52,6 +52,10 @@ function SessionMetadataRow({ session }: { session: PublicationSession }) {
         <span className="shrink-0 whitespace-nowrap" role="cell">
           {session.price}
         </span>
+      ) : dateLine || session.days || session.time ? (
+        <span className="shrink-0 whitespace-nowrap text-ds-muted" role="cell">
+          See details
+        </span>
       ) : null}
       {session.programCode ? (
         <span className="shrink-0 whitespace-nowrap text-ds-muted" role="cell">

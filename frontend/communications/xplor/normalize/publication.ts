@@ -1,13 +1,41 @@
 import type { PublicationEntry, PublicationSession } from "../schema/publication";
-import { normalizeDatesInText } from "./text-cleanup";
 import {
   formatAgeRange,
+  formatInstructor,
   formatLocation,
   formatProgramText,
   formatSessionDays,
   formatSessionPrice,
   formatSessionTime,
 } from "./brochure-format";
+import { normalizeDatesInText } from "./text-cleanup";
+
+const XPLOR_PARSE_DEBUG =
+  typeof process !== "undefined" && process.env.NEXT_PUBLIC_XPLOR_PARSE_DEBUG === "1";
+
+function maybeLogXplorEdgeCase(entry: PublicationEntry, normalized: PublicationEntry): void {
+  if (!XPLOR_PARSE_DEBUG || typeof console === "undefined") return;
+
+  const rawAge = entry.ageRange.trim();
+  const ageLooksEdge =
+    /\d+\s*(?:yrs?|years?)\s*-\s*$/i.test(rawAge) ||
+    /^\d+\s*-\s*(?:yrs?|years?)\s*$/i.test(rawAge);
+  const costMissing = entry.sessions.some((s) => s.rawLine.includes("$") === false && !s.price);
+  const instructorSuspicious =
+    /\n/.test(entry.instructor) ||
+    (entry.instructor && !/^Instructor:/i.test(entry.instructor) && entry.instructor.length > 80);
+
+  if (!ageLooksEdge && !costMissing && !instructorSuspicious) return;
+
+  console.log({
+    rawAge: entry.ageRange,
+    rawInstructor: entry.instructor,
+    rawDetail: entry.sessions.map((s) => s.rawLine).join(" | "),
+    parsedAge: normalized.ageRange,
+    parsedInstructor: formatInstructor(normalized.instructor),
+    parsedCost: normalized.sessions.map((s) => s.price || null),
+  });
+}
 
 function normalizeSessionDates(
   startDate: string,
@@ -43,7 +71,7 @@ export function normalizePublicationEntry(entry: PublicationEntry): PublicationE
     .map((s) => normalizeSession(s, ageRange))
     .filter((s) => s.rawLine.length > 0);
 
-  return {
+  const normalized = {
     ...entry,
     title: formatProgramText(entry.title),
     ageRange,
@@ -60,6 +88,9 @@ export function normalizePublicationEntry(entry: PublicationEntry): PublicationE
     })(),
     sessions,
   };
+
+  maybeLogXplorEdgeCase(entry, normalized);
+  return normalized;
 }
 
 export function normalizePublicationEntries(entries: PublicationEntry[]): PublicationEntry[] {

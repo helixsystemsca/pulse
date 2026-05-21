@@ -11,8 +11,9 @@ import {
 
 describe("normalizer", () => {
   it("normalizes age edge case", () => {
-    expect(normalizeAgeText("16 - yrs")).toBe("16 yrs+");
-    expect(normalizeAgeText("3 - 5 yrs")).toBe("3 - 5 yrs");
+    expect(normalizeAgeText("16 - yrs")).toBe("16+ YEARS");
+    expect(normalizeAgeText("60 yrs -")).toBe("60+ YEARS");
+    expect(normalizeAgeText("3 - 5 yrs")).toBe("3–5 YEARS");
   });
 
   it("normalizes dates and times", () => {
