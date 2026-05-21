@@ -210,8 +210,8 @@ export default function LoginPage() {
               Access only for verified users.
             </p>
 
-            <div className="mt-5 rounded-[1.15rem] bg-[linear-gradient(180deg,rgba(207,231,255,0.85)_0%,rgba(230,236,245,0.55)_100%)] p-[1px] shadow-[0_20px_50px_rgba(76,96,133,0.12)] dark:bg-ds-border dark:p-px dark:shadow-[0_16px_40px_rgba(0,0,0,0.25)] sm:mt-6">
-              <div className="rounded-[1.1rem] border border-white/80 bg-white px-4 py-4 dark:border-ds-border dark:bg-ds-surface-primary sm:px-5 sm:py-5">
+            <div className="mt-5 rounded-[1.15rem] bg-[linear-gradient(145deg,rgba(255,255,255,0.92)_0%,rgba(255,255,255,0.45)_48%,rgba(200,235,255,0.35)_100%)] p-px shadow-[0_24px_60px_rgba(46,90,120,0.18)] backdrop-blur-sm dark:bg-[linear-gradient(145deg,rgba(255,255,255,0.22)_0%,rgba(255,255,255,0.08)_100%)] dark:shadow-[0_20px_48px_rgba(0,0,0,0.35)] sm:mt-6">
+              <div className="rounded-[1.1rem] border border-white/75 bg-white/[0.88] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),inset_0_-1px_0_rgba(255,255,255,0.2)] backdrop-blur-2xl backdrop-saturate-150 dark:border-white/20 dark:bg-[color-mix(in_srgb,var(--ds-surface-primary)_82%,transparent)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] sm:px-5 sm:py-5">
                 <form className="space-y-3.5" onSubmit={onSubmit} noValidate>
                   {formError ? (
                     <div

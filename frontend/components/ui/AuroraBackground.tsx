@@ -176,6 +176,54 @@ function WaterCurrents({ animate }: { animate: boolean }) {
   );
 }
 
+function SunGlare({
+  smoothX,
+  smoothY,
+  animate,
+}: {
+  smoothX: ReturnType<typeof useSpring>;
+  smoothY: ReturnType<typeof useSpring>;
+  animate: boolean;
+}) {
+  const glareX = useTransform(smoothX, (v) => v * 36);
+  const glareY = useTransform(smoothY, (v) => v * 22);
+
+  return (
+    <motion.div
+      className="absolute -top-[22%] left-1/2 z-[1] h-[min(48rem,62vh)] w-[min(110vw,92rem)] -translate-x-1/2"
+      style={{ x: glareX, y: glareY }}
+      initial={false}
+      animate={
+        animate
+          ? {
+              opacity: [0.88, 1, 0.92, 0.98, 0.88],
+              scale: [1, 1.03, 0.99, 1.02, 1],
+            }
+          : { opacity: 0.95 }
+      }
+      transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+      aria-hidden
+    >
+      {/* Hot sun core */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_42%_38%_at_50%_32%,#ffffff_0%,rgba(255,255,255,0.98)_8%,rgba(255,250,235,0.75)_18%,rgba(220,245,255,0.45)_32%,transparent_58%)]" />
+      {/* Broad sky wash */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_95%_55%_at_50%_0%,rgba(255,255,255,0.92)_0%,rgba(240,252,255,0.55)_25%,transparent_68%)]" />
+      {/* Horizontal glare streak */}
+      <motion.div
+        className="absolute left-1/2 top-[26%] h-[3px] w-[72%] -translate-x-1/2 bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.15)_15%,rgba(255,255,255,0.95)_50%,rgba(255,255,255,0.15)_85%,transparent_100%)] blur-[2px]"
+        initial={false}
+        animate={animate ? { opacity: [0.5, 1, 0.65, 0.9, 0.5], scaleX: [0.92, 1.06, 0.98, 1.04, 0.92] } : undefined}
+        transition={{ duration: 6.5, repeat: Infinity, ease: "easeInOut" }}
+      />
+      {/* Diagonal flare rays */}
+      <div className="absolute left-[18%] top-[20%] h-[38%] w-[8%] rotate-[-22deg] bg-[linear-gradient(180deg,rgba(255,255,255,0.7),transparent)] blur-2xl opacity-80" />
+      <div className="absolute right-[20%] top-[22%] h-[34%] w-[7%] rotate-[18deg] bg-[linear-gradient(180deg,rgba(255,255,255,0.65),transparent)] blur-2xl opacity-75" />
+      {/* Soft bloom under sun */}
+      <div className="absolute left-1/2 top-[12%] h-[45%] w-[55%] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.55)_0%,transparent_70%)] blur-3xl" />
+    </motion.div>
+  );
+}
+
 function SurfaceReflections({
   smoothX,
   smoothY,
@@ -341,6 +389,8 @@ export function AuroraBackground({ className }: AuroraBackgroundProps) {
       <WaterCurrents animate={animate} />
 
       <SurfaceReflections smoothX={smoothX} smoothY={smoothY} animate={animate} />
+
+      <SunGlare smoothX={smoothX} smoothY={smoothY} animate={animate} />
 
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(76,96,133,0.04)_80%,rgba(60,90,110,0.1)_100%)]" />
 
