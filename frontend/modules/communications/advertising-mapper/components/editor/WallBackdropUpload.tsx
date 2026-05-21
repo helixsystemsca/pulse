@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { ImagePlus, Trash2 } from "lucide-react";
 import type { FacilityWallPlan } from "@/modules/communications/advertising-mapper/types";
+import { processBackdropImageFile } from "@/modules/communications/advertising-mapper/lib/advertising-backdrop-image";
 import { buttonVariants } from "@/styles/button-variants";
 import { cn } from "@/lib/cn";
 
@@ -15,32 +17,31 @@ type Props = {
 };
 
 export function WallBackdropUpload({ wall, onBackdropChange }: Props) {
-  function onFileChange(file: File | null) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function onFileChange(file: File | null) {
     if (!file) return;
-    if (!file.type.startsWith("image/")) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = typeof reader.result === "string" ? reader.result : "";
-      if (!dataUrl) return;
-      const img = new window.Image();
-      img.onload = () => {
-        onBackdropChange({
-          backdropUrl: dataUrl,
-          backdropNaturalWidth: img.naturalWidth,
-          backdropNaturalHeight: img.naturalHeight,
-        });
-      };
-      img.src = dataUrl;
-    };
-    reader.readAsDataURL(file);
+    setBusy(true);
+    setErr(null);
+    try {
+      const patch = await processBackdropImageFile(file);
+      onBackdropChange(patch);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Could not load image.");
+    } finally {
+      setBusy(false);
+    }
   }
 
-  return (    <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3">
-      <p className="text-xs font-semibold text-slate-800">Arena backdrop — {wall.name}</p>
+  return (
+    <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3">
+      <p className="text-xs font-semibold text-slate-800">Background photo — {wall.name}</p>
       <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
-        Upload a photo of this wall or scoreboard face. It appears behind inventory on the canvas (session storage until
-        API persistence).
+        Upload a reference photo for this arena face. It appears behind inventory on the canvas and is saved per view in
+        this browser.
       </p>
+      {err ? <p className="mt-2 text-[11px] font-medium text-red-600">{err}</p> : null}
       {wall.backdropUrl ? (
         <div className="mt-2 overflow-hidden rounded-md border border-slate-200">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -52,17 +53,19 @@ export function WallBackdropUpload({ wall, onBackdropChange }: Props) {
           className={cn(
             buttonVariants({ intent: "secondary", surface: "light" }),
             "inline-flex h-8 cursor-pointer items-center gap-1.5 px-3 text-xs",
+            busy && "pointer-events-none opacity-60",
           )}
         >
           <ImagePlus className="h-3.5 w-3.5" />
-          {wall.backdropUrl ? "Replace image" : "Upload image"}
+          {busy ? "Uploading…" : wall.backdropUrl ? "Replace image" : "Upload image"}
           <input
             type="file"
             accept="image/jpeg,image/png,image/webp,image/gif"
             className="sr-only"
+            disabled={busy}
             onChange={(e) => {
               const f = e.target.files?.[0] ?? null;
-              onFileChange(f);
+              void onFileChange(f);
               e.target.value = "";
             }}
           />
@@ -70,6 +73,7 @@ export function WallBackdropUpload({ wall, onBackdropChange }: Props) {
         {wall.backdropUrl ? (
           <button
             type="button"
+            disabled={busy}
             className={cn(
               buttonVariants({ intent: "secondary", surface: "light" }),
               "inline-flex h-8 items-center gap-1.5 px-3 text-xs text-red-700",

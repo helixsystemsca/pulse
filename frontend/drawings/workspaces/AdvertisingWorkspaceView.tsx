@@ -361,6 +361,7 @@ export function AdvertisingWorkspaceView({
               setSelectedInventoryId(null);
               setSelectedConstraintId(null);
             }}
+            onBackdropChange={(patch) => updateWall(patch)}
           />
         }
       />

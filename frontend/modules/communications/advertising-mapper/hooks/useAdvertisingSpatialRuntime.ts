@@ -21,6 +21,11 @@ import {
   useSpatialRuntimeStore,
 } from "@/spatial-engine/runtime/spatial-runtime-store";
 import { wallPlanFromDocument } from "@/spatial-engine/runtime/selectors";
+import {
+  loadAllWallBackdrops,
+  saveWallBackdrop,
+  mergeWallPlanBackdrops,
+} from "@/modules/communications/advertising-mapper/lib/advertising-wall-backdrop-storage";
 import type { ConstraintRegion } from "@/modules/communications/advertising-mapper/geometry/types";
 import type { FacilityWallPlan, InventoryBlock } from "@/modules/communications/advertising-mapper/types";
 import type { ConstraintFeatureDocument, InventoryItemDocument } from "@/spatial-engine/document/layers";
@@ -79,7 +84,9 @@ export function useAdvertisingSpatialRuntime(initialWalls: FacilityWallPlan[], i
 
   useEffect(() => {
     resetSession("advertising");
-    for (const w of initialWalls) {
+    const storedBackdrops = loadAllWallBackdrops();
+    const wallsWithBackdrops = mergeWallPlanBackdrops(initialWalls, storedBackdrops) as FacilityWallPlan[];
+    for (const w of wallsWithBackdrops) {
       loadDocument(wallPlanToDocument(w), { pushHistory: false });
     }
     setActiveDocumentId(initialWallId);
@@ -120,6 +127,15 @@ export function useAdvertisingSpatialRuntime(initialWalls: FacilityWallPlan[], i
             naturalHeight: patch.backdropNaturalHeight,
             variant: current.backdropKind,
           });
+          if (patch.backdropUrl && patch.backdropNaturalWidth && patch.backdropNaturalHeight) {
+            saveWallBackdrop(doc.id, {
+              backdropUrl: patch.backdropUrl,
+              backdropNaturalWidth: patch.backdropNaturalWidth,
+              backdropNaturalHeight: patch.backdropNaturalHeight,
+            });
+          } else {
+            saveWallBackdrop(doc.id, null);
+          }
         }
         if (patch.name !== undefined) {
           next = patchDocumentMetadata(next, { title: patch.name });

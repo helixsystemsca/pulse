@@ -2,16 +2,24 @@
 
 import { formatMeasurement } from "@/modules/communications/advertising-mapper/lib/measurements";
 import type { FacilityWallPlan, MeasurementUnit } from "@/modules/communications/advertising-mapper/types";
+import { WallBackdropStripControl } from "@/modules/communications/advertising-mapper/components/editor/WallBackdropStripControl";
 import { cn } from "@/lib/cn";
+
+type BackdropPatch = {
+  backdropUrl?: string;
+  backdropNaturalWidth?: number;
+  backdropNaturalHeight?: number;
+};
 
 type Props = {
   walls: readonly FacilityWallPlan[];
   activeWallId: string;
   unit: MeasurementUnit;
   onWallChange: (id: string) => void;
+  onBackdropChange?: (patch: BackdropPatch) => void;
 };
 
-export function AdvertisingWallStrip({ walls, activeWallId, unit, onWallChange }: Props) {
+export function AdvertisingWallStrip({ walls, activeWallId, unit, onWallChange, onBackdropChange }: Props) {
   const active = walls.find((w) => w.id === activeWallId) ?? walls[0];
   if (!active) return null;
 
@@ -21,7 +29,7 @@ export function AdvertisingWallStrip({ walls, activeWallId, unit, onWallChange }
   const wallLengthFt = formatMeasurement(active.width_inches, unit);
 
   return (
-    <div className="flex items-stretch gap-4 px-3 py-2">
+    <div className="flex flex-col gap-2 px-3 py-2 sm:flex-row sm:items-stretch sm:gap-4">
       <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
         {walls.map((wall) => {
           const selected = wall.id === activeWallId;
@@ -45,11 +53,20 @@ export function AdvertisingWallStrip({ walls, activeWallId, unit, onWallChange }
           );
         })}
       </div>
-      <div className="hidden shrink-0 flex-col justify-center border-l border-slate-200 pl-4 text-right sm:flex">
-        <p className="text-xs font-semibold text-slate-800">{active.name}</p>
-        <p className="text-[10px] text-slate-500">
-          Wall length {wallLengthFt} · Inventory {totalInventory} · Available {available} · Occupied {occupied}
-        </p>
+      <div className="min-w-0 shrink-0 border-t border-slate-200 pt-2 sm:flex sm:flex-col sm:justify-center sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0">
+        <div className="text-left sm:text-right">
+          <p className="text-xs font-semibold text-slate-800">{active.name}</p>
+          <p className="text-[10px] text-slate-500">
+            Wall length {wallLengthFt} · Inventory {totalInventory} · Available {available} · Occupied {occupied}
+          </p>
+        </div>
+        {onBackdropChange ? (
+          <WallBackdropStripControl
+            wall={active}
+            onBackdropChange={onBackdropChange}
+            className="mt-2 items-start sm:mt-0 sm:items-end"
+          />
+        ) : null}
       </div>
     </div>
   );

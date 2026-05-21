@@ -12,7 +12,9 @@ export function useBackdropImage(url?: string): HTMLImageElement | null {
       return;
     }
     const img = new window.Image();
-    img.crossOrigin = "anonymous";
+    if (!url.startsWith("data:")) {
+      img.crossOrigin = "anonymous";
+    }
     img.onload = () => setImage(img);
     img.onerror = () => setImage(null);
     img.src = url;
