@@ -1,3 +1,4 @@
+import { isArenaRoutineName, parseArenaRoutineName } from "@/lib/schedule/arena-routine-catalog";
 import { certificationLabel } from "@/lib/schedule/certifications";
 import type { RoutineDetail, RoutineItemRow, RoutineShiftBand } from "@/lib/routinesService";
 import type { Shift, ShiftTypeKey, Worker } from "@/lib/schedule/types";
@@ -87,7 +88,25 @@ export function evaluateRoutineAssignmentEligibility(
     return { tone: "invalid", eligible: false, tooltip: certReason };
   }
 
+  if (isArenaRoutineName(routine.name)) {
+    const meta = parseArenaRoutineName(routine.name);
+    if (meta.kind === "main" && meta.shiftBand && meta.shiftBand !== shift.shiftType) {
+      return {
+        tone: "invalid",
+        eligible: false,
+        tooltip: `This is a ${meta.shiftBand} shift routine — drop it on a ${meta.shiftBand} worker row`,
+      };
+    }
+  }
+
   const items = routineItemsForShiftBand(routine.items, shift.shiftType);
+  if (items.length === 0) {
+    return {
+      tone: "invalid",
+      eligible: false,
+      tooltip: `No checklist lines for ${shift.shiftType} shift on this routine`,
+    };
+  }
   const required = items.filter((it) => it.required);
   for (const it of required) {
     const pid = (it.procedure_id ?? "").trim();

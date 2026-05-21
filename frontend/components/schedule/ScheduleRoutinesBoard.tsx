@@ -49,6 +49,7 @@ import {
   mapApiPrograms,
 } from "@/lib/trainingApi";
 import { parseLocalDate, formatLocalDate } from "@/lib/schedule/calendar";
+import { isPulseApiShiftId } from "@/lib/schedule/pulse-bridge";
 import { ScheduleRoutineExtraModal } from "@/components/schedule/ScheduleRoutineExtraModal";
 
 type ScheduledRow = {
@@ -252,16 +253,36 @@ export function ScheduleRoutinesBoard({
     routineId: string,
     opts?: { extras?: Array<{ label: string }>; displayName?: string; kind?: LocalAssignment["kind"] },
   ) {
-    const detail = routineDetails[routineId] ?? (await ensureRoutineDetail(routineId));
-    if (!detail) {
-      setLoadErr("Could not load routine details.");
+    if (!isPulseApiShiftId(row.shift.id)) {
+      setLoadErr(
+        "This shift is not saved on the server yet. Publish or save the schedule shift, then assign the routine again.",
+      );
       return;
     }
+
+    let detail: RoutineDetail | null = null;
+    try {
+      detail = await getRoutine(routineId);
+      setRoutineDetails((prev) => ({ ...prev, [routineId]: detail! }));
+    } catch (err) {
+      const { message } = parseClientApiError(err);
+      setLoadErr(message || "Could not load routine details.");
+      return;
+    }
+
     const ctx = training ?? { programs: [], assignments: [], acknowledgements: [] };
     const ev = buildRoutineEligibilityByRowKey([row], detail, ctx)[row.rowKey];
-    if (!ev?.eligible) return;
+    if (!ev?.eligible) {
+      setLoadErr(ev?.tooltip ?? "Cannot assign this routine to this worker.");
+      return;
+    }
 
     const items = routineItemsForShiftBand(detail.items, row.shift.shiftType);
+    if (items.length === 0) {
+      setLoadErr(`No checklist lines for ${row.shift.shiftType} shift on this routine.`);
+      return;
+    }
+
     setSavingRowKey(row.rowKey);
     setLoadErr(null);
     try {
@@ -296,8 +317,15 @@ export function ScheduleRoutinesBoard({
       }));
       setToast(`Assigned “${display}” to ${row.worker.name}.`);
     } catch (err) {
-      const { message } = parseClientApiError(err);
-      setLoadErr(message || "Could not save assignment.");
+      const { message, status, requestUrl } = parseClientApiError(err);
+      const hint =
+        status === 400
+          ? " Refresh the page after syncing arena routines, then try again."
+          : status != null
+            ? ` (HTTP ${status})`
+            : "";
+      const urlBit = requestUrl ? ` ${requestUrl}` : "";
+      setLoadErr((message || "Could not save assignment.") + hint + urlBit);
     } finally {
       setSavingRowKey(null);
     }
@@ -308,6 +336,7 @@ export function ScheduleRoutinesBoard({
     setLoadErr(null);
     try {
       const result = await ensureArenaRoutines();
+      setRoutineDetails({});
       await reloadRoutines();
       const parts: string[] = [];
       if (result.created.length) parts.push(`created ${result.created.length}`);
@@ -357,7 +386,12 @@ export function ScheduleRoutinesBoard({
     const payload = readRoutineDragPayload(e.dataTransfer);
     const routineId = payload?.routineId ?? draggingRoutineId;
     const ev = eligibilityByRow[row.rowKey];
-    if (!routineId || !ev?.eligible) return;
+    if (!routineId) return;
+    if (!ev?.eligible) {
+      setLoadErr(ev?.tooltip ?? "Cannot assign this routine to this worker.");
+      onRoutineDragEnd();
+      return;
+    }
     void assignRoutineToRow(row, routineId);
     onRoutineDragEnd();
   }

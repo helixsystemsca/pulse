@@ -919,6 +919,9 @@ export function WorkRequestsApp() {
     });
   }, [rows, tab, session?.sub, canApproveWR, hasWorkRequestEditRole, isSystemAdmin]);
 
+  const visibleRowCount = filteredRows.length;
+  const tabNarrowsPage = !listLoading && rows.length > 0 && visibleRowCount !== rows.length;
+
   function openReviewModal(row: Pick<WorkRequestRow, "id" | "assigned_user_id">) {
     setReviewAssignUserId(row.assigned_user_id ?? "");
     setReviewSubmitPhase("idle");
@@ -1641,6 +1644,11 @@ export function WorkRequestsApp() {
               </div>
             ) : listError ? (
               <p className="p-6 text-sm text-rose-600">{listError}</p>
+            ) : filteredRows.length === 0 ? (
+              <p className="p-6 text-sm text-pulse-muted">
+                No requests match this tab for the current filters.
+                {total > 0 ? ` (${total} in list scope — switch tab or adjust filters.)` : null}
+              </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-[1220px] w-full border-collapse text-left text-sm">
@@ -1724,7 +1732,7 @@ export function WorkRequestsApp() {
                             {formatDue(row.due_date)}
                           </td>
                           <td className="px-4 py-3 text-right align-top">
-                            <span className="font-mono text-xs font-bold tabular-nums tracking-tight text-pulse-navy dark:text-gray-100">
+                            <span className="text-pulse-navy tabular-nums dark:text-gray-100">
                               {workItemDisplayId(row)}
                             </span>
                           </td>
@@ -1757,7 +1765,9 @@ export function WorkRequestsApp() {
             )}
             <div className="flex flex-col gap-2 border-t border-pulse-border px-4 py-3 text-sm text-pulse-muted dark:border-ds-border sm:flex-row sm:items-center sm:justify-between">
               <p>
-                Showing {start}–{end} of {total} requests
+                {tabNarrowsPage
+                  ? `Showing ${visibleRowCount} of ${total} requests`
+                  : `Showing ${start}–${end} of ${total} requests`}
               </p>
               <div className="flex items-center gap-2">
                 <button

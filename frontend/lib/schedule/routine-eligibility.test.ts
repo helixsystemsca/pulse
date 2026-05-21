@@ -87,6 +87,26 @@ describe("evaluateRoutineAssignmentEligibility", () => {
     expect(r.tooltip).toMatch(/Pool Operator|shift/i);
   });
 
+  it("rejects arena day routine on afternoon shift row", () => {
+    const arenaDay: RoutineDetail = {
+      ...routine,
+      name: "Arena A — Day",
+      items: [{ ...routine.items[0]!, shift_band: "day" }],
+    };
+    const afternoonShift: Shift = {
+      ...shift,
+      shiftType: "afternoon",
+      required_certifications: undefined,
+    };
+    const r = evaluateRoutineAssignmentEligibility(worker, afternoonShift, arenaDay, {
+      programs: [],
+      assignments: [],
+      acknowledgements: [],
+    });
+    expect(r.eligible).toBe(false);
+    expect(r.tooltip).toMatch(/day shift routine/i);
+  });
+
   it("allows when certs and training are satisfied", () => {
     const okShift: Shift = { ...shift, required_certifications: ["P1"] };
     const r = evaluateRoutineAssignmentEligibility(worker, okShift, routine, {

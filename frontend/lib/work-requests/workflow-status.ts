@@ -22,12 +22,14 @@ export function workflowStatus(
   if (raw === "completed") return "completed";
   if (raw === "cancelled") return "cancelled";
   if (raw === "hold") return "hold";
-  if (row.display_status === "overdue") return "overdue";
+  // Open intake / approval queue — overdue highlight does not remove from pending approval.
   if (raw === "open" || raw === "pending_approval") {
     return row.assigned_user_id ? "approved" : "pending_approval";
   }
-  if (raw === "approved") return row.assigned_user_id ? "approved" : "approved";
-  if (raw === "assigned") return "assigned";
+  if (raw === "approved" || raw === "assigned") {
+    return row.assigned_user_id ? "approved" : "pending_approval";
+  }
+  if (row.display_status === "overdue") return "overdue";
   return row.assigned_user_id ? "approved" : "pending_approval";
 }
 

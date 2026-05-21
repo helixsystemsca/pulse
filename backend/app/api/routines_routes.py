@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone, date
 from typing import Annotated, Optional
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import and_, delete, func, select
@@ -361,6 +362,13 @@ async def create_routine_assignment(
     if uq.scalar_one_or_none() is None:
         raise HTTPException(status_code=400, detail="Unknown primary_user_id")
 
+    shift_id: Optional[str] = None
+    if body.shift_id:
+        try:
+            shift_id = str(UUID(str(body.shift_id).strip()))
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid shift_id (expected UUID)") from None
+
     # Validate routine item ids belong to this routine.
     iq = await db.execute(
         select(PulseRoutineItem.id).where(
@@ -383,7 +391,7 @@ async def create_routine_assignment(
     a = PulseRoutineAssignment(
         company_id=cid,
         routine_id=body.routine_id,
-        shift_id=body.shift_id,
+        shift_id=shift_id,
         date=assigned_date,
         primary_user_id=body.primary_user_id,
         assigned_by_user_id=str(user.id),
