@@ -45,6 +45,11 @@ import { shiftDisplayCode } from "@/lib/schedule/compact-day-shifts";
 import { buildShiftCodeMapForDay } from "@/lib/schedule/shift-codes";
 import { shiftCodeToneClassForRowBadge } from "@/lib/schedule/scheduleWorkerPanelSort";
 import { ScheduleShiftCertChips } from "./ScheduleShiftCertChips";
+import {
+  ARENA_SCHEDULE_ASSIGNMENT_PRESETS,
+  scheduleAssignmentNoteForArea,
+} from "@/lib/schedule/arena-routine-catalog";
+import type { RoutineShiftBand } from "@/lib/routinesService";
 
 type Props = {
   date: string;
@@ -189,7 +194,23 @@ export function ScheduleDayView({
         const to = `${date}T23:59:59.999Z`;
         const rows = await fetchScheduleAssignments({ from, to, shift_type: assignShiftType });
         if (cancelled) return;
-        setAssignments(rows.filter((r) => r.date === date));
+        const dayRows = rows.filter((r) => r.date === date);
+        setAssignments(dayRows);
+        const band = assignShiftType as RoutineShiftBand;
+        for (const row of dayRows) {
+          const preset = scheduleAssignmentNoteForArea(row.area, band);
+          if (!preset) continue;
+          const notes = (row.notes ?? "").trim();
+          const needsNight =
+            band === "night" && (!notes || !/night\s*shift/i.test(notes));
+          const needsAny = !notes;
+          if (!needsNight && !needsAny) continue;
+          void patchScheduleAssignment(row.id, { notes: preset }).then((patched) => {
+            if (!cancelled) {
+              setAssignments((prev) => prev.map((x) => (x.id === patched.id ? patched : x)));
+            }
+          });
+        }
       } catch {
         if (!cancelled) setAssignError("Could not load assignments.");
       } finally {
@@ -570,12 +591,39 @@ export function ScheduleDayView({
                 <p className="mt-1.5 text-[11px] text-ds-muted">Pick day, afternoon, or night before adding checklist rows below.</p>
               </div>
 
+              <div className="mt-3 rounded-md border border-pulseShell-border/80 bg-pulseShell-elevated/80 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-ds-muted">Arena areas</p>
+                <p className="mt-0.5 text-[11px] text-ds-muted">
+                  Quick-add with shift notes (night rows include close-down and handoff copy).
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {ARENA_SCHEDULE_ASSIGNMENT_PRESETS.map((preset) => {
+                    const band = assignShiftType as RoutineShiftBand;
+                    const note = preset.notesByShift[band] ?? preset.notesByShift.night;
+                    return (
+                      <button
+                        key={preset.area}
+                        type="button"
+                        className="rounded-md border border-indigo-200/90 bg-indigo-50/80 px-2.5 py-1 text-xs font-semibold text-indigo-950 hover:bg-indigo-100/90 dark:border-indigo-500/35 dark:bg-indigo-950/40 dark:text-indigo-100"
+                        disabled={assignLoading}
+                        onClick={() => {
+                          setNewArea(preset.area);
+                          setNewNotes(note);
+                        }}
+                      >
+                        {preset.area} · {assignShiftType}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div className="mt-3 rounded-md border border-pulseShell-border bg-pulseShell-elevated p-3">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-ds-muted">Create</p>
                 <div className="mt-2 space-y-2">
                   <input
                     className="w-full rounded-md border border-pulseShell-border bg-pulseShell-surface px-3 py-2 text-sm text-ds-foreground"
-                    placeholder="Area (Pool Deck, Weight Room, Change Rooms, B Side, A Side)"
+                    placeholder="Area (Arena A, Arena B, Pool Deck, Weight Room…)"
                     value={newArea}
                     onChange={(e) => setNewArea(e.target.value)}
                   />
@@ -708,7 +756,7 @@ export function ScheduleDayView({
                           window.alert("Could not save notes."),
                         );
                       }}
-                      placeholder="Notes"
+                      placeholder="Notes (e.g. Night shift — close change rooms…)"
                     />
                   </div>
                 ))}

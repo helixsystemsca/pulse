@@ -74,7 +74,7 @@ export function ScheduleOperationalSidebar({
       ["my-shifts", "My shifts", User],
       ["personnel", "Personnel", Users],
       ["reports", "Reports", BarChart2],
-      ["routines", "Routines", ClipboardList],
+      ["routines", "Assignments", ClipboardList],
     ] as const
   ).map(([key, label, Icon]) => (
     <button

@@ -100,6 +100,10 @@ import { ScheduleMyShiftsView } from "./ScheduleMyShiftsView";
 import { SchedulePersonnel } from "./SchedulePersonnel";
 import { ScheduleReports } from "./ScheduleReports";
 import { ScheduleRoutinesBoard } from "./ScheduleRoutinesBoard";
+import { ScheduleRoutineExtraModal } from "./ScheduleRoutineExtraModal";
+import { listRoutines, createRoutineAssignment, getRoutine } from "@/lib/routinesService";
+import { routineItemsForShiftBand } from "@/lib/schedule/routine-eligibility";
+import type { RoutineRow } from "@/lib/routinesService";
 import { ScheduleSettingsModal } from "./ScheduleSettingsModal";
 import { AvailabilityOverrideModal } from "./operational/AvailabilityOverrideModal";
 import { ScheduleTrashDropZone } from "./ScheduleTrashDropZone";
@@ -248,6 +252,12 @@ export function ScheduleApp() {
     date: string;
     label: string;
   } | null>(null);
+  const [paletteExtraTarget, setPaletteExtraTarget] = useState<{
+    workerId: string;
+    date: string;
+    workerName: string;
+  } | null>(null);
+  const [paletteRoutines, setPaletteRoutines] = useState<RoutineRow[]>([]);
 
   const shifts = useScheduleStore((s) => s.shifts);
   const workers = useScheduleStore((s) => s.workers);
@@ -1116,6 +1126,22 @@ export function ScheduleApp() {
     ],
   );
 
+  const addWorkerOperationalBadge = useCallback(
+    (workerId: string, targetDate: string, code: string) => {
+      const u = code.trim().toUpperCase();
+      if (!u) return;
+      addDeploymentBadge(workerId, targetDate, u);
+      for (const s of shifts) {
+        if (s.workerId !== workerId || s.date !== targetDate) continue;
+        if (s.shiftKind === "project_task" || (s.eventType !== "work" && s.eventType !== "training")) continue;
+        const badges = (s.operationalBadges ?? []).map((x) => x.trim().toUpperCase()).filter(Boolean);
+        if (badges.includes(u)) continue;
+        updateShift(s.id, { operationalBadges: [...badges, u] });
+      }
+    },
+    [addDeploymentBadge, shifts, updateShift],
+  );
+
   const handleRemoveOperationalBadge = useCallback(
     (workerId: string, targetDate: string, code: string) => {
       const u = code.trim().toUpperCase();
@@ -1141,7 +1167,13 @@ export function ScheduleApp() {
       if (!w) return;
 
       if (payload.paletteKind === "badge") {
-        addDeploymentBadge(workerId, targetDate, payload.code);
+        const code = payload.code.trim().toUpperCase();
+        if (code === "EXTRA") {
+          setPaletteExtraTarget({ workerId, date: targetDate, workerName: w.name });
+          void listRoutines().then(setPaletteRoutines).catch(() => setPaletteRoutines([]));
+          return;
+        }
+        addWorkerOperationalBadge(workerId, targetDate, code);
         return;
       }
 
@@ -1173,7 +1205,7 @@ export function ScheduleApp() {
       commitPaletteShiftAssignment(workerId, targetDate, def.code, null);
     },
     [
-      addDeploymentBadge,
+      addWorkerOperationalBadge,
       canPublishSchedule,
       commitPaletteShiftAssignment,
       placementDropWindow,
@@ -1728,10 +1760,84 @@ export function ScheduleApp() {
               shifts={shiftsForView}
               zones={zones}
               shiftTypes={shiftTypes}
+              onAddOperationalBadge={addWorkerOperationalBadge}
             />
           ) : null}
           </div>
       </div>
+
+      <ScheduleRoutineExtraModal
+        open={paletteExtraTarget !== null}
+        workerName={paletteExtraTarget?.workerName ?? ""}
+        routines={paletteRoutines}
+        onClose={() => setPaletteExtraTarget(null)}
+        onConfirm={(payload) => {
+          const target = paletteExtraTarget;
+          setPaletteExtraTarget(null);
+          if (!target) return;
+          addWorkerOperationalBadge(target.workerId, target.date, "EXTRA");
+          const shift = shiftsForView.find(
+            (s) =>
+              s.workerId === target.workerId &&
+              s.date === target.date &&
+              s.shiftKind !== "project_task" &&
+              s.eventType === "work",
+          );
+          if (!shift) {
+            setScheduleToast("Extra badge added. Assign a shift to attach a routine.");
+            return;
+          }
+          void (async () => {
+            try {
+              if (payload.extraRoutineId) {
+                const detail = await getRoutine(payload.extraRoutineId);
+                const items = routineItemsForShiftBand(detail.items, shift.shiftType);
+                await createRoutineAssignment({
+                  routine_id: payload.extraRoutineId,
+                  primary_user_id: target.workerId,
+                  date: target.date,
+                  shift_id: shift.id,
+                  item_assignments: items.map((it) => ({
+                    routine_item_id: it.id,
+                    assigned_to_user_id: target.workerId,
+                    reason: "palette_extra",
+                  })),
+                  extras: payload.comment
+                    ? [{ label: payload.comment, assigned_to_user_id: target.workerId }]
+                    : undefined,
+                });
+                setScheduleToast(`Extra routine assigned to ${target.workerName}.`);
+              } else if (payload.comment) {
+                const sideLabel = payload.side === "a" ? "Arena A" : "Arena B";
+                const fallback = paletteRoutines.find((r) =>
+                  r.name.toLowerCase().includes(`${sideLabel.toLowerCase()} — extra`),
+                );
+                if (fallback) {
+                  const detail = await getRoutine(fallback.id);
+                  const items = routineItemsForShiftBand(detail.items, shift.shiftType);
+                  await createRoutineAssignment({
+                    routine_id: fallback.id,
+                    primary_user_id: target.workerId,
+                    date: target.date,
+                    shift_id: shift.id,
+                    item_assignments: items.map((it) => ({
+                      routine_item_id: it.id,
+                      assigned_to_user_id: target.workerId,
+                      reason: "palette_extra",
+                    })),
+                    extras: [{ label: payload.comment, assigned_to_user_id: target.workerId }],
+                  });
+                  setScheduleToast(`Extra noted for ${target.workerName}.`);
+                } else {
+                  setScheduleToast("Extra badge added. Sync arena routines to save notes.");
+                }
+              }
+            } catch {
+              setScheduleToast("Could not save extra assignment.");
+            }
+          })();
+        }}
+      />
 
       {workerAttendanceModal ? (
         <WorkerAttendanceModal

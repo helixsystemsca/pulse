@@ -5,7 +5,17 @@ import { flushSync } from "react-dom";
 import { ChevronLeft, ChevronRight, ClipboardList, Loader2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
+import {
+  ARENA_SHIFT_SECTION_LABELS,
+  groupArenaRoutines,
+} from "@/lib/schedule/arena-routine-groups";
+import { isArenaRoutineName } from "@/lib/schedule/arena-routine-catalog";
+import { ensureArenaRoutines } from "@/lib/schedule/ensure-arena-routines";
 import { workerHighlightOverlayClass } from "@/lib/schedule/drag-highlight-classes";
+import {
+  OPERATIONAL_BADGE_REGISTRY,
+  operationalBadgeChipLabel,
+} from "@/lib/schedule/operational-scheduling-model";
 import {
   attachRoutineDragPreview,
   readRoutineDragPayload,
@@ -13,10 +23,18 @@ import {
   setRoutineDragData,
 } from "@/lib/schedule/routine-drag";
 import {
+  readRoutineBadgeDragPayload,
+  routineBadgeDropZoneAccepts,
+  setRoutineBadgeDragData,
+  type RoutineBadgeKind,
+} from "@/lib/schedule/routine-badge-drag";
+import { operationalBadgeClasses } from "@/lib/schedule/schedule-semantic-styles";
+import {
   buildRoutineEligibilityByRowKey,
   routineItemsForShiftBand,
   type RoutineTrainingContext,
 } from "@/lib/schedule/routine-eligibility";
+import type { RoutineShiftBand } from "@/lib/routinesService";
 import type { Shift, ShiftTypeConfig, Worker, Zone } from "@/lib/schedule/types";
 import {
   createRoutineAssignment,
@@ -31,6 +49,7 @@ import {
   mapApiPrograms,
 } from "@/lib/trainingApi";
 import { parseLocalDate, formatLocalDate } from "@/lib/schedule/calendar";
+import { ScheduleRoutineExtraModal } from "@/components/schedule/ScheduleRoutineExtraModal";
 
 type ScheduledRow = {
   rowKey: string;
@@ -42,6 +61,8 @@ type LocalAssignment = {
   routineId: string;
   routineName: string;
   assignmentId?: string;
+  kind?: "routine" | "extra" | "grounds";
+  extraNote?: string;
 };
 
 type Props = {
@@ -51,10 +72,26 @@ type Props = {
   shifts: Shift[];
   zones: Zone[];
   shiftTypes: ShiftTypeConfig[];
+  onAddOperationalBadge?: (workerId: string, date: string, code: string) => void;
 };
 
 function shiftTypeLabel(shiftTypes: ShiftTypeConfig[], key: string): string {
   return shiftTypes.find((t) => t.key === key)?.label ?? key;
+}
+
+const SHIFT_BANDS: RoutineShiftBand[] = ["day", "afternoon", "night"];
+
+function routineChipClass(band: RoutineShiftBand | null): string {
+  if (band === "night") {
+    return "border-indigo-300/90 bg-indigo-50/90 text-indigo-950 dark:border-indigo-500/35 dark:bg-indigo-950/50 dark:text-indigo-100";
+  }
+  if (band === "afternoon") {
+    return "border-amber-300/90 bg-amber-50/90 text-amber-950 dark:border-amber-500/35 dark:bg-amber-950/50 dark:text-amber-100";
+  }
+  if (band === "day") {
+    return "border-sky-300/90 bg-sky-50/90 text-sky-950 dark:border-sky-500/35 dark:bg-sky-950/50 dark:text-sky-100";
+  }
+  return "border-violet-200/90 bg-violet-50/90 text-violet-900 dark:border-violet-500/35 dark:bg-violet-950/50 dark:text-violet-100";
 }
 
 export function ScheduleRoutinesBoard({
@@ -64,6 +101,7 @@ export function ScheduleRoutinesBoard({
   shifts,
   zones,
   shiftTypes,
+  onAddOperationalBadge,
 }: Props) {
   const [routines, setRoutines] = useState<RoutineRow[] | null>(null);
   const [routineDetails, setRoutineDetails] = useState<Record<string, RoutineDetail>>({});
@@ -71,10 +109,13 @@ export function ScheduleRoutinesBoard({
   const [loadErr, setLoadErr] = useState<string | null>(null);
 
   const [draggingRoutineId, setDraggingRoutineId] = useState<string | null>(null);
+  const [draggingBadge, setDraggingBadge] = useState<RoutineBadgeKind | null>(null);
   const [hoverRowKey, setHoverRowKey] = useState<string | null>(null);
   const [savingRowKey, setSavingRowKey] = useState<string | null>(null);
+  const [syncingArena, setSyncingArena] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [assignedByRow, setAssignedByRow] = useState<Record<string, LocalAssignment[]>>({});
+  const [extraModalRow, setExtraModalRow] = useState<ScheduledRow | null>(null);
 
   const zoneLabel = useMemo(() => {
     const m = new Map(zones.map((z) => [z.id, z.label]));
@@ -102,12 +143,28 @@ export function ScheduleRoutinesBoard({
     });
   }, [shifts, focusDate, workerById]);
 
+  const routineGroups = useMemo(
+    () => groupArenaRoutines(routines ?? []),
+    [routines],
+  );
+
+  const hasArenaCatalog = useMemo(
+    () => (routines ?? []).some((r) => isArenaRoutineName(r.name)),
+    [routines],
+  );
+
   const draggingRoutine = draggingRoutineId ? routineDetails[draggingRoutineId] ?? null : null;
 
   const eligibilityByRow = useMemo(() => {
     const ctx: RoutineTrainingContext = training ?? { programs: [], assignments: [], acknowledgements: [] };
     return buildRoutineEligibilityByRowKey(scheduledRows, draggingRoutine, ctx);
   }, [scheduledRows, draggingRoutine, training]);
+
+  const reloadRoutines = useCallback(async () => {
+    const list = await listRoutines();
+    setRoutines(list);
+    return list;
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -165,6 +222,7 @@ export function ScheduleRoutinesBoard({
   }, [routineDetails]);
 
   async function onRoutineDragStart(e: React.DragEvent, routine: RoutineRow) {
+    setDraggingBadge(null);
     setRoutineDragData(e.dataTransfer, { routineId: routine.id });
     attachRoutineDragPreview(e, routine.name);
     void ensureRoutineDetail(routine.id);
@@ -176,7 +234,24 @@ export function ScheduleRoutinesBoard({
     setHoverRowKey(null);
   }
 
-  async function assignRoutineToRow(row: ScheduledRow, routineId: string) {
+  function onBadgeDragStart(e: React.DragEvent, badgeKind: RoutineBadgeKind) {
+    setDraggingRoutineId(null);
+    const label = badgeKind === "EXTRA" ? "Extra" : "Grounds";
+    setRoutineBadgeDragData(e.dataTransfer, { badgeKind });
+    e.dataTransfer.setData("text/plain", label);
+    flushSync(() => setDraggingBadge(badgeKind));
+  }
+
+  function onBadgeDragEnd() {
+    setDraggingBadge(null);
+    setHoverRowKey(null);
+  }
+
+  async function assignRoutineToRow(
+    row: ScheduledRow,
+    routineId: string,
+    opts?: { extras?: Array<{ label: string }>; displayName?: string; kind?: LocalAssignment["kind"] },
+  ) {
     const detail = routineDetails[routineId] ?? (await ensureRoutineDetail(routineId));
     if (!detail) {
       setLoadErr("Could not load routine details.");
@@ -200,15 +275,26 @@ export function ScheduleRoutinesBoard({
           assigned_to_user_id: row.worker.id,
           reason: "schedule_board",
         })),
+        extras: (opts?.extras ?? []).map((ex) => ({
+          label: ex.label,
+          assigned_to_user_id: row.worker.id,
+        })),
       });
+      const display = opts?.displayName ?? detail.name;
       setAssignedByRow((prev) => ({
         ...prev,
         [row.rowKey]: [
           ...(prev[row.rowKey] ?? []),
-          { routineId, routineName: detail.name, assignmentId: res.id },
+          {
+            routineId,
+            routineName: display,
+            assignmentId: res.id,
+            kind: opts?.kind ?? "routine",
+            extraNote: opts?.extras?.[0]?.label,
+          },
         ],
       }));
-      setToast(`Assigned “${detail.name}” to ${row.worker.name}.`);
+      setToast(`Assigned “${display}” to ${row.worker.name}.`);
     } catch (err) {
       const { message } = parseClientApiError(err);
       setLoadErr(message || "Could not save assignment.");
@@ -217,11 +303,93 @@ export function ScheduleRoutinesBoard({
     }
   }
 
+  async function syncArenaCatalog() {
+    setSyncingArena(true);
+    setLoadErr(null);
+    try {
+      const result = await ensureArenaRoutines();
+      await reloadRoutines();
+      const parts: string[] = [];
+      if (result.created.length) parts.push(`created ${result.created.length}`);
+      if (result.renamed.length) parts.push(`renamed ${result.renamed.length}`);
+      if (result.updated.length) parts.push(`updated ${result.updated.length}`);
+      setToast(parts.length ? `Arena catalog: ${parts.join(", ")}.` : "Arena routines already up to date.");
+    } catch (err) {
+      const { message } = parseClientApiError(err);
+      setLoadErr(message || "Could not sync arena routines.");
+    } finally {
+      setSyncingArena(false);
+    }
+  }
+
+  function rowOperationalBadges(row: ScheduledRow): string[] {
+    const fromShift = (row.shift.operationalBadges ?? []).map((b) => b.trim().toUpperCase()).filter(Boolean);
+    const fromLocal = (assignedByRow[row.rowKey] ?? [])
+      .filter((a) => a.kind === "grounds")
+      .map(() => "GROUNDS");
+    return [...new Set([...fromShift, ...fromLocal])];
+  }
+
+  function handleRowDrop(e: React.DragEvent, row: ScheduledRow) {
+    e.preventDefault();
+    setHoverRowKey(null);
+
+    const badgePayload = readRoutineBadgeDragPayload(e.dataTransfer);
+    if (badgePayload?.badgeKind === "EXTRA") {
+      setExtraModalRow(row);
+      onBadgeDragEnd();
+      return;
+    }
+    if (badgePayload?.badgeKind === "GROUNDS") {
+      onAddOperationalBadge?.(row.worker.id, focusDate, "GROUNDS");
+      setAssignedByRow((prev) => ({
+        ...prev,
+        [row.rowKey]: [
+          ...(prev[row.rowKey] ?? []),
+          { routineId: "grounds", routineName: "Grounds", kind: "grounds" },
+        ],
+      }));
+      setToast(`Grounds badge added for ${row.worker.name}.`);
+      onBadgeDragEnd();
+      return;
+    }
+
+    const payload = readRoutineDragPayload(e.dataTransfer);
+    const routineId = payload?.routineId ?? draggingRoutineId;
+    const ev = eligibilityByRow[row.rowKey];
+    if (!routineId || !ev?.eligible) return;
+    void assignRoutineToRow(row, routineId);
+    onRoutineDragEnd();
+  }
+
   function nudgeDate(delta: number) {
     const d = parseLocalDate(focusDate);
     d.setDate(d.getDate() + delta);
     onFocusDateChange(formatLocalDate(d));
   }
+
+  function renderRoutineChip(r: RoutineRow, band: RoutineShiftBand | null) {
+    return (
+      <button
+        key={r.id}
+        type="button"
+        draggable
+        onDragStart={(e) => void onRoutineDragStart(e, r)}
+        onDragEnd={onRoutineDragEnd}
+        className={cn(
+          "rounded-lg border px-2 py-2 text-left text-xs font-semibold transition-colors hover:opacity-90",
+          routineChipClass(band),
+          draggingRoutineId === r.id && "ring-2 ring-[var(--ds-accent)]",
+        )}
+        title={r.name}
+      >
+        <span className="line-clamp-2">{r.name}</span>
+      </button>
+    );
+  }
+
+  const extraDef = OPERATIONAL_BADGE_REGISTRY.EXTRA;
+  const groundsDef = OPERATIONAL_BADGE_REGISTRY.GROUNDS;
 
   return (
     <div className="flex min-w-0 flex-col gap-3">
@@ -233,6 +401,46 @@ export function ScheduleRoutinesBoard({
           {toast}
         </div>
       ) : null}
+
+      <ScheduleRoutineExtraModal
+        open={extraModalRow !== null}
+        workerName={extraModalRow?.worker.name ?? ""}
+        routines={routines ?? []}
+        onClose={() => setExtraModalRow(null)}
+        onConfirm={(payload) => {
+          const row = extraModalRow;
+          setExtraModalRow(null);
+          if (!row) return;
+          void (async () => {
+            onAddOperationalBadge?.(row.worker.id, focusDate, "EXTRA");
+            if (payload.extraRoutineId) {
+              const name =
+                routines?.find((r) => r.id === payload.extraRoutineId)?.name ?? "Extra routine";
+              await assignRoutineToRow(row, payload.extraRoutineId, {
+                kind: "extra",
+                displayName: name,
+                extras: payload.comment
+                  ? [{ label: payload.comment }]
+                  : undefined,
+              });
+            } else if (payload.comment) {
+              const sideLabel = payload.side === "a" ? "Arena A" : "Arena B";
+              const fallback = routines?.find((r) =>
+                r.name.toLowerCase().includes(`${sideLabel.toLowerCase()} — extra`),
+              );
+              if (fallback) {
+                await assignRoutineToRow(row, fallback.id, {
+                  kind: "extra",
+                  displayName: `Extra · ${sideLabel}`,
+                  extras: [{ label: payload.comment }],
+                });
+              } else {
+                setLoadErr("Sync arena catalog to enable extra assignments with notes.");
+              }
+            }
+          })();
+        }}
+      />
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-pulseShell-border/80 bg-pulseShell-surface/60 px-3 py-2 dark:border-slate-700/80 dark:bg-slate-900/50">
         <div className="flex items-center gap-2">
@@ -267,8 +475,12 @@ export function ScheduleRoutinesBoard({
             <span className="text-[var(--ds-success)]">green</span> when eligible and{" "}
             <span className="text-[var(--ds-danger)]">red</span> when not.
           </p>
+        ) : draggingBadge ? (
+          <p className="text-xs text-ds-muted">
+            Dragging <span className="font-semibold text-ds-foreground">{draggingBadge}</span> badge onto a worker row.
+          </p>
         ) : (
-          <p className="text-xs text-ds-muted">Drag a routine onto a worker row to assign.</p>
+          <p className="text-xs text-ds-muted">Drag routines or badges onto worker rows.</p>
         )}
       </div>
 
@@ -278,41 +490,94 @@ export function ScheduleRoutinesBoard({
         </div>
       ) : null}
 
-      <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-[minmax(220px,280px)_1fr]">
-        <aside className="rounded-xl border border-pulseShell-border/90 bg-pulseShell-surface/95 p-3 shadow-sm dark:border-slate-700/80 dark:bg-slate-950/80">
-          <div className="flex items-center gap-2">
-            <ClipboardList className="h-4 w-4 text-[var(--ds-accent)]" aria-hidden />
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wide text-ds-muted">Routine matrix</p>
-              <p className="text-[11px] text-ds-muted">Drag onto a worker below</p>
+      <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-[minmax(240px,300px)_1fr]">
+        <aside className="max-h-[min(70vh,720px)] overflow-y-auto rounded-xl border border-pulseShell-border/90 bg-pulseShell-surface/95 p-3 shadow-sm dark:border-slate-700/80 dark:bg-slate-950/80">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <ClipboardList className="h-4 w-4 text-[var(--ds-accent)]" aria-hidden />
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wide text-ds-muted">Routine matrix</p>
+                <p className="text-[11px] text-ds-muted">Arena A/B by shift · drag onto workers</p>
+              </div>
             </div>
+            <button
+              type="button"
+              className="shrink-0 rounded-md border border-ds-border px-2 py-1 text-[10px] font-semibold text-ds-muted hover:bg-ds-interactive-hover disabled:opacity-50"
+              disabled={syncingArena}
+              onClick={() => void syncArenaCatalog()}
+            >
+              {syncingArena ? "Syncing…" : hasArenaCatalog ? "Refresh arena" : "Add arena set"}
+            </button>
           </div>
-          <div className="mt-3 grid grid-cols-2 gap-1.5">
-            {routines === null ? (
-              <p className="col-span-2 text-sm text-ds-muted">Loading routines…</p>
-            ) : routines.length === 0 ? (
-              <p className="col-span-2 text-sm text-ds-muted">No routines defined yet.</p>
-            ) : (
-              routines.map((r) => (
+
+          <div className="mt-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-ds-muted">Coverage badges</p>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {[extraDef, groundsDef].map((def) => (
                 <button
-                  key={r.id}
+                  key={def.code}
                   type="button"
                   draggable
-                  onDragStart={(e) => void onRoutineDragStart(e, r)}
-                  onDragEnd={onRoutineDragEnd}
+                  title={def.detail}
+                  onDragStart={(e) => onBadgeDragStart(e, def.code as RoutineBadgeKind)}
+                  onDragEnd={onBadgeDragEnd}
                   className={cn(
-                    "rounded-lg border px-2 py-2 text-left text-xs font-semibold transition-colors",
-                    "border-violet-200/90 bg-violet-50/90 text-violet-900 hover:bg-violet-100/90",
-                    "dark:border-violet-500/35 dark:bg-violet-950/50 dark:text-violet-100 dark:hover:bg-violet-900/60",
-                    draggingRoutineId === r.id && "ring-2 ring-[var(--ds-accent)]",
+                    "rounded-md border px-2.5 py-1.5 text-xs font-bold uppercase tracking-wide",
+                    operationalBadgeClasses(def.group),
+                    draggingBadge === def.code && "ring-2 ring-[var(--ds-accent)]",
                   )}
-                  title={r.name}
                 >
-                  <span className="line-clamp-2">{r.name}</span>
+                  {operationalBadgeChipLabel(def.code)}
                 </button>
-              ))
-            )}
+              ))}
+            </div>
+            <p className="mt-1 text-[10px] leading-snug text-ds-muted">
+              Extra opens a notes picker or Arena extra routine. Grounds tags exterior coverage on the shift.
+            </p>
           </div>
+
+          {routines === null ? (
+            <p className="mt-3 text-sm text-ds-muted">Loading routines…</p>
+          ) : (
+            <div className="mt-3 space-y-3">
+              {SHIFT_BANDS.map((band) => {
+                const list = routineGroups.byShift[band];
+                if (!list.length) return null;
+                return (
+                  <div key={band}>
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-ds-muted">
+                      {ARENA_SHIFT_SECTION_LABELS[band]}
+                    </p>
+                    <div className="mt-1 grid grid-cols-1 gap-1.5">
+                      {list.map((r) => renderRoutineChip(r, band))}
+                    </div>
+                  </div>
+                );
+              })}
+              {routineGroups.extras.length > 0 ? (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-ds-muted">Extra routines</p>
+                  <div className="mt-1 grid grid-cols-1 gap-1.5">
+                    {routineGroups.extras.map((r) => renderRoutineChip(r, null))}
+                  </div>
+                </div>
+              ) : null}
+              {routineGroups.other.length > 0 ? (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-ds-muted">Other routines</p>
+                  <div className="mt-1 grid grid-cols-1 gap-1.5">
+                    {routineGroups.other.map((r) => renderRoutineChip(r, null))}
+                  </div>
+                </div>
+              ) : null}
+              {!hasArenaCatalog && routines.length > 0 ? (
+                <p className="text-[11px] text-ds-muted">
+                  Use <span className="font-semibold">Add arena set</span> to create day, afternoon, and night Arena A/B
+                  routines with night-shift notes.
+                </p>
+              ) : null}
+            </div>
+          )}
         </aside>
 
         <div className="min-w-0 overflow-x-auto rounded-xl border border-pulseShell-border/90 bg-pulseShell-surface/95 shadow-sm dark:border-slate-700/80 dark:bg-slate-950/80">
@@ -337,7 +602,9 @@ export function ScheduleRoutinesBoard({
                   const ev = eligibilityByRow[row.rowKey];
                   const highlight = draggingRoutineId ? ev?.tone : undefined;
                   const assigned = assignedByRow[row.rowKey] ?? [];
+                  const opBadges = rowOperationalBadges(row);
                   const isSaving = savingRowKey === row.rowKey;
+                  const dropActive = draggingRoutineId || draggingBadge;
 
                   return (
                     <tr
@@ -345,26 +612,23 @@ export function ScheduleRoutinesBoard({
                       className={cn(
                         "relative border-b border-ds-border/80 transition-colors",
                         highlight && workerHighlightOverlayClass(highlight),
-                        hoverRowKey === row.rowKey && ev?.eligible && "ring-1 ring-inset ring-[var(--ds-accent)]/30",
+                        hoverRowKey === row.rowKey &&
+                          (draggingBadge || ev?.eligible) &&
+                          "ring-1 ring-inset ring-[var(--ds-accent)]/30",
                       )}
                       onDragOver={(e) => {
-                        if (!routineDropZoneAccepts(e, draggingRoutineId)) return;
+                        const routineOk = routineDropZoneAccepts(e, draggingRoutineId);
+                        const badgeOk = routineBadgeDropZoneAccepts(e, draggingBadge);
+                        if (!routineOk && !badgeOk) return;
                         e.preventDefault();
-                        e.dataTransfer.dropEffect = ev?.eligible ? "copy" : "none";
+                        if (draggingBadge) e.dataTransfer.dropEffect = "copy";
+                        else e.dataTransfer.dropEffect = ev?.eligible ? "copy" : "none";
                         setHoverRowKey(row.rowKey);
                       }}
                       onDragLeave={() => {
                         if (hoverRowKey === row.rowKey) setHoverRowKey(null);
                       }}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        setHoverRowKey(null);
-                        const payload = readRoutineDragPayload(e.dataTransfer);
-                        const routineId = payload?.routineId ?? draggingRoutineId;
-                        if (!routineId || !ev?.eligible) return;
-                        void assignRoutineToRow(row, routineId);
-                        onRoutineDragEnd();
-                      }}
+                      onDrop={(e) => handleRowDrop(e, row)}
                     >
                       <td className="px-3 py-2.5 font-medium text-ds-foreground">{row.worker.name}</td>
                       <td className="px-3 py-2.5 text-ds-foreground">
@@ -376,17 +640,41 @@ export function ScheduleRoutinesBoard({
                           {isSaving ? (
                             <Loader2 className="h-4 w-4 animate-spin text-ds-muted" aria-hidden />
                           ) : null}
-                          {assigned.length === 0 && !isSaving ? (
-                            <span className="text-xs text-ds-muted">Drop routine here</span>
-                          ) : (
-                            assigned.map((a) => (
+                          {opBadges.map((code) => {
+                            const def = OPERATIONAL_BADGE_REGISTRY[code];
+                            return (
                               <span
-                                key={`${a.routineId}-${a.assignmentId ?? "local"}`}
-                                className="rounded-md border border-violet-200/80 bg-violet-50/90 px-2 py-0.5 text-xs font-medium text-violet-900 dark:border-violet-500/30 dark:bg-violet-950/60 dark:text-violet-100"
+                                key={code}
+                                className={cn(
+                                  "rounded-md border px-2 py-0.5 text-[10px] font-bold uppercase",
+                                  operationalBadgeClasses(def?.group ?? "special"),
+                                )}
+                                title={def?.detail}
                               >
-                                {a.routineName}
+                                {operationalBadgeChipLabel(code)}
                               </span>
-                            ))
+                            );
+                          })}
+                          {assigned.length === 0 && !isSaving && !dropActive ? (
+                            <span className="text-xs text-ds-muted">Drop routine or badge here</span>
+                          ) : (
+                            assigned
+                              .filter((a) => a.kind !== "grounds")
+                              .map((a) => (
+                                <span
+                                  key={`${a.routineId}-${a.assignmentId ?? "local"}`}
+                                  className={cn(
+                                    "rounded-md border px-2 py-0.5 text-xs font-medium",
+                                    a.kind === "extra"
+                                      ? "border-amber-300/80 bg-amber-50/90 text-amber-950 dark:border-amber-500/30 dark:bg-amber-950/60 dark:text-amber-100"
+                                      : "border-violet-200/80 bg-violet-50/90 text-violet-900 dark:border-violet-500/30 dark:bg-violet-950/60 dark:text-violet-100",
+                                  )}
+                                  title={a.extraNote}
+                                >
+                                  {a.routineName}
+                                  {a.extraNote ? ` — ${a.extraNote}` : ""}
+                                </span>
+                              ))
                           )}
                         </div>
                         {draggingRoutineId && ev?.tooltip ? (

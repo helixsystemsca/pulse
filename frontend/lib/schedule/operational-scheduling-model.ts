@@ -80,6 +80,20 @@ export const OPERATIONAL_BADGE_REGISTRY: Record<string, OperationalBadgeDefiniti
     detail: "Project focus",
     chipLabel: "PROJ",
   },
+  EXTRA: {
+    code: "EXTRA",
+    label: "Extra",
+    group: "workflow",
+    detail: "Extra duty or coverage — add notes or an extra routine",
+    chipLabel: "XTR",
+  },
+  GROUNDS: {
+    code: "GROUNDS",
+    label: "Grounds",
+    group: "assignment",
+    detail: "Grounds / exterior coverage",
+    chipLabel: "GRND",
+  },
 };
 
 /** Label shown on small schedule chips; falls back to a short slice of the code. */
