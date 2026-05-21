@@ -176,6 +176,18 @@ function WaterCurrents({ animate }: { animate: boolean }) {
   );
 }
 
+/** Occasional bright peaks — calm water, then a surface ripple catches the sun. */
+const SUN_GLARE_BURST = {
+  opacity: [0.42, 0.48, 0.5, 0.52, 0.95, 1, 0.55, 0.45, 0.48, 0.72, 0.5, 0.42],
+  times: [0, 0.12, 0.28, 0.42, 0.46, 0.5, 0.54, 0.68, 0.78, 0.82, 0.9, 1],
+};
+
+const CAUSTIC_FLASHES = [
+  { left: "32%", top: "14%", size: "min(28rem,36vw)", delay: 0, duration: 14 },
+  { left: "58%", top: "20%", size: "min(22rem,30vw)", delay: 4.5, duration: 16 },
+  { left: "44%", top: "8%", size: "min(20rem,26vw)", delay: 9, duration: 13 },
+] as const;
+
 function SunGlare({
   smoothX,
   smoothY,
@@ -185,42 +197,98 @@ function SunGlare({
   smoothY: ReturnType<typeof useSpring>;
   animate: boolean;
 }) {
-  const glareX = useTransform(smoothX, (v) => v * 36);
-  const glareY = useTransform(smoothY, (v) => v * 22);
+  const glareX = useTransform(smoothX, (v) => v * 42);
+  const glareY = useTransform(smoothY, (v) => v * 26);
 
   return (
-    <motion.div
-      className="absolute -top-[22%] left-1/2 z-[1] h-[min(48rem,62vh)] w-[min(110vw,92rem)] -translate-x-1/2"
-      style={{ x: glareX, y: glareY }}
-      initial={false}
-      animate={
-        animate
-          ? {
-              opacity: [0.88, 1, 0.92, 0.98, 0.88],
-              scale: [1, 1.03, 0.99, 1.02, 1],
-            }
-          : { opacity: 0.95 }
-      }
-      transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-      aria-hidden
-    >
-      {/* Hot sun core */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_42%_38%_at_50%_32%,#ffffff_0%,rgba(255,255,255,0.98)_8%,rgba(255,250,235,0.75)_18%,rgba(220,245,255,0.45)_32%,transparent_58%)]" />
-      {/* Broad sky wash */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_95%_55%_at_50%_0%,rgba(255,255,255,0.92)_0%,rgba(240,252,255,0.55)_25%,transparent_68%)]" />
-      {/* Horizontal glare streak */}
+    <div className="absolute inset-x-0 top-0 z-[2] h-[min(52rem,68vh)] overflow-visible" aria-hidden>
+      {/* Always-on sun pool through the surface (softer baseline) */}
       <motion.div
-        className="absolute left-1/2 top-[26%] h-[3px] w-[72%] -translate-x-1/2 bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.15)_15%,rgba(255,255,255,0.95)_50%,rgba(255,255,255,0.15)_85%,transparent_100%)] blur-[2px]"
+        className="absolute -top-[18%] left-1/2 h-full w-[min(115vw,96rem)] -translate-x-1/2"
+        style={{ x: glareX, y: glareY }}
         initial={false}
-        animate={animate ? { opacity: [0.5, 1, 0.65, 0.9, 0.5], scaleX: [0.92, 1.06, 0.98, 1.04, 0.92] } : undefined}
-        transition={{ duration: 6.5, repeat: Infinity, ease: "easeInOut" }}
+        animate={animate ? { opacity: [0.55, 0.68, 0.58, 0.65, 0.55] } : { opacity: 0.62 }}
+        transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+      >
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_42%_at_50%_28%,rgba(255,255,255,0.75)_0%,rgba(255,252,245,0.5)_20%,rgba(200,245,255,0.28)_38%,transparent_62%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_100%_60%_at_50%_-4%,rgba(255,255,255,0.65)_0%,rgba(235,250,255,0.35)_30%,transparent_70%)]" />
+      </motion.div>
+
+      {/* Occasional intense underwater sun burst (surface ripple) */}
+      <motion.div
+        className="absolute -top-[20%] left-1/2 h-[min(50rem,64vh)] w-[min(115vw,96rem)] -translate-x-1/2 mix-blend-screen"
+        style={{ x: glareX, y: glareY }}
+        initial={false}
+        animate={animate ? SUN_GLARE_BURST : { opacity: 0.65 }}
+        transition={{ duration: 17, repeat: Infinity, ease: "easeInOut" }}
+      >
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_38%_34%_at_50%_30%,#ffffff_0%,rgba(255,255,255,1)_6%,rgba(255,248,230,0.85)_14%,rgba(186,240,255,0.5)_30%,transparent_58%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_88%_52%_at_50%_2%,rgba(255,255,255,1)_0%,rgba(245,252,255,0.7)_22%,transparent_65%)]" />
+      </motion.div>
+
+      {/* God rays — brighten only during bursts */}
+      <motion.div
+        className="absolute inset-0 mix-blend-plus-lighter"
+        style={{ x: glareX, y: glareY }}
+        initial={false}
+        animate={animate ? SUN_GLARE_BURST : { opacity: 0.4 }}
+        transition={{ duration: 17, repeat: Infinity, ease: "easeInOut" }}
+      >
+        <div className="absolute left-[22%] top-0 h-[55%] w-[10%] rotate-[-14deg] bg-[linear-gradient(180deg,rgba(255,255,255,0.85),transparent_85%)] blur-2xl" />
+        <div className="absolute left-[48%] top-0 h-[62%] w-[12%] -translate-x-1/2 bg-[linear-gradient(180deg,rgba(255,255,255,0.9),transparent_88%)] blur-3xl" />
+        <div className="absolute right-[24%] top-0 h-[50%] w-[9%] rotate-[12deg] bg-[linear-gradient(180deg,rgba(255,255,255,0.8),transparent_85%)] blur-2xl" />
+      </motion.div>
+
+      {/* Horizontal surface glare — flares on ripple peaks */}
+      <motion.div
+        className="absolute left-1/2 top-[22%] h-[4px] w-[78%] -translate-x-1/2 bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.2)_12%,#ffffff_48%,rgba(255,255,255,0.2)_88%,transparent_100%)] blur-[3px] mix-blend-screen"
+        style={{ x: glareX }}
+        initial={false}
+        animate={
+          animate
+            ? {
+                opacity: [0.12, 0.2, 0.15, 0.25, 0.95, 1, 0.2, 0.15, 0.22, 0.75, 0.18, 0.12],
+                scaleX: [0.94, 0.98, 0.96, 1, 1.08, 1.12, 0.97, 0.95, 1, 1.06, 0.96, 0.94],
+              }
+            : { opacity: 0.35 }
+        }
+        transition={{ duration: 17, repeat: Infinity, ease: "easeInOut", times: SUN_GLARE_BURST.times }}
       />
-      {/* Diagonal flare rays */}
-      <div className="absolute left-[18%] top-[20%] h-[38%] w-[8%] rotate-[-22deg] bg-[linear-gradient(180deg,rgba(255,255,255,0.7),transparent)] blur-2xl opacity-80" />
-      <div className="absolute right-[20%] top-[22%] h-[34%] w-[7%] rotate-[18deg] bg-[linear-gradient(180deg,rgba(255,255,255,0.65),transparent)] blur-2xl opacity-75" />
-      {/* Soft bloom under sun */}
-      <div className="absolute left-1/2 top-[12%] h-[45%] w-[55%] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.55)_0%,transparent_70%)] blur-3xl" />
-    </motion.div>
+
+      {/* Wandering caustic hotspots — underwater light dance */}
+      {CAUSTIC_FLASHES.map((c, i) => (
+        <motion.div
+          key={i}
+          className="absolute rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.95)_0%,rgba(200,245,255,0.45)_35%,transparent_68%)] blur-2xl mix-blend-screen"
+          style={{ left: c.left, top: c.top, width: c.size, height: c.size }}
+          initial={false}
+          animate={
+            animate
+              ? {
+                  opacity: [0.05, 0.12, 0.08, 0.15, 0.85, 0.55, 0.1, 0.06, 0.7, 0.12, 0.05],
+                  x: [0, 28, -18, 12, 40, -22, 8, -30, 20, 0],
+                  y: [0, 14, -10, 8, 22, -14, 6, -8, 12, 0],
+                  scale: [0.88, 0.95, 0.9, 1, 1.15, 1.02, 0.92, 0.88, 1.08, 0.9],
+                }
+              : { opacity: 0.15 }
+          }
+          transition={{
+            duration: c.duration,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: c.delay,
+          }}
+        />
+      ))}
+
+      {/* Downward shimmer cone when sun catches */}
+      <motion.div
+        className="absolute left-1/2 top-[8%] h-[48%] w-[62%] -translate-x-1/2 bg-[conic-gradient(from_180deg_at_50%_0%,transparent_0deg,rgba(255,255,255,0.35)_18deg,transparent_36deg,rgba(255,255,255,0.25)_52deg,transparent_72deg,rgba(255,255,255,0.2)_88deg,transparent_108deg)] blur-3xl mix-blend-overlay opacity-60"
+        initial={false}
+        animate={animate ? SUN_GLARE_BURST : { opacity: 0.35 }}
+        transition={{ duration: 17, repeat: Infinity, ease: "easeInOut" }}
+      />
+    </div>
   );
 }
 

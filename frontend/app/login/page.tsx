@@ -210,9 +210,17 @@ export default function LoginPage() {
               Access only for verified users.
             </p>
 
-            <div className="mt-5 rounded-[1.15rem] bg-[linear-gradient(145deg,rgba(255,255,255,0.92)_0%,rgba(255,255,255,0.45)_48%,rgba(200,235,255,0.35)_100%)] p-px shadow-[0_24px_60px_rgba(46,90,120,0.18)] backdrop-blur-sm dark:bg-[linear-gradient(145deg,rgba(255,255,255,0.22)_0%,rgba(255,255,255,0.08)_100%)] dark:shadow-[0_20px_48px_rgba(0,0,0,0.35)] sm:mt-6">
-              <div className="rounded-[1.1rem] border border-white/75 bg-white/[0.88] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),inset_0_-1px_0_rgba(255,255,255,0.2)] backdrop-blur-2xl backdrop-saturate-150 dark:border-white/20 dark:bg-[color-mix(in_srgb,var(--ds-surface-primary)_82%,transparent)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] sm:px-5 sm:py-5">
-                <form className="space-y-3.5" onSubmit={onSubmit} noValidate>
+            <div className="mt-5 rounded-[1.15rem] bg-[linear-gradient(145deg,rgba(255,255,255,0.55)_0%,rgba(255,255,255,0.18)_45%,rgba(186,230,255,0.22)_100%)] p-px shadow-[0_28px_64px_rgba(46,90,120,0.16)] ring-1 ring-white/50 backdrop-blur-md dark:bg-[linear-gradient(145deg,rgba(255,255,255,0.14)_0%,rgba(255,255,255,0.05)_100%)] dark:ring-white/15 dark:shadow-[0_24px_52px_rgba(0,0,0,0.4)] sm:mt-6">
+              <div className="relative overflow-hidden rounded-[1.1rem] border border-white/45 bg-white/[0.62] px-4 py-4 shadow-[inset_0_1px_1px_rgba(255,255,255,0.9),inset_0_-1px_0_rgba(255,255,255,0.15),0_8px_32px_rgba(255,255,255,0.12)] backdrop-blur-[28px] backdrop-saturate-[1.35] dark:border-white/18 dark:bg-[color-mix(in_srgb,var(--ds-surface-primary)_58%,transparent)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] sm:px-5 sm:py-5">
+                <div
+                  className="pointer-events-none absolute inset-0 bg-[linear-gradient(128deg,rgba(255,255,255,0.72)_0%,rgba(255,255,255,0.08)_38%,transparent_55%,rgba(200,235,255,0.12)_100%)]"
+                  aria-hidden
+                />
+                <div
+                  className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.65),transparent_70%)] blur-2xl"
+                  aria-hidden
+                />
+                <form className="relative space-y-3.5" onSubmit={onSubmit} noValidate>
                   {formError ? (
                     <div
                       className="ds-notification ds-notification-critical flex items-start justify-center gap-2 px-2.5 py-1.5 text-sm font-medium text-ds-foreground"
