@@ -344,7 +344,8 @@ export function ScheduleRoutinesBoard({
                       key={row.rowKey}
                       className={cn(
                         "relative border-b border-ds-border/80 transition-colors",
-                        hoverRowKey === row.rowKey && ev?.eligible && "bg-ds-interactive-hover/40",
+                        highlight && workerHighlightOverlayClass(highlight),
+                        hoverRowKey === row.rowKey && ev?.eligible && "ring-1 ring-inset ring-[var(--ds-accent)]/30",
                       )}
                       onDragOver={(e) => {
                         if (!routineDropZoneAccepts(e, draggingRoutineId)) return;
@@ -365,28 +366,13 @@ export function ScheduleRoutinesBoard({
                         onRoutineDragEnd();
                       }}
                     >
-                      <td className="relative px-3 py-2.5 font-medium text-ds-foreground">
-                        {highlight ? (
-                          <span
-                            className={cn(
-                              "pointer-events-none absolute inset-0",
-                              workerHighlightOverlayClass(highlight),
-                            )}
-                            aria-hidden
-                          />
-                        ) : null}
-                        <span className="relative">{row.worker.name}</span>
+                      <td className="px-3 py-2.5 font-medium text-ds-foreground">{row.worker.name}</td>
+                      <td className="px-3 py-2.5 text-ds-foreground">
+                        {shiftTypeLabel(shiftTypes, row.shift.shiftType)} · {row.shift.startTime}–{row.shift.endTime}
                       </td>
-                      <td className="relative px-3 py-2.5 text-ds-foreground">
-                        <span className="relative">
-                          {shiftTypeLabel(shiftTypes, row.shift.shiftType)} · {row.shift.startTime}–{row.shift.endTime}
-                        </span>
-                      </td>
-                      <td className="relative px-3 py-2.5 text-ds-muted">
-                        <span className="relative">{zoneLabel(row.shift.zoneId)}</span>
-                      </td>
-                      <td className="relative px-3 py-2.5">
-                        <div className="relative flex min-h-[2rem] flex-wrap items-center gap-1">
+                      <td className="px-3 py-2.5 text-ds-muted">{zoneLabel(row.shift.zoneId)}</td>
+                      <td className="px-3 py-2.5">
+                        <div className="flex min-h-[2rem] flex-wrap items-center gap-1">
                           {isSaving ? (
                             <Loader2 className="h-4 w-4 animate-spin text-ds-muted" aria-hidden />
                           ) : null}
@@ -404,7 +390,7 @@ export function ScheduleRoutinesBoard({
                           )}
                         </div>
                         {draggingRoutineId && ev?.tooltip ? (
-                          <p className="relative mt-1 text-[10px] text-ds-muted" title={ev.tooltip}>
+                          <p className="mt-1 text-[10px] text-ds-muted" title={ev.tooltip}>
                             {ev.tone === "good" ? "Eligible" : ev.tone === "warning" ? "Caution" : "Not eligible"} —{" "}
                             {ev.tooltip}
                           </p>
