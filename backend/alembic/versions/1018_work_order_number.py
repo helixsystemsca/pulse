@@ -46,7 +46,14 @@ def upgrade() -> None:
         )
     )
 
-    op.alter_column("pulse_work_requests", "work_order_number", nullable=False)
+    ah.safe_alter_column(
+        op,
+        conn,
+        "pulse_work_requests",
+        "work_order_number",
+        existing_type=sa.Integer(),
+        nullable=False,
+    )
 
     ah.safe_create_index(
         op,
