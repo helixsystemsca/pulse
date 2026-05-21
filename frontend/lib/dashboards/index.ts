@@ -10,6 +10,7 @@ export {
   accessibleDashboardsForSession,
   readPersonalDashboardHomepageOverride,
   resolveAssignedDashboardHomepage,
+  resolvePostLoginLandingPath,
   writePersonalDashboardHomepageOverride,
   type DashboardHomepagePreference,
 } from "@/lib/dashboards/homepage";

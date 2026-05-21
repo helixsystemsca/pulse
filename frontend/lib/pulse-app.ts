@@ -7,7 +7,7 @@
  * Override with `NEXT_PUBLIC_PULSE_APP_URL`.
  */
 import { NAV_VISIBLE_MASTER_FEATURES } from "@/config/platform/master-feature-registry";
-import { resolveAssignedDashboardHomepage } from "@/lib/dashboards/homepage";
+import { resolvePostLoginLandingPath } from "@/lib/dashboards/homepage";
 import { isPulseAppHost } from "@/lib/pulse-host";
 import { readSession } from "@/lib/pulse-session";
 import { isProductPath } from "@/lib/route-split-buckets";
@@ -185,7 +185,7 @@ export function pulsePostLoginPath(user: PulsePostLoginIdentity): "/system" | "/
 export function navigateAfterPulseLogin(user: PulsePostLoginIdentity): void {
   if (typeof window === "undefined") return;
   const session = readSession();
-  const path = session ? resolveAssignedDashboardHomepage(session) : pulsePostLoginPath(user);
+  const path = session ? resolvePostLoginLandingPath(session) : pulsePostLoginPath(user);
   window.location.assign(pulseAppHref(path));
 }
 

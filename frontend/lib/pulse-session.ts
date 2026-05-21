@@ -256,7 +256,18 @@ export function writeSession(email: string, remember: boolean) {
   };
   localStorage.setItem(PULSE_AUTH_STORAGE_KEY, JSON.stringify(payload));
   document.cookie = `pulse_session=1; path=/; max-age=${ttlSec}; SameSite=Lax`;
+  resetWelcomeOverlayForNewLogin();
   emitAuthChange();
+}
+
+/** Clear per-tab welcome flag so the next authenticated landing shows the welcome overlay. */
+export function resetWelcomeOverlayForNewLogin(): void {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.removeItem(PULSE_WELCOME_SESSION_KEY);
+  } catch {
+    /* ignore */
+  }
 }
 
 export function writeApiSession(
@@ -314,6 +325,7 @@ export function writeApiSession(
   const ttlSec = Math.max(60, exp - now);
   localStorage.setItem(PULSE_AUTH_STORAGE_KEY, JSON.stringify(payload));
   document.cookie = `pulse_session=1; path=/; max-age=${ttlSec}; SameSite=Lax`;
+  resetWelcomeOverlayForNewLogin();
   emitAuthChange();
 }
 

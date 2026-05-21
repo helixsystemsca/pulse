@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach } from "vitest";
 import type { PulseAuthSession } from "@/lib/pulse-session";
-import { resolveAssignedDashboardHomepage } from "@/lib/dashboards/homepage";
+import { resolveAssignedDashboardHomepage, resolvePostLoginLandingPath } from "@/lib/dashboards/homepage";
 
 function session(partial: Partial<PulseAuthSession>): PulseAuthSession {
   return {
@@ -59,6 +59,36 @@ describe("resolveAssignedDashboardHomepage", () => {
   it("uses department default when role default is not accessible", () => {
     expect(
       resolveAssignedDashboardHomepage(
+        session({
+          role: "worker",
+          hr_department: "maintenance",
+          contract_features: ["work_requests"],
+          enabled_features: ["work_requests"],
+          rbac_permissions: ["work_requests.view"],
+        }),
+      ),
+    ).toBe("/dashboard/maintenance");
+  });
+});
+
+describe("resolvePostLoginLandingPath", () => {
+  it("lands on /overview when leadership dashboard is accessible (before dept module home)", () => {
+    expect(
+      resolvePostLoginLandingPath(
+        session({
+          role: "manager",
+          hr_department: "maintenance",
+          contract_features: ["dashboard", "work_requests"],
+          enabled_features: ["dashboard_operations", "work_requests"],
+          rbac_permissions: ["dashboard.leadership.view", "work_requests.view"],
+        }),
+      ),
+    ).toBe("/overview");
+  });
+
+  it("still sends work-requests-only users to their module home", () => {
+    expect(
+      resolvePostLoginLandingPath(
         session({
           role: "worker",
           hr_department: "maintenance",

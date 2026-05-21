@@ -93,6 +93,26 @@ export function accessibleDashboardsForSession(session: PulseAuthSession | null)
 }
 
 /**
+ * First landing after sign-in: operations dashboard (`/overview`) when allowed so the welcome overlay
+ * runs before deep links (e.g. department module homes like work requests).
+ */
+export function resolvePostLoginLandingPath(session: PulseAuthSession | null): string {
+  if (!session) return "/login";
+  if (session.is_system_admin || session.role === "system_admin") return "/system";
+
+  if (canAccessClassicNavHref(session, "/overview")) {
+    return "/overview";
+  }
+
+  const role = sessionPrimaryRole(session);
+  if (role === "worker" && canAccessClassicNavHref(session, "/worker")) {
+    return "/worker";
+  }
+
+  return resolveAssignedDashboardHomepage(session);
+}
+
+/**
  * Resolve assigned homepage route: personal override → role default → department default → first accessible dashboard.
  */
 export function resolveAssignedDashboardHomepage(session: PulseAuthSession | null): string {
