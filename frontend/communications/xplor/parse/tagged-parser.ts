@@ -66,10 +66,17 @@ function appendToField(
   program[key] = cur ? `${cur}\n${chunk}` : chunk;
 }
 
+/**
+ * Xplor brochure exports usually order fields:
+ *   Eventname → Eventdescription → Eventage → Location → Instructor → Eventdetail
+ * Eventage must NOT start a new block when the current program has no age yet.
+ */
 function shouldStartNewProgram(program: XplorProgram | null, styleLower: string): boolean {
-  if (!program || !programHasContent(program)) return styleLower === "eventage" || styleLower === "eventname";
-  if (styleLower === "eventage") return true;
+  if (!program || !programHasContent(program)) {
+    return styleLower === "eventage" || styleLower === "eventname";
+  }
   if (styleLower === "eventname" && program.title) return true;
+  if (styleLower === "eventage" && program.age) return true;
   return false;
 }
 
