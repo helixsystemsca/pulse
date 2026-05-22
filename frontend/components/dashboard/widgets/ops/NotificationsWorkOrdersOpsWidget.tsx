@@ -12,11 +12,11 @@ const KPI_TONE_CLASS = {
   accent: "!text-[var(--ds-accent)]",
 } as const;
 
-const KPI_PILL_CLASS = {
-  amber: "ops-kpi-pill--amber",
-  teal: "ops-kpi-pill--teal",
-  lobster: "ops-kpi-pill--lobster",
-  accent: "ops-kpi-pill--accent",
+const KPI_TILE_CLASS = {
+  amber: "ops-kpi-tile--amber",
+  teal: "ops-kpi-tile--teal",
+  lobster: "ops-kpi-tile--lobster",
+  accent: "ops-kpi-tile--accent",
 } as const;
 
 function KpiCell({
@@ -40,39 +40,42 @@ function KpiCell({
           : "var(--ds-accent)";
 
   return (
-    <div className={cn("ops-kpi-pill", KPI_PILL_CLASS[tone])}>
-      <div className="flex max-w-full items-center justify-center gap-1.5">
-        <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: indicator }} aria-hidden />
-        <span className="truncate text-center text-[10px] font-bold uppercase tracking-[0.08em] text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]">
+    <div className={cn("ops-kpi-tile", KPI_TILE_CLASS[tone])}>
+      <div className="flex w-full items-start gap-1">
+        <span
+          className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full"
+          style={{ backgroundColor: indicator }}
+          aria-hidden
+        />
+        <span className="min-w-0 flex-1 text-left text-[9px] font-bold uppercase leading-snug tracking-[0.06em] text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]">
           {label}
         </span>
       </div>
       <div
         className={cn(
-          "mt-2 flex min-h-[3rem] items-center justify-center text-center text-[2.75rem] font-bold leading-none tabular-nums tracking-tight",
+          "ops-kpi-tile__value mt-1 w-full text-left font-bold leading-none tabular-nums tracking-tight",
           !loading && KPI_TONE_CLASS[tone],
           loading && "text-[color-mix(in_srgb,var(--ds-text-primary)_40%,transparent)]",
         )}
       >
-        {loading ? <Loader2 className="h-8 w-8 animate-spin" aria-hidden /> : (value ?? "—")}
+        {loading ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden /> : (value ?? "—")}
       </div>
     </div>
   );
 }
 
-/** KPI strip only — title and actions live on {@link OpsWidgetShell}. */
+/** KPI strip only — title and jump live on {@link OpsWidgetShell}. */
 export function NotificationsWorkOrdersOpsWidget({
   model,
   kpiLoading = false,
 }: {
   model: DashboardViewModel;
-  workOrdersHref?: string;
   kpiLoading?: boolean;
 }) {
   const kpi = model.workRequests.kpi;
 
   return (
-    <div className={cn("grid h-full min-h-0 grid-cols-2 items-stretch gap-2 sm:grid-cols-4")}>
+    <div className="@container grid h-full min-h-0 grid-cols-2 content-start gap-1.5 sm:grid-cols-4">
       <KpiCell label="Pending approval" value={kpi?.pendingApproval ?? null} tone="amber" loading={kpiLoading} />
       <KpiCell label="In progress" value={kpi?.inProgress ?? null} tone="teal" loading={kpiLoading} />
       <KpiCell label="Overdue" value={kpi?.overdueAny ?? null} tone="lobster" loading={kpiLoading} />

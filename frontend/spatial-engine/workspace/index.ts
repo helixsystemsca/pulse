@@ -12,6 +12,7 @@ export {
 export { useSpatialWorkspaceTools } from "@/spatial-engine/workspace/hooks/useSpatialWorkspaceTools";
 export {
   spatialWorkspaceHref,
+  spatialWorkspaceFullscreenHref,
   useSpatialWorkspaceAccess,
 } from "@/spatial-engine/workspace/hooks/useSpatialWorkspaceAccess";
 export {

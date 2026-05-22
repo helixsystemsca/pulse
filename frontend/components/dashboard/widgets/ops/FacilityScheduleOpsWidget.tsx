@@ -90,10 +90,13 @@ function FacilityScheduleInner({
   compact,
   maxLocations,
   maxPerLocation,
+  showFooterLinks = true,
 }: {
   compact?: boolean;
   maxLocations?: number;
   maxPerLocation?: number;
+  /** When false (ops dashboard tile), navigation uses the shell jump icon only. */
+  showFooterLinks?: boolean;
 }) {
   const { events, loading, apiUnsupported } = useFacilityScheduleEvents();
   const todayYmd = useMemo(() => ymdInBc(new Date()), []);
@@ -124,14 +127,8 @@ function FacilityScheduleInner({
     return (
       <div className="space-y-2">
         <p className="text-xs leading-snug text-[color-mix(in_srgb,var(--ds-text-primary)_62%,transparent)]">
-          Facility schedule feed is not configured for this environment. Open Schedule to manage shifts and programs.
+          Facility schedule feed is not configured for this environment. Use the header icon to open Schedule and manage shifts and programs.
         </p>
-        <Link
-          href="/schedule"
-          className="inline-block text-[11px] font-semibold text-[var(--ds-accent)] underline-offset-2 hover:underline"
-        >
-          Open schedule →
-        </Link>
       </div>
     );
   }
@@ -140,12 +137,6 @@ function FacilityScheduleInner({
     return (
       <div className="space-y-2">
         <p className="text-xs text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]">No program blocks on the roster for today.</p>
-        <Link
-          href="/schedule"
-          className="inline-block text-[11px] font-semibold text-[var(--ds-accent)] underline-offset-2 hover:underline"
-        >
-          View schedule →
-        </Link>
       </div>
     );
   }
@@ -188,7 +179,7 @@ function FacilityScheduleInner({
           </ul>
         </div>
       ))}
-      {!compact ? (
+      {showFooterLinks && !compact ? (
         <Link
           href="/schedule"
           className="inline-block text-[11px] font-semibold text-[var(--ds-accent)] underline-offset-2 hover:underline"
@@ -204,7 +195,7 @@ function FacilityScheduleInner({
 export function FacilityScheduleOpsWidget() {
   return (
     <div className="ops-dash-inner-card flex h-full min-h-0 flex-col p-3">
-      <FacilityScheduleInner />
+      <FacilityScheduleInner showFooterLinks={false} />
     </div>
   );
 }

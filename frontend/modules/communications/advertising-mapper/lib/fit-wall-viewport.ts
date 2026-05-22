@@ -18,6 +18,6 @@ export function fitWallViewport(
       maxX: wall.width_inches * BASE_PX_PER_INCH,
       maxY: wall.height_inches * BASE_PX_PER_INCH,
     },
-    padding: 48,
+    padding: 12,
   });
 }

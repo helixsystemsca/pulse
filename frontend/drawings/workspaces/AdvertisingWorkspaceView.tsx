@@ -34,8 +34,10 @@ import type {
   MeasurementUnit,
 } from "@/modules/communications/advertising-mapper/types";
 import { BASE_PX_PER_INCH } from "@/modules/communications/advertising-mapper/lib/coordinates";
+import { pulseAppHref } from "@/lib/pulse-app";
 import {
   getSpatialWorkspace,
+  spatialWorkspaceFullscreenHref,
   SpatialViewportControls,
   SpatialWorkspaceShell,
   useSpatialWorkspaceTools,
@@ -64,6 +66,7 @@ export function AdvertisingWorkspaceView({
     onConstraintCreate,
     onConstraintDelete,
     addBlock,
+    removeBlock,
     updateWall,
   } = useAdvertisingSpatialRuntime(INITIAL_WALLS, MOCK_WALL_PLANS[0]!.id);
 
@@ -119,7 +122,17 @@ export function AdvertisingWorkspaceView({
 
   useEffect(() => {
     fitToWall();
-  }, [wallId, fitToWall]);
+  }, [wallId, wall.width_inches, wall.height_inches, fitToWall]);
+
+  useEffect(() => {
+    const el = canvasContainerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      requestAnimationFrame(() => fitToWall());
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [fitToWall]);
 
   const onConstraintPointsChange = useCallback(
     (id: string, points: number[]) => {
@@ -143,6 +156,17 @@ export function AdvertisingWorkspaceView({
     onConstraintDelete(selectedConstraintId);
     setSelectedConstraintId(null);
   }, [onConstraintDelete, selectedConstraintId]);
+
+  const handleBlockDelete = useCallback(
+    (id: string) => {
+      const block = wall.blocks.find((b) => b.id === id);
+      const label = block?.inventoryId ?? block?.name ?? "this item";
+      if (!window.confirm(`Remove ${label} from ${wall.name}? This cannot be undone.`)) return;
+      removeBlock(id);
+      if (selectedInventoryId === id) setSelectedInventoryId(null);
+    },
+    [removeBlock, selectedInventoryId, wall.blocks, wall.name],
+  );
 
   const handleInventoryPlace = useCallback(
     (x: number, y: number) => {
@@ -293,6 +317,8 @@ export function AdvertisingWorkspaceView({
     return { total, available, occupied };
   }, [wall.blocks]);
 
+  const advertisingFullscreenHref = pulseAppHref(spatialWorkspaceFullscreenHref("advertising"));
+
   return (
     <>
       <SpatialWorkspaceShell
@@ -301,23 +327,27 @@ export function AdvertisingWorkspaceView({
         subtitle={`${wallMeta.total} inventory · ${wallMeta.available} available · ${wallMeta.occupied} occupied`}
         activeToolId={toolMode}
         onToolChange={onToolChange}
-        workspaceSwitcher={workspaceSwitcher}
+        workspaceSwitcher={editorFullscreen ? undefined : workspaceSwitcher}
         immersive={immersive}
         fullscreen={editorFullscreen}
+        bareEditor={editorFullscreen}
         className={editorFullscreen ? "h-[100dvh]" : "min-h-0 flex-1"}
         headerActions={
-          <AdvertisingEditorHeader
-            unit={unit}
-            onUnitChange={setUnit}
-            onSave={() => {
-              /* persistence adapter hook — API phase */
-            }}
-            onPublish={() => {
-              /* proposal export — API phase */
-            }}
-          />
+          editorFullscreen ? undefined : (
+            <AdvertisingEditorHeader
+              unit={unit}
+              onUnitChange={setUnit}
+              onSave={() => {
+                /* persistence adapter hook — API phase */
+              }}
+              onPublish={() => {
+                /* proposal export — API phase */
+              }}
+              fullscreenHref={advertisingFullscreenHref}
+            />
+          )
         }
-        floatingToolbarInsetTop={RULER_THICKNESS_PX + 12}
+        floatingToolbarInsetTop={editorFullscreen ? RULER_THICKNESS_PX + 8 : RULER_THICKNESS_PX + 12}
         floatingToolbar={
           <AdvertisingFloatingToolbar
             tools={workspace.tools}
@@ -339,6 +369,7 @@ export function AdvertisingWorkspaceView({
               setSelectedConstraintId(null);
             }}
             onBlockChange={onBlockChange}
+            onBlockDelete={handleBlockDelete}
           />
         }
         viewport={
@@ -423,6 +454,7 @@ export function AdvertisingWorkspaceView({
           />
         }
         bottomBar={
+          editorFullscreen ? undefined : (
           <AdvertisingWallStrip
             walls={walls}
             activeWallId={wallId}
@@ -451,6 +483,7 @@ export function AdvertisingWorkspaceView({
               />
             }
           />
+          )
         }
       />
 

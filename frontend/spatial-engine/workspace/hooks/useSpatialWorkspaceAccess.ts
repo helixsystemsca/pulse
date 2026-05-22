@@ -62,3 +62,8 @@ export function useSpatialWorkspaceAccess() {
 export function spatialWorkspaceHref(id: SpatialWorkspaceId, basePath = "/drawings"): string {
   return `${basePath}?workspace=${id}`;
 }
+
+/** Fullscreen spatial editor (no app nav shell) — open in a new tab for arena advertising, etc. */
+export function spatialWorkspaceFullscreenHref(id: SpatialWorkspaceId): string {
+  return spatialWorkspaceHref(id, "/drawings/fullscreen");
+}

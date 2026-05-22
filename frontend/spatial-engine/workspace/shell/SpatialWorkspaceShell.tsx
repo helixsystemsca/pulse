@@ -35,6 +35,10 @@ export type SpatialWorkspaceShellProps = {
   fullscreen?: boolean;
   onToggleFullscreen?: () => void;
   immersive?: boolean;
+  /**
+   * Editor-only: hide title header and footer strip (fullscreen tab with tool rail + canvas only).
+   */
+  bareEditor?: boolean;
   className?: string;
 };
 
@@ -62,6 +66,7 @@ export function SpatialWorkspaceShell({
   fullscreen = false,
   onToggleFullscreen,
   immersive = true,
+  bareEditor = false,
   className,
 }: SpatialWorkspaceShellProps) {
   const workspace = getSpatialWorkspace(workspaceId);
@@ -83,36 +88,38 @@ export function SpatialWorkspaceShell({
         className,
       )}
     >
-      <header
-        className={cn(
-          "flex shrink-0 items-center gap-3 border-b px-3 backdrop-blur-sm",
-          editorChrome
-            ? "border-slate-200/90 bg-white/95 py-1.5 shadow-sm"
-            : "border-ds-border/80 bg-ds-primary/90 py-2",
-        )}
-      >
-        {workspaceSwitcher ? <div className="shrink-0">{workspaceSwitcher}</div> : null}
-        <div className="min-w-0 flex-1">
-          {!editorChrome ? (
-            <p className="truncate text-[10px] font-bold uppercase tracking-wide text-ds-muted">{workspace.label}</p>
-          ) : null}
-          <h1 className="truncate text-sm font-semibold text-ds-foreground">{title}</h1>
-          {subtitle && !editorChrome ? <p className="truncate text-xs text-ds-muted">{subtitle}</p> : null}
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {headerActions}
-          {onToggleFullscreen ? (
-            <button
-              type="button"
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-ds-border text-ds-muted hover:bg-ds-secondary hover:text-ds-foreground"
-              onClick={onToggleFullscreen}
-              aria-label={fullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-            >
-              {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-            </button>
-          ) : null}
-        </div>
-      </header>
+      {!bareEditor ? (
+        <header
+          className={cn(
+            "flex shrink-0 items-center gap-3 border-b px-3 backdrop-blur-sm",
+            editorChrome
+              ? "border-slate-200/90 bg-white/95 py-1.5 shadow-sm"
+              : "border-ds-border/80 bg-ds-primary/90 py-2",
+          )}
+        >
+          {workspaceSwitcher ? <div className="shrink-0">{workspaceSwitcher}</div> : null}
+          <div className="min-w-0 flex-1">
+            {!editorChrome ? (
+              <p className="truncate text-[10px] font-bold uppercase tracking-wide text-ds-muted">{workspace.label}</p>
+            ) : null}
+            <h1 className="truncate text-sm font-semibold text-ds-foreground">{title}</h1>
+            {subtitle && !editorChrome ? <p className="truncate text-xs text-ds-muted">{subtitle}</p> : null}
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            {headerActions}
+            {onToggleFullscreen ? (
+              <button
+                type="button"
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-ds-border text-ds-muted hover:bg-ds-secondary hover:text-ds-foreground"
+                onClick={onToggleFullscreen}
+                aria-label={fullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+              >
+                {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+              </button>
+            ) : null}
+          </div>
+        </header>
+      ) : null}
 
       {banner}
 
@@ -178,7 +185,9 @@ export function SpatialWorkspaceShell({
           {statusHint ? (
             <div className="pointer-events-none absolute bottom-3 left-1/2 z-20 max-w-lg -translate-x-1/2 px-3">{statusHint}</div>
           ) : null}
-          {bottomBar ? <div className="shrink-0 border-t border-slate-200/90 bg-white/95">{bottomBar}</div> : null}
+          {bottomBar && !bareEditor ? (
+            <div className="shrink-0 border-t border-slate-200/90 bg-white/95">{bottomBar}</div>
+          ) : null}
         </main>
 
         {showRight ? (

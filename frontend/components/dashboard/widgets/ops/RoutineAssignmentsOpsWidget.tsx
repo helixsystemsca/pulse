@@ -65,12 +65,14 @@ function RoutineAssignmentsInner({
   maxAssignments,
   maxRoutines,
   variant = "full",
+  showFooterLinks = true,
 }: {
   compact?: boolean;
   maxAssignments?: number;
   maxRoutines?: number;
   /** `full` = built-in tile; peek slices pick `assignments` or `library` only. */
   variant?: "full" | "assignments" | "library";
+  showFooterLinks?: boolean;
 }) {
   const state = useRoutineAssignmentsBoardState();
   const showAssignments = variant !== "library";
@@ -185,7 +187,7 @@ function RoutineAssignmentsInner({
         <span>Shift routines & handoffs</span>
       </div>
       {body}
-      {!compact ? (
+      {showFooterLinks && !compact ? (
         <div className="flex flex-wrap gap-x-3 gap-y-1 pt-1">
           <Link
             href="/standards/routines"
@@ -205,7 +207,7 @@ function RoutineAssignmentsInner({
 export function RoutineAssignmentsOpsWidget() {
   return (
     <div className="ops-dash-inner-card flex h-full min-h-0 flex-col p-3">
-      <RoutineAssignmentsInner />
+      <RoutineAssignmentsInner showFooterLinks={false} />
     </div>
   );
 }

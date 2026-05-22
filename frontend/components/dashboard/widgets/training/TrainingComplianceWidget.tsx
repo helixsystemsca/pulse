@@ -141,7 +141,7 @@ export function TrainingComplianceWidget({
         />
       </div>
       <div className={cn("flex flex-col", compact ? "gap-1.5" : "gap-2")}>{metricCards}</div>
-      <TrainingMatrixButton href={matrixHref} compact fullWidth />
+      {!opsEmbedded ? <TrainingMatrixButton href={matrixHref} compact fullWidth /> : null}
     </div>
   );
 

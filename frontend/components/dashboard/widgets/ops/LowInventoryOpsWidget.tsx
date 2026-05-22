@@ -1,15 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { Package } from "lucide-react";
 
 import type { DashboardViewModel } from "@/components/dashboard/OperationalDashboard";
-import { pulseTenantNav } from "@/lib/pulse-app";
 import { cn } from "@/lib/cn";
 
 export function LowInventoryOpsWidget({ model }: { model: DashboardViewModel }) {
-  const invHref = pulseTenantNav.find((n) => n.href === "/dashboard/inventory")?.href ?? "/dashboard/inventory";
-
   return (
     <div className="ops-dash-inner-card flex h-full min-h-0 flex-col p-3">
       <div className="mb-3 flex items-start justify-between gap-2">
@@ -37,9 +33,6 @@ export function LowInventoryOpsWidget({ model }: { model: DashboardViewModel }) 
           <div className="min-w-0 flex-1">
             <p className="text-[11px] font-bold text-[color-mix(in_srgb,var(--ds-text-primary)_92%,transparent)]">{model.inventory.alert.category}</p>
             <p className="mt-0.5 text-[11px] text-[color-mix(in_srgb,var(--ds-text-primary)_62%,transparent)]">{model.inventory.alert.message}</p>
-            <Link href={invHref} className="mt-2 inline-block text-[11px] font-semibold text-[var(--ds-accent)] underline-offset-2 hover:underline">
-              View inventory →
-            </Link>
           </div>
         </div>
       ) : null}

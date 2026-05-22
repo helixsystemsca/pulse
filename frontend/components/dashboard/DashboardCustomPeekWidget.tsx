@@ -29,10 +29,13 @@ export function DashboardCustomPeekWidget({
   config,
   model,
   mode = "md",
+  /** When true, title and jump live on {@link OpsWidgetShell} in the operations dashboard. */
+  opsEmbedded = false,
 }: {
   config: CustomDashboardWidgetConfig;
   model: DashboardViewModel;
   mode?: WidgetMode;
+  opsEmbedded?: boolean;
 }) {
   const page = catalogPage(config.pageId);
   const href = page?.href ?? "/overview";
@@ -44,12 +47,14 @@ export function DashboardCustomPeekWidget({
 
   return (
     <div className={cn("flex min-h-0 flex-1 flex-col", compact ? "gap-3" : "gap-4")}>
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <p className="text-sm font-semibold text-ds-foreground">{config.title}</p>
-        <Link href={href} className="ds-link text-xs font-semibold">
-          Open page →
-        </Link>
-      </div>
+      {!opsEmbedded ? (
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <p className="text-sm font-semibold text-ds-foreground">{config.title}</p>
+          <Link href={href} className="ds-link text-xs font-semibold">
+            Open page →
+          </Link>
+        </div>
+      ) : null}
       <div className={cn("min-h-0 flex-1", sectionGap, bodyOverflow)}>
         {sliceIds.map((sid) => (
           <section key={sid} className="space-y-2 border-b border-ds-border pb-4 last:border-b-0 last:pb-0">

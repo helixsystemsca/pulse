@@ -12,7 +12,8 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { apiFetch, isApiMode } from "@/lib/api";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
-import { pulseApp, pulseTenantNav } from "@/lib/pulse-app";
+import { pulseApp, pulseAppHref, pulseTenantNav } from "@/lib/pulse-app";
+import { catalogPage } from "@/lib/dashboardPageWidgetCatalog";
 import { canAccessPulseTenantApis, readSession, type PulseAuthSession } from "@/lib/pulse-session";
 import { canAccessCompanyConfiguration, sessionHasAnyRole } from "@/lib/pulse-roles";
 import { getServerDate, getServerNow } from "@/lib/serverTime";
@@ -1203,19 +1204,15 @@ function DashboardBody({
       important_dates: {
         title: "Important dates",
         accent: "none" as const,
+        shellJumpHref: pulseAppHref("/schedule"),
+        shellJumpLabel: "Open schedule",
         render: () => <ImportantDatesOpsWidget />,
       },
       notifications_work_orders: {
         title: "Work requests",
         accent: "none" as const,
-        shellHeaderRight: (
-          <Link
-            href={pulseApp.to(workOrdersHref)}
-            className="inline-flex items-center justify-center rounded-lg border border-[color-mix(in_srgb,var(--ds-accent)_28%,transparent)] bg-[linear-gradient(135deg,color-mix(in_srgb,var(--ds-accent)_14%,#fff),color-mix(in_srgb,var(--ds-accent)_6%,#fff))] px-2.5 py-1 text-[10px] font-semibold text-[var(--ds-accent)] shadow-[0_1px_0_rgb(255_255_255/0.7)_inset,0_4px_12px_-6px_rgb(56_189_248/0.25)] transition hover:bg-[linear-gradient(135deg,color-mix(in_srgb,var(--ds-accent)_22%,#fff),color-mix(in_srgb,var(--ds-accent)_12%,#fff))]"
-          >
-            Open work requests
-          </Link>
-        ),
+        shellJumpHref: pulseApp.to(workOrdersHref),
+        shellJumpLabel: "Open work requests",
         render: () => (
           <NotificationsWorkOrdersOpsWidget model={model} kpiLoading={workRequestKpiLoading} />
         ),
@@ -1223,6 +1220,8 @@ function DashboardBody({
       training_compliance: {
         title: "Training compliance",
         accent: "none" as const,
+        shellJumpHref: pulseAppHref("/standards/training/compliance#training-matrix"),
+        shellJumpLabel: "Open training matrix",
         render: (ctx?: WidgetRenderContext) => (
           <TrainingComplianceWidget
             training={model.training}
@@ -1339,26 +1338,36 @@ function DashboardBody({
       low_inventory: {
         title: "Low inventory",
         accent: "none" as const,
+        shellJumpHref: pulseAppHref("/dashboard/inventory"),
+        shellJumpLabel: "Open inventory",
         render: () => <LowInventoryOpsWidget model={model} />,
       },
       co2_monitoring: {
         title: "CO₂ monitoring",
         accent: "none" as const,
+        shellJumpHref: pulseAppHref("/monitoring"),
+        shellJumpLabel: "Open monitoring",
         render: () => <Co2MonitoringOpsWidget />,
       },
       pool_readings: {
         title: "Pool readings",
         accent: "none" as const,
+        shellJumpHref: pulseAppHref("/monitoring"),
+        shellJumpLabel: "Open monitoring",
         render: () => <PoolReadingsOpsWidget />,
       },
       facility_schedule: {
         title: "Facility schedule",
         accent: "none" as const,
+        shellJumpHref: pulseAppHref("/schedule"),
+        shellJumpLabel: "Open schedule",
         render: () => <FacilityScheduleOpsWidget />,
       },
       routine_assignments: {
         title: "Routine assignments",
         accent: "none" as const,
+        shellJumpHref: pulseAppHref("/standards/routines"),
+        shellJumpLabel: "Open routines",
         render: () => <RoutineAssignmentsOpsWidget />,
       },
     } as const;
@@ -1375,8 +1384,8 @@ function DashboardBody({
     if (isDeptDashboard) return [];
     return [
       { i: "important_dates", x: 0, y: 0, w: 5, h: 12, minW: 3, minH: 6 },
-      { i: "notifications_work_orders", x: 5, y: 0, w: 6, h: 8, minW: 4, minH: 5 },
-      { i: "training_compliance", x: 11, y: 0, w: 5, h: 12, minW: 3, minH: 8 },
+      { i: "notifications_work_orders", x: 5, y: 0, w: 6, h: 6, minW: 3, minH: 3 },
+      { i: "training_compliance", x: 11, y: 0, w: 5, h: 12, minW: 3, minH: 6 },
       { i: "workforce", x: 0, y: 12, w: 6, h: 10, minW: 4, minH: 6 },
       { i: "low_inventory", x: 6, y: 12, w: 5, h: 10, minW: 3, minH: 6 },
       { i: "co2_monitoring", x: 11, y: 12, w: 5, h: 7, minW: 3, minH: 5 },
@@ -1773,13 +1782,27 @@ function DashboardBody({
                       ) : null}
                     </div>
                   ) : null;
+                  const peekPage = catalogPage(cfg.pageId);
+                  const peekJumpHref = pulseAppHref(peekPage?.href ?? "/overview");
+                  const peekJumpLabel = peekPage ? `Open ${peekPage.label}` : "Open page";
                   return (
                     <div
                       key={item.i}
                       className={["h-full min-h-0 transition-transform", editMode ? "cursor-grab active:cursor-grabbing" : ""].join(" ")}
                     >
-                      <OpsWidgetShell title={cfg.title} headerRight={headerRight} className="h-full">
-                        <DashboardCustomPeekWidget config={cfg} model={model} mode={buildWidgetContext(item).mode} />
+                      <OpsWidgetShell
+                        title={cfg.title}
+                        jumpHref={peekJumpHref}
+                        jumpLabel={peekJumpLabel}
+                        headerRight={headerRight}
+                        className="h-full"
+                      >
+                        <DashboardCustomPeekWidget
+                          config={cfg}
+                          model={model}
+                          mode={buildWidgetContext(item).mode}
+                          opsEmbedded
+                        />
                       </OpsWidgetShell>
                     </div>
                   );
@@ -1789,7 +1812,8 @@ function DashboardBody({
                   | {
                       title: string;
                       accent?: string;
-                      shellHeaderRight?: ReactNode;
+                      shellJumpHref?: string;
+                      shellJumpLabel?: string;
                       render: (ctx?: WidgetRenderContext) => ReactNode;
                     }
                   | null
@@ -1797,22 +1821,17 @@ function DashboardBody({
                 if (!w) return <div key={item.i} />;
 
                 const headerRight =
-                  w.shellHeaderRight || (!readOnly && editMode) ? (
-                    <div className="flex shrink-0 items-center gap-1.5">
-                      {w.shellHeaderRight ?? null}
-                      {!readOnly && editMode ? (
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          onClick={() => removeWidget(item.i)}
-                          className="h-5 min-w-5 px-0 text-[11px] leading-none"
-                          aria-label={`Remove ${w.title}`}
-                          title="Remove widget"
-                        >
-                          ×
-                        </Button>
-                      ) : null}
-                    </div>
+                  !readOnly && editMode ? (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => removeWidget(item.i)}
+                      className="h-5 min-w-5 px-0 text-[11px] leading-none"
+                      aria-label={`Remove ${w.title}`}
+                      title="Remove widget"
+                    >
+                      ×
+                    </Button>
                   ) : null;
 
                 return (
@@ -1831,17 +1850,19 @@ function DashboardBody({
                   >
                     <OpsWidgetShell
                       title={w.title}
+                      jumpHref={w.shellJumpHref}
+                      jumpLabel={w.shellJumpLabel}
                       headerRight={headerRight}
                       className="h-full"
                       bodyClassName={
                         item.i === "pool_readings"
                           ? "p-0"
                           : item.i === "co2_monitoring"
-                            ? "px-2 py-0"
+                            ? "px-2 py-1"
                             : item.i === "workforce"
                               ? "px-1 py-0.5"
                               : item.i === "notifications_work_orders"
-                                ? "px-2 py-2"
+                                ? "px-1.5 py-1.5"
                                 : undefined
                       }
                     >

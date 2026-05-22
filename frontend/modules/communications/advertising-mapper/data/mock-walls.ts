@@ -1,16 +1,20 @@
 import type { FacilityWallPlan } from "@/modules/communications/advertising-mapper/types";
+import {
+  DEFAULT_WORKABLE_HEIGHT_INCHES,
+  DEFAULT_WORKABLE_WIDTH_INCHES,
+} from "@/modules/communications/advertising-mapper/lib/wall-workable-area";
 import { seedAdvertisingMockStore } from "@/spatial-engine/persistence/advertising-adapter";
 
-/** 42′ × 10′ arena ribbon wall */
-const ARENA_W = 504;
-const ARENA_H = 120;
+/** Portrait workable area (~9∶16) sized for phone backdrop photos and full-canvas fit. */
+const WORKABLE_W = DEFAULT_WORKABLE_WIDTH_INCHES;
+const WORKABLE_H = DEFAULT_WORKABLE_HEIGHT_INCHES;
 
 export const MOCK_WALL_PLANS: FacilityWallPlan[] = [
   {
     id: "left",
     name: "Left",
-    width_inches: ARENA_W,
-    height_inches: ARENA_H,
+    width_inches: WORKABLE_W,
+    height_inches: WORKABLE_H,
     backdropKind: "arena",
     gridSnapInches: 6,
     constraints: [
@@ -18,7 +22,7 @@ export const MOCK_WALL_PLANS: FacilityWallPlan[] = [
         id: "constraint-pillar-l",
         type: "polygon",
         constraintType: "blocked",
-        points: [368, 6, 408, 6, 408, 58, 368, 58],
+        points: [52, 8, 68, 8, 68, 32, 52, 32],
         label: "Structural column",
       },
     ],
@@ -26,10 +30,10 @@ export const MOCK_WALL_PLANS: FacilityWallPlan[] = [
       {
         id: "l-1",
         name: "Left ribbon A",
-        x: 20,
-        y: 14,
-        width_inches: 90,
-        height_inches: 46,
+        x: 6,
+        y: 10,
+        width_inches: 62,
+        height_inches: 36,
         status: "occupied",
         sponsor: "River City Credit Union",
         zone: "Left",
@@ -48,10 +52,10 @@ export const MOCK_WALL_PLANS: FacilityWallPlan[] = [
       {
         id: "l-2",
         name: "Left ribbon B",
-        x: 130,
-        y: 14,
-        width_inches: 90,
-        height_inches: 46,
+        x: 6,
+        y: 52,
+        width_inches: 62,
+        height_inches: 36,
         status: "reserved",
         sponsor: "Peak Athletics",
         zone: "Left",
@@ -68,10 +72,10 @@ export const MOCK_WALL_PLANS: FacilityWallPlan[] = [
       {
         id: "l-3",
         name: "Left center board",
-        x: 240,
-        y: 10,
-        width_inches: 140,
-        height_inches: 62,
+        x: 6,
+        y: 94,
+        width_inches: 62,
+        height_inches: 30,
         status: "available",
         zone: "Left",
         visibilityTier: "marquee",
@@ -86,8 +90,8 @@ export const MOCK_WALL_PLANS: FacilityWallPlan[] = [
   {
     id: "center",
     name: "Center",
-    width_inches: ARENA_W,
-    height_inches: ARENA_H,
+    width_inches: WORKABLE_W,
+    height_inches: WORKABLE_H,
     backdropKind: "arena",
     gridSnapInches: 6,
     constraints: [
@@ -95,7 +99,7 @@ export const MOCK_WALL_PLANS: FacilityWallPlan[] = [
         id: "constraint-window-c",
         type: "polygon",
         constraintType: "restricted",
-        points: [200, 4, 260, 4, 260, 28, 200, 28],
+        points: [22, 6, 52, 6, 52, 18, 22, 18],
         label: "Press box glazing",
       },
     ],
@@ -103,10 +107,10 @@ export const MOCK_WALL_PLANS: FacilityWallPlan[] = [
       {
         id: "c-1",
         name: "Center marquee",
-        x: 40,
+        x: 6,
         y: 12,
-        width_inches: 180,
-        height_inches: 58,
+        width_inches: 62,
+        height_inches: 40,
         status: "occupied",
         sponsor: "Municipal Aquatics",
         zone: "Center",
@@ -125,10 +129,10 @@ export const MOCK_WALL_PLANS: FacilityWallPlan[] = [
       {
         id: "c-2",
         name: "Center fascia",
-        x: 260,
-        y: 22,
-        width_inches: 200,
-        height_inches: 44,
+        x: 6,
+        y: 58,
+        width_inches: 62,
+        height_inches: 36,
         status: "available",
         zone: "Center",
         visibilityTier: "premium",
@@ -143,8 +147,8 @@ export const MOCK_WALL_PLANS: FacilityWallPlan[] = [
   {
     id: "right",
     name: "Right",
-    width_inches: 360,
-    height_inches: 96,
+    width_inches: WORKABLE_W,
+    height_inches: WORKABLE_H,
     backdropKind: "arena",
     gridSnapInches: 6,
     constraints: [],
@@ -152,10 +156,10 @@ export const MOCK_WALL_PLANS: FacilityWallPlan[] = [
       {
         id: "r-1",
         name: "Right fascia A",
-        x: 24,
-        y: 16,
-        width_inches: 120,
-        height_inches: 52,
+        x: 6,
+        y: 20,
+        width_inches: 62,
+        height_inches: 32,
         status: "available",
         zone: "Right",
         visibilityTier: "premium",
@@ -166,10 +170,10 @@ export const MOCK_WALL_PLANS: FacilityWallPlan[] = [
       {
         id: "r-2",
         name: "Right fascia B",
-        x: 168,
-        y: 16,
-        width_inches: 120,
-        height_inches: 52,
+        x: 6,
+        y: 58,
+        width_inches: 62,
+        height_inches: 32,
         status: "occupied",
         sponsor: "Summit Construction",
         zone: "Right",
@@ -184,8 +188,8 @@ export const MOCK_WALL_PLANS: FacilityWallPlan[] = [
   {
     id: "scoreboard",
     name: "Scoreboard",
-    width_inches: 420,
-    height_inches: 84,
+    width_inches: WORKABLE_W,
+    height_inches: WORKABLE_H,
     backdropKind: "arena",
     gridSnapInches: 6,
     constraints: [],
@@ -193,10 +197,10 @@ export const MOCK_WALL_PLANS: FacilityWallPlan[] = [
       {
         id: "sb-1",
         name: "Scoreboard ribbon A",
-        x: 20,
-        y: 12,
-        width_inches: 96,
-        height_inches: 40,
+        x: 6,
+        y: 14,
+        width_inches: 62,
+        height_inches: 28,
         status: "available",
         zone: "Scoreboard",
         visibilityTier: "standard",
@@ -206,10 +210,10 @@ export const MOCK_WALL_PLANS: FacilityWallPlan[] = [
       {
         id: "sb-2",
         name: "Scoreboard ribbon B",
-        x: 140,
-        y: 12,
-        width_inches: 96,
-        height_inches: 40,
+        x: 6,
+        y: 48,
+        width_inches: 62,
+        height_inches: 28,
         status: "occupied",
         sponsor: "Next Fitness",
         zone: "Scoreboard",
@@ -221,10 +225,10 @@ export const MOCK_WALL_PLANS: FacilityWallPlan[] = [
       {
         id: "sb-3",
         name: "Scoreboard main",
-        x: 260,
-        y: 8,
-        width_inches: 140,
-        height_inches: 56,
+        x: 6,
+        y: 82,
+        width_inches: 62,
+        height_inches: 42,
         status: "reserved",
         sponsor: "Northfield Health",
         zone: "Scoreboard",

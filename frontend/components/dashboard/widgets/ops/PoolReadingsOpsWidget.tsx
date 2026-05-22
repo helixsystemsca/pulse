@@ -1,9 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { Droplets, Gauge, Thermometer, Wind } from "lucide-react";
 
-import { pulseAppHref } from "@/lib/pulse-app";
 import { poolControllers } from "@/lib/monitoringMockData";
 import { cn } from "@/lib/cn";
 
@@ -65,19 +63,12 @@ function PoolCard(props: (typeof poolControllers)[number]) {
 }
 
 export function PoolReadingsOpsWidget() {
-  const monitoringHref = pulseAppHref("/monitoring");
-
   return (
     <div className="ops-dash-inner-card flex h-full min-h-0 flex-col overflow-hidden p-0">
-      <div className="ops-dash-widget-header flex shrink-0 items-center justify-between gap-2 px-2 py-1.5">
-        <p className="text-[10px] font-semibold leading-tight text-[color-mix(in_srgb,var(--ds-text-primary)_55%,transparent)]">
-          Live chemistry · demo controllers
-        </p>
-        <Link href={monitoringHref} className="shrink-0 text-[10px] font-semibold text-[var(--ds-accent)] underline-offset-2 hover:underline">
-          Details
-        </Link>
-      </div>
-      <div className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden px-2 pb-2 pt-1.5">
+      <p className="shrink-0 px-2 pt-1.5 text-[10px] font-semibold leading-tight text-[color-mix(in_srgb,var(--ds-text-primary)_55%,transparent)]">
+        Live chemistry · demo controllers
+      </p>
+      <div className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden px-2 pb-2 pt-1">
         <div className="flex h-full min-h-0 min-w-min gap-2">
           {poolControllers.map((c) => (
             <div key={c.id} className="min-w-[8.75rem] flex-1 basis-0">

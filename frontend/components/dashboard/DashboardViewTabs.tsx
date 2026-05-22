@@ -71,7 +71,7 @@ export function DashboardViewTabs({
             className={cn(
               "rounded-md px-4 py-2 text-center text-xs font-semibold transition-colors sm:text-sm",
               item.active
-                ? "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm"
+                ? "cursor-default bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm"
                 : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground",
             )}
             onClick={item.onClick}

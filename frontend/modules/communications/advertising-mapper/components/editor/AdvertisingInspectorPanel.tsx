@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import { Search } from "lucide-react";
+import { Search, Trash2 } from "lucide-react";
 import { StatusBadge } from "@/components/communications/StatusBadge";
 import { InventoryDetailsPanel } from "@/modules/communications/advertising-mapper/components/InventoryDetailsPanel";
 import {
@@ -36,6 +36,7 @@ type Props = {
   selectedInventoryId: string | null;
   onSelectInventory: (id: string) => void;
   onBlockChange: (id: string, patch: Partial<InventoryBlock>) => void;
+  onBlockDelete: (id: string) => void;
 };
 
 export function AdvertisingInspectorPanel({
@@ -44,6 +45,7 @@ export function AdvertisingInspectorPanel({
   selectedInventoryId,
   onSelectInventory,
   onBlockChange,
+  onBlockDelete,
 }: Props) {
   const [tab, setTab] = useState<RailTab>("current");
   const [query, setQuery] = useState("");
@@ -124,6 +126,7 @@ export function AdvertisingInspectorPanel({
                 unit={unit}
                 selected={block.id === selectedInventoryId}
                 onSelect={() => onSelectInventory(block.id)}
+                onDelete={() => onBlockDelete(block.id)}
               />
             ))}
             {currentBlocks.length === 0 ? (
@@ -143,6 +146,7 @@ export function AdvertisingInspectorPanel({
                 unit={unit}
                 selected={block.id === selectedInventoryId}
                 onSelect={() => onSelectInventory(block.id)}
+                onDelete={() => onBlockDelete(block.id)}
               />
             ))}
             {availablePlots.length === 0 ? (
@@ -212,18 +216,40 @@ function RailTabButton({
   );
 }
 
+function CardDeleteButton({ label, onDelete }: { label: string; onDelete: () => void }) {
+  return (
+    <button
+      type="button"
+      className={cn(
+        buttonVariants({ intent: "secondary", surface: "light" }),
+        "inline-flex h-7 w-7 shrink-0 items-center justify-center p-0 text-red-600 hover:border-red-200 hover:bg-red-50",
+      )}
+      aria-label={`Delete ${label}`}
+      title={`Delete ${label}`}
+      onClick={(e) => {
+        e.stopPropagation();
+        onDelete();
+      }}
+    >
+      <Trash2 className="h-3.5 w-3.5" aria-hidden />
+    </button>
+  );
+}
+
 function CurrentAdCard({
   block,
   wallName,
   unit,
   selected,
   onSelect,
+  onDelete,
 }: {
   block: InventoryBlock;
   wallName: string;
   unit: MeasurementUnit;
   selected: boolean;
   onSelect: () => void;
+  onDelete: () => void;
 }) {
   const pricing = computeInventoryPricing(block);
   const dims = `${formatMeasurement(block.width_inches, unit)} × ${formatMeasurement(block.height_inches, unit)}`;
@@ -231,22 +257,30 @@ function CurrentAdCard({
   const contact = block.contactName ?? block.sponsor ?? "—";
   const expiry = block.expiryDate ? new Date(block.expiryDate).toLocaleDateString() : "—";
 
+  const cardLabel = block.inventoryId ?? block.name;
+
   return (
-    <button
-      type="button"
-      onClick={onSelect}
+    <div
       className={cn(
         "w-full rounded-xl border p-2.5 text-left transition-colors",
         selected ? "border-sky-400 bg-sky-50/90 ring-1 ring-sky-200" : "border-slate-200 bg-white hover:border-slate-300",
       )}
     >
       <div className="flex gap-2.5">
-        <AdThumb assetUrl={block.assetUrl} label={block.name} />
+        <button type="button" onClick={onSelect} className="shrink-0 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500">
+          <AdThumb assetUrl={block.assetUrl} label={block.name} />
+        </button>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-1">
-            <p className="truncate text-xs font-bold text-slate-800">{block.inventoryId ?? block.id}</p>
-            <StatusBadge variant="ad" status={block.status} size="sm" />
+            <button type="button" onClick={onSelect} className="min-w-0 flex-1 text-left">
+              <p className="truncate text-xs font-bold text-slate-800">{block.inventoryId ?? block.id}</p>
+            </button>
+            <div className="flex shrink-0 items-center gap-1">
+              <StatusBadge variant="ad" status={block.status} size="sm" />
+              <CardDeleteButton label={cardLabel} onDelete={onDelete} />
+            </div>
           </div>
+          <button type="button" onClick={onSelect} className="w-full text-left">
           <p className="truncate text-[11px] text-slate-600">{block.sponsor ?? block.name}</p>
           <dl className="mt-2 space-y-0.5 text-[10px] text-slate-500">
             <Row label="Location" value={location} />
@@ -255,12 +289,13 @@ function CurrentAdCard({
             <Row label="Contract" value={contractStructureLabel(block.contractStructure)} />
             <Row label="Expires" value={expiry} />
           </dl>
-          <p className="mt-1.5 text-xs font-semibold text-emerald-700">
-            ${pricing.monthlyTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}/mo
-          </p>
+            <p className="mt-1.5 text-xs font-semibold text-emerald-700">
+              ${pricing.monthlyTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}/mo
+            </p>
+          </button>
         </div>
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -270,43 +305,50 @@ function AvailablePlotCard({
   unit,
   selected,
   onSelect,
+  onDelete,
 }: {
   block: InventoryBlock;
   wallName: string;
   unit: MeasurementUnit;
   selected: boolean;
   onSelect: () => void;
+  onDelete: () => void;
 }) {
   const pricing = computeInventoryPricing(block);
   const sqFt = squareFeetFromInches(block.width_inches, block.height_inches);
   const dims = `${formatMeasurement(block.width_inches, unit)} × ${formatMeasurement(block.height_inches, unit)}`;
 
+  const cardLabel = block.inventoryId ?? block.name;
+
   return (
-    <button
-      type="button"
-      onClick={onSelect}
+    <div
       className={cn(
         "w-full rounded-xl border p-2.5 text-left transition-colors",
         selected ? "border-amber-400 bg-amber-50/80 ring-1 ring-amber-200" : "border-slate-200 bg-white hover:border-slate-300",
       )}
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
+        <button type="button" onClick={onSelect} className="min-w-0 flex-1 text-left">
           <p className="text-xs font-bold text-slate-800">{block.inventoryId ?? block.id}</p>
           <p className="text-[11px] text-slate-500">{block.name}</p>
+        </button>
+        <div className="flex shrink-0 items-center gap-1">
+          <StatusBadge variant="ad" status="available" size="sm" />
+          <CardDeleteButton label={cardLabel} onDelete={onDelete} />
         </div>
-        <StatusBadge variant="ad" status="available" size="sm" />
       </div>
-      <p className="mt-1.5 text-[10px] text-slate-600">
-        <span className="font-semibold text-slate-700">{formatLocation(block, wallName)}</span>
-        {" · "}
-        {presetLabel(block.sizePreset)} · {dims}
-      </p>
-      <p className="mt-1 text-[10px] text-slate-500">Est. {sqFt.toFixed(1)} sq ft</p>
-      <p className="mt-1 text-xs font-semibold text-amber-800">
-        ${pricing.monthlyTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}/mo potential
-      </p>
-    </button>
+      <button type="button" onClick={onSelect} className="w-full text-left">
+        <p className="mt-1.5 text-[10px] text-slate-600">
+          <span className="font-semibold text-slate-700">{formatLocation(block, wallName)}</span>
+          {" · "}
+          {presetLabel(block.sizePreset)} · {dims}
+        </p>
+        <p className="mt-1 text-[10px] text-slate-500">Est. {sqFt.toFixed(1)} sq ft</p>
+        <p className="mt-1 text-xs font-semibold text-amber-800">
+          ${pricing.monthlyTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}/mo potential
+        </p>
+      </button>
+    </div>
   );
 }
 
