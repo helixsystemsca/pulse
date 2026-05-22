@@ -26,7 +26,6 @@ import {
   saveWallBackdrop,
   mergeWallPlanBackdrops,
 } from "@/modules/communications/advertising-mapper/lib/advertising-wall-backdrop-storage";
-import { syncWallWorkableInchesFromBackdrop } from "@/modules/communications/advertising-mapper/lib/wall-workable-area";
 import type { ConstraintRegion } from "@/modules/communications/advertising-mapper/geometry/types";
 import type { FacilityWallPlan, InventoryBlock } from "@/modules/communications/advertising-mapper/types";
 import {
@@ -79,9 +78,7 @@ export function useAdvertisingSpatialRuntime(initialWalls: FacilityWallPlan[], i
   useEffect(() => {
     resetSession("advertising");
     const storedBackdrops = loadAllWallBackdrops();
-    const wallsWithBackdrops = mergeWallPlanBackdrops(initialWalls, storedBackdrops).map((w) =>
-      syncWallWorkableInchesFromBackdrop(w as FacilityWallPlan),
-    );
+    const wallsWithBackdrops = mergeWallPlanBackdrops(initialWalls, storedBackdrops) as FacilityWallPlan[];
     for (const w of wallsWithBackdrops) {
       loadDocument(wallPlanToDocument(w), { pushHistory: false });
     }

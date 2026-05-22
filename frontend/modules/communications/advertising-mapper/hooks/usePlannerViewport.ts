@@ -8,9 +8,10 @@ import {
   VIEWPORT_SCALE_MIN,
   type PlannerViewport,
 } from "@/modules/communications/advertising-mapper/lib/coordinates";
+import { viewportAt100Percent } from "@/modules/communications/advertising-mapper/lib/viewport-at-100";
 import { useSpatialViewport } from "@/spatial-engine/hooks/useSpatialViewport";
 
-const INITIAL: PlannerViewport = { scale: 1, panX: 24, panY: 24 };
+const INITIAL: PlannerViewport = viewportAt100Percent();
 
 export function usePlannerViewport(initial: PlannerViewport = INITIAL) {
   const base = useSpatialViewport({

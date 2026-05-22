@@ -4,7 +4,6 @@ import { useState } from "react";
 import { ImagePlus, Trash2 } from "lucide-react";
 import type { FacilityWallPlan } from "@/modules/communications/advertising-mapper/types";
 import { processBackdropImageFile } from "@/modules/communications/advertising-mapper/lib/advertising-backdrop-image";
-import { wallInchesFromBackdropPixels } from "@/modules/communications/advertising-mapper/lib/wall-workable-area";
 import { buttonVariants } from "@/styles/button-variants";
 import { cn } from "@/lib/cn";
 
@@ -39,8 +38,7 @@ export function WallBackdropUpload({
     setErr(null);
     try {
       const patch = await processBackdropImageFile(file);
-      const inches = wallInchesFromBackdropPixels(patch.backdropNaturalWidth, patch.backdropNaturalHeight);
-      onBackdropChange({ ...patch, ...inches });
+      onBackdropChange(patch);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Could not load image.");
     } finally {

@@ -26,7 +26,13 @@ import { useAdvertisingOperationalContext } from "@/modules/communications/adver
 import { useAdvertisingSpatialRuntime } from "@/modules/communications/advertising-mapper/hooks/useAdvertisingSpatialRuntime";
 import { usePlannerViewport } from "@/modules/communications/advertising-mapper/hooks/usePlannerViewport";
 import { RULER_THICKNESS_PX } from "@/modules/communications/advertising-mapper/lib/coordinates";
-import { fitWallViewport } from "@/modules/communications/advertising-mapper/lib/fit-wall-viewport";
+import {
+  rescaleWallPlanToInches,
+} from "@/modules/communications/advertising-mapper/lib/wall-workable-area";
+import {
+  drawableInchesFromContainer,
+  viewportAt100Percent,
+} from "@/modules/communications/advertising-mapper/lib/viewport-at-100";
 import type {
   DimensionEditTarget,
   FacilityWallPlan,
@@ -113,26 +119,71 @@ export function AdvertisingWorkspaceView({
 
   useSpatialWorkspaceTools(workspace.tools, onToolChange);
 
-  const fitToWall = useCallback(() => {
+  const resetViewportTo100 = useCallback(() => {
+    setViewport(viewportAt100Percent());
+  }, [setViewport]);
+
+  const syncWallToViewport = useCallback(() => {
     const el = canvasContainerRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    setViewport(fitWallViewport(wall, Math.floor(rect.width), Math.floor(rect.height)));
-  }, [setViewport, wall]);
+    const target = drawableInchesFromContainer(rect.width, rect.height);
+    const sameSize =
+      Math.abs(wall.width_inches - target.width_inches) < 0.05 &&
+      Math.abs(wall.height_inches - target.height_inches) < 0.05;
+    if (!sameSize) {
+      updateWall({
+        ...rescaleWallPlanToInches(wall, target.width_inches, target.height_inches),
+      });
+    }
+    resetViewportTo100();
+  }, [resetViewportTo100, updateWall, wall]);
+
+  const handleBackdropChange = useCallback(
+    (patch: {
+      backdropUrl?: string;
+      backdropNaturalWidth?: number;
+      backdropNaturalHeight?: number;
+      width_inches?: number;
+      height_inches?: number;
+    }) => {
+      const el = canvasContainerRef.current;
+      if (!el) {
+        updateWall(patch);
+        resetViewportTo100();
+        return;
+      }
+      const rect = el.getBoundingClientRect();
+      const target = drawableInchesFromContainer(rect.width, rect.height);
+      updateWall({
+        ...patch,
+        ...rescaleWallPlanToInches(wall, target.width_inches, target.height_inches),
+      });
+      resetViewportTo100();
+    },
+    [resetViewportTo100, updateWall, wall],
+  );
 
   useEffect(() => {
-    fitToWall();
-  }, [wallId, wall.width_inches, wall.height_inches, fitToWall]);
+    requestAnimationFrame(() => syncWallToViewport());
+  }, [wallId, syncWallToViewport]);
 
   useEffect(() => {
     const el = canvasContainerRef.current;
     if (!el) return;
+    let t: ReturnType<typeof setTimeout> | undefined;
     const ro = new ResizeObserver(() => {
-      requestAnimationFrame(() => fitToWall());
+      clearTimeout(t);
+      t = setTimeout(() => {
+        requestAnimationFrame(() => syncWallToViewport());
+      }, 120);
     });
     ro.observe(el);
-    return () => ro.disconnect();
-  }, [fitToWall]);
+    return () => {
+      clearTimeout(t);
+      ro.disconnect();
+    };
+  }, [syncWallToViewport]);
 
   const onConstraintPointsChange = useCallback(
     (id: string, points: number[]) => {
@@ -245,13 +296,14 @@ export function AdvertisingWorkspaceView({
     try {
       const patch = await generateEmptySpaceBackdrop(wall);
       updateWall(patch);
+      resetViewportTo100();
     } catch (e) {
       console.error(e);
       window.alert(e instanceof Error ? e.message : "Could not generate backdrop.");
     } finally {
       setBackdropBusy(false);
     }
-  }, [updateWall, wall]);
+  }, [resetViewportTo100, updateWall, wall]);
 
   const scalePercent = Math.round(viewport.scale * 100);
 
@@ -464,7 +516,7 @@ export function AdvertisingWorkspaceView({
               setSelectedInventoryId(null);
               setSelectedConstraintId(null);
             }}
-            onBackdropChange={(patch) => updateWall(patch)}
+            onBackdropChange={handleBackdropChange}
             onGenerateEmptySpace={handleGenerateEmptyBackdrop}
             generateBusy={backdropBusy}
             viewportControls={
@@ -472,7 +524,7 @@ export function AdvertisingWorkspaceView({
                 scalePercent={scalePercent}
                 onZoomIn={() => zoomFocal(1.12)}
                 onZoomOut={() => zoomFocal(0.88)}
-                onResetView={canPanViewport || canZoomViewport ? fitToWall : () => {}}
+                onResetView={canPanViewport || canZoomViewport ? syncWallToViewport : () => {}}
                 zoomDisabled={!canZoomViewport}
                 fitDisabled={!canPanViewport && !canZoomViewport}
                 snapEnabled={snapEnabled}

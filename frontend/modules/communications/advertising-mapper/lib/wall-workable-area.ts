@@ -1,3 +1,4 @@
+import { BASE_PX_PER_INCH } from "@/modules/communications/advertising-mapper/lib/coordinates";
 import type { FacilityWallPlan } from "@/modules/communications/advertising-mapper/types";
 
 /** Long edge of the workable wall in inches (~11′) — matches typical phone photo proportions. */
@@ -28,15 +29,44 @@ export function wallInchesFromBackdropPixels(
   };
 }
 
-/** Sync wall footprint to an uploaded backdrop (or stored natural size). */
-export function syncWallWorkableInchesFromBackdrop<T extends FacilityWallPlan>(wall: T): T {
-  if (!wall.backdropUrl || !wall.backdropNaturalWidth || !wall.backdropNaturalHeight) {
-    return wall;
-  }
-  const inches = wallInchesFromBackdropPixels(wall.backdropNaturalWidth, wall.backdropNaturalHeight);
-  return { ...wall, ...inches };
+/** Wall size in inches so the workable area matches drawable pixels at 100% zoom. */
+export function wallInchesFromDrawablePixels(
+  widthPx: number,
+  heightPx: number,
+): { width_inches: number; height_inches: number } {
+  return {
+    width_inches: roundInches(Math.max(1, widthPx) / BASE_PX_PER_INCH),
+    height_inches: roundInches(Math.max(1, heightPx) / BASE_PX_PER_INCH),
+  };
+}
+
+/** Rescale blocks and constraints when the wall footprint changes (e.g. viewport resize). */
+export function rescaleWallPlanToInches(
+  wall: FacilityWallPlan,
+  newWidthInches: number,
+  newHeightInches: number,
+): Pick<FacilityWallPlan, "width_inches" | "height_inches" | "blocks" | "constraints"> {
+  const oldW = Math.max(1e-6, wall.width_inches);
+  const oldH = Math.max(1e-6, wall.height_inches);
+  const sx = newWidthInches / oldW;
+  const sy = newHeightInches / oldH;
+  return {
+    width_inches: newWidthInches,
+    height_inches: newHeightInches,
+    blocks: wall.blocks.map((b) => ({
+      ...b,
+      x: b.x * sx,
+      y: b.y * sy,
+      width_inches: b.width_inches * sx,
+      height_inches: b.height_inches * sy,
+    })),
+    constraints: wall.constraints.map((c) => ({
+      ...c,
+      points: c.points.map((p, i) => (i % 2 === 0 ? p * sx : p * sy)),
+    })),
+  };
 }
 
 function roundInches(n: number): number {
-  return Math.round(n * 10) / 10;
+  return Math.round(n * 100) / 100;
 }
