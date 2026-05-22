@@ -154,8 +154,12 @@ export function SpatialWorkspaceShell({
           {floatingControls ? (
             <div
               className={cn(
-                "pointer-events-none absolute z-30",
-                editorChrome ? "bottom-3 right-3" : "right-3 top-3",
+                "pointer-events-none absolute z-30 right-3",
+                bottomBar
+                  ? "bottom-[7.25rem] sm:bottom-[6.25rem]"
+                  : editorChrome
+                    ? "bottom-3"
+                    : "top-3",
               )}
             >
               {floatingControls}
@@ -164,8 +168,8 @@ export function SpatialWorkspaceShell({
           {minimap ? (
             <div
               className={cn(
-                "pointer-events-none absolute z-30",
-                editorChrome ? "bottom-14 left-3" : "bottom-3 left-3",
+                "pointer-events-none absolute z-30 left-3",
+                bottomBar ? "bottom-[8.5rem] sm:bottom-[7.5rem]" : editorChrome ? "bottom-14" : "bottom-3",
               )}
             >
               {minimap}

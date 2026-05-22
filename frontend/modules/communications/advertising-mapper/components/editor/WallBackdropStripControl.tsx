@@ -39,11 +39,11 @@ export function WallBackdropStripControl({ wall, onBackdropChange, className }: 
   }
 
   return (
-    <div className={cn("flex min-w-0 flex-col gap-1", className)}>
+    <div className={cn("flex min-w-0 flex-col gap-2", className)}>
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+        Background photo — {wall.name}
+      </p>
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-          Background — {wall.name}
-        </span>
         <label
           className={cn(
             buttonVariants({ intent: "secondary", surface: "light" }),
@@ -88,9 +88,9 @@ export function WallBackdropStripControl({ wall, onBackdropChange, className }: 
           </button>
         ) : null}
       </div>
-      {err ? <p className="max-w-[280px] text-[10px] text-red-600">{err}</p> : null}
-      <p className="max-w-[320px] text-[10px] leading-snug text-slate-500">
-        Each view (Left, Center, Right, Scoreboard) keeps its own photo. Saved in this browser for your facility.
+      {err ? <p className="text-[10px] text-red-600">{err}</p> : null}
+      <p className="text-[10px] leading-relaxed text-slate-500">
+        One photo per view (Left, Center, Right, Scoreboard). Stored in this browser for your facility.
       </p>
     </div>
   );

@@ -335,22 +335,6 @@ export function AdvertisingWorkspaceView({
             }
           />
         }
-        floatingControls={
-          <SpatialViewportControls
-            scalePercent={scalePercent}
-            onZoomIn={() => zoomFocal(1.12)}
-            onZoomOut={() => zoomFocal(0.88)}
-            onResetView={canPanViewport || canZoomViewport ? fitToWall : () => {}}
-            zoomDisabled={!canZoomViewport}
-            fitDisabled={!canPanViewport && !canZoomViewport}
-            snapEnabled={snapEnabled}
-            onSnapToggle={() => setSnapEnabled((v) => !v)}
-            showGrid={showGrid}
-            onGridToggle={() => setShowGrid((v) => !v)}
-            showZoom={false}
-            className="shadow-lg"
-          />
-        }
         bottomBar={
           <AdvertisingWallStrip
             walls={walls}
@@ -362,6 +346,21 @@ export function AdvertisingWorkspaceView({
               setSelectedConstraintId(null);
             }}
             onBackdropChange={(patch) => updateWall(patch)}
+            viewportControls={
+              <SpatialViewportControls
+                scalePercent={scalePercent}
+                onZoomIn={() => zoomFocal(1.12)}
+                onZoomOut={() => zoomFocal(0.88)}
+                onResetView={canPanViewport || canZoomViewport ? fitToWall : () => {}}
+                zoomDisabled={!canZoomViewport}
+                fitDisabled={!canPanViewport && !canZoomViewport}
+                snapEnabled={snapEnabled}
+                onSnapToggle={() => setSnapEnabled((v) => !v)}
+                showGrid={showGrid}
+                onGridToggle={() => setShowGrid((v) => !v)}
+                showZoom={false}
+              />
+            }
           />
         }
       />

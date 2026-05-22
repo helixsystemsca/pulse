@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { formatMeasurement } from "@/modules/communications/advertising-mapper/lib/measurements";
 import type { FacilityWallPlan, MeasurementUnit } from "@/modules/communications/advertising-mapper/types";
 import { WallBackdropStripControl } from "@/modules/communications/advertising-mapper/components/editor/WallBackdropStripControl";
@@ -17,9 +18,18 @@ type Props = {
   unit: MeasurementUnit;
   onWallChange: (id: string) => void;
   onBackdropChange?: (patch: BackdropPatch) => void;
+  /** Grid / Snap / Fit — docked in the footer so it does not overlap upload controls. */
+  viewportControls?: ReactNode;
 };
 
-export function AdvertisingWallStrip({ walls, activeWallId, unit, onWallChange, onBackdropChange }: Props) {
+export function AdvertisingWallStrip({
+  walls,
+  activeWallId,
+  unit,
+  onWallChange,
+  onBackdropChange,
+  viewportControls,
+}: Props) {
   const active = walls.find((w) => w.id === activeWallId) ?? walls[0];
   if (!active) return null;
 
@@ -29,8 +39,8 @@ export function AdvertisingWallStrip({ walls, activeWallId, unit, onWallChange, 
   const wallLengthFt = formatMeasurement(active.width_inches, unit);
 
   return (
-    <div className="flex flex-col gap-2 px-3 py-2 sm:flex-row sm:items-stretch sm:gap-4">
-      <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
+    <div className="flex flex-col gap-3 px-4 py-3">
+      <div className="flex min-w-0 items-center gap-2 overflow-x-auto pb-0.5">
         {walls.map((wall) => {
           const selected = wall.id === activeWallId;
           return (
@@ -53,19 +63,24 @@ export function AdvertisingWallStrip({ walls, activeWallId, unit, onWallChange, 
           );
         })}
       </div>
-      <div className="min-w-0 shrink-0 border-t border-slate-200 pt-2 sm:flex sm:flex-col sm:justify-center sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0">
-        <div className="text-left sm:text-right">
-          <p className="text-xs font-semibold text-slate-800">{active.name}</p>
-          <p className="text-[10px] text-slate-500">
-            Wall length {wallLengthFt} · Inventory {totalInventory} · Available {available} · Occupied {occupied}
-          </p>
+
+      <div className="flex flex-col gap-3 border-t border-slate-200/90 pt-3 lg:flex-row lg:items-end lg:justify-between lg:gap-6">
+        <div className="flex min-w-0 flex-1 flex-col gap-3">
+          <div>
+            <p className="text-xs font-semibold text-slate-800">{active.name}</p>
+            <p className="mt-0.5 text-[10px] text-slate-500">
+              Wall length {wallLengthFt} · Inventory {totalInventory} · Available {available} · Occupied {occupied}
+            </p>
+          </div>
+          {onBackdropChange ? (
+            <WallBackdropStripControl wall={active} onBackdropChange={onBackdropChange} />
+          ) : null}
         </div>
-        {onBackdropChange ? (
-          <WallBackdropStripControl
-            wall={active}
-            onBackdropChange={onBackdropChange}
-            className="mt-2 items-start sm:mt-0 sm:items-end"
-          />
+
+        {viewportControls ? (
+          <div className="flex shrink-0 items-center justify-start border-t border-slate-200/80 pt-3 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
+            {viewportControls}
+          </div>
         ) : null}
       </div>
     </div>
