@@ -1227,7 +1227,7 @@ function DashboardBody({
         accent: "none" as const,
         shellJumpHref: pulseApp.to(workOrdersHref),
         shellJumpLabel: "Open work requests",
-        render: (ctx) => (
+        render: (ctx?: WidgetRenderContext) => (
           <NotificationsWorkOrdersOpsWidget
             model={model}
             kpiLoading={workRequestKpiLoading}
