@@ -43,6 +43,12 @@ export type AdvertisingInventoryBlockDomain = {
   mountingType?: string;
   expiryDate?: string;
   assetUrl?: string;
+  sizePreset?: string;
+  locationLabel?: string;
+  contactName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  contractStructure?: string;
 };
 
 export type AdvertisingConstraintDomain = {
@@ -121,6 +127,12 @@ export function wallPlanToDocument(wall: AdvertisingWallDomain): SpatialDocument
       mountingType: b.mountingType,
       expiryDate: b.expiryDate,
       assetUrl: b.assetUrl,
+      sizePreset: b.sizePreset,
+      locationLabel: b.locationLabel,
+      contactName: b.contactName,
+      contactEmail: b.contactEmail,
+      contactPhone: b.contactPhone,
+      contractStructure: b.contractStructure,
     },
   }));
 
@@ -182,6 +194,12 @@ export function documentToWallPlan(doc: SpatialDocument): AdvertisingWallDomain 
       mountingType: item.metadata.mountingType as string | undefined,
       expiryDate: item.metadata.expiryDate as string | undefined,
       assetUrl: item.metadata.assetUrl as string | undefined,
+      sizePreset: item.metadata.sizePreset as string | undefined,
+      locationLabel: item.metadata.locationLabel as string | undefined,
+      contactName: item.metadata.contactName as string | undefined,
+      contactEmail: item.metadata.contactEmail as string | undefined,
+      contactPhone: item.metadata.contactPhone as string | undefined,
+      contractStructure: item.metadata.contractStructure as string | undefined,
     })),
     constraints: (constraints?.features ?? []).map((f) => ({
       id: f.id,

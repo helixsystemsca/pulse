@@ -73,15 +73,13 @@ export function StatusMetricCard({
       <Link
         href={href}
         className={cn(
-          "group relative flex items-center rounded-xl border border-black/[0.06] shadow-sm backdrop-blur-sm transition-all duration-200 dark:border-white/[0.08]",
+          "dash-metric-row group relative flex items-center transition-all duration-200 dark:border-white/[0.08]",
           compact ? "gap-2 px-2.5 py-2" : "gap-3 px-3 py-2.5",
-          vs.surface,
+          variant === "completed" && "dash-metric-row--completed",
+          variant === "expiring" && "dash-metric-row--expiring",
+          variant === "missing" && "dash-metric-row--missing",
           vs.accentBorder,
-          vs.hoverRing,
-          "hover:border-black/[0.1] hover:shadow-md dark:hover:border-white/[0.12]",
-          emphasize && variant === "missing"
-            ? "shadow-[0_8px_28px_-8px_rgba(255,77,109,0.45),0_4px_14px_-6px_rgba(15,23,42,0.12)] ring-1 ring-rose-400/35 dark:shadow-[0_8px_32px_-8px_rgba(255,90,122,0.35)]"
-            : "hover:shadow-[0_10px_28px_-12px_rgba(15,23,42,0.14)]",
+          emphasize && variant === "missing" && "ring-1 ring-rose-400/35",
           className,
         )}
       >

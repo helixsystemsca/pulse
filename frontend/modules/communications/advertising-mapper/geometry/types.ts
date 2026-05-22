@@ -3,7 +3,7 @@
  * Konva is render-only; never persist Stage node JSON.
  */
 
-export type PlannerToolMode = "select" | "inventory" | "constraint" | "pan" | "zoom" | "measure";
+export type PlannerToolMode = "select" | "inventory" | "constraint" | "pan" | "zoom" | "measure" | "snip";
 
 export type ConstraintType =
   | "blocked"

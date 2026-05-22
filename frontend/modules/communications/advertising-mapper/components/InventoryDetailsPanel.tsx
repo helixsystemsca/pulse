@@ -84,8 +84,47 @@ export function InventoryDetailsPanel({ block, unit, onUpdate }: Props) {
         </section>
 
         <section className="mt-5 border-t border-ds-border/80 pt-4">
+          <h4 className="text-[11px] font-bold uppercase tracking-wide text-ds-muted">Contact</h4>
+          <label className="mt-2 block text-[11px] font-bold uppercase tracking-wide text-ds-muted">Name</label>
+          <input
+            className="mt-1 w-full rounded-lg border border-ds-border bg-ds-primary px-3 py-2 text-sm"
+            value={block.contactName ?? ""}
+            onChange={(e) => onUpdate({ contactName: e.target.value || undefined })}
+          />
+          <label className="mt-2 block text-[11px] font-bold uppercase tracking-wide text-ds-muted">Email</label>
+          <input
+            type="email"
+            className="mt-1 w-full rounded-lg border border-ds-border bg-ds-primary px-3 py-2 text-sm"
+            value={block.contactEmail ?? ""}
+            onChange={(e) => onUpdate({ contactEmail: e.target.value || undefined })}
+          />
+          <label className="mt-2 block text-[11px] font-bold uppercase tracking-wide text-ds-muted">Phone</label>
+          <input
+            className="mt-1 w-full rounded-lg border border-ds-border bg-ds-primary px-3 py-2 text-sm"
+            value={block.contactPhone ?? ""}
+            onChange={(e) => onUpdate({ contactPhone: e.target.value || undefined })}
+          />
+        </section>
+
+        <section className="mt-5 border-t border-ds-border/80 pt-4">
           <h4 className="text-[11px] font-bold uppercase tracking-wide text-ds-muted">Contract</h4>
           <DetailRow label="Sponsor">{block.sponsor ?? "—"}</DetailRow>
+          <label className="mt-2 block text-[11px] font-bold uppercase tracking-wide text-ds-muted">Structure</label>
+          <select
+            className="mt-1 w-full rounded-lg border border-ds-border bg-ds-primary px-3 py-2 text-sm"
+            value={block.contractStructure ?? ""}
+            onChange={(e) =>
+              onUpdate({
+                contractStructure: (e.target.value || undefined) as InventoryBlock["contractStructure"],
+              })
+            }
+          >
+            <option value="">—</option>
+            <option value="monthly">Monthly</option>
+            <option value="annual">Annual</option>
+            <option value="season">Season</option>
+            <option value="per_event">Per event</option>
+          </select>
           <DetailRow label="Expiry">
             {block.expiryDate ? new Date(block.expiryDate).toLocaleDateString() : "—"}
           </DetailRow>

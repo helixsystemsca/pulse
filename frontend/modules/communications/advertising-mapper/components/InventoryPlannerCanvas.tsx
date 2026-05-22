@@ -6,6 +6,8 @@ import { Group, Layer, Stage } from "react-konva";
 import { BackdropLayer } from "@/modules/communications/advertising-mapper/components/layers/BackdropLayer";
 import { ConstraintLayer } from "@/modules/communications/advertising-mapper/components/layers/ConstraintLayer";
 import { InventoryLayer, InventoryTransformer } from "@/modules/communications/advertising-mapper/components/layers/InventoryLayer";
+import { SnipDraftLayer } from "@/modules/communications/advertising-mapper/components/layers/SnipDraftLayer";
+import { normalizeSnipRect, type WallSnipRect } from "@/modules/communications/advertising-mapper/lib/ad-snip";
 import { AxisRulers } from "@/modules/communications/advertising-mapper/components/AxisRulers";
 import { PlannerMinimap } from "@/modules/communications/advertising-mapper/components/PlannerMinimap";
 import { createConstraintRegion, moveAnchorInPoints, removePolygonVertex } from "@/modules/communications/advertising-mapper/geometry/factory";
@@ -53,6 +55,9 @@ type Props = {
   onConstraintPointsChange: (id: string, points: number[]) => void;
   onDimensionBadgeClick: (id: string, target: DimensionEditTarget) => void;
   onInventoryPlace?: (x: number, y: number) => void;
+  snipDraftRect?: WallSnipRect | null;
+  onSnipDraftChange?: (rect: WallSnipRect | null) => void;
+  onSnipRegionReady?: (rect: WallSnipRect) => void;
   showBackdrop?: boolean;
   showConstraints?: boolean;
   showInventory?: boolean;
@@ -71,6 +76,7 @@ const CURSOR_BY_MODE: Record<PlannerToolMode, string> = {
   pan: "grab",
   zoom: "zoom-in",
   measure: "crosshair",
+  snip: "crosshair",
 };
 
 export function InventoryPlannerCanvas({
@@ -93,6 +99,9 @@ export function InventoryPlannerCanvas({
   onConstraintPointsChange,
   onDimensionBadgeClick,
   onInventoryPlace,
+  snipDraftRect = null,
+  onSnipDraftChange,
+  onSnipRegionReady,
   showBackdrop = true,
   showConstraints = true,
   showInventory = true,
@@ -108,6 +117,7 @@ export function InventoryPlannerCanvas({
   const [draftPoints, setDraftPoints] = useState<number[]>([]);
   const [cursorInches, setCursorInches] = useState<{ x: number; y: number } | null>(null);
   const panRef = useRef<{ active: boolean; startX: number; startY: number; panX: number; panY: number } | null>(null);
+  const snipDragRef = useRef<{ x0: number; y0: number } | null>(null);
 
   const backdropImage = useBackdropImage(wall.backdropUrl);
   const gridInches = wall.gridSnapInches ?? 6;
@@ -143,7 +153,7 @@ export function InventoryPlannerCanvas({
   useEffect(() => {
     const tr = transformerRef.current;
     const stage = stageRef.current;
-    if (!tr || !stage || toolMode === "pan" || toolMode === "zoom" || toolMode === "constraint") {
+    if (!tr || !stage || toolMode === "pan" || toolMode === "zoom" || toolMode === "constraint" || toolMode === "snip") {
       tr?.nodes([]);
       tr?.getLayer()?.batchDraw();
       return;
@@ -229,7 +239,7 @@ export function InventoryPlannerCanvas({
   const handleStageClick = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>) => {
       if (e.target !== e.target.getStage()) return;
-      if (toolMode === "pan" || toolMode === "zoom") return;
+      if (toolMode === "pan" || toolMode === "zoom" || toolMode === "snip") return;
       if (toolMode === "constraint") {
         const pt = wallPointFromEvent(e.evt);
         if (!pt) return;
@@ -302,6 +312,21 @@ export function InventoryPlannerCanvas({
 
   const inventoryDraggable = toolMode === "select" || toolMode === "inventory";
 
+  const finishSnipDrag = useCallback(
+    (x1: number, y1: number) => {
+      const start = snipDragRef.current;
+      snipDragRef.current = null;
+      if (!start || !onSnipRegionReady) {
+        onSnipDraftChange?.(null);
+        return;
+      }
+      const rect = normalizeSnipRect(start.x0, start.y0, x1, y1, wall);
+      onSnipDraftChange?.(null);
+      if (rect) onSnipRegionReady(rect);
+    },
+    [onSnipDraftChange, onSnipRegionReady, wall],
+  );
+
   return (
     <div
       ref={containerRef}
@@ -326,6 +351,14 @@ export function InventoryPlannerCanvas({
         width={stageSize.width}
         height={stageSize.height}
         onMouseDown={(e) => {
+          if (toolMode === "snip" && e.evt.button === 0) {
+            const pt = wallPointFromEvent(e.evt);
+            if (!pt) return;
+            snipDragRef.current = { x0: pt.x, y0: pt.y };
+            onSnipDraftChange?.({ x: pt.x, y: pt.y, width: 0, height: 0 });
+            return;
+          }
+          if (e.target !== e.target.getStage()) return;
           if (toolMode === "pan" && e.evt.button === 0) {
             panRef.current = {
               active: true,
@@ -339,6 +372,11 @@ export function InventoryPlannerCanvas({
         onMouseMove={(e) => {
           const pt = wallPointFromEvent(e.evt);
           setCursorInches(pt);
+          const snip = snipDragRef.current;
+          if (snip && pt) {
+            const rect = normalizeSnipRect(snip.x0, snip.y0, pt.x, pt.y, wall, 4);
+            onSnipDraftChange?.(rect ?? { x: Math.min(snip.x0, pt.x), y: Math.min(snip.y0, pt.y), width: Math.abs(pt.x - snip.x0), height: Math.abs(pt.y - snip.y0) });
+          }
           const p = panRef.current;
           if (p?.active) {
             onViewportChange({
@@ -348,7 +386,15 @@ export function InventoryPlannerCanvas({
             });
           }
         }}
-        onMouseUp={() => {
+        onMouseUp={(e) => {
+          if (snipDragRef.current) {
+            const pt = wallPointFromEvent(e.evt);
+            if (pt) finishSnipDrag(pt.x, pt.y);
+            else {
+              snipDragRef.current = null;
+              onSnipDraftChange?.(null);
+            }
+          }
           if (panRef.current) panRef.current.active = false;
         }}
         onClick={handleStageClick}
@@ -384,12 +430,14 @@ export function InventoryPlannerCanvas({
                 }}
               />
             ) : null}
+            {toolMode === "snip" && snipDraftRect ? <SnipDraftLayer draft={snipDraftRect} /> : null}
             {showInventory ? (
               <InventoryLayer
                 blocks={blocks}
                 unit={unit}
                 selectedId={selectedInventoryId}
                 draggable={inventoryDraggable}
+                listening={toolMode !== "snip"}
                 violationIds={violationIds}
                 onSelect={(id) => {
                   onSelectInventory(id);
@@ -431,7 +479,9 @@ export function InventoryPlannerCanvas({
         <p className="pointer-events-none absolute bottom-3 left-[11rem] z-20 max-w-md rounded-md bg-black/55 px-2 py-1 text-[10px] text-white/85">
           {toolMode === "constraint"
             ? "Click to place points · click first point to close · Enter finalize · Esc cancel"
-            : "Select Pan (H) or Zoom (Z) from toolbar · scroll/drag only when active · V/I/C shortcuts"}
+            : toolMode === "snip"
+              ? "Drag over an ad on the photo · release · pick 4′×4′ or 4′×8′ card size"
+              : "Select Pan (H) or Zoom (Z) from toolbar · Snip (S) crops ads from photo · V/I/C shortcuts"}
         </p>
       ) : null}
     </div>

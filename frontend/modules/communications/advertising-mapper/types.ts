@@ -17,6 +17,12 @@ export type VisibilityTier = "standard" | "premium" | "marquee";
 
 export type PriceTier = "tier_a" | "tier_b" | "tier_c";
 
+import type { StandardAdSizePresetId } from "@/modules/communications/advertising-mapper/lib/standard-ad-sizes";
+
+export type AdSizePresetId = StandardAdSizePresetId | "custom";
+
+export type ContractStructure = "monthly" | "annual" | "season" | "per_event";
+
 /** Canonical inventory geometry — all dimensions stored in inches. */
 export type InventoryBlock = {
   id: string;
@@ -34,7 +40,15 @@ export type InventoryBlock = {
   inventoryId?: string;
   mountingType?: string;
   expiryDate?: string;
+  /** Snipped creative thumbnail for rail cards. */
   assetUrl?: string;
+  sizePreset?: AdSizePresetId;
+  /** Human-readable placement on the wall face. */
+  locationLabel?: string;
+  contactName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  contractStructure?: ContractStructure;
 };
 
 export type WallBackdropKind = "arena" | "concourse" | "exterior" | "dasher" | "ribbon" | "neutral";

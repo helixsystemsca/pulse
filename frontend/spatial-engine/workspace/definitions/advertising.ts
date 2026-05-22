@@ -1,4 +1,4 @@
-import { Hand, MousePointer2, Package, Pentagon, Ruler, ZoomIn } from "lucide-react";
+import { Hand, MousePointer2, Package, Pentagon, Ruler, Scissors, ZoomIn } from "lucide-react";
 import type { SpatialWorkspaceDefinition } from "@/spatial-engine/workspace/types";
 
 export const ADVERTISING_WORKSPACE: SpatialWorkspaceDefinition = {
@@ -14,7 +14,7 @@ export const ADVERTISING_WORKSPACE: SpatialWorkspaceDefinition = {
   layout: {
     chrome: "editor",
     hideToolRail: true,
-    rightPanelWidthPx: 360,
+    rightPanelWidthPx: 380,
   },
   sidePanels: ["right"],
   layers: [
@@ -57,6 +57,15 @@ export const ADVERTISING_WORKSPACE: SpatialWorkspaceDefinition = {
       hotkeys: [{ key: "i" }],
       layerTargets: ["inventory"],
       cursor: "grab",
+    },
+    {
+      id: "snip",
+      label: "Snip ad",
+      group: "primary",
+      icon: Scissors,
+      hotkeys: [{ key: "s" }],
+      layerTargets: ["backdrop"],
+      cursor: "crosshair",
     },
     {
       id: "constraint",

@@ -79,10 +79,10 @@ export const DASH = {
   accentBarMuted: "h-px w-full shrink-0 bg-[color-mix(in_srgb,var(--ds-text-primary)_12%,transparent)]",
   sectionLabel: "dash-section-title",
   kpiTile:
-    "rounded-[var(--dash-card-radius)] border border-[color-mix(in_srgb,var(--ds-text-primary)_7%,rgb(255_255_255_/0.55))] bg-[linear-gradient(180deg,rgb(255_255_255_/0.96),color-mix(in_srgb,var(--ds-accent)_6%,rgb(248_250_253_/0.98)))] p-3.5 shadow-[var(--dash-shadow-card-soft)] backdrop-blur-md transition-[transform,box-shadow] duration-300 ease-out motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-[var(--dash-shadow-card-hover)] dark:border-[rgb(255_255_255_/0.1)] dark:bg-[linear-gradient(180deg,color-mix(in_srgb,var(--ds-surface-primary)_94%,transparent),color-mix(in_srgb,var(--ds-accent)_12%,var(--ds-surface-secondary)))]",
+    "rounded-[var(--dash-card-radius)] border border-[rgb(226_232_240/0.9)] bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] p-3.5 shadow-[var(--dash-shadow-ops-widget)] transition-[transform,box-shadow] duration-300 ease-out motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-[var(--dash-shadow-card-hover)] dark:border-[rgb(255_255_255_/0.1)]",
   /** Inner stat tiles for custom page peek widgets — matches premium KPI card rhythm (label / body / footer). */
   peekStatCard:
-    "rounded-[var(--dash-card-radius)] border bg-[linear-gradient(165deg,rgb(255_255_255_/0.96),color-mix(in_srgb,var(--ds-surface-secondary)_88%,rgb(252_252_254_)))] p-4 shadow-[0_4px_6px_-1px_rgb(15_23_42_/0.06),0_2px_4px_-2px_rgb(15_23_42_/0.04)] dark:bg-[linear-gradient(165deg,color-mix(in_srgb,var(--ds-surface-primary)_96%,transparent),color-mix(in_srgb,var(--ds-surface-secondary)_94%,#020617))] dark:shadow-[0_4px_14px_rgb(0_0_0_/0.28)]",
+    "rounded-[var(--dash-card-radius)] border border-[rgb(226_232_240/0.85)] bg-[linear-gradient(180deg,#ffffff_0%,#f4f7fb_100%)] p-4 shadow-[var(--dash-shadow-card-soft)] dark:bg-[linear-gradient(165deg,color-mix(in_srgb,var(--ds-surface-primary)_96%,transparent),color-mix(in_srgb,var(--ds-surface-secondary)_94%,#020617))] dark:shadow-[0_4px_14px_rgb(0_0_0_/0.28)]",
   peekStatLabel: "dash-kpi-label",
   kpiValue: "dash-kpi-value mt-1.5",
   kpiLabel: "dash-kpi-label",

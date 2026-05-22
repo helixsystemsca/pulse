@@ -18,6 +18,8 @@ type Props = {
   unit: MeasurementUnit;
   onWallChange: (id: string) => void;
   onBackdropChange?: (patch: BackdropPatch) => void;
+  onGenerateEmptySpace?: () => void | Promise<void>;
+  generateBusy?: boolean;
   /** Grid / Snap / Fit — docked in the footer so it does not overlap upload controls. */
   viewportControls?: ReactNode;
 };
@@ -28,6 +30,8 @@ export function AdvertisingWallStrip({
   unit,
   onWallChange,
   onBackdropChange,
+  onGenerateEmptySpace,
+  generateBusy,
   viewportControls,
 }: Props) {
   const active = walls.find((w) => w.id === activeWallId) ?? walls[0];
@@ -73,7 +77,12 @@ export function AdvertisingWallStrip({
             </p>
           </div>
           {onBackdropChange ? (
-            <WallBackdropStripControl wall={active} onBackdropChange={onBackdropChange} />
+            <WallBackdropStripControl
+              wall={active}
+              onBackdropChange={onBackdropChange}
+              onGenerateEmptySpace={onGenerateEmptySpace}
+              generateBusy={generateBusy}
+            />
           ) : null}
         </div>
 

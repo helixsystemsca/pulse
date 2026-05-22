@@ -13,10 +13,22 @@ type Props = {
     backdropUrl?: string;
     backdropNaturalWidth?: number;
     backdropNaturalHeight?: number;
+    width_inches?: number;
+    height_inches?: number;
   }) => void;
+  /** Tighter layout for the right rail. */
+  compact?: boolean;
+  onGenerateEmptySpace?: () => void | Promise<void>;
+  generateBusy?: boolean;
 };
 
-export function WallBackdropUpload({ wall, onBackdropChange }: Props) {
+export function WallBackdropUpload({
+  wall,
+  onBackdropChange,
+  compact = false,
+  onGenerateEmptySpace,
+  generateBusy = false,
+}: Props) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -35,12 +47,16 @@ export function WallBackdropUpload({ wall, onBackdropChange }: Props) {
   }
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3">
-      <p className="text-xs font-semibold text-slate-800">Background photo — {wall.name}</p>
-      <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
-        Upload a reference photo for this arena face. It appears behind inventory on the canvas and is saved per view in
-        this browser.
+    <div className={cn("rounded-lg border border-slate-200 bg-slate-50/80", compact ? "p-2" : "p-3")}>
+      <p className={cn("font-semibold text-slate-800", compact ? "text-[10px]" : "text-xs")}>
+        Background — {wall.name}
       </p>
+      {!compact ? (
+        <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+          Upload a reference photo for this arena face. Snip existing ads onto standard cards, then extend with empty plot
+          space.
+        </p>
+      ) : null}
       {err ? <p className="mt-2 text-[11px] font-medium text-red-600">{err}</p> : null}
       {wall.backdropUrl ? (
         <div className="mt-2 overflow-hidden rounded-md border border-slate-200">
@@ -48,7 +64,7 @@ export function WallBackdropUpload({ wall, onBackdropChange }: Props) {
           <img src={wall.backdropUrl} alt="" className="max-h-28 w-full object-cover" />
         </div>
       ) : null}
-      <div className="mt-2 flex flex-wrap gap-2">
+      <div className={cn("flex flex-wrap gap-2", compact ? "mt-1.5" : "mt-2")}>
         <label
           className={cn(
             buttonVariants({ intent: "secondary", surface: "light" }),
@@ -88,6 +104,19 @@ export function WallBackdropUpload({ wall, onBackdropChange }: Props) {
           >
             <Trash2 className="h-3.5 w-3.5" />
             Remove
+          </button>
+        ) : null}
+        {onGenerateEmptySpace ? (
+          <button
+            type="button"
+            disabled={busy || generateBusy}
+            className={cn(
+              buttonVariants({ intent: "secondary", surface: "light" }),
+              "inline-flex h-8 items-center gap-1.5 px-3 text-xs",
+            )}
+            onClick={() => void onGenerateEmptySpace()}
+          >
+            {generateBusy ? "Generating…" : "Add empty plot space"}
           </button>
         ) : null}
       </div>

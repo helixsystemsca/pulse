@@ -13,6 +13,8 @@ type Props = {
   unit: MeasurementUnit;
   selectedId: string | null;
   draggable: boolean;
+  /** When false, blocks do not capture pointer (e.g. snip mode). */
+  listening?: boolean;
   violationIds: ReadonlySet<string>;
   onSelect: (id: string) => void;
   onDragEnd: (id: string, node: Konva.Group) => void;
@@ -25,6 +27,7 @@ function InventoryLayerInner({
   unit,
   selectedId,
   draggable,
+  listening = true,
   violationIds,
   onSelect,
   onDragEnd,
@@ -46,9 +49,10 @@ function InventoryLayerInner({
             id={`block-${block.id}`}
             x={block.x * BASE_PX_PER_INCH}
             y={block.y * BASE_PX_PER_INCH}
-            draggable={draggable}
-            onClick={() => onSelect(block.id)}
-            onTap={() => onSelect(block.id)}
+            draggable={draggable && listening}
+            listening={listening}
+            onClick={() => listening && onSelect(block.id)}
+            onTap={() => listening && onSelect(block.id)}
             onDragEnd={(e) => onDragEnd(block.id, e.target as Konva.Group)}
             onTransformEnd={(e) => onTransformEnd(block.id, e.target as Konva.Group)}
           >

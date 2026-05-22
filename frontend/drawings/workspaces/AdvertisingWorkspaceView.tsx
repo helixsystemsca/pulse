@@ -12,6 +12,14 @@ import {
 } from "@/modules/communications/advertising-mapper/components/editor/AdvertisingInspectorPanel";
 import { AdvertisingWallStrip } from "@/modules/communications/advertising-mapper/components/editor/AdvertisingWallStrip";
 import { AdvertisingZoomControl } from "@/modules/communications/advertising-mapper/components/editor/AdvertisingZoomControl";
+import { SnipPresetBar } from "@/modules/communications/advertising-mapper/components/editor/SnipPresetBar";
+import { snipRegionFromBackdrop, type WallSnipRect } from "@/modules/communications/advertising-mapper/lib/ad-snip";
+import { generateEmptySpaceBackdrop } from "@/modules/communications/advertising-mapper/lib/generate-empty-backdrop";
+import {
+  AD_SIZE_PRESETS,
+  DEFAULT_AD_SIZE_PRESET,
+  type StandardAdSizePresetId,
+} from "@/modules/communications/advertising-mapper/lib/standard-ad-sizes";
 import { cloneWallPlans, MOCK_WALL_PLANS } from "@/modules/communications/advertising-mapper/data/mock-walls";
 import type { ConstraintRegion, ConstraintType, PlannerToolMode } from "@/modules/communications/advertising-mapper/geometry/types";
 import { useAdvertisingOperationalContext } from "@/modules/communications/advertising-mapper/hooks/useAdvertisingOperationalContext";
@@ -78,6 +86,10 @@ export function AdvertisingWorkspaceView({
     constraints: true,
     inventory: true,
   });
+  const [snipDraft, setSnipDraft] = useState<WallSnipRect | null>(null);
+  const [pendingSnip, setPendingSnip] = useState<WallSnipRect | null>(null);
+  const [snipBusy, setSnipBusy] = useState(false);
+  const [backdropBusy, setBackdropBusy] = useState(false);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
 
   const { viewport, setViewport, zoomBy, resetView } = usePlannerViewport();
@@ -134,21 +146,24 @@ export function AdvertisingWorkspaceView({
 
   const handleInventoryPlace = useCallback(
     (x: number, y: number) => {
+      const preset = AD_SIZE_PRESETS[DEFAULT_AD_SIZE_PRESET];
       const id = `inv-${Date.now()}`;
       const nextIndex = wall.blocks.length + 1;
       const block: InventoryBlock = {
         id,
-        name: `Signage ${nextIndex}`,
-        x: Math.max(0, x - 40),
-        y: Math.max(0, y - 24),
-        width_inches: 80,
-        height_inches: 48,
+        name: `Plot ${nextIndex}`,
+        x: Math.max(0, x - preset.widthInches / 2),
+        y: Math.max(0, y - preset.heightInches / 2),
+        width_inches: preset.widthInches,
+        height_inches: preset.heightInches,
         status: "available",
         zone: wall.name,
         visibilityTier: "standard",
         priceTier: "tier_b",
         inventoryId: `S-${String(100 + nextIndex)}`,
         mountingType: "Wall mount",
+        sizePreset: DEFAULT_AD_SIZE_PRESET,
+        locationLabel: `${wall.name} · open plot`,
       };
       addBlock(block);
       setSelectedInventoryId(id);
@@ -156,6 +171,63 @@ export function AdvertisingWorkspaceView({
     },
     [addBlock, wall.blocks.length, wall.name],
   );
+
+  const handleSnipConfirm = useCallback(
+    async (preset: StandardAdSizePresetId) => {
+      if (!pendingSnip) return;
+      setSnipBusy(true);
+      try {
+        const size = AD_SIZE_PRESETS[preset];
+        const assetUrl = await snipRegionFromBackdrop(wall, pendingSnip);
+        const cx = pendingSnip.x + pendingSnip.width / 2;
+        const cy = pendingSnip.y + pendingSnip.height / 2;
+        const id = `inv-${Date.now()}`;
+        const nextIndex = wall.blocks.length + 1;
+        const block: InventoryBlock = {
+          id,
+          name: `Snipped ad ${nextIndex}`,
+          x: Math.max(0, Math.min(wall.width_inches - size.widthInches, cx - size.widthInches / 2)),
+          y: Math.max(0, Math.min(wall.height_inches - size.heightInches, cy - size.heightInches / 2)),
+          width_inches: size.widthInches,
+          height_inches: size.heightInches,
+          status: "occupied",
+          zone: wall.name,
+          visibilityTier: "standard",
+          priceTier: "tier_b",
+          inventoryId: `S-${String(100 + nextIndex)}`,
+          mountingType: "Wall mount",
+          assetUrl,
+          sizePreset: preset,
+          locationLabel: `${wall.name} · snipped`,
+          contractStructure: "annual",
+        };
+        addBlock(block);
+        setSelectedInventoryId(id);
+        setPendingSnip(null);
+        setSnipDraft(null);
+        setToolMode("select");
+      } catch (e) {
+        console.error(e);
+        window.alert(e instanceof Error ? e.message : "Could not snip ad from photo.");
+      } finally {
+        setSnipBusy(false);
+      }
+    },
+    [addBlock, pendingSnip, wall],
+  );
+
+  const handleGenerateEmptyBackdrop = useCallback(async () => {
+    setBackdropBusy(true);
+    try {
+      const patch = await generateEmptySpaceBackdrop(wall);
+      updateWall(patch);
+    } catch (e) {
+      console.error(e);
+      window.alert(e instanceof Error ? e.message : "Could not generate backdrop.");
+    } finally {
+      setBackdropBusy(false);
+    }
+  }, [updateWall, wall]);
 
   const scalePercent = Math.round(viewport.scale * 100);
 
@@ -189,6 +261,11 @@ export function AdvertisingWorkspaceView({
       if (selectedInventoryId && toolMode !== "constraint") {
         const step = e.shiftKey ? 12 : 6;
         if (e.key === "Escape") {
+          if (pendingSnip) {
+            setPendingSnip(null);
+            setSnipDraft(null);
+            return;
+          }
           setSelectedInventoryId(null);
           return;
         }
@@ -207,7 +284,7 @@ export function AdvertisingWorkspaceView({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onBlockChange, selectedInventoryId, toolMode, wall.blocks]);
+  }, [onBlockChange, pendingSnip, selectedInventoryId, toolMode, wall.blocks]);
 
   const wallMeta = useMemo(() => {
     const total = wall.blocks.length;
@@ -257,17 +334,11 @@ export function AdvertisingWorkspaceView({
             wall={wall}
             unit={unit}
             selectedInventoryId={selectedInventoryId}
-            selectedConstraint={selectedConstraint}
-            layerVisibility={layerVisibility}
-            onLayerVisibilityChange={(patch) => setLayerVisibility((v) => ({ ...v, ...patch }))}
             onSelectInventory={(id) => {
               setSelectedInventoryId(id);
               setSelectedConstraintId(null);
             }}
             onBlockChange={onBlockChange}
-            onConstraintUpdate={onConstraintChange}
-            onConstraintDelete={handleConstraintDelete}
-            onBackdropChange={(patch) => updateWall(patch)}
           />
         }
         viewport={
@@ -306,11 +377,27 @@ export function AdvertisingWorkspaceView({
               onConstraintPointsChange={onConstraintPointsChange}
               onDimensionBadgeClick={(id, focus) => setDimEdit({ id, focus })}
               onInventoryPlace={handleInventoryPlace}
+              snipDraftRect={snipDraft}
+              onSnipDraftChange={setSnipDraft}
+              onSnipRegionReady={(rect) => {
+                setPendingSnip(rect);
+                setSnipDraft(null);
+              }}
               showFloatingHints={false}
               showMinimap={false}
               editorLightMode
               className="h-full w-full"
             />
+            {pendingSnip ? (
+              <SnipPresetBar
+                busy={snipBusy}
+                onConfirm={(preset) => void handleSnipConfirm(preset)}
+                onCancel={() => {
+                  setPendingSnip(null);
+                  setSnipDraft(null);
+                }}
+              />
+            ) : null}
           </div>
         }
         minimap={
@@ -346,6 +433,8 @@ export function AdvertisingWorkspaceView({
               setSelectedConstraintId(null);
             }}
             onBackdropChange={(patch) => updateWall(patch)}
+            onGenerateEmptySpace={handleGenerateEmptyBackdrop}
+            generateBusy={backdropBusy}
             viewportControls={
               <SpatialViewportControls
                 scalePercent={scalePercent}

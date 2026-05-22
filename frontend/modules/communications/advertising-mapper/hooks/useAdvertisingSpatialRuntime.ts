@@ -28,6 +28,10 @@ import {
 } from "@/modules/communications/advertising-mapper/lib/advertising-wall-backdrop-storage";
 import type { ConstraintRegion } from "@/modules/communications/advertising-mapper/geometry/types";
 import type { FacilityWallPlan, InventoryBlock } from "@/modules/communications/advertising-mapper/types";
+import {
+  inventoryBlockToMetadata,
+  inventoryMetadataPatch,
+} from "@/modules/communications/advertising-mapper/lib/inventory-metadata";
 import type { ConstraintFeatureDocument, InventoryItemDocument } from "@/spatial-engine/document/layers";
 
 function blockToInventoryItem(block: InventoryBlock): InventoryItemDocument {
@@ -40,18 +44,7 @@ function blockToInventoryItem(block: InventoryBlock): InventoryItemDocument {
       width: block.width_inches,
       height: block.height_inches,
     },
-    metadata: {
-      name: block.name,
-      status: block.status,
-      sponsor: block.sponsor,
-      zone: block.zone,
-      visibilityTier: block.visibilityTier,
-      priceTier: block.priceTier,
-      inventoryId: block.inventoryId,
-      mountingType: block.mountingType,
-      expiryDate: block.expiryDate,
-      assetUrl: block.assetUrl,
-    },
+    metadata: inventoryBlockToMetadata(block),
   };
 }
 
@@ -154,10 +147,7 @@ export function useAdvertisingSpatialRuntime(initialWalls: FacilityWallPlan[], i
         if (patch.y !== undefined) geom.y = patch.y;
         if (patch.width_inches !== undefined) geom.width = patch.width_inches;
         if (patch.height_inches !== undefined) geom.height = patch.height_inches;
-        const meta: Record<string, unknown> = {};
-        if (patch.name !== undefined) meta.name = patch.name;
-        if (patch.status !== undefined) meta.status = patch.status;
-        if (patch.sponsor !== undefined) meta.sponsor = patch.sponsor;
+        const meta = inventoryMetadataPatch(patch);
         return patchInventoryItem(doc, id, {
           ...(Object.keys(geom).length ? { geometry: geom as InventoryItemDocument["geometry"] } : {}),
           ...(Object.keys(meta).length ? { metadata: meta } : {}),

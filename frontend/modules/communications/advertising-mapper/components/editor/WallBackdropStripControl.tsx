@@ -11,15 +11,25 @@ type BackdropPatch = {
   backdropUrl?: string;
   backdropNaturalWidth?: number;
   backdropNaturalHeight?: number;
+  width_inches?: number;
+  height_inches?: number;
 };
 
 type Props = {
   wall: FacilityWallPlan;
   onBackdropChange: (patch: BackdropPatch) => void;
+  onGenerateEmptySpace?: () => void | Promise<void>;
+  generateBusy?: boolean;
   className?: string;
 };
 
-export function WallBackdropStripControl({ wall, onBackdropChange, className }: Props) {
+export function WallBackdropStripControl({
+  wall,
+  onBackdropChange,
+  onGenerateEmptySpace,
+  generateBusy = false,
+  className,
+}: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -85,6 +95,19 @@ export function WallBackdropStripControl({ wall, onBackdropChange, className }: 
           >
             <Trash2 className="h-3.5 w-3.5" />
             Remove
+          </button>
+        ) : null}
+        {onGenerateEmptySpace ? (
+          <button
+            type="button"
+            disabled={busy || generateBusy}
+            className={cn(
+              buttonVariants({ intent: "secondary", surface: "light" }),
+              "inline-flex h-7 items-center gap-1 px-2 text-[11px]",
+            )}
+            onClick={() => void onGenerateEmptySpace()}
+          >
+            {generateBusy ? "Generating…" : "Empty plot space"}
           </button>
         ) : null}
       </div>
