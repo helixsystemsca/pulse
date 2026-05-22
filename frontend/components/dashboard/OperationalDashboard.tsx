@@ -40,6 +40,11 @@ import { getWidgetMode, type WidgetMode, type WidgetRenderContext } from "@/comp
 import { TrainingComplianceWidget } from "@/components/dashboard/widgets/training/TrainingComplianceWidget";
 import { ImportantDatesOpsWidget } from "@/components/dashboard/widgets/ops/ImportantDatesOpsWidget";
 import { NotificationsWorkOrdersOpsWidget } from "@/components/dashboard/widgets/ops/NotificationsWorkOrdersOpsWidget";
+import {
+  snapWorkRequestsGridItem,
+  workRequestsLayoutModeFromContext,
+  WORK_REQUESTS_WIDGET_ID,
+} from "@/components/dashboard/widgets/ops/work-requests-widget-layout";
 import { LowInventoryOpsWidget } from "@/components/dashboard/widgets/ops/LowInventoryOpsWidget";
 import { Co2MonitoringOpsWidget } from "@/components/dashboard/widgets/ops/Co2MonitoringOpsWidget";
 import { PoolReadingsOpsWidget } from "@/components/dashboard/widgets/ops/PoolReadingsOpsWidget";
@@ -136,7 +141,16 @@ function sanitizeLayoutForGrid(layout: Layout, cols: number): Layout {
     placed.push({ ...raw, y });
   }
   const byId = new Map(placed.map((p) => [p.i, p]));
-  return ids.map((i) => byId.get(i)).filter((x): x is LayoutItem => x != null);
+  const ordered = ids.map((i) => byId.get(i)).filter((x): x is LayoutItem => x != null);
+  return ordered.map((item) =>
+    item.i === WORK_REQUESTS_WIDGET_ID ? snapWorkRequestsGridItem(item, cols) : item,
+  );
+}
+
+function applyWorkRequestsLayoutSnaps(layout: Layout, cols: number): Layout {
+  return layout.map((item) =>
+    item.i === WORK_REQUESTS_WIDGET_ID ? snapWorkRequestsGridItem(item, cols) : item,
+  );
 }
 
 /** Operations dashboard header: icon tools get a teal hover inside the unified actions card. */
@@ -1213,8 +1227,16 @@ function DashboardBody({
         accent: "none" as const,
         shellJumpHref: pulseApp.to(workOrdersHref),
         shellJumpLabel: "Open work requests",
-        render: () => (
-          <NotificationsWorkOrdersOpsWidget model={model} kpiLoading={workRequestKpiLoading} />
+        render: (ctx) => (
+          <NotificationsWorkOrdersOpsWidget
+            model={model}
+            kpiLoading={workRequestKpiLoading}
+            layoutMode={
+              ctx
+                ? workRequestsLayoutModeFromContext(ctx.gridW, ctx.gridH)
+                : "4x1"
+            }
+          />
         ),
       },
       training_compliance: {
@@ -1384,7 +1406,7 @@ function DashboardBody({
     if (isDeptDashboard) return [];
     return [
       { i: "important_dates", x: 0, y: 0, w: 5, h: 12, minW: 3, minH: 6 },
-      { i: "notifications_work_orders", x: 5, y: 0, w: 6, h: 3, minW: 3, minH: 2 },
+      { i: WORK_REQUESTS_WIDGET_ID, x: 5, y: 0, w: 6, h: 2, minW: 4, minH: 2, maxH: 2 },
       { i: "training_compliance", x: 11, y: 0, w: 5, h: 12, minW: 3, minH: 6 },
       { i: "workforce", x: 0, y: 12, w: 6, h: 10, minW: 4, minH: 6 },
       { i: "low_inventory", x: 6, y: 12, w: 5, h: 10, minW: 3, minH: 6 },
@@ -1741,9 +1763,11 @@ function DashboardBody({
               onResizeStop={(next) => {
                 if (!canEditLayout || !editMode) return;
                 setIsInteracting(false);
-                const compacted = stableCompactor.compact(next as Layout, DASHBOARD_GRID_COLS) as Layout;
-                setLayout(compacted);
-                persistLayout(compacted);
+                const snapped = applyWorkRequestsLayoutSnaps(next as Layout, DASHBOARD_GRID_COLS);
+                const compacted = stableCompactor.compact(snapped, DASHBOARD_GRID_COLS) as Layout;
+                const finalLayout = applyWorkRequestsLayoutSnaps(compacted, DASHBOARD_GRID_COLS);
+                setLayout(finalLayout);
+                persistLayout(finalLayout);
               }}
             >
               {layout.map((item) => {

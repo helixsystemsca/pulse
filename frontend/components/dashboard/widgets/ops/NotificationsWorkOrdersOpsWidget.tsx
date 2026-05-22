@@ -3,6 +3,7 @@
 import { Loader2 } from "lucide-react";
 
 import type { DashboardViewModel } from "@/components/dashboard/OperationalDashboard";
+import type { WorkRequestsLayoutMode } from "@/components/dashboard/widgets/ops/work-requests-widget-layout";
 import { cn } from "@/lib/cn";
 
 const KPI_TONE_CLASS = {
@@ -18,6 +19,12 @@ const KPI_TILE_CLASS = {
   lobster: "ops-kpi-tile--lobster",
   accent: "ops-kpi-tile--accent",
 } as const;
+
+const GRID_MODE_CLASS: Record<WorkRequestsLayoutMode, string> = {
+  "4x1": "ops-work-requests-kpi-grid--4x1",
+  "2x2": "ops-work-requests-kpi-grid--2x2",
+  "1x4": "ops-work-requests-kpi-grid--1x4",
+};
 
 function KpiCell({
   label,
@@ -40,42 +47,51 @@ function KpiCell({
           : "var(--ds-accent)";
 
   return (
-    <div className={cn("ops-kpi-tile ops-kpi-tile--strip", KPI_TILE_CLASS[tone])}>
-      <div className="flex w-full items-start gap-1">
-        <span
-          className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full"
-          style={{ backgroundColor: indicator }}
-          aria-hidden
-        />
-        <span className="min-w-0 flex-1 text-left text-[9px] font-bold uppercase leading-snug tracking-[0.06em] text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]">
-          {label}
-        </span>
-      </div>
-      <div
-        className={cn(
-          "ops-kpi-tile__value mt-1 w-full text-left font-bold leading-none tabular-nums tracking-tight",
-          !loading && KPI_TONE_CLASS[tone],
-          loading && "text-[color-mix(in_srgb,var(--ds-text-primary)_40%,transparent)]",
-        )}
-      >
-        {loading ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden /> : (value ?? "—")}
+    <div className="ops-work-requests-kpi-cell">
+      <div className={cn("ops-kpi-tile ops-kpi-tile--grid", KPI_TILE_CLASS[tone])}>
+        <div className="flex w-full items-start gap-1">
+          <span
+            className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full"
+            style={{ backgroundColor: indicator }}
+            aria-hidden
+          />
+          <span className="min-w-0 flex-1 text-left text-[9px] font-bold uppercase leading-snug tracking-[0.06em] text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]">
+            {label}
+          </span>
+        </div>
+        <div
+          className={cn(
+            "ops-kpi-tile__value mt-1 w-full text-left font-bold leading-none tabular-nums tracking-tight",
+            !loading && KPI_TONE_CLASS[tone],
+            loading && "text-[color-mix(in_srgb,var(--ds-text-primary)_40%,transparent)]",
+          )}
+        >
+          {loading ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden /> : (value ?? "—")}
+        </div>
       </div>
     </div>
   );
 }
 
-/** KPI strip only — title and jump live on {@link OpsWidgetShell}. */
+/** KPI grid — title and jump live on {@link OpsWidgetShell}. */
 export function NotificationsWorkOrdersOpsWidget({
   model,
   kpiLoading = false,
+  layoutMode = "4x1",
 }: {
   model: DashboardViewModel;
   kpiLoading?: boolean;
+  layoutMode?: WorkRequestsLayoutMode;
 }) {
   const kpi = model.workRequests.kpi;
 
   return (
-    <div className="@container grid h-full min-h-0 grid-cols-4 grid-rows-1 items-stretch gap-1.5 @[max-width:13rem]:grid-cols-2 @[max-width:13rem]:grid-rows-2">
+    <div
+      className={cn("ops-work-requests-kpi-grid", GRID_MODE_CLASS[layoutMode])}
+      data-layout-mode={layoutMode}
+      role="group"
+      aria-label="Work request KPIs"
+    >
       <KpiCell label="Pending approval" value={kpi?.pendingApproval ?? null} tone="amber" loading={kpiLoading} />
       <KpiCell label="In progress" value={kpi?.inProgress ?? null} tone="teal" loading={kpiLoading} />
       <KpiCell label="Overdue" value={kpi?.overdueAny ?? null} tone="lobster" loading={kpiLoading} />
