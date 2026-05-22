@@ -40,7 +40,7 @@ function KpiCell({
           : "var(--ds-accent)";
 
   return (
-    <div className={cn("ops-kpi-tile", KPI_TILE_CLASS[tone])}>
+    <div className={cn("ops-kpi-tile ops-kpi-tile--strip", KPI_TILE_CLASS[tone])}>
       <div className="flex w-full items-start gap-1">
         <span
           className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full"
@@ -75,7 +75,7 @@ export function NotificationsWorkOrdersOpsWidget({
   const kpi = model.workRequests.kpi;
 
   return (
-    <div className="@container grid h-full min-h-0 grid-cols-2 content-start gap-1.5 sm:grid-cols-4">
+    <div className="@container grid h-full min-h-0 grid-cols-4 grid-rows-1 items-stretch gap-1.5 @[max-width:13rem]:grid-cols-2 @[max-width:13rem]:grid-rows-2">
       <KpiCell label="Pending approval" value={kpi?.pendingApproval ?? null} tone="amber" loading={kpiLoading} />
       <KpiCell label="In progress" value={kpi?.inProgress ?? null} tone="teal" loading={kpiLoading} />
       <KpiCell label="Overdue" value={kpi?.overdueAny ?? null} tone="lobster" loading={kpiLoading} />

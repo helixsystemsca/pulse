@@ -1348,13 +1348,11 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
     box-shadow: 0 1px 2px rgb(0 0 0 / 0.22), 0 6px 18px -8px rgb(0 0 0 / 0.35);
   }
 
-  /** Compact square KPI tiles (work requests widget — scales down in small grid cells). */
+  /** KPI tiles — work requests strip fills row width/height; square variant uses aspect-ratio. */
   .ops-kpi-tile {
     display: flex;
     min-height: 0;
     min-width: 0;
-    aspect-ratio: 1 / 1;
-    max-height: min(4.25rem, 100%);
     container-type: inline-size;
     flex-direction: column;
     align-items: stretch;
@@ -1368,8 +1366,27 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
     position: relative;
     overflow: hidden;
   }
+  .ops-kpi-tile--strip {
+    width: 100%;
+    height: 100%;
+    min-height: 2.75rem;
+    padding: 0.5rem 0.55rem 0.55rem;
+  }
+  .ops-kpi-tile:not(.ops-kpi-tile--strip) {
+    aspect-ratio: 1 / 1;
+    max-height: min(4.25rem, 100%);
+  }
   .ops-kpi-tile__value {
     font-size: clamp(0.875rem, 42cqi, 1.5rem);
+  }
+  .ops-kpi-tile--strip .ops-kpi-tile__value {
+    flex: 1;
+    display: flex;
+    align-items: flex-end;
+    font-size: clamp(1.125rem, 22cqi, 2.25rem);
+  }
+  .ops-kpi-tile--strip .ops-kpi-tile__value .animate-spin {
+    align-self: center;
   }
 
   .ops-kpi-pill {

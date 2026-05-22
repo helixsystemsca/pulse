@@ -1384,7 +1384,7 @@ function DashboardBody({
     if (isDeptDashboard) return [];
     return [
       { i: "important_dates", x: 0, y: 0, w: 5, h: 12, minW: 3, minH: 6 },
-      { i: "notifications_work_orders", x: 5, y: 0, w: 6, h: 6, minW: 3, minH: 3 },
+      { i: "notifications_work_orders", x: 5, y: 0, w: 6, h: 3, minW: 3, minH: 2 },
       { i: "training_compliance", x: 11, y: 0, w: 5, h: 12, minW: 3, minH: 6 },
       { i: "workforce", x: 0, y: 12, w: 6, h: 10, minW: 4, minH: 6 },
       { i: "low_inventory", x: 6, y: 12, w: 5, h: 10, minW: 3, minH: 6 },
