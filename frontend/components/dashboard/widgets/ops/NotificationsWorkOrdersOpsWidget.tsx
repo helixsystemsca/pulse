@@ -12,6 +12,13 @@ const KPI_TONE_CLASS = {
   accent: "!text-[var(--ds-accent)]",
 } as const;
 
+const KPI_PILL_CLASS = {
+  amber: "ops-kpi-pill--amber",
+  teal: "ops-kpi-pill--teal",
+  lobster: "ops-kpi-pill--lobster",
+  accent: "ops-kpi-pill--accent",
+} as const;
+
 function KpiCell({
   label,
   value,
@@ -33,7 +40,7 @@ function KpiCell({
           : "var(--ds-accent)";
 
   return (
-    <div className="flex min-h-[5.5rem] min-w-0 flex-1 flex-col items-center justify-center rounded-lg border border-[color-mix(in_srgb,var(--ds-text-primary)_10%,transparent)] bg-[color-mix(in_srgb,var(--ds-text-primary)_3%,transparent)] px-2 py-3">
+    <div className={cn("ops-kpi-pill", KPI_PILL_CLASS[tone])}>
       <div className="flex max-w-full items-center justify-center gap-1.5">
         <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: indicator }} aria-hidden />
         <span className="truncate text-center text-[10px] font-bold uppercase tracking-[0.08em] text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]">

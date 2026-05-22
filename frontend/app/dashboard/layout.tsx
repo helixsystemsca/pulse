@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
-    <AppLayout mainClassName="bg-ds-bg">
+    <AppLayout mainClassName="bg-[#f5f7fb] dark:bg-ds-bg">
       <AmbientPageFrame>{children}</AmbientPageFrame>
     </AppLayout>
   );

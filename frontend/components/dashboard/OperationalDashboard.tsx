@@ -139,10 +139,8 @@ function sanitizeLayoutForGrid(layout: Layout, cols: number): Layout {
 }
 
 /** Operations dashboard header: icon tools get a teal hover inside the unified actions card. */
-const OPS_DASH_HEADER_TOOL =
-  "h-10 w-10 min-h-0 rounded-lg !border-2 !border-ds-border bg-transparent !px-0 !py-0 text-ds-foreground shadow-none ring-0 transition-colors hover:!border-[var(--ds-accent)] hover:!bg-[color-mix(in_srgb,var(--ds-accent)_14%,var(--ds-bg))] hover:!text-[var(--ds-accent)] focus-visible:!outline focus-visible:!outline-2 focus-visible:!outline-offset-2 focus-visible:!outline-[var(--ds-accent)] dark:hover:!bg-[color-mix(in_srgb,var(--ds-accent)_20%,transparent)]";
-const OPS_DASH_HEADER_TOOL_ACTIVE =
-  "h-10 w-10 min-h-0 rounded-lg !border-0 !bg-[var(--ds-accent)] !px-0 !py-0 !text-white shadow-none ring-0 transition-colors hover:!border-0 hover:!bg-[color-mix(in_srgb,var(--ds-accent)_88%,#0f172a)] hover:!text-white focus-visible:!outline focus-visible:!outline-2 focus-visible:!outline-offset-2 focus-visible:!outline-white/80";
+const OPS_DASH_HEADER_TOOL = "ops-dash-header-icon-btn";
+const OPS_DASH_HEADER_TOOL_ACTIVE = "ops-dash-header-icon-btn--active";
 
 const BC_TZ = "America/Vancouver";
 
@@ -302,9 +300,8 @@ function mergeAttendanceIntoDashboardModel(
 const roleBadgeBase =
   "pointer-events-none absolute -top-0.5 -right-0.5 z-10 flex h-[18px] w-[18px] items-center justify-center rounded-full text-[9px] font-bold leading-none text-ds-on-accent shadow-[var(--ds-shadow-card)] ring-2 ring-[var(--ds-surface-primary)]";
 
-/** Dashboard workforce bubbles: neutral glassy fill; photo replaces initials when `avatar_url` resolves. */
-const workforceAvatarGoldBase =
-  "rounded-full bg-[color-mix(in_srgb,var(--ds-text-primary)_10%,transparent)] backdrop-blur-md font-bold text-[color-mix(in_srgb,var(--ds-text-primary)_88%,transparent)] shadow-sm ring-1 ring-[color-mix(in_srgb,var(--ds-text-primary)_18%,transparent)] ring-offset-2 ring-offset-[var(--ds-surface-primary)]";
+/** Dashboard workforce bubbles — soft neumorphic glass; photo replaces initials when `avatar_url` resolves. */
+const workforceAvatarGoldBase = "ops-workforce-avatar";
 
 function workforceRoleBadgeAndRank(role: string): { badge?: "M" | "S" | "L"; rank: number } {
   const r = role.toLowerCase();
@@ -1200,8 +1197,7 @@ function DashboardBody({
   const { width, containerRef, mounted } = useContainerWidth({ initialWidth: 1200 });
 
   const widgetRegistry = useMemo(() => {
-    const workforceCardShell =
-      "flex min-h-0 flex-1 flex-col gap-2 rounded-xl border border-[color-mix(in_srgb,var(--ops-dash-widget-bg,#fff)_65%,var(--ops-dash-border,#cbd5e1))] bg-[var(--ops-dash-widget-bg,#ffffff)] px-1.5 py-3 shadow-sm dark:border-white/[0.07] dark:bg-[color-mix(in_srgb,#0f172a_96%,#1e293b)]";
+    const workforceCardShell = "ops-dash-inner-card flex min-h-0 flex-1 flex-col gap-2 px-1.5 py-3";
 
     return {
       important_dates: {
@@ -1215,7 +1211,7 @@ function DashboardBody({
         shellHeaderRight: (
           <Link
             href={pulseApp.to(workOrdersHref)}
-            className="inline-flex items-center justify-center rounded-lg border border-[color-mix(in_srgb,var(--ds-accent)_35%,transparent)] bg-[color-mix(in_srgb,var(--ds-accent)_10%,transparent)] px-2.5 py-1 text-[10px] font-semibold text-[var(--ds-accent)] transition hover:bg-[color-mix(in_srgb,var(--ds-accent)_18%,transparent)]"
+            className="inline-flex items-center justify-center rounded-lg border border-[color-mix(in_srgb,var(--ds-accent)_28%,transparent)] bg-[linear-gradient(135deg,color-mix(in_srgb,var(--ds-accent)_14%,#fff),color-mix(in_srgb,var(--ds-accent)_6%,#fff))] px-2.5 py-1 text-[10px] font-semibold text-[var(--ds-accent)] shadow-[0_1px_0_rgb(255_255_255/0.7)_inset,0_4px_12px_-6px_rgb(56_189_248/0.25)] transition hover:bg-[linear-gradient(135deg,color-mix(in_srgb,var(--ds-accent)_22%,#fff),color-mix(in_srgb,var(--ds-accent)_12%,#fff))]"
           >
             Open work requests
           </Link>
@@ -1561,7 +1557,7 @@ function DashboardBody({
     >
       <div
         className={cn(
-          "flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[color-mix(in_srgb,var(--ops-dash-border,#cbd5e1)_88%,transparent)] bg-[var(--ops-dash-widget-bg,#ffffff)] px-3 py-2.5 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_6px_18px_-4px_rgba(15,23,42,0.1)] dark:border-white/[0.09] dark:bg-[var(--ops-dash-widget-bg,#0f172a)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.28),0_6px_18px_-4px_rgba(0,0,0,0.38)]",
+          "ops-dash-header-bar flex flex-wrap items-center justify-between gap-3 px-3 py-2.5",
           isKiosk && "shrink-0",
         )}
       >

@@ -50,7 +50,7 @@ export function TankIndicator({ label, value, max, compact = false }: TankIndica
         className={cn(
           "relative shrink-0 overflow-hidden rounded-full border border-ds-border bg-ds-secondary/60",
           compact
-            ? "h-[5.5rem] w-9 shadow-[0_4px_12px_rgba(15,23,42,0.07)] sm:h-24 sm:w-10"
+            ? "h-[5.5rem] w-9 border-[color-mix(in_srgb,var(--ds-text-primary)_8%,transparent)] bg-[linear-gradient(180deg,rgb(248_250_252/0.95),rgb(241_245_249/0.88))] shadow-[0_1px_0_rgb(255_255_255/0.8)_inset,0_6px_16px_-8px_rgb(15,23,42,0.12)] sm:h-24 sm:w-10"
             : "h-40 w-16 shadow-[0_10px_24px_rgba(15,23,42,0.10)]",
         )}
         role="img"

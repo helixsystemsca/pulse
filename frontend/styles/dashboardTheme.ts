@@ -67,7 +67,7 @@ export const DASH = {
   grid12: "grid grid-cols-12 gap-3",
   /** Framed board on kiosk pages — outer frame only; inner cards use `.dash-card`. */
   kioskFrame:
-    "w-full rounded-[var(--dash-card-radius-hero)] border border-[color-mix(in_srgb,var(--ds-text-primary)_10%,transparent)] bg-[linear-gradient(165deg,rgb(255_255_255_/0.85),rgb(248_250_252_/0.92))] p-4 shadow-[var(--dash-shadow-card-mid)] backdrop-blur-xl dark:border-[rgb(255_255_255_/0.1)] dark:bg-[linear-gradient(165deg,color-mix(in_srgb,var(--ds-surface-primary)_92%,#020617),color-mix(in_srgb,var(--ds-surface-secondary)_90%,#020617))] dark:shadow-[0_8px_40px_rgb(0_0_0_/0.35)]",
+    "w-full rounded-[var(--dash-card-radius-hero)] border border-[color-mix(in_srgb,var(--ds-text-primary)_8%,rgb(255_255_255_/0.5))] bg-[linear-gradient(165deg,rgb(255_255_255_/0.92),rgb(248_250_253_/0.88))] p-4 shadow-[var(--dash-shadow-card-mid)] backdrop-blur-xl dark:border-[rgb(255_255_255_/0.1)] dark:bg-[linear-gradient(165deg,color-mix(in_srgb,var(--ds-surface-primary)_92%,#020617),color-mix(in_srgb,var(--ds-surface-secondary)_90%,#020617))] dark:shadow-[0_8px_40px_rgb(0_0_0_/0.35)]",
   /**
    * Generic elevated tile (tool panels, kiosk metrics) — premium widget shell.
    * Prefer {@link dashboardWidgetShell} when theme comes from widget overrides.
@@ -79,7 +79,7 @@ export const DASH = {
   accentBarMuted: "h-px w-full shrink-0 bg-[color-mix(in_srgb,var(--ds-text-primary)_12%,transparent)]",
   sectionLabel: "dash-section-title",
   kpiTile:
-    "rounded-[var(--dash-card-radius)] border border-[color-mix(in_srgb,var(--ds-text-primary)_8%,transparent)] bg-[linear-gradient(145deg,rgb(255_255_255_/0.95),color-mix(in_srgb,var(--ds-accent)_8%,rgb(248_250_252_/0.98)))] p-3.5 shadow-[var(--dash-shadow-card-soft)] backdrop-blur-md transition-[transform,box-shadow] duration-300 ease-out motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-[var(--dash-shadow-card-hover)] dark:border-[rgb(255_255_255_/0.1)] dark:bg-[linear-gradient(145deg,color-mix(in_srgb,var(--ds-surface-primary)_94%,transparent),color-mix(in_srgb,var(--ds-accent)_12%,var(--ds-surface-secondary)))]",
+    "rounded-[var(--dash-card-radius)] border border-[color-mix(in_srgb,var(--ds-text-primary)_7%,rgb(255_255_255_/0.55))] bg-[linear-gradient(180deg,rgb(255_255_255_/0.96),color-mix(in_srgb,var(--ds-accent)_6%,rgb(248_250_253_/0.98)))] p-3.5 shadow-[var(--dash-shadow-card-soft)] backdrop-blur-md transition-[transform,box-shadow] duration-300 ease-out motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-[var(--dash-shadow-card-hover)] dark:border-[rgb(255_255_255_/0.1)] dark:bg-[linear-gradient(180deg,color-mix(in_srgb,var(--ds-surface-primary)_94%,transparent),color-mix(in_srgb,var(--ds-accent)_12%,var(--ds-surface-secondary)))]",
   /** Inner stat tiles for custom page peek widgets — matches premium KPI card rhythm (label / body / footer). */
   peekStatCard:
     "rounded-[var(--dash-card-radius)] border bg-[linear-gradient(165deg,rgb(255_255_255_/0.96),color-mix(in_srgb,var(--ds-surface-secondary)_88%,rgb(252_252_254_)))] p-4 shadow-[0_4px_6px_-1px_rgb(15_23_42_/0.06),0_2px_4px_-2px_rgb(15_23_42_/0.04)] dark:bg-[linear-gradient(165deg,color-mix(in_srgb,var(--ds-surface-primary)_96%,transparent),color-mix(in_srgb,var(--ds-surface-secondary)_94%,#020617))] dark:shadow-[0_4px_14px_rgb(0_0_0_/0.28)]",
@@ -87,6 +87,6 @@ export const DASH = {
   kpiValue: "dash-kpi-value mt-1.5",
   kpiLabel: "dash-kpi-label",
   listRow:
-    "rounded-[14px] border border-[color-mix(in_srgb,var(--ds-text-primary)_9%,transparent)] bg-[linear-gradient(180deg,rgb(255_255_255_/0.72),rgb(252_252_254_/0.88))] px-3 py-2.5 shadow-[0_1px_0_rgb(255_255_255_/0.6)_inset,0_4px_14px_-6px_rgb(15_23_42_/0.08)] backdrop-blur-sm dark:border-ds-border dark:bg-[color-mix(in_srgb,var(--ds-surface-secondary)_85%,transparent)]",
+    "rounded-[14px] border border-[color-mix(in_srgb,var(--ds-text-primary)_7%,rgb(255_255_255_/0.45))] bg-[linear-gradient(180deg,rgb(255_255_255_/0.88),rgb(252_253_255_/0.92))] px-3 py-2.5 shadow-[0_1px_0_rgb(255_255_255_/0.72)_inset,0_6px_18px_-10px_rgb(15_23_42_/0.1)] backdrop-blur-sm dark:border-ds-border dark:bg-[color-mix(in_srgb,var(--ds-surface-secondary)_85%,transparent)]",
   pill: "inline-flex shrink-0 items-center rounded-md border border-ds-border px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide",
 } as const;

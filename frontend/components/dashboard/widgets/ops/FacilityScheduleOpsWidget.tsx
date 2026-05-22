@@ -166,7 +166,7 @@ function FacilityScheduleInner({
               <li
                 key={ev.id}
                 className={cn(
-                  "flex items-start justify-between gap-2 rounded-lg border border-[color-mix(in_srgb,var(--ops-dash-border,#cbd5e1)_70%,transparent)] bg-[var(--ops-dash-widget-bg,#ffffff)] px-2 py-1.5 dark:border-white/[0.08] dark:bg-[color-mix(in_srgb,#0f172a_92%,#1e293b)]",
+                  "ops-dash-row flex items-start justify-between gap-2 px-2 py-1.5",
                   compact && "py-1",
                 )}
               >
@@ -203,7 +203,7 @@ function FacilityScheduleInner({
 /** Built-in operations tile body (wrapped by `OpsWidgetShell` in `OperationalDashboard`). */
 export function FacilityScheduleOpsWidget() {
   return (
-    <div className="flex h-full min-h-0 flex-col rounded-xl border border-[color-mix(in_srgb,var(--ops-dash-widget-bg,#fff)_65%,var(--ops-dash-border,#cbd5e1))] bg-[var(--ops-dash-widget-bg,#ffffff)] p-3 shadow-sm dark:border-white/[0.07] dark:bg-[color-mix(in_srgb,#0f172a_96%,#1e293b)]">
+    <div className="ops-dash-inner-card flex h-full min-h-0 flex-col p-3">
       <FacilityScheduleInner />
     </div>
   );

@@ -23,7 +23,7 @@ export function OperationsAmbientBackground({ className }: { className?: string 
         aria-hidden
       >
         <div
-          className="absolute inset-0 bg-[radial-gradient(ellipse_120%_80%_at_20%_0%,color-mix(in_srgb,var(--ds-accent)_22%,transparent),transparent_55%),radial-gradient(ellipse_100%_70%_at_100%_40%,color-mix(in_srgb,var(--ds-accent)_14%,transparent),transparent_50%)]"
+          className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(120,140,255,0.12),transparent_38%),radial-gradient(circle_at_bottom_right,rgba(80,200,180,0.1),transparent_42%),radial-gradient(ellipse_120%_80%_at_20%_0%,color-mix(in_srgb,var(--ds-accent)_18%,transparent),transparent_55%)]"
           style={{ transform: "translateZ(0)" }}
         />
       </div>
@@ -33,14 +33,14 @@ export function OperationsAmbientBackground({ className }: { className?: string 
   return (
     <div className={cn("pointer-events-none absolute inset-0 overflow-hidden", className)} aria-hidden>
       <motion.div
-        className="absolute -left-[18%] -top-[22%] h-[78%] w-[72%] rounded-full bg-[radial-gradient(circle_at_40%_40%,color-mix(in_srgb,var(--ds-accent)_18%,transparent),transparent_68%)] opacity-[0.07] blur-3xl dark:opacity-[0.09]"
+        className="absolute -left-[18%] -top-[22%] h-[78%] w-[72%] rounded-full bg-[radial-gradient(circle_at_40%_40%,rgba(120,140,255,0.35),transparent_68%)] opacity-[0.09] blur-3xl dark:opacity-[0.11]"
         initial={false}
         animate={{ x: [0, 18, -8, 0], y: [0, 12, -6, 0] }}
         transition={{ duration: loop, repeat: Infinity, ease: "linear" }}
         style={{ willChange: "transform" }}
       />
       <motion.div
-        className="absolute -bottom-[26%] -right-[12%] h-[70%] w-[68%] rounded-full bg-[radial-gradient(circle_at_60%_55%,color-mix(in_srgb,var(--ds-text-primary)_10%,transparent),transparent_65%)] opacity-[0.06] blur-3xl dark:opacity-[0.08]"
+        className="absolute -bottom-[26%] -right-[12%] h-[70%] w-[68%] rounded-full bg-[radial-gradient(circle_at_60%_55%,rgba(80,200,180,0.28),transparent_65%)] opacity-[0.08] blur-3xl dark:opacity-[0.1]"
         initial={false}
         animate={{ x: [0, -22, 10, 0], y: [0, -14, 8, 0] }}
         transition={{ duration: loop * 1.15, repeat: Infinity, ease: "linear" }}

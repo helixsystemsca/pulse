@@ -10,7 +10,7 @@ import { cn } from "@/lib/cn";
 function PoolCard(props: (typeof poolControllers)[number]) {
   const { name, chlorine, ph, flow, temp, co2FeederActive, chlorineFeederActive } = props;
   return (
-    <div className="flex h-full min-h-0 flex-col rounded-lg border border-[color-mix(in_srgb,var(--ops-dash-widget-bg,#fff)_55%,var(--ops-dash-border,#cbd5e1))] bg-[color-mix(in_srgb,var(--ops-dash-widget-bg,#ffffff)_94%,var(--ops-dash-inner-bg,#f1f5f9))] p-2 shadow-sm dark:border-white/[0.07] dark:bg-[color-mix(in_srgb,#0f172a_92%,#1e293b)]">
+    <div className="ops-dash-inner-card flex h-full min-h-0 flex-col p-2">
       <p className="text-[11px] font-bold leading-tight text-[color-mix(in_srgb,var(--ds-text-primary)_92%,transparent)]">{name}</p>
       <dl className="mt-1.5 grid grid-cols-2 gap-x-1.5 gap-y-1 text-[10px]">
         <div className="flex items-center gap-1 text-[color-mix(in_srgb,var(--ds-text-primary)_58%,transparent)]">
@@ -68,8 +68,8 @@ export function PoolReadingsOpsWidget() {
   const monitoringHref = pulseAppHref("/monitoring");
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-[var(--ops-dash-widget-bg,#ffffff)] dark:bg-[var(--ops-dash-widget-bg,#0f172a)]">
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[color-mix(in_srgb,var(--ops-dash-border-muted,#94a3b8)_35%,transparent)] px-2 py-1.5">
+    <div className="ops-dash-inner-card flex h-full min-h-0 flex-col overflow-hidden p-0">
+      <div className="ops-dash-widget-header flex shrink-0 items-center justify-between gap-2 px-2 py-1.5">
         <p className="text-[10px] font-semibold leading-tight text-[color-mix(in_srgb,var(--ds-text-primary)_55%,transparent)]">
           Live chemistry · demo controllers
         </p>

@@ -7,16 +7,10 @@ import { cn } from "@/lib/cn";
 import { sessionHasAnyRole, sessionPrimaryRole } from "@/lib/pulse-roles";
 import { canAccessClassicNavHref } from "@/lib/rbac/session-access";
 
-const VIEW_TAB_TOOLBAR =
-  "rounded-lg border-2 border-ds-border bg-transparent px-3 py-2 text-center text-xs font-semibold text-ds-foreground shadow-none transition-colors sm:text-sm hover:border-[var(--ds-accent)] hover:bg-[color-mix(in_srgb,var(--ds-accent)_12%,var(--ds-bg))] hover:text-[var(--ds-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-accent)] dark:hover:bg-[color-mix(in_srgb,var(--ds-accent)_18%,transparent)]";
-
-const VIEW_TAB_TOOLBAR_ACTIVE =
-  "border-0 bg-[var(--ds-accent)] text-white shadow-sm hover:border-0 hover:bg-[color-mix(in_srgb,var(--ds-accent)_88%,#0f172a)] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80";
-
 /**
  * Switches between operations, leadership, and projects dashboards. URL is the source of truth.
  *
- * - `toolbar` — individual bordered buttons (for embedding in dashboard headers).
+ * - `toolbar` — frosted segmented control (operations dashboard header).
  * - `segmented-card` — legacy grouped pill inside a grey card (kept for one-off layouts).
  */
 export function DashboardViewTabs({
@@ -90,16 +84,12 @@ export function DashboardViewTabs({
   }
 
   return (
-    <div
-      className={cn("inline-flex max-w-full flex-wrap items-center gap-1", className)}
-      role="navigation"
-      aria-label="Dashboard views"
-    >
+    <div className={cn("ops-dash-segment", className)} role="navigation" aria-label="Dashboard views">
       {items.map((item) => (
         <button
           key={item.key}
           type="button"
-          className={cn(VIEW_TAB_TOOLBAR, item.active && VIEW_TAB_TOOLBAR_ACTIVE)}
+          className={cn("ops-dash-segment-btn", item.active && "ops-dash-segment-btn--active")}
           aria-current={item.active ? "page" : undefined}
           onClick={item.onClick}
         >

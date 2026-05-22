@@ -11,7 +11,7 @@ export function LowInventoryOpsWidget({ model }: { model: DashboardViewModel }) 
   const invHref = pulseTenantNav.find((n) => n.href === "/dashboard/inventory")?.href ?? "/dashboard/inventory";
 
   return (
-    <div className="flex h-full min-h-0 flex-col rounded-xl border border-[color-mix(in_srgb,var(--ops-dash-widget-bg,#fff)_65%,var(--ops-dash-border,#cbd5e1))] bg-[var(--ops-dash-widget-bg,#ffffff)] p-3 shadow-sm dark:border-white/[0.07] dark:bg-[color-mix(in_srgb,#0f172a_96%,#1e293b)]">
+    <div className="ops-dash-inner-card flex h-full min-h-0 flex-col p-3">
       <div className="mb-3 flex items-start justify-between gap-2">
         <div>
           <p className="text-xs font-semibold text-[color-mix(in_srgb,var(--ds-text-primary)_92%,transparent)]">Consumables</p>
@@ -32,7 +32,7 @@ export function LowInventoryOpsWidget({ model }: { model: DashboardViewModel }) 
       </div>
 
       {model.inventory.alert ? (
-        <div className="mb-3 flex gap-2 rounded-lg border border-[color-mix(in_srgb,var(--ds-warning)_35%,transparent)] bg-[color-mix(in_srgb,var(--ds-warning)_10%,transparent)] px-2.5 py-2">
+        <div className="mb-3 flex gap-2 rounded-xl border border-[color-mix(in_srgb,var(--ds-warning)_28%,rgb(255_255_255/0.6))] bg-[linear-gradient(145deg,color-mix(in_srgb,var(--ds-warning)_14%,#fffbeb),color-mix(in_srgb,var(--ds-warning)_6%,#fff7ed))] px-2.5 py-2 shadow-[0_1px_0_rgb(255_255_255/0.75)_inset,0_6px_16px_-10px_rgb(245_158_11/0.22)]">
           <Package className="mt-0.5 h-4 w-4 shrink-0 text-[var(--ds-warning)]" aria-hidden />
           <div className="min-w-0 flex-1">
             <p className="text-[11px] font-bold text-[color-mix(in_srgb,var(--ds-text-primary)_92%,transparent)]">{model.inventory.alert.category}</p>

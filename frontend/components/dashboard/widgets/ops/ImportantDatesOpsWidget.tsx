@@ -31,7 +31,7 @@ export function ImportantDatesOpsWidget() {
   }, []);
 
   return (
-    <div className="flex h-full min-h-0 flex-col rounded-xl border border-[color-mix(in_srgb,var(--ops-dash-widget-bg,#fff)_65%,var(--ops-dash-border,#cbd5e1))] bg-[var(--ops-dash-widget-bg,#ffffff)] p-3 shadow-sm dark:border-white/[0.07] dark:bg-[color-mix(in_srgb,#0f172a_96%,#1e293b)]">
+    <div className="ops-dash-inner-card flex h-full min-h-0 flex-col p-3">
       <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold text-[color-mix(in_srgb,var(--ds-text-primary)_55%,transparent)]">
         <CalendarDays className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
         <span>Synced to manager calendar</span>
