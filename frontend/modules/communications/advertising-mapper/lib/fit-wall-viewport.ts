@@ -2,7 +2,7 @@ import { BASE_PX_PER_INCH, RULER_THICKNESS_PX, type PlannerViewport } from "@/mo
 import { fitViewportToBounds } from "@/spatial-engine/viewport/fit";
 import type { FacilityWallPlan } from "@/modules/communications/advertising-mapper/types";
 
-/** Fit the active wall into the drawable stage area. */
+/** Fill the drawable stage with the active wall (cover — edge-to-edge inside rulers). */
 export function fitWallViewport(
   wall: FacilityWallPlan,
   stageWidth: number,
@@ -18,6 +18,8 @@ export function fitWallViewport(
       maxX: wall.width_inches * BASE_PX_PER_INCH,
       maxY: wall.height_inches * BASE_PX_PER_INCH,
     },
-    padding: 12,
+    padding: 0,
+    fitMode: "cover",
+    maxScale: 12,
   });
 }

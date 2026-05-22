@@ -9,6 +9,8 @@ export type FitToBoundsOptions = {
   padding?: number;
   minScale?: number;
   maxScale?: number;
+  /** `contain` = entire bounds visible; `cover` = fill drawable area (may crop). */
+  fitMode?: "contain" | "cover";
 };
 
 /**
@@ -24,6 +26,7 @@ export function fitViewportToBounds(options: FitToBoundsOptions): SpatialViewpor
     padding = 56,
     minScale = VIEWPORT_SCALE_MIN,
     maxScale = VIEWPORT_SCALE_MAX,
+    fitMode = "contain",
   } = options;
 
   const bw = Math.max(40, bounds.maxX - bounds.minX);
@@ -32,7 +35,8 @@ export function fitViewportToBounds(options: FitToBoundsOptions): SpatialViewpor
   const drawableH = Math.max(1, stageHeight - contentOffset.y);
   const sx = (drawableW - padding * 2) / bw;
   const sy = (drawableH - padding * 2) / bh;
-  const scale = Math.max(minScale, Math.min(maxScale, Math.min(sx, sy)));
+  const rawScale = fitMode === "cover" ? Math.max(sx, sy) : Math.min(sx, sy);
+  const scale = Math.max(minScale, Math.min(maxScale, rawScale));
   const cx = (bounds.minX + bounds.maxX) / 2;
   const cy = (bounds.minY + bounds.maxY) / 2;
   const centerScreenX = contentOffset.x + drawableW / 2;
