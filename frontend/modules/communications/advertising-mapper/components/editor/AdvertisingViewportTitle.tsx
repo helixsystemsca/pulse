@@ -7,13 +7,13 @@ import { cn } from "@/lib/cn";
 type Props = {
   name: string;
   onRename: (name: string) => void;
-  /** `header` — top bar; `overlay` — floating on canvas (fullscreen). */
-  variant?: "header" | "overlay";
+  /** `breadcrumb` — inline in header; `overlay` — floating on canvas. */
+  variant?: "breadcrumb" | "overlay";
   className?: string;
 };
 
-/** Viewport name with inline edit (header or canvas overlay). */
-export function AdvertisingViewportTitle({ name, onRename, variant = "header", className }: Props) {
+/** Viewport name with inline edit. */
+export function AdvertisingViewportTitle({ name, onRename, variant = "breadcrumb", className }: Props) {
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [editing, setEditing] = useState(false);
@@ -34,15 +34,13 @@ export function AdvertisingViewportTitle({ name, onRename, variant = "header", c
     setEditing(false);
   }
 
-  const isHeader = variant === "header";
+  const isBreadcrumb = variant === "breadcrumb";
 
   return (
     <div
       className={cn(
-        "pointer-events-auto flex max-w-[min(100%,28rem)] items-center justify-center gap-2",
-        isHeader
-          ? "px-1 py-0"
-          : "rounded-xl border border-slate-200/80 bg-white/90 px-4 py-2 shadow-sm backdrop-blur-sm",
+        "pointer-events-auto flex max-w-[min(100%,20rem)] items-center gap-1.5",
+        !isBreadcrumb && "rounded-xl border border-slate-200/80 bg-white/90 px-4 py-2 shadow-sm backdrop-blur-sm",
         className,
       )}
     >
@@ -68,15 +66,28 @@ export function AdvertisingViewportTitle({ name, onRename, variant = "header", c
               setEditing(false);
             }
           }}
-          className="min-w-[10rem] flex-1 border-0 bg-transparent p-0 text-center text-2xl font-semibold tracking-tight text-slate-900 outline-none ring-0"
+          className={cn(
+            "min-w-[6rem] flex-1 border-0 bg-transparent p-0 font-semibold text-slate-900 outline-none ring-0",
+            isBreadcrumb ? "text-sm" : "text-center text-2xl",
+          )}
           maxLength={48}
         />
       ) : (
-        <h2 className="truncate text-center text-2xl font-semibold tracking-tight text-slate-900">{name}</h2>
+        <span
+          className={cn(
+            "truncate font-semibold text-slate-900",
+            isBreadcrumb ? "text-sm" : "text-center text-2xl",
+          )}
+        >
+          {name}
+        </span>
       )}
       <button
         type="button"
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-sky-700"
+        className={cn(
+          "flex shrink-0 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-sky-700",
+          isBreadcrumb ? "h-6 w-6" : "h-8 w-8",
+        )}
         aria-label={editing ? "Save viewport name" : "Edit viewport name"}
         title={editing ? "Save" : "Edit name"}
         onClick={() => {
@@ -84,7 +95,7 @@ export function AdvertisingViewportTitle({ name, onRename, variant = "header", c
           else setEditing(true);
         }}
       >
-        <Pencil className="h-4 w-4" aria-hidden />
+        <Pencil className={isBreadcrumb ? "h-3 w-3" : "h-4 w-4"} aria-hidden />
       </button>
     </div>
   );

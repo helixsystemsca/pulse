@@ -88,9 +88,9 @@ export function AdvertisingInspectorPanel({
   const availableOpportunity = useMemo(() => computeAvailableOpportunity(wall.blocks), [wall.blocks]);
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-white" data-ad-rail="current-available">
+    <div className="flex h-full min-h-0 flex-col bg-white/98" data-ad-rail="current-available">
       <div
-        className="grid shrink-0 grid-cols-2 gap-0 border-b border-slate-200 bg-slate-50/80 p-1"
+        className="grid shrink-0 grid-cols-2 gap-0 border-b border-slate-200/80 bg-slate-50/60 p-0.5"
         role="tablist"
         aria-label="Ad inventory"
       >
@@ -390,8 +390,8 @@ function RevenueFooter({
   actions?: boolean;
 }) {
   return (
-    <div className="shrink-0 border-t border-slate-200 bg-slate-50/90 p-3">
-      <h4 className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{title}</h4>
+    <div className="shrink-0 border-t border-slate-200/80 bg-slate-50/50 px-3 py-2">
+      <h4 className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{title}</h4>
       <ul className="mt-2 space-y-1 text-xs">
         {lines.map((line) => {
           const isHighlight = line.key === highlightKey;

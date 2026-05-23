@@ -4,13 +4,14 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { DimensionEditModal } from "@/modules/communications/advertising-mapper/components/DimensionEditModal";
 import { InventoryPlannerCanvas } from "@/modules/communications/advertising-mapper/components/InventoryPlannerCanvas";
 import { PlannerMinimap } from "@/modules/communications/advertising-mapper/components/PlannerMinimap";
-import { AdvertisingEditorHeader } from "@/modules/communications/advertising-mapper/components/editor/AdvertisingEditorHeader";
+import { AdvertisingEditorHeaderBar } from "@/modules/communications/advertising-mapper/components/editor/AdvertisingEditorHeaderBar";
+import { AdvertisingEditorShell } from "@/modules/communications/advertising-mapper/components/editor/AdvertisingEditorShell";
+import { AdvertisingEditorStatusBar } from "@/modules/communications/advertising-mapper/components/editor/AdvertisingEditorStatusBar";
 import { AdvertisingFloatingToolbar } from "@/modules/communications/advertising-mapper/components/editor/AdvertisingFloatingToolbar";
 import {
   AdvertisingInspectorPanel,
   type AdvertisingLayerVisibility,
 } from "@/modules/communications/advertising-mapper/components/editor/AdvertisingInspectorPanel";
-import { AdvertisingWallStrip } from "@/modules/communications/advertising-mapper/components/editor/AdvertisingWallStrip";
 import { persistAllWallBackdrops } from "@/modules/communications/advertising-mapper/lib/advertising-wall-backdrop-storage";
 import { SnipPresetBar } from "@/modules/communications/advertising-mapper/components/editor/SnipPresetBar";
 import { snipRegionFromBackdrop, type WallSnipRect } from "@/modules/communications/advertising-mapper/lib/ad-snip";
@@ -21,7 +22,6 @@ import {
   type StandardAdSizePresetId,
 } from "@/modules/communications/advertising-mapper/lib/standard-ad-sizes";
 import { getDefaultAdvertisingWallScaffolds } from "@/modules/communications/advertising-mapper/data/mock-walls";
-import { AdvertisingViewportTitle } from "@/modules/communications/advertising-mapper/components/editor/AdvertisingViewportTitle";
 import type { ConstraintRegion, ConstraintType, PlannerToolMode } from "@/modules/communications/advertising-mapper/geometry/types";
 import { useAdvertisingOperationalContext } from "@/modules/communications/advertising-mapper/hooks/useAdvertisingOperationalContext";
 import { useAdvertisingSpatialRuntime } from "@/modules/communications/advertising-mapper/hooks/useAdvertisingSpatialRuntime";
@@ -45,8 +45,6 @@ import { pulseAppHref } from "@/lib/pulse-app";
 import {
   getSpatialWorkspace,
   spatialWorkspaceFullscreenHref,
-  SpatialViewportControls,
-  SpatialWorkspaceShell,
   useSpatialWorkspaceTools,
 } from "@/spatial-engine/workspace";
 import { useSpatialRuntimeStore } from "@/spatial-engine/runtime/spatial-runtime-store";
@@ -102,6 +100,7 @@ export function AdvertisingWorkspaceView({
   const [snipBusy, setSnipBusy] = useState(false);
   const [backdropBusy, setBackdropBusy] = useState(false);
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
+  const [inspectorOpen, setInspectorOpen] = useState(false);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
 
   const { viewport, setViewport, zoomBy, resetView } = usePlannerViewport();
@@ -380,15 +379,8 @@ export function AdvertisingWorkspaceView({
       tools={workspace.tools}
       activeToolId={toolMode}
       onToolChange={onToolChange}
-      snapEnabled={snapEnabled}
-      onSnapToggle={() => setSnapEnabled((v) => !v)}
       onUndo={undo}
       onRedo={redo}
-      scalePercent={scalePercent}
-      onZoomIn={() => zoomFocal(1.12)}
-      onZoomOut={() => zoomFocal(0.88)}
-      zoomDisabled={!canZoomViewport}
-      variant={editorFullscreen ? "floating" : "header"}
     />
   );
 
@@ -413,45 +405,66 @@ export function AdvertisingWorkspaceView({
 
   return (
     <>
-      <SpatialWorkspaceShell
-        workspaceId="advertising"
-        title="Advertising"
-        subtitle={`${wallMeta.total} inventory · ${wallMeta.available} available · ${wallMeta.occupied} occupied`}
-        activeToolId={toolMode}
-        onToolChange={onToolChange}
-        workspaceSwitcher={editorFullscreen ? undefined : workspaceSwitcher}
+      <AdvertisingEditorShell
         immersive={immersive}
         fullscreen={editorFullscreen}
-        bareEditor={editorFullscreen}
-        className={editorFullscreen ? "h-[100dvh]" : "min-h-0 flex-1"}
-        headerCenter={
-          editorFullscreen ? undefined : (
-            <>
-              <AdvertisingViewportTitle
-                name={wall.name}
-                variant="header"
-                onRename={(next) => updateWall({ name: next })}
-              />
-              {advertisingToolbar}
-            </>
-          )
+        className={editorFullscreen ? undefined : "min-h-0 flex-1"}
+        inspectorOpen={inspectorOpen}
+        inspectorWidthPx={360}
+        header={
+          <AdvertisingEditorHeaderBar
+            workspaceSwitcher={workspaceSwitcher}
+            wallName={wall.name}
+            onWallRename={(next) => updateWall({ name: next })}
+            inventoryTotal={wallMeta.total}
+            inventoryAvailable={wallMeta.available}
+            inventoryOccupied={wallMeta.occupied}
+            unit={unit}
+            onUnitChange={setUnit}
+            onSave={handleSaveBackdrops}
+            onPublish={() => {
+              /* proposal export — API phase */
+            }}
+            fullscreenHref={editorFullscreen ? undefined : advertisingFullscreenHref}
+          />
         }
-        headerActions={
-          editorFullscreen ? undefined : (
-            <AdvertisingEditorHeader
-              unit={unit}
-              onUnitChange={setUnit}
-              onSave={handleSaveBackdrops}
-              onPublish={() => {
-                /* proposal export — API phase */
-              }}
-              fullscreenHref={advertisingFullscreenHref}
-            />
-          )
+        footer={
+          <AdvertisingEditorStatusBar
+            walls={walls}
+            activeWallId={wallId}
+            wall={wall}
+            unit={unit}
+            scalePercent={scalePercent}
+            snapEnabled={snapEnabled}
+            showGrid={showGrid}
+            inspectorOpen={inspectorOpen}
+            onInspectorToggle={() => setInspectorOpen((v) => !v)}
+            onWallChange={(id) => {
+              setWallId(id);
+              setSelectedInventoryId(null);
+              setSelectedConstraintId(null);
+            }}
+            onAddWall={() => {
+              const id = addWall();
+              setWallId(id);
+              setSelectedInventoryId(null);
+              setSelectedConstraintId(null);
+            }}
+            onBackdropChange={handleBackdropChange}
+            onGenerateEmptySpace={handleGenerateEmptyBackdrop}
+            generateBusy={backdropBusy}
+            onZoomIn={() => zoomFocal(1.12)}
+            onZoomOut={() => zoomFocal(0.88)}
+            onResetView={canPanViewport || canZoomViewport ? syncWallToViewport : () => {}}
+            onSnapToggle={() => setSnapEnabled((v) => !v)}
+            onGridToggle={() => setShowGrid((v) => !v)}
+            zoomDisabled={!canZoomViewport}
+            fitDisabled={!canPanViewport && !canZoomViewport}
+          />
         }
-        floatingToolbarInsetTop={editorFullscreen ? RULER_THICKNESS_PX + 8 : undefined}
-        floatingToolbar={editorFullscreen ? advertisingToolbar : undefined}
-        rightPanel={
+        floatingToolbar={advertisingToolbar}
+        floatingToolbarTop={RULER_THICKNESS_PX + 10}
+        inspector={
           <AdvertisingInspectorPanel
             wall={wall}
             unit={unit}
@@ -466,18 +479,6 @@ export function AdvertisingWorkspaceView({
         }
         viewport={
           <div ref={canvasContainerRef} className="relative h-full w-full">
-            {editorFullscreen ? (
-              <div
-                className="pointer-events-none absolute left-1/2 z-30 -translate-x-1/2"
-                style={{ top: RULER_THICKNESS_PX + 12 }}
-              >
-                <AdvertisingViewportTitle
-                  name={wall.name}
-                  variant="overlay"
-                  onRename={(next) => updateWall({ name: next })}
-                />
-              </div>
-            ) : null}
             {saveNotice ? (
               <p
                 className="pointer-events-none absolute left-1/2 top-3 z-30 -translate-x-1/2 rounded-lg border border-slate-200/90 bg-white/95 px-3 py-1.5 text-xs font-medium text-slate-700 shadow-md"
@@ -556,44 +557,6 @@ export function AdvertisingWorkspaceView({
                 : undefined
             }
           />
-        }
-        bottomBar={
-          editorFullscreen ? undefined : (
-          <AdvertisingWallStrip
-            walls={walls}
-            activeWallId={wallId}
-            unit={unit}
-            onWallChange={(id) => {
-              setWallId(id);
-              setSelectedInventoryId(null);
-              setSelectedConstraintId(null);
-            }}
-            onAddWall={() => {
-              const id = addWall();
-              setWallId(id);
-              setSelectedInventoryId(null);
-              setSelectedConstraintId(null);
-            }}
-            onBackdropChange={handleBackdropChange}
-            onGenerateEmptySpace={handleGenerateEmptyBackdrop}
-            generateBusy={backdropBusy}
-            viewportControls={
-              <SpatialViewportControls
-                scalePercent={scalePercent}
-                onZoomIn={() => zoomFocal(1.12)}
-                onZoomOut={() => zoomFocal(0.88)}
-                onResetView={canPanViewport || canZoomViewport ? syncWallToViewport : () => {}}
-                zoomDisabled={!canZoomViewport}
-                fitDisabled={!canPanViewport && !canZoomViewport}
-                snapEnabled={snapEnabled}
-                onSnapToggle={() => setSnapEnabled((v) => !v)}
-                showGrid={showGrid}
-                onGridToggle={() => setShowGrid((v) => !v)}
-                showZoom={false}
-              />
-            }
-          />
-          )
         }
       />
 
