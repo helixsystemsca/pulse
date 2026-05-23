@@ -375,6 +375,23 @@ export function AdvertisingWorkspaceView({
 
   const advertisingFullscreenHref = pulseAppHref(spatialWorkspaceFullscreenHref("advertising"));
 
+  const advertisingToolbar = (
+    <AdvertisingFloatingToolbar
+      tools={workspace.tools}
+      activeToolId={toolMode}
+      onToolChange={onToolChange}
+      snapEnabled={snapEnabled}
+      onSnapToggle={() => setSnapEnabled((v) => !v)}
+      onUndo={undo}
+      onRedo={redo}
+      scalePercent={scalePercent}
+      onZoomIn={() => zoomFocal(1.12)}
+      onZoomOut={() => zoomFocal(0.88)}
+      zoomDisabled={!canZoomViewport}
+      variant={editorFullscreen ? "floating" : "header"}
+    />
+  );
+
   const handleSaveBackdrops = useCallback(() => {
     try {
       const { savedCount } = persistAllWallBackdrops(walls);
@@ -407,6 +424,18 @@ export function AdvertisingWorkspaceView({
         fullscreen={editorFullscreen}
         bareEditor={editorFullscreen}
         className={editorFullscreen ? "h-[100dvh]" : "min-h-0 flex-1"}
+        headerCenter={
+          editorFullscreen ? undefined : (
+            <>
+              <AdvertisingViewportTitle
+                name={wall.name}
+                variant="header"
+                onRename={(next) => updateWall({ name: next })}
+              />
+              {advertisingToolbar}
+            </>
+          )
+        }
         headerActions={
           editorFullscreen ? undefined : (
             <AdvertisingEditorHeader
@@ -420,22 +449,8 @@ export function AdvertisingWorkspaceView({
             />
           )
         }
-        floatingToolbarInsetTop={editorFullscreen ? RULER_THICKNESS_PX + 8 : RULER_THICKNESS_PX + 12}
-        floatingToolbar={
-          <AdvertisingFloatingToolbar
-            tools={workspace.tools}
-            activeToolId={toolMode}
-            onToolChange={onToolChange}
-            snapEnabled={snapEnabled}
-            onSnapToggle={() => setSnapEnabled((v) => !v)}
-            onUndo={undo}
-            onRedo={redo}
-            scalePercent={scalePercent}
-            onZoomIn={() => zoomFocal(1.12)}
-            onZoomOut={() => zoomFocal(0.88)}
-            zoomDisabled={!canZoomViewport}
-          />
-        }
+        floatingToolbarInsetTop={editorFullscreen ? RULER_THICKNESS_PX + 8 : undefined}
+        floatingToolbar={editorFullscreen ? advertisingToolbar : undefined}
         rightPanel={
           <AdvertisingInspectorPanel
             wall={wall}
@@ -451,15 +466,18 @@ export function AdvertisingWorkspaceView({
         }
         viewport={
           <div ref={canvasContainerRef} className="relative h-full w-full">
-            <div
-              className="pointer-events-none absolute left-1/2 z-30 -translate-x-1/2"
-              style={{ top: RULER_THICKNESS_PX + 52 }}
-            >
-              <AdvertisingViewportTitle
-                name={wall.name}
-                onRename={(next) => updateWall({ name: next })}
-              />
-            </div>
+            {editorFullscreen ? (
+              <div
+                className="pointer-events-none absolute left-1/2 z-30 -translate-x-1/2"
+                style={{ top: RULER_THICKNESS_PX + 12 }}
+              >
+                <AdvertisingViewportTitle
+                  name={wall.name}
+                  variant="overlay"
+                  onRename={(next) => updateWall({ name: next })}
+                />
+              </div>
+            ) : null}
             {saveNotice ? (
               <p
                 className="pointer-events-none absolute left-1/2 top-3 z-30 -translate-x-1/2 rounded-lg border border-slate-200/90 bg-white/95 px-3 py-1.5 text-xs font-medium text-slate-700 shadow-md"

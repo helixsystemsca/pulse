@@ -7,11 +7,13 @@ import { cn } from "@/lib/cn";
 type Props = {
   name: string;
   onRename: (name: string) => void;
+  /** `header` — top bar; `overlay` — floating on canvas (fullscreen). */
+  variant?: "header" | "overlay";
   className?: string;
 };
 
-/** Centered viewport name above the arena canvas (not the page header). */
-export function AdvertisingViewportTitle({ name, onRename, className }: Props) {
+/** Viewport name with inline edit (header or canvas overlay). */
+export function AdvertisingViewportTitle({ name, onRename, variant = "header", className }: Props) {
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [editing, setEditing] = useState(false);
@@ -32,10 +34,15 @@ export function AdvertisingViewportTitle({ name, onRename, className }: Props) {
     setEditing(false);
   }
 
+  const isHeader = variant === "header";
+
   return (
     <div
       className={cn(
-        "pointer-events-auto flex max-w-[min(100%,28rem)] items-center justify-center gap-2 rounded-xl border border-slate-200/80 bg-white/90 px-4 py-2 shadow-sm backdrop-blur-sm",
+        "pointer-events-auto flex max-w-[min(100%,28rem)] items-center justify-center gap-2",
+        isHeader
+          ? "px-1 py-0"
+          : "rounded-xl border border-slate-200/80 bg-white/90 px-4 py-2 shadow-sm backdrop-blur-sm",
         className,
       )}
     >

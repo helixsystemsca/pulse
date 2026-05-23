@@ -41,11 +41,7 @@ const TEXT_COLUMNS: {
   { field: "notes", filterKey: "notes_contains", label: "Notes" },
   { field: "website", filterKey: "website_contains", label: "Website" },
   { field: "address_line1", filterKey: "address_line1_contains", label: "Address 1" },
-  { field: "address_line2", filterKey: "address_line2_contains", label: "Address 2" },
   { field: "city", filterKey: "city_contains", label: "City" },
-  { field: "region", filterKey: "region_contains", label: "Region" },
-  { field: "postal_code", filterKey: "postal_code_contains", label: "Postal" },
-  { field: "country", filterKey: "country_contains", label: "Country" },
 ];
 
 function emptyTextFilters(): Record<string, string> {
@@ -303,7 +299,7 @@ export function InventoryVendorsPanel({
             Loading vendors…
           </div>
         ) : (
-          <table className="min-w-[2200px] w-full border-collapse text-left text-sm">
+          <table className="min-w-[1600px] w-full border-collapse text-left text-sm">
             <thead>
               <tr className="app-table-head-row border-pulse-border">
                 {TEXT_COLUMNS.map((c) => (

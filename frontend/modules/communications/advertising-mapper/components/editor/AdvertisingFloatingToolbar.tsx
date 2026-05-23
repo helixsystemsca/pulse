@@ -17,6 +17,8 @@ type Props = {
   onZoomIn?: () => void;
   onZoomOut?: () => void;
   zoomDisabled?: boolean;
+  /** `header` — top bar strip; `floating` — over canvas (fullscreen). */
+  variant?: "header" | "floating";
 };
 
 export function AdvertisingFloatingToolbar({
@@ -31,6 +33,7 @@ export function AdvertisingFloatingToolbar({
   onZoomIn,
   onZoomOut,
   zoomDisabled = false,
+  variant = "header",
 }: Props) {
   const navigation = tools.filter((t) => t.group === "navigation");
   const primary = tools.filter((t) => t.group === "primary");
@@ -38,7 +41,10 @@ export function AdvertisingFloatingToolbar({
 
   return (
     <div
-      className="pointer-events-auto flex items-center gap-1 rounded-xl border border-slate-200/90 bg-white/95 p-1 shadow-lg backdrop-blur-sm"
+      className={cn(
+        "pointer-events-auto flex items-center gap-1 rounded-xl border border-slate-200/90 bg-white/95 p-1",
+        variant === "floating" ? "shadow-lg backdrop-blur-sm" : "shadow-sm",
+      )}
       role="toolbar"
       aria-label="Advertising editor tools"
     >
