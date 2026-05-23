@@ -11,9 +11,8 @@ export type WidgetRenderContext = {
 /**
  * Determine an adaptive mode from available widget space.
  *
- * We use a blended heuristic:
- * - grid units (stable across zoom/font/render changes)
- * - estimated rendered px (captures wide vs tall widgets more accurately)
+ * Pass **logical tile** counts (`gridW` / `gridH` = tw / th from `tile-grid`) so modes
+ * align with discrete footprints (1×1, 2×1, 2×2, …), not raw react-grid-layout units.
  *
  * Modes are intentionally "sticky" (wide bands) to avoid thrash while resizing.
  */

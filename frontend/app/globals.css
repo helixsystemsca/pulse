@@ -1695,7 +1695,11 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
     background-clip: padding-box;
   }
 
-  /* Keep dashboard tiles clipped to their grid cells (avoids visual bleed when layouts are tight). */
+  /*
+   * Dashboard tile grid: react-grid-layout uses 16 cols; each logical tile = 2 cols × 2 rows.
+   * Widgets snap to discrete footprints (see lib/dashboard/tile-grid.ts). data-tile-* on items
+   * drives footprint-aware internal layouts (KPI shapes, elastic density, workspace panels).
+   */
   .pulse-dashboard-grid:not(.pulse-dashboard-edit) .react-grid-item {
     overflow: hidden;
   }

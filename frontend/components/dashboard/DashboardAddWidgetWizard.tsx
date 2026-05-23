@@ -11,6 +11,7 @@ import {
   defaultSliceOptions,
   newCustomWidgetId,
 } from "@/lib/dashboardPageWidgetCatalog";
+import { defaultLayoutItemForWidget } from "@/lib/dashboard/tile-grid";
 
 type Step = 1 | 2 | 3;
 
@@ -118,7 +119,7 @@ export function DashboardAddWidgetWizard({
     const layoutItem: LayoutItem | null =
       mode === "edit"
         ? null
-        : { i: id, x: 0, y: Infinity, w: 4, h: 4, minW: 2, minH: 2 };
+        : { ...defaultLayoutItemForWidget(id), x: 0, y: Infinity };
     onSave(config, layoutItem);
     onClose();
   }

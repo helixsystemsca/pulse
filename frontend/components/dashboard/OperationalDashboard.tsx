@@ -42,10 +42,22 @@ import { ImportantDatesOpsWidget } from "@/components/dashboard/widgets/ops/Impo
 import { NotificationsWorkOrdersOpsWidget } from "@/components/dashboard/widgets/ops/NotificationsWorkOrdersOpsWidget";
 import {
   buildWorkRequestsGridPreset,
-  snapWorkRequestsGridItem,
   workRequestsLayoutModeFromContext,
   WORK_REQUESTS_WIDGET_ID,
 } from "@/components/dashboard/widgets/ops/work-requests-widget-layout";
+import {
+  applyTileSnapsToLayout,
+  DASHBOARD_GRID_COLS,
+  DASHBOARD_GRID_GAP_PX,
+  DASHBOARD_GRID_ROW_HEIGHT_PX,
+  defaultLayoutItemForWidget,
+  gridUnitsToTile,
+  tileFootprintShape,
+  widgetPixelSizeFromGridUnits,
+  TILE_UNIT_COLS,
+  TILE_UNIT_ROWS,
+  widgetTileTier,
+} from "@/lib/dashboard/tile-grid";
 import { LowInventoryOpsWidget } from "@/components/dashboard/widgets/ops/LowInventoryOpsWidget";
 import { Co2MonitoringOpsWidget } from "@/components/dashboard/widgets/ops/Co2MonitoringOpsWidget";
 import { PoolReadingsOpsWidget } from "@/components/dashboard/widgets/ops/PoolReadingsOpsWidget";
@@ -63,37 +75,6 @@ import { useOperationalNotificationsStore } from "@/lib/dashboard/operational-no
 
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
-
-/** Fixed logical columns — 16-wide grid for 1x1/2x2 sizing and smaller base tiles. */
-const DASHBOARD_GRID_COLS = 16;
-/** Vertical pitch: half of prior (yields ~25% tile area at same w/h). */
-const DASHBOARD_GRID_ROW_HEIGHT_PX = 36;
-/** Horizontal + vertical gutter between cards (scaled down with the grid). */
-const DASHBOARD_GRID_GAP_PX = 9;
-
-function widgetPixelSizeFromGridUnits({
-  gridWidthPx,
-  cols,
-  w,
-  h,
-  rowHeight,
-  gap,
-}: {
-  gridWidthPx: number;
-  cols: number;
-  w: number;
-  h: number;
-  rowHeight: number;
-  gap: number;
-}) {
-  const safeCols = Math.max(1, cols);
-  const marginX = gap;
-  const marginY = gap;
-  const colWidth = (Math.max(0, gridWidthPx) - marginX * (safeCols - 1)) / safeCols;
-  const widthPx = w * colWidth + (w - 1) * marginX;
-  const heightPx = h * rowHeight + (h - 1) * marginY;
-  return { widthPx: Math.max(0, widthPx), heightPx: Math.max(0, heightPx), colWidth: Math.max(0, colWidth) };
-}
 
 function layoutItemsCollide(a: LayoutItem, b: LayoutItem): boolean {
   if (a.i === b.i) return false;
@@ -143,15 +124,7 @@ function sanitizeLayoutForGrid(layout: Layout, cols: number, gridWidthPx?: numbe
   }
   const byId = new Map(placed.map((p) => [p.i, p]));
   const ordered = ids.map((i) => byId.get(i)).filter((x): x is LayoutItem => x != null);
-  return ordered.map((item) =>
-    item.i === WORK_REQUESTS_WIDGET_ID ? snapWorkRequestsGridItem(item, cols, gridWidthPx) : item,
-  );
-}
-
-function applyWorkRequestsLayoutSnaps(layout: Layout, cols: number, gridWidthPx?: number): Layout {
-  return layout.map((item) =>
-    item.i === WORK_REQUESTS_WIDGET_ID ? snapWorkRequestsGridItem(item, cols, gridWidthPx) : item,
-  );
+  return applyTileSnapsToLayout(ordered, cols, gridWidthPx, "footprint");
 }
 
 /** Operations dashboard header: icon tools get a teal hover inside the unified actions card. */
@@ -1190,7 +1163,7 @@ function DashboardBody({
 
   /** Kiosk fullscreen uses the same persisted layout as the in-app dashboard (not a separate TV layout). */
   const layoutStorageKey = useMemo(() => {
-    return `pulse_dashboard_layout_v7_${dashboardContext}_standard`;
+    return `pulse_dashboard_layout_v8_${dashboardContext}_standard`;
   }, [dashboardContext]);
 
   const customWidgetStorageKey = useMemo(() => {
@@ -1405,30 +1378,59 @@ function DashboardBody({
 
   const defaultLayout = useMemo((): Layout => {
     if (isDeptDashboard) return [];
-    return [
-      { i: "important_dates", x: 0, y: 0, w: 5, h: 12, minW: 3, minH: 6 },
-      (() => {
-        const p = buildWorkRequestsGridPreset("4x1", 1200, DASHBOARD_GRID_COLS);
-        return {
-          i: WORK_REQUESTS_WIDGET_ID,
-          x: 5,
-          y: 0,
-          w: p.w,
-          h: p.h,
-          minW: p.minW,
-          minH: p.minH,
-          maxH: p.maxH,
-          maxW: p.maxW,
-        };
-      })(),
-      { i: "training_compliance", x: 11, y: 0, w: 5, h: 12, minW: 3, minH: 6 },
-      { i: "workforce", x: 0, y: 12, w: 6, h: 10, minW: 4, minH: 6 },
-      { i: "low_inventory", x: 6, y: 12, w: 5, h: 10, minW: 3, minH: 6 },
-      { i: "co2_monitoring", x: 11, y: 12, w: 5, h: 7, minW: 3, minH: 5 },
-      { i: "facility_schedule", x: 0, y: 22, w: 8, h: 9, minW: 4, minH: 5 },
-      { i: "routine_assignments", x: 8, y: 22, w: 8, h: 9, minW: 4, minH: 5 },
-      { i: "pool_readings", x: 0, y: 31, w: 16, h: 10, minW: 6, minH: 6 },
+    const cols = DASHBOARD_GRID_COLS;
+    const gridW = 1200;
+    const row0: LayoutItem[] = [];
+    let x = 0;
+    const important = defaultLayoutItemForWidget("important_dates", cols, gridW);
+    row0.push({ ...important, x, y: 0 });
+    x += important.w ?? 6;
+    const wrPreset = buildWorkRequestsGridPreset("4x1", gridW, cols);
+    row0.push({
+      i: WORK_REQUESTS_WIDGET_ID,
+      x,
+      y: 0,
+      w: wrPreset.w,
+      h: wrPreset.h,
+      minW: wrPreset.minW,
+      minH: wrPreset.minH,
+      maxH: wrPreset.maxH,
+      maxW: wrPreset.maxW,
+    });
+    x += wrPreset.w;
+    const training = defaultLayoutItemForWidget("training_compliance", cols, gridW);
+    row0.push({ ...training, x: Math.min(x, cols - (training.w ?? 6)), y: 0 });
+    const row0Bottom = Math.max(...row0.map((l) => (l.y ?? 0) + (l.h ?? 1)));
+
+    const workforce = defaultLayoutItemForWidget("workforce", cols, gridW);
+    const lowInv = defaultLayoutItemForWidget("low_inventory", cols, gridW);
+    const co2 = defaultLayoutItemForWidget("co2_monitoring", cols, gridW);
+    const row1: LayoutItem[] = [
+      { ...workforce, x: 0, y: row0Bottom },
+      { ...lowInv, x: workforce.w ?? 6, y: row0Bottom },
+      {
+        ...co2,
+        x: (workforce.w ?? 6) + (lowInv.w ?? 6),
+        y: row0Bottom,
+      },
     ];
+    const row1Bottom = Math.max(...row1.map((l) => (l.y ?? 0) + (l.h ?? 1)));
+
+    const facility = defaultLayoutItemForWidget("facility_schedule", cols, gridW);
+    const routines = defaultLayoutItemForWidget("routine_assignments", cols, gridW);
+    const row2: LayoutItem[] = [
+      { ...facility, x: 0, y: row1Bottom },
+      { ...routines, x: facility.w ?? 8, y: row1Bottom },
+    ];
+    const row2Bottom = Math.max(...row2.map((l) => (l.y ?? 0) + (l.h ?? 1)));
+
+    const pool = defaultLayoutItemForWidget("pool_readings", cols, gridW);
+  return applyTileSnapsToLayout(
+      [...row0, ...row1, ...row2, { ...pool, x: 0, y: row2Bottom }],
+      cols,
+      gridW,
+      "footprint",
+    );
   }, [isDeptDashboard]);
 
   const [layout, setLayout] = useState<Layout>(defaultLayout);
@@ -1451,9 +1453,12 @@ function DashboardBody({
     let nextLayout: Layout | null = null;
     let loadedFromStorage = false;
     try {
-      const v3 = window.localStorage.getItem(layoutStorageKey);
-      if (v3) {
-        nextLayout = JSON.parse(v3) as Layout;
+      let raw = window.localStorage.getItem(layoutStorageKey);
+      if (!raw) {
+        raw = window.localStorage.getItem(`pulse_dashboard_layout_v7_${dashboardContext}_standard`);
+      }
+      if (raw) {
+        nextLayout = JSON.parse(raw) as Layout;
         loadedFromStorage = Array.isArray(nextLayout);
       }
     } catch {
@@ -1490,7 +1495,7 @@ function DashboardBody({
 
   useEffect(() => {
     if (!layoutHydrated || isInteractingRef.current) return;
-    setLayout((prev) => applyWorkRequestsLayoutSnaps(prev, DASHBOARD_GRID_COLS, width));
+    setLayout((prev) => applyTileSnapsToLayout(prev, DASHBOARD_GRID_COLS, width, "footprint"));
   }, [width, layoutHydrated]);
 
   const persistLayout = useCallback(
@@ -1536,14 +1541,15 @@ function DashboardBody({
     (id: string) => {
       if (layoutKeys.has(id)) return;
       const base = defaultLayout.find((l) => l.i === id);
-      const next: LayoutItem = base ?? { i: id, x: 0, y: Infinity, w: 4, h: 2 };
+      const next: LayoutItem =
+        base ?? defaultLayoutItemForWidget(id, DASHBOARD_GRID_COLS, width);
       setLayout((prev) => {
         const merged = [...prev, { ...next, x: 0, y: Infinity }] as Layout;
         persistLayout(merged);
         return merged;
       });
     },
-    [defaultLayout, layoutKeys, persistLayout],
+    [defaultLayout, layoutKeys, persistLayout, width],
   );
 
   const saveCustomPeek = useCallback((config: CustomDashboardWidgetConfig, layoutItem: LayoutItem | null) => {
@@ -1578,9 +1584,10 @@ function DashboardBody({
         rowHeight: DASHBOARD_GRID_ROW_HEIGHT_PX,
         gap: DASHBOARD_GRID_GAP_PX,
       });
+      const tile = gridUnitsToTile(item.w ?? 1, item.h ?? 1);
       const mode: WidgetMode = getWidgetMode({
-        gridW: item.w ?? 1,
-        gridH: item.h ?? 1,
+        gridW: tile.tw,
+        gridH: tile.th,
         widthPx,
         heightPx,
       });
@@ -1771,27 +1778,36 @@ function DashboardBody({
               }}
               onResize={(next) => {
                 if (!canEditLayout || !editMode) return;
-                setLayout(applyWorkRequestsLayoutSnaps(next as Layout, DASHBOARD_GRID_COLS, width));
+                setLayout(applyTileSnapsToLayout(next as Layout, DASHBOARD_GRID_COLS, width, "quantize"));
               }}
               onDragStop={(next) => {
                 if (!canEditLayout || !editMode) return;
                 setIsInteracting(false);
-                const snapped = applyWorkRequestsLayoutSnaps(next as Layout, DASHBOARD_GRID_COLS, width);
+                const snapped = applyTileSnapsToLayout(next as Layout, DASHBOARD_GRID_COLS, width, "footprint");
                 const compacted = stableCompactor.compact(snapped, DASHBOARD_GRID_COLS) as Layout;
-                setLayout(compacted);
-                persistLayout(compacted);
+                const finalLayout = applyTileSnapsToLayout(compacted, DASHBOARD_GRID_COLS, width, "footprint");
+                setLayout(finalLayout);
+                persistLayout(finalLayout);
               }}
               onResizeStop={(next) => {
                 if (!canEditLayout || !editMode) return;
                 setIsInteracting(false);
-                const snapped = applyWorkRequestsLayoutSnaps(next as Layout, DASHBOARD_GRID_COLS, width);
+                const snapped = applyTileSnapsToLayout(next as Layout, DASHBOARD_GRID_COLS, width, "footprint");
                 const compacted = stableCompactor.compact(snapped, DASHBOARD_GRID_COLS) as Layout;
-                const finalLayout = applyWorkRequestsLayoutSnaps(compacted, DASHBOARD_GRID_COLS, width);
+                const finalLayout = applyTileSnapsToLayout(compacted, DASHBOARD_GRID_COLS, width, "footprint");
                 setLayout(finalLayout);
                 persistLayout(finalLayout);
               }}
             >
               {layout.map((item) => {
+                const tileFootprint = gridUnitsToTile(item.w ?? TILE_UNIT_COLS, item.h ?? TILE_UNIT_ROWS);
+                const tileAttrs = {
+                  "data-tile-w": tileFootprint.tw,
+                  "data-tile-h": tileFootprint.th,
+                  "data-tile-shape": tileFootprintShape(tileFootprint),
+                  "data-tile-tier": widgetTileTier(item.i),
+                } as const;
+
                 if (item.i.startsWith("cw_")) {
                   const cfg = customConfigs[item.i];
                   if (!cfg) return <div key={item.i} />;
@@ -1834,6 +1850,7 @@ function DashboardBody({
                     <div
                       key={item.i}
                       className={["h-full min-h-0 transition-transform", editMode ? "cursor-grab active:cursor-grabbing" : ""].join(" ")}
+                      {...tileAttrs}
                     >
                       <OpsWidgetShell
                         title={cfg.title}
@@ -1892,6 +1909,7 @@ function DashboardBody({
                             : undefined
                     }
                     className={cn("h-full min-h-0 transition-transform", editMode && "cursor-grab active:cursor-grabbing")}
+                    {...tileAttrs}
                   >
                     <OpsWidgetShell
                       title={w.title}

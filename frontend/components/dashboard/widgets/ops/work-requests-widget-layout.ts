@@ -1,4 +1,8 @@
 import type { LayoutItem } from "react-grid-layout";
+import {
+  DASHBOARD_GRID_GAP_PX,
+  DASHBOARD_GRID_ROW_HEIGHT_PX,
+} from "@/lib/dashboard/tile-grid";
 
 /** Explicit work-requests widget grid presets (resize the grid, not the KPI cards). */
 export type WorkRequestsLayoutMode = "4x1" | "2x2" | "1x4";
@@ -10,10 +14,6 @@ export const WORK_REQUESTS_KPI_CELL_PX = 76;
 export const WORK_REQUESTS_KPI_GAP_PX = 6;
 /** Header row + border slack inside the ops widget shell. */
 export const WORK_REQUESTS_SHELL_HEADER_PX = 40;
-
-/** Must match `OperationalDashboard` grid config. */
-const DASHBOARD_ROW_HEIGHT_PX = 36;
-const DASHBOARD_GRID_GAP_PX = 9;
 
 export type WorkRequestsGridPreset = {
   mode: WorkRequestsLayoutMode;
@@ -37,7 +37,10 @@ function shellHeightPx(mode: WorkRequestsLayoutMode): number {
 /** Grid row count so the shell fits KPI cards with no extra vertical slack. */
 export function gridHForMode(mode: WorkRequestsLayoutMode): number {
   const shellH = shellHeightPx(mode);
-  return Math.max(1, Math.ceil((shellH + DASHBOARD_GRID_GAP_PX) / (DASHBOARD_ROW_HEIGHT_PX + DASHBOARD_GRID_GAP_PX)));
+  return Math.max(
+    1,
+    Math.ceil((shellH + DASHBOARD_GRID_GAP_PX) / (DASHBOARD_GRID_ROW_HEIGHT_PX + DASHBOARD_GRID_GAP_PX)),
+  );
 }
 
 function kpiContentWidthPx(mode: WorkRequestsLayoutMode): number {
