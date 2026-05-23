@@ -19,10 +19,11 @@ export type AdvertisingEditorStatusBarProps = {
   onGridToggle: () => void;
   zoomDisabled?: boolean;
   fitDisabled?: boolean;
+  surfaceNav: ReactNode;
   trailing?: ReactNode;
 };
 
-/** CAD-style status bar — coordinates, dimensions, viewport utilities. */
+/** CAD-style footer — surface tabs (left) · metadata (center) · viewport tools (right). */
 export function AdvertisingEditorStatusBar({
   wall,
   unit,
@@ -37,36 +38,36 @@ export function AdvertisingEditorStatusBar({
   onGridToggle,
   zoomDisabled,
   fitDisabled,
+  surfaceNav,
   trailing,
 }: AdvertisingEditorStatusBarProps) {
   const wallLength = formatMeasurement(wall.width_inches, unit);
   const wallHeight = formatMeasurement(wall.height_inches, unit);
   const cursorLabel =
     cursorInches != null
-      ? `X ${formatMeasurement(cursorInches.x, unit)} · Y ${formatMeasurement(cursorInches.y, unit)}`
+      ? `${formatMeasurement(cursorInches.x, unit)}, ${formatMeasurement(cursorInches.y, unit)}`
       : null;
 
   return (
-    <footer className="flex h-[40px] shrink-0 items-center gap-3 border-t border-slate-200/80 bg-[#f8fafc]/98 px-3 font-mono text-[11px] text-slate-600 backdrop-blur-sm">
-      <div className="flex min-w-0 items-center gap-2 tabular-nums">
-        <span className="text-slate-500">Surface</span>
-        <span className="font-semibold text-slate-800">{wallLength} × {wallHeight}</span>
+    <footer className="grid h-[40px] shrink-0 grid-cols-[minmax(0,auto)_minmax(0,1fr)_auto] items-center gap-2 border-t border-slate-200/80 bg-[#f8fafc]/98 px-2 font-mono text-[11px] text-slate-600 backdrop-blur-sm">
+      <div className="flex min-w-0 items-center pl-0.5">{surfaceNav}</div>
+
+      <div className="flex min-w-0 flex-col items-center justify-center gap-0 text-center leading-tight">
+        <span className="truncate text-[11px] font-semibold text-slate-800">
+          {wall.name} Surface
+        </span>
+        <span className="tabular-nums text-[10px] text-slate-500">
+          {wallLength} × {wallHeight}
+          {cursorLabel ? (
+            <span className="hidden text-slate-400 lg:inline">
+              {" "}
+              · {cursorLabel}
+            </span>
+          ) : null}
+        </span>
       </div>
 
-      <span className="hidden h-3 w-px bg-slate-300 sm:block" aria-hidden />
-
-      <div className="hidden min-w-0 flex-1 items-center gap-2 tabular-nums md:flex">
-        {cursorLabel ? (
-          <>
-            <span className="text-slate-500">Cursor</span>
-            <span>{cursorLabel}</span>
-          </>
-        ) : (
-          <span className="text-slate-400">{wall.name}</span>
-        )}
-      </div>
-
-      <div className="ml-auto flex shrink-0 items-center gap-1.5">
+      <div className="flex shrink-0 items-center justify-end gap-1 pr-0.5">
         {trailing}
         <SpatialViewportControls
           className="!border-slate-200/80 !bg-white/85 !p-0.5 !shadow-none"

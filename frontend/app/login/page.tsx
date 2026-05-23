@@ -205,14 +205,11 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <h1 className="mt-5 text-center font-headline text-[1.5rem] font-extrabold leading-tight tracking-tight text-[#2f3d52] dark:text-ds-foreground sm:mt-6 sm:text-[1.65rem] md:text-3xl">
-              Facility Platform
-            </h1>
-            <p className="mt-1.5 text-center text-sm font-medium text-[#5a6d82] dark:text-ds-muted">
+            <p className="mt-3 text-center text-sm font-medium text-[#5a6d82] dark:text-ds-muted sm:mt-3.5">
               Access only for verified users.
             </p>
 
-            <div className="mt-5 rounded-[1.15rem] bg-[linear-gradient(145deg,rgba(255,255,255,0.55)_0%,rgba(255,255,255,0.18)_45%,rgba(186,230,255,0.22)_100%)] p-px shadow-[0_28px_64px_rgba(46,90,120,0.16)] ring-1 ring-white/50 backdrop-blur-md dark:bg-[linear-gradient(145deg,rgba(255,255,255,0.14)_0%,rgba(255,255,255,0.05)_100%)] dark:ring-white/15 dark:shadow-[0_24px_52px_rgba(0,0,0,0.4)] sm:mt-6">
+            <div className="mt-3 rounded-[1.15rem] bg-[linear-gradient(145deg,rgba(255,255,255,0.55)_0%,rgba(255,255,255,0.18)_45%,rgba(186,230,255,0.22)_100%)] p-px shadow-[0_28px_64px_rgba(46,90,120,0.16)] ring-1 ring-white/50 backdrop-blur-md dark:bg-[linear-gradient(145deg,rgba(255,255,255,0.14)_0%,rgba(255,255,255,0.05)_100%)] dark:ring-white/15 dark:shadow-[0_24px_52px_rgba(0,0,0,0.4)] sm:mt-4">
               <div className="relative overflow-hidden rounded-[1.1rem] border border-white/45 bg-white/[0.62] px-4 py-4 shadow-[inset_0_1px_1px_rgba(255,255,255,0.9),inset_0_-1px_0_rgba(255,255,255,0.15),0_8px_32px_rgba(255,255,255,0.12)] backdrop-blur-[28px] backdrop-saturate-[1.35] dark:border-white/18 dark:bg-[color-mix(in_srgb,var(--ds-surface-primary)_58%,transparent)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] sm:px-5 sm:py-5">
                 <div
                   className="pointer-events-none absolute inset-0 bg-[linear-gradient(128deg,rgba(255,255,255,0.72)_0%,rgba(255,255,255,0.08)_38%,transparent_55%,rgba(200,235,255,0.12)_100%)]"

@@ -7,6 +7,7 @@ const DEFAULT_VIEWPORTS: { id: string; name: string }[] = [
   { id: "center", name: "Center" },
   { id: "right", name: "Right" },
   { id: "scoreboard", name: "Scoreboard" },
+  { id: "led", name: "LED" },
 ];
 
 export function getDefaultAdvertisingWallScaffolds(): FacilityWallPlan[] {

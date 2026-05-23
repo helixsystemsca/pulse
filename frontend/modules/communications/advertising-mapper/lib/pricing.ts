@@ -32,6 +32,7 @@ const ZONE_MULTIPLIER: Record<string, number> = {
   Center: 1.35,
   Right: 1.2,
   Scoreboard: 1.5,
+  LED: 1.45,
   Concourse: 1,
   Lobby: 1.1,
   Exterior: 1.4,

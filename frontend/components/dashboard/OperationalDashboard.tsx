@@ -52,6 +52,7 @@ import {
   DASHBOARD_GRID_ROW_HEIGHT_PX,
   defaultLayoutItemForWidget,
   gridUnitsToTile,
+  migrateLegacyDashboardLayout,
   tileFootprintShape,
   widgetPixelSizeFromGridUnits,
   TILE_UNIT_COLS,
@@ -1163,7 +1164,7 @@ function DashboardBody({
 
   /** Kiosk fullscreen uses the same persisted layout as the in-app dashboard (not a separate TV layout). */
   const layoutStorageKey = useMemo(() => {
-    return `pulse_dashboard_layout_v8_${dashboardContext}_standard`;
+    return `pulse_dashboard_layout_v9_${dashboardContext}_standard`;
   }, [dashboardContext]);
 
   const customWidgetStorageKey = useMemo(() => {
@@ -1454,12 +1455,21 @@ function DashboardBody({
     let loadedFromStorage = false;
     try {
       let raw = window.localStorage.getItem(layoutStorageKey);
+      let legacyKey: string | null = null;
       if (!raw) {
-        raw = window.localStorage.getItem(`pulse_dashboard_layout_v7_${dashboardContext}_standard`);
+        legacyKey = `pulse_dashboard_layout_v8_${dashboardContext}_standard`;
+        raw = window.localStorage.getItem(legacyKey);
+      }
+      if (!raw) {
+        legacyKey = `pulse_dashboard_layout_v7_${dashboardContext}_standard`;
+        raw = window.localStorage.getItem(legacyKey);
       }
       if (raw) {
         nextLayout = JSON.parse(raw) as Layout;
         loadedFromStorage = Array.isArray(nextLayout);
+        if (legacyKey) {
+          nextLayout = migrateLegacyDashboardLayout(nextLayout);
+        }
       }
     } catch {
       nextLayout = null;

@@ -2,8 +2,6 @@
 
 import {
   BarChart2,
-  CalendarClock,
-  ChevronRight,
   ClipboardList,
   GraduationCap,
   PanelLeftClose,
@@ -15,6 +13,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { Zone } from "@/lib/schedule/types";
+import { ScheduleAvailabilityMenu } from "./ScheduleAvailabilityMenu";
 
 export type ScheduleWorkspaceView = "calendar" | "my-shifts" | "personnel" | "reports" | "routines";
 
@@ -38,6 +37,8 @@ type Props = {
   canConfigureOrg: boolean;
   /** Daily assignments (routines board) require a published schedule. */
   dailyAssignmentsEnabled?: boolean;
+  /** Period exists — show availability cluster (requests, time off, preferences). */
+  showAvailabilityTools?: boolean;
   disabled?: boolean;
 };
 
@@ -65,6 +66,7 @@ export function ScheduleOperationalSidebar({
   onOpenEmployeeAvailability,
   canConfigureOrg,
   dailyAssignmentsEnabled = true,
+  showAvailabilityTools = false,
   disabled,
 }: Props) {
   const isHeader = variant === "header";
@@ -175,30 +177,15 @@ export function ScheduleOperationalSidebar({
         <div className="w-full min-w-[10rem] max-w-[16rem] sm:w-44 sm:flex-1">{searchField}</div>
         {facilityChips}
         <div className="flex shrink-0 flex-wrap items-center gap-1 sm:ml-auto">
-          <button
-            type="button"
-            title="Availability desk"
-            onClick={onOpenAvailabilitySupervisor}
-            className="rounded-lg border border-pulseShell-border bg-white/90 p-2 text-ds-foreground shadow-sm hover:bg-ds-interactive-hover dark:bg-slate-900/70"
-          >
-            <CalendarClock className="h-4 w-4 text-sky-600 dark:text-sky-400" />
-          </button>
-          <button
-            type="button"
-            title="Edit employee availability"
-            onClick={onOpenEmployeeAvailability}
-            className="rounded-lg border border-pulseShell-border bg-white/90 p-2 text-ds-foreground shadow-sm hover:bg-ds-interactive-hover dark:bg-slate-900/70"
-          >
-            <ClipboardList className="h-4 w-4 text-violet-600 dark:text-violet-400" />
-          </button>
-          <button
-            type="button"
-            title="Time off requests"
-            onClick={onOpenTimeOff}
-            className="rounded-lg border border-pulseShell-border bg-white/90 p-2 text-ds-foreground shadow-sm hover:bg-ds-interactive-hover dark:bg-slate-900/70"
-          >
-            <ChevronRight className="h-4 w-4 text-ds-muted" />
-          </button>
+          {showAvailabilityTools ? (
+            <ScheduleAvailabilityMenu
+              compact
+              disabled={disabled}
+              onOpenRequests={onOpenAvailabilitySupervisor}
+              onOpenTimeOff={onOpenTimeOff}
+              onOpenPreferences={onOpenEmployeeAvailability}
+            />
+          ) : null}
           {canConfigureOrg ? (
             <button
               type="button"
@@ -240,43 +227,29 @@ export function ScheduleOperationalSidebar({
               {facilityChips}
             </div>
 
+            {showAvailabilityTools ? (
+              <div className="space-y-2">
+                <SectionTitle>Availability</SectionTitle>
+                <ScheduleAvailabilityMenu
+                  disabled={disabled}
+                  onOpenRequests={onOpenAvailabilitySupervisor}
+                  onOpenTimeOff={onOpenTimeOff}
+                  onOpenPreferences={onOpenEmployeeAvailability}
+                />
+              </div>
+            ) : null}
+
             <div className="space-y-2">
-              <SectionTitle>Availability & training</SectionTitle>
-              <div className="flex flex-col gap-1">
-                <button
-                  type="button"
-                  onClick={onOpenAvailabilitySupervisor}
-                  className="flex items-center gap-2 rounded-lg border border-pulseShell-border bg-white/80 px-2 py-2 text-left text-sm font-semibold text-ds-foreground hover:bg-ds-interactive-hover dark:bg-slate-900/60"
-                >
-                  <CalendarClock className="h-4 w-4 text-sky-600 dark:text-sky-400" />
-                  Availability desk
-                </button>
-                <button
-                  type="button"
-                  onClick={onOpenEmployeeAvailability}
-                  className="flex items-center gap-2 rounded-lg border border-pulseShell-border bg-white/80 px-2 py-2 text-left text-sm font-semibold text-ds-foreground hover:bg-ds-interactive-hover dark:bg-slate-900/60"
-                >
-                  <ClipboardList className="h-4 w-4 text-violet-600 dark:text-violet-400" />
-                  Edit employee availability
-                </button>
-                <div className="flex items-center gap-2 rounded-lg border border-dashed border-pulseShell-border px-2 py-2 text-xs text-ds-muted">
-                  <GraduationCap className="h-4 w-4 shrink-0" />
-                  Training conflicts hook into operational badges — intelligence layer coming next.
-                </div>
+              <SectionTitle>Training</SectionTitle>
+              <div className="flex items-center gap-2 rounded-lg border border-dashed border-pulseShell-border px-2 py-2 text-xs text-ds-muted">
+                <GraduationCap className="h-4 w-4 shrink-0" />
+                Training conflicts hook into operational badges — intelligence layer coming next.
               </div>
             </div>
 
-            <div className="space-y-2">
-              <SectionTitle>Workspace</SectionTitle>
-              <button
-                type="button"
-                onClick={onOpenTimeOff}
-                className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm font-medium text-ds-foreground hover:bg-ds-interactive-hover"
-              >
-                <ChevronRight className="h-4 w-4 text-ds-muted" />
-                Time off requests
-              </button>
-              {canConfigureOrg ? (
+            {canConfigureOrg ? (
+              <div className="space-y-2">
+                <SectionTitle>Settings</SectionTitle>
                 <button
                   type="button"
                   onClick={onOpenSettings}
@@ -285,28 +258,22 @@ export function ScheduleOperationalSidebar({
                   <Settings className="h-4 w-4 text-ds-muted" />
                   Schedule settings
                 </button>
-              ) : null}
-            </div>
+              </div>
+            ) : null}
           </>
         ) : !isHeader ? (
-          <div className="flex flex-col gap-1 border-t border-pulseShell-border pt-2 dark:border-slate-800">
-            <button
-              type="button"
-              title="Availability desk"
-              onClick={onOpenAvailabilitySupervisor}
-              className="rounded-lg p-2 text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
-            >
-              <CalendarClock className="mx-auto h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              title="Settings"
-              onClick={canConfigureOrg ? onOpenSettings : onOpenTimeOff}
-              className="rounded-lg p-2 text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
-            >
-              <Settings className="mx-auto h-4 w-4" />
-            </button>
-          </div>
+          canConfigureOrg ? (
+            <div className="flex flex-col gap-1 border-t border-pulseShell-border pt-2 dark:border-slate-800">
+              <button
+                type="button"
+                title="Schedule settings"
+                onClick={onOpenSettings}
+                className="rounded-lg p-2 text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
+              >
+                <Settings className="mx-auto h-4 w-4" />
+              </button>
+            </div>
+          ) : null
         ) : null}
     </div>
   );

@@ -1696,9 +1696,8 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   }
 
   /*
-   * Dashboard tile grid: react-grid-layout uses 16 cols; each logical tile = 2 cols × 2 rows.
-   * Widgets snap to discrete footprints (see lib/dashboard/tile-grid.ts). data-tile-* on items
-   * drives footprint-aware internal layouts (KPI shapes, elastic density, workspace panels).
+   * Dashboard atomic grid: 24 cols × 32px rows (~6px gap). One RGL cell = one spatial unit;
+   * widgets span integer multiples (4×2, 8×6, …). See lib/dashboard/tile-grid.ts.
    */
   .pulse-dashboard-grid:not(.pulse-dashboard-edit) .react-grid-item {
     overflow: hidden;

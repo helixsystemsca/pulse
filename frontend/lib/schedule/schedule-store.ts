@@ -12,6 +12,12 @@ import {
   defaultZones,
 } from "./defaults";
 import { deploymentOverlayKey } from "@/lib/schedule/deployment-overlay";
+import {
+  boundsFromDates,
+  expandBlockDates,
+  normalizeTimeOffBlock,
+  sortIsoDates,
+} from "@/lib/schedule/time-off-request";
 import type {
   ScheduleRoleDefinition,
   ScheduleSettings,
@@ -19,6 +25,8 @@ import type {
   ShiftEventType,
   ShiftTypeConfig,
   TimeOffBlock,
+  TimeOffRequestKind,
+  TimeOffRequestStatus,
   Worker,
   Zone,
 } from "./types";
@@ -52,6 +60,17 @@ type ScheduleState = {
   deleteShift: (id: string) => void;
 
   addTimeOffBlock: (partial: Omit<TimeOffBlock, "id">) => void;
+  submitTimeOffRequest: (payload: {
+    workerId: string;
+    dates: string[];
+    kind: TimeOffRequestKind;
+    note?: string;
+  }) => void;
+  reviewTimeOffRequest: (
+    id: string,
+    status: Exclude<TimeOffRequestStatus, "pending">,
+    patch?: Partial<Pick<TimeOffBlock, "dates" | "kind" | "note">>,
+  ) => void;
   removeTimeOffBlock: (id: string) => void;
 
   setWorkers: (workers: Worker[]) => void;
@@ -82,6 +101,8 @@ function initialState(): Omit<
   | "setSettings"
   | "setPendingRequests"
   | "addTimeOffBlock"
+  | "submitTimeOffRequest"
+  | "reviewTimeOffRequest"
   | "removeTimeOffBlock"
   | "resetDemo"
   | "applyPulseScheduleSnapshot"
@@ -126,7 +147,51 @@ export const useScheduleStore = create<ScheduleState>()(
 
       addTimeOffBlock: (partial) =>
         set((s) => ({
-          timeOffBlocks: [...s.timeOffBlocks, { ...partial, id: newId("pto") }],
+          timeOffBlocks: [
+            ...s.timeOffBlocks,
+            normalizeTimeOffBlock({ ...partial, id: newId("pto") }),
+          ],
+        })),
+
+      submitTimeOffRequest: (payload) => {
+        const dates = sortIsoDates(payload.dates);
+        const { startDate, endDate } = boundsFromDates(dates);
+        const now = new Date().toISOString();
+        set((s) => ({
+          timeOffBlocks: [
+            ...s.timeOffBlocks,
+            normalizeTimeOffBlock({
+              id: newId("pto"),
+              workerId: payload.workerId,
+              startDate,
+              endDate,
+              dates,
+              status: "pending",
+              kind: payload.kind,
+              note: payload.note,
+              submittedAt: now,
+              updatedAt: now,
+            }),
+          ],
+        }));
+      },
+
+      reviewTimeOffRequest: (id, status, patch) =>
+        set((s) => ({
+          timeOffBlocks: s.timeOffBlocks.map((b) => {
+            if (b.id !== id) return b;
+            const dates = patch?.dates ? sortIsoDates(patch.dates) : expandBlockDates(b);
+            const { startDate, endDate } = boundsFromDates(dates);
+            return normalizeTimeOffBlock({
+              ...b,
+              ...patch,
+              dates,
+              startDate,
+              endDate,
+              status,
+              updatedAt: new Date().toISOString(),
+            });
+          }),
         })),
 
       removeTimeOffBlock: (id) =>
@@ -209,7 +274,9 @@ export const useScheduleStore = create<ScheduleState>()(
           ...current,
           ...p,
           shifts: mergedShifts,
-          timeOffBlocks: p.timeOffBlocks ?? current.timeOffBlocks,
+          timeOffBlocks: (p.timeOffBlocks ?? current.timeOffBlocks).map((b) =>
+            normalizeTimeOffBlock({ ...b, id: b.id }),
+          ),
           workers: p.workers ?? current.workers,
           deploymentBadgeOverlays: p.deploymentBadgeOverlays ?? current.deploymentBadgeOverlays,
         };

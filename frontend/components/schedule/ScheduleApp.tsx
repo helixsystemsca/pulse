@@ -3,7 +3,6 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { SettingsGear } from "@/components/settings/SettingsGear";
 import { cn } from "@/lib/cn";
 import { apiFetch, isApiMode } from "@/lib/api";
 import { getServerDate } from "@/lib/serverTime";
@@ -123,7 +122,7 @@ import {
 import { ScheduleWorkerPanel } from "./ScheduleWorkerPanel";
 import type { ShiftDraft } from "./ShiftEditModal";
 import { ShiftEditModal } from "./ShiftEditModal";
-import { TimeOffRequestModal } from "./TimeOffRequestModal";
+import { TimeOffOperationsDrawer } from "./time-off/TimeOffOperationsDrawer";
 import { WorkerAttendanceModal } from "./WorkerAttendanceModal";
 
 function shiftLengthHours(sh: Pick<Shift, "startTime" | "endTime">): number {
@@ -1421,60 +1420,32 @@ export function ScheduleApp() {
     );
   }
 
-  const workflowMoreMenu = (
-    <div className="flex flex-col gap-1">
-      <button
-        type="button"
-        className="rounded-lg px-3 py-2 text-left text-sm font-medium text-ds-foreground hover:bg-ds-interactive-hover"
-        onClick={() => setTimeOffOpen(true)}
-      >
-        Time off
-      </button>
-      {canConfigureOrg ? (
-        <button
-          type="button"
-          className="rounded-lg px-3 py-2 text-left text-sm font-medium text-ds-foreground hover:bg-ds-interactive-hover"
-          onClick={() => setSettingsOpen(true)}
-        >
-          Schedule settings
-        </button>
-      ) : null}
-      <div className="border-t border-pulseShell-border pt-2 dark:border-slate-700">
-        <SettingsGear module="schedule" label="Module preferences" className="w-full justify-center border-pulseShell-border" />
-      </div>
-    </div>
-  );
-
-  const builderActions = isApiMode() && canEdit ? (
-    <ScheduleWorkflowBar
-      workflow={scheduleWorkflow}
-      canManage={canPublishSchedule}
-      buildingDraft={buildingDraft}
-      saveBusy={saveBusy}
-      publishBusy={publishBusy}
-      hasPendingServerSave={hasPendingServerSave}
-      onGenerateSchedule={() => void handleBuildDraft()}
-      onSaveChanges={() => void saveScheduleToServer()}
-      onRebuildSchedule={() => void handleBuildDraft()}
-      onPublishSchedule={() => void handlePublish()}
-      onOpenDailyAssignments={() => {
-        setWorkspaceView("routines");
-        setTimeScale("day");
-      }}
-      onNotifyWorkers={() => void handlePublish()}
-      onEditDraft={() => {
-        setWorkspaceView("calendar");
-        setScheduleToast("Continue editing the draft on the calendar.");
-      }}
-      onEditPublished={() => {
-        setWorkspaceView("calendar");
-        setScheduleToast("Editing published schedule — save changes and notify workers if needed.");
-      }}
-      moreMenu={workflowMoreMenu}
-    />
-  ) : (
-    workflowMoreMenu
-  );
+  const builderActions =
+    isApiMode() && canEdit ? (
+      <ScheduleWorkflowBar
+        workflow={scheduleWorkflow}
+        canManage={canPublishSchedule}
+        buildingDraft={buildingDraft}
+        saveBusy={saveBusy}
+        publishBusy={publishBusy}
+        hasPendingServerSave={hasPendingServerSave}
+        onCreatePeriod={() => setShowPeriodModal(true)}
+        onGenerateSchedule={() => void handleBuildDraft()}
+        onSaveChanges={() => void saveScheduleToServer()}
+        onRebuildSchedule={() => void handleBuildDraft()}
+        onPublishSchedule={() => void handlePublish()}
+        onOpenDailyAssignments={() => {
+          setWorkspaceView("routines");
+          setTimeScale("day");
+        }}
+        onNotifyWorkers={() => void handlePublish()}
+        onEditPublished={() => setWorkspaceView("calendar")}
+        onOpenAvailabilityRequests={() => setAvailabilitySupervisorOpen(true)}
+        onOpenTimeOff={() => setTimeOffOpen(true)}
+        onOpenAvailabilityPreferences={() => setEmployeeAvailabilityOpen(true)}
+        onOpenSettings={canConfigureOrg ? () => setSettingsOpen(true) : undefined}
+      />
+    ) : null;
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-2 pb-2">
@@ -1511,6 +1482,7 @@ export function ScheduleApp() {
                 onOpenEmployeeAvailability={() => setEmployeeAvailabilityOpen(true)}
                 canConfigureOrg={canConfigureOrg}
                 dailyAssignmentsEnabled={scheduleWorkflow.assignmentsEnabled}
+                showAvailabilityTools={scheduleWorkflow.showAvailabilityTools}
                 disabled={scheduleDragLock}
               />
             }
@@ -1577,6 +1549,7 @@ export function ScheduleApp() {
               onOpenEmployeeAvailability={() => setEmployeeAvailabilityOpen(true)}
               canConfigureOrg={canConfigureOrg}
               dailyAssignmentsEnabled={scheduleWorkflow.assignmentsEnabled}
+              showAvailabilityTools={scheduleWorkflow.showAvailabilityTools}
               disabled={scheduleDragLock}
             />
           </div>
@@ -2028,7 +2001,7 @@ export function ScheduleApp() {
         }}
       />
 
-      <TimeOffRequestModal
+      <TimeOffOperationsDrawer
         open={timeOffOpen}
         workers={workers}
         projects={canViewPtoProjectConflicts ? scheduleOverlayProjects : []}
@@ -2036,8 +2009,12 @@ export function ScheduleApp() {
         settings={settings}
         timeOffBlocks={timeOffBlocks}
         showConflictHints={canViewPtoProjectConflicts}
+        currentUserId={currentUserId}
+        currentUserName={session?.full_name?.trim() || session?.email || "You"}
+        isSupervisor={canPublishSchedule}
         onClose={() => setTimeOffOpen(false)}
-        onSubmit={(p) => addTimeOffBlock(p)}
+        onSubmitRequest={(p) => submitTimeOffRequest(p)}
+        onReviewRequest={(id, status) => reviewTimeOffRequest(id, status)}
       />
 
       <AvailabilitySupervisorDrawer

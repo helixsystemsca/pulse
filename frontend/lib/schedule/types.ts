@@ -71,15 +71,23 @@ export interface Worker {
   recurringShifts?: RecurringShiftRule[];
 }
 
-/** Approved (or mock) time-off: used only for conflict hints + future scheduling blocks. */
+export type TimeOffRequestKind = "vacation" | "sick" | "personal" | "training" | "unpaid_leave";
+
+export type TimeOffRequestStatus = "pending" | "approved" | "denied" | "needs_review";
+
+/** Schedule-aware time-off request (client-persisted until API exists). */
 export interface TimeOffBlock {
   id: string;
   workerId: string;
   startDate: string;
   endDate: string;
-  status: "approved" | "pending";
-  /** Drives override styling and suppresses recurring work shifts. */
-  kind?: "vacation" | "sick";
+  /** Expanded ISO dates included in this request (supports multi-date / multi-range). */
+  dates?: string[];
+  status: TimeOffRequestStatus;
+  kind: TimeOffRequestKind;
+  note?: string;
+  submittedAt?: string;
+  updatedAt?: string;
 }
 
 /** Active HTML5 drag session for the schedule surface (shift chip vs worker roster vs assignment palette). */

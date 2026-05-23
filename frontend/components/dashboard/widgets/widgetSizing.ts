@@ -33,17 +33,17 @@ export function getWidgetMode({
   const minSide = Math.min(Math.max(0, widthPx), Math.max(0, heightPx));
   const areaPx = Math.max(0, widthPx) * Math.max(0, heightPx);
 
-  // XS: small tiles / tight slots where scrollbars look bad.
-  if (areaUnits <= 8 || minSide < 220) return "xs";
+  // XS: tight telemetry / KPI slots (atomic tile counts).
+  if (areaUnits <= 12 || minSide < 180) return "xs";
 
   // SM: compact but usable (headline + a couple rows).
-  if (areaUnits <= 14 || minSide < 300) return "sm";
+  if (areaUnits <= 24 || minSide < 260) return "sm";
 
   // MD: default operational view for most widgets.
-  if (areaUnits <= 24 || areaPx < 520 * 320) return "md";
+  if (areaUnits <= 42 || areaPx < 480 * 280) return "md";
 
   // LG: room for trends / supporting metadata.
-  if (areaUnits <= 40 || areaPx < 760 * 420) return "lg";
+  if (areaUnits <= 72 || areaPx < 680 * 380) return "lg";
 
   return "xl";
 }

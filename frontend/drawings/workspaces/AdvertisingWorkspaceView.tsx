@@ -7,7 +7,7 @@ import { PlannerMinimap } from "@/modules/communications/advertising-mapper/comp
 import { AdvertisingEditorHeaderBar } from "@/modules/communications/advertising-mapper/components/editor/AdvertisingEditorHeaderBar";
 import { AdvertisingEditorShell } from "@/modules/communications/advertising-mapper/components/editor/AdvertisingEditorShell";
 import { AdvertisingEditorStatusBar } from "@/modules/communications/advertising-mapper/components/editor/AdvertisingEditorStatusBar";
-import { AdvertisingSceneRail } from "@/modules/communications/advertising-mapper/components/editor/AdvertisingSceneRail";
+import { AdvertisingSurfaceNav } from "@/modules/communications/advertising-mapper/components/editor/AdvertisingSurfaceNav";
 import { wallInchesFromBackdropFit } from "@/modules/communications/advertising-mapper/lib/backdrop-fit";
 import { AdvertisingFloatingToolbar } from "@/modules/communications/advertising-mapper/components/editor/AdvertisingFloatingToolbar";
 import {
@@ -444,26 +444,6 @@ export function AdvertisingWorkspaceView({
             fullscreenHref={editorFullscreen ? undefined : advertisingFullscreenHref}
           />
         }
-        sceneRail={
-          <AdvertisingSceneRail
-            walls={walls}
-            activeWallId={wallId}
-            onWallChange={(id) => {
-              setWallId(id);
-              setSelectedInventoryId(null);
-              setSelectedConstraintId(null);
-            }}
-            onAddWall={() => {
-              const id = addWall();
-              setWallId(id);
-              setSelectedInventoryId(null);
-              setSelectedConstraintId(null);
-            }}
-            onBackdropChange={handleBackdropChange}
-            onGenerateEmptySpace={handleGenerateEmptyBackdrop}
-            generateBusy={backdropBusy}
-          />
-        }
         footer={
           <AdvertisingEditorStatusBar
             wall={wall}
@@ -479,6 +459,26 @@ export function AdvertisingWorkspaceView({
             onGridToggle={() => setShowGrid((v) => !v)}
             zoomDisabled={!canZoomViewport}
             fitDisabled={!canPanViewport && !canZoomViewport}
+            surfaceNav={
+              <AdvertisingSurfaceNav
+                walls={walls}
+                activeWallId={wallId}
+                onWallChange={(id) => {
+                  setWallId(id);
+                  setSelectedInventoryId(null);
+                  setSelectedConstraintId(null);
+                }}
+                onAddWall={() => {
+                  const id = addWall();
+                  setWallId(id);
+                  setSelectedInventoryId(null);
+                  setSelectedConstraintId(null);
+                }}
+                onBackdropChange={handleBackdropChange}
+                onGenerateEmptySpace={handleGenerateEmptyBackdrop}
+                generateBusy={backdropBusy}
+              />
+            }
           />
         }
         floatingToolbar={advertisingToolbar}

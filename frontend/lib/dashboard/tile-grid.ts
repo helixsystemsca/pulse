@@ -5,28 +5,36 @@ import {
 } from "@/components/dashboard/widgets/ops/work-requests-widget-layout";
 
 /**
- * Canonical dashboard tile grid — all widgets occupy integer multiples of a shared base unit.
+ * Atomic dashboard grid — one react-grid-layout cell = one spatial building block.
  *
- * On the 16-column react-grid-layout canvas, one logical tile = 2 columns × 2 row units.
- * Work Requests KPI cells define the minimum *content* footprint; grid spans are derived from that.
+ * Widgets are composed from many small cells (integer span), not oversized card tiles.
+ * Target feel: Grafana / telemetry / trading terminals — dense, modular, compositional.
  */
 
-export const DASHBOARD_GRID_COLS = 16;
-export const DASHBOARD_GRID_ROW_HEIGHT_PX = 36;
-export const DASHBOARD_GRID_GAP_PX = 9;
+/** Fine-grained column count (each col is one atomic unit wide). */
+export const DASHBOARD_GRID_COLS = 24;
+/** ~32px per atomic row (+ gap ≈ 38px rhythm; 2 rows ≈ 70px). */
+export const DASHBOARD_GRID_ROW_HEIGHT_PX = 32;
+export const DASHBOARD_GRID_GAP_PX = 6;
 
-/** Logical tile spans one `TILE_UNIT_COLS` × `TILE_UNIT_ROWS` region on the RGL canvas. */
-export const TILE_UNIT_COLS = 2;
-export const TILE_UNIT_ROWS = 2;
+/** One RGL column / row = one atomic unit (no 2×2 macro-blocks). */
+export const TILE_UNIT_COLS = 1;
+export const TILE_UNIT_ROWS = 1;
 
-export const DASHBOARD_TILE_COLS = DASHBOARD_GRID_COLS / TILE_UNIT_COLS;
+export const DASHBOARD_TILE_COLS = DASHBOARD_GRID_COLS;
+
+/** Legacy v7/v8 grid used 16 cols and 2×2 macro tile units. */
+export const LEGACY_DASHBOARD_GRID_COLS = 16;
+export const LEGACY_TILE_UNIT_COLS = 2;
+export const LEGACY_TILE_UNIT_ROWS = 2;
+export const LEGACY_ROW_HEIGHT_PX = 36;
 
 export type DashboardWidgetTileTier = "kpi" | "elastic" | "workspace";
 
 export type TileFootprint = {
-  /** Width in logical tiles (1 tile = TILE_UNIT_COLS grid columns). */
+  /** Width in atomic grid columns. */
   tw: number;
-  /** Height in logical tiles (1 tile = TILE_UNIT_ROWS grid rows). */
+  /** Height in atomic grid rows. */
   th: number;
 };
 
@@ -52,11 +60,11 @@ export function tileFootprintToGridUnits({ tw, th }: TileFootprint): { w: number
 }
 
 export function tileFootprintShape({ tw, th }: TileFootprint): TileFootprintShape {
-  if (tw >= 4 && th >= 4) return "large";
-  if (tw === 1 && th === 1) return "1x1";
-  if (tw === 1 && th === 2) return "1x2";
-  if (tw === 2 && th === 1) return "2x1";
-  if (tw === 2 && th === 2) return "2x2";
+  if (tw >= 12 && th >= 6) return "large";
+  if (tw <= 2 && th <= 2) return "1x1";
+  if (tw <= 3 && th >= 4) return "1x2";
+  if (tw >= 4 && th <= 3) return "2x1";
+  if (tw <= 5 && th <= 5) return "2x2";
   if (tw > th * 1.35) return "wide";
   if (th > tw * 1.35) return "tall";
   return "2x2";
@@ -69,44 +77,52 @@ export function widgetTileTier(widgetId: string): DashboardWidgetTileTier {
   return "elastic";
 }
 
+/** Compact calendar / compliance strips. */
 const ELASTIC_CALENDAR_FOOTPRINTS: TileFootprint[] = [
-  { tw: 2, th: 4 },
-  { tw: 2, th: 5 },
-  { tw: 2, th: 6 },
-  { tw: 3, th: 5 },
-  { tw: 3, th: 6 },
+  { tw: 5, th: 5 },
+  { tw: 5, th: 6 },
+  { tw: 6, th: 6 },
+  { tw: 6, th: 7 },
+  { tw: 7, th: 8 },
 ];
 
+/** Staffing, inventory, workforce density. */
 const ELASTIC_STAFF_FOOTPRINTS: TileFootprint[] = [
-  { tw: 3, th: 4 },
-  { tw: 3, th: 5 },
-  { tw: 4, th: 5 },
-  { tw: 4, th: 6 },
-];
-
-const ELASTIC_COMPACT_FOOTPRINTS: TileFootprint[] = [
-  { tw: 2, th: 3 },
-  { tw: 2, th: 4 },
-  { tw: 3, th: 4 },
-];
-
-const ELASTIC_SCHEDULE_FOOTPRINTS: TileFootprint[] = [
-  { tw: 4, th: 4 },
-  { tw: 4, th: 5 },
-  { tw: 4, th: 6 },
-];
-
-const WORKSPACE_FOOTPRINTS: TileFootprint[] = [
-  { tw: 8, th: 5 },
+  { tw: 6, th: 5 },
+  { tw: 7, th: 5 },
+  { tw: 7, th: 6 },
   { tw: 8, th: 6 },
-  { tw: 8, th: 7 },
+  { tw: 9, th: 7 },
+];
+
+/** Monitoring / CO₂ — tight telemetry tiles. */
+const ELASTIC_COMPACT_FOOTPRINTS: TileFootprint[] = [
+  { tw: 4, th: 4 },
+  { tw: 5, th: 4 },
+  { tw: 5, th: 5 },
+  { tw: 6, th: 5 },
+];
+
+/** Schedule / routine boards. */
+const ELASTIC_SCHEDULE_FOOTPRINTS: TileFootprint[] = [
+  { tw: 10, th: 5 },
+  { tw: 10, th: 6 },
+  { tw: 12, th: 6 },
+  { tw: 12, th: 7 },
+];
+
+/** Full-width workspace panels (maps, pool, floorplans). */
+const WORKSPACE_FOOTPRINTS: TileFootprint[] = [
+  { tw: 24, th: 6 },
+  { tw: 24, th: 7 },
+  { tw: 24, th: 8 },
 ];
 
 const CUSTOM_PEEK_FOOTPRINTS: TileFootprint[] = [
-  { tw: 2, th: 2 },
-  { tw: 2, th: 3 },
-  { tw: 3, th: 3 },
+  { tw: 4, th: 3 },
   { tw: 4, th: 4 },
+  { tw: 6, th: 4 },
+  { tw: 8, th: 5 },
 ];
 
 const WIDGET_TILE_FOOTPRINTS: Record<string, TileFootprint[]> = {
@@ -120,15 +136,16 @@ const WIDGET_TILE_FOOTPRINTS: Record<string, TileFootprint[]> = {
   pool_readings: WORKSPACE_FOOTPRINTS,
 };
 
+/** Default footprints on first load — dense operational layout. */
 export const DEFAULT_WIDGET_TILE_FOOTPRINTS: Record<string, TileFootprint> = {
-  important_dates: { tw: 3, th: 6 },
-  training_compliance: { tw: 3, th: 6 },
-  workforce: { tw: 3, th: 5 },
-  low_inventory: { tw: 3, th: 5 },
-  co2_monitoring: { tw: 3, th: 4 },
-  facility_schedule: { tw: 4, th: 5 },
-  routine_assignments: { tw: 4, th: 5 },
-  pool_readings: { tw: 8, th: 5 },
+  important_dates: { tw: 6, th: 7 },
+  training_compliance: { tw: 6, th: 7 },
+  workforce: { tw: 8, th: 6 },
+  low_inventory: { tw: 7, th: 6 },
+  co2_monitoring: { tw: 5, th: 5 },
+  facility_schedule: { tw: 12, th: 6 },
+  routine_assignments: { tw: 12, th: 6 },
+  pool_readings: { tw: 24, th: 7 },
 };
 
 export function getTileFootprintsForWidget(widgetId: string): TileFootprint[] {
@@ -170,17 +187,16 @@ function footprintConstraintBounds(allowed: TileFootprint[]): {
   };
 }
 
-/** Round grid spans to tile increments during live resize (no footprint lock yet). */
+/** Round spans to atomic increments during live resize. */
 export function quantizeLayoutItemToTiles(item: LayoutItem, cols: number): LayoutItem {
   const maxW = cols;
-  let w = quantizeSpan(item.w ?? TILE_UNIT_COLS, TILE_UNIT_COLS, TILE_UNIT_COLS, maxW);
-  let h = quantizeSpan(item.h ?? TILE_UNIT_ROWS, TILE_UNIT_ROWS, TILE_UNIT_ROWS, 64);
+  let w = quantizeSpan(item.w ?? 1, TILE_UNIT_COLS, TILE_UNIT_COLS, maxW);
+  let h = quantizeSpan(item.h ?? 1, TILE_UNIT_ROWS, TILE_UNIT_ROWS, 96);
   let x = quantizeSpan(item.x ?? 0, TILE_UNIT_COLS, 0, Math.max(0, maxW - w));
   if (x + w > maxW) x = Math.max(0, maxW - w);
   return { ...item, x, w, h };
 }
 
-/** Snap a layout item to the nearest valid discrete footprint for its widget tier. */
 export function snapLayoutItemToTileFootprint(
   item: LayoutItem,
   widgetId: string,
@@ -192,7 +208,7 @@ export function snapLayoutItemToTileFootprint(
   }
 
   const allowed = getTileFootprintsForWidget(widgetId);
-  const current = gridUnitsToTile(item.w ?? TILE_UNIT_COLS, item.h ?? TILE_UNIT_ROWS);
+  const current = gridUnitsToTile(item.w ?? 1, item.h ?? 1);
   const snapped = snapToNearestTileFootprint(current.tw, current.th, allowed);
   const { w, h } = tileFootprintToGridUnits(snapped);
   const bounds = footprintConstraintBounds(allowed);
@@ -227,6 +243,34 @@ export function applyTileSnapsToLayout(
   });
 }
 
+/**
+ * Convert layouts saved under the coarse 16-col / 2×2 macro-tile grid into atomic spans.
+ */
+export function migrateLegacyDashboardLayout(
+  layout: Layout,
+  fromCols = LEGACY_DASHBOARD_GRID_COLS,
+): Layout {
+  const colScale = DASHBOARD_GRID_COLS / fromCols;
+  const rowDensity = (DASHBOARD_GRID_ROW_HEIGHT_PX / LEGACY_ROW_HEIGHT_PX) * 0.72;
+
+  return layout.map((item) => {
+    const w = Math.max(2, Math.round((item.w ?? 2) * colScale));
+    const h = Math.max(2, Math.round((item.h ?? 2) * rowDensity));
+    const x = Math.max(0, Math.round((item.x ?? 0) * colScale));
+    const clampedX = Math.min(x, Math.max(0, DASHBOARD_GRID_COLS - w));
+    return {
+      ...item,
+      x: clampedX,
+      w: Math.min(w, DASHBOARD_GRID_COLS),
+      h,
+      minW: undefined,
+      minH: undefined,
+      maxW: undefined,
+      maxH: undefined,
+    };
+  });
+}
+
 export function defaultLayoutItemForWidget(
   widgetId: string,
   cols = DASHBOARD_GRID_COLS,
@@ -234,12 +278,12 @@ export function defaultLayoutItemForWidget(
 ): LayoutItem {
   if (widgetId === WORK_REQUESTS_WIDGET_ID) {
     return snapWorkRequestsGridItem(
-      { i: widgetId, x: 0, y: 0, w: TILE_UNIT_COLS * 2, h: TILE_UNIT_ROWS * 2 },
+      { i: widgetId, x: 0, y: 0, w: 8, h: 4 },
       cols,
       gridWidthPx,
     );
   }
-  const fp = DEFAULT_WIDGET_TILE_FOOTPRINTS[widgetId] ?? { tw: 2, th: 2 };
+  const fp = DEFAULT_WIDGET_TILE_FOOTPRINTS[widgetId] ?? { tw: 4, th: 3 };
   const { w, h } = tileFootprintToGridUnits(fp);
   const allowed = getTileFootprintsForWidget(widgetId);
   const bounds = footprintConstraintBounds(allowed);

@@ -4,7 +4,7 @@ import { CalendarDays } from "lucide-react";
 import type { ReactNode } from "react";
 
 /**
- * Minimal schedule page title row — actions render on the right (More, drafts, publish).
+ * Minimal schedule page title row — state-driven workflow actions on the right.
  * Kept intentionally short (~72–88px) so the calendar can sit higher on the page.
  */
 export function SchedulePageHeader({ actions }: { actions: ReactNode }) {

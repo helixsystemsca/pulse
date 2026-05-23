@@ -12,7 +12,19 @@ const period: SchedulePeriodLite = {
 };
 
 describe("deriveScheduleWorkflow", () => {
-  it("empty when period exists but no shifts", () => {
+  it("no period — only create period", () => {
+    const vm = deriveScheduleWorkflow({
+      activePeriod: null,
+      hasDraftPreview: false,
+      hasPendingServerSave: false,
+      hasPersistedShifts: false,
+    });
+    expect(vm.primaryAction).toBe("create_period");
+    expect(vm.showAvailabilityTools).toBe(false);
+    expect(vm.assignmentsEnabled).toBe(false);
+  });
+
+  it("period exists, no shifts — generate is primary", () => {
     const vm = deriveScheduleWorkflow({
       activePeriod: period,
       hasDraftPreview: false,
@@ -20,41 +32,53 @@ describe("deriveScheduleWorkflow", () => {
       hasPersistedShifts: false,
     });
     expect(vm.state).toBe("empty");
-    expect(vm.assignmentsEnabled).toBe(false);
-    expect(vm.mode).toBe("planning");
+    expect(vm.primaryAction).toBe("generate_schedule");
+    expect(vm.showAvailabilityTools).toBe(true);
   });
 
-  it("draft_generated when preview open", () => {
+  it("draft_generated — save is primary", () => {
     const vm = deriveScheduleWorkflow({
       activePeriod: period,
       hasDraftPreview: true,
       hasPendingServerSave: false,
       hasPersistedShifts: false,
     });
-    expect(vm.state).toBe("draft_generated");
+    expect(vm.primaryAction).toBe("save_changes");
+    expect(vm.showSecondaryRebuild).toBe(true);
   });
 
-  it("draft_saved when persisted and synced", () => {
+  it("draft_saved — publish when synced", () => {
     const vm = deriveScheduleWorkflow({
       activePeriod: period,
       hasDraftPreview: false,
       hasPendingServerSave: false,
       hasPersistedShifts: true,
     });
-    expect(vm.state).toBe("draft_saved");
-    expect(vm.assignmentsEnabled).toBe(false);
+    expect(vm.primaryAction).toBe("publish_schedule");
+    expect(vm.showSecondaryPublish).toBe(false);
   });
 
-  it("published from period status", () => {
+  it("draft_saved with pending edits — save first", () => {
+    const vm = deriveScheduleWorkflow({
+      activePeriod: period,
+      hasDraftPreview: false,
+      hasPendingServerSave: true,
+      hasPersistedShifts: true,
+    });
+    expect(vm.primaryAction).toBe("save_changes");
+    expect(vm.showSecondaryPublish).toBe(true);
+  });
+
+  it("published — assignments primary", () => {
     const vm = deriveScheduleWorkflow({
       activePeriod: { ...period, status: "published" },
       hasDraftPreview: false,
       hasPendingServerSave: false,
       hasPersistedShifts: true,
     });
-    expect(vm.state).toBe("published");
+    expect(vm.primaryAction).toBe("open_daily_assignments");
+    expect(vm.showAvailabilityTools).toBe(false);
     expect(vm.assignmentsEnabled).toBe(true);
-    expect(vm.mode).toBe("operational");
   });
 });
 

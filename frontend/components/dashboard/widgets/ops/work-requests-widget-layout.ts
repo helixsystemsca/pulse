@@ -9,8 +9,8 @@ export type WorkRequestsLayoutMode = "4x1" | "2x2" | "1x4";
 
 export const WORK_REQUESTS_WIDGET_ID = "notifications_work_orders";
 
-/** Fixed square KPI size (px) — widget grid units are derived from this, not the other way around. */
-export const WORK_REQUESTS_KPI_CELL_PX = 76;
+/** Fixed square KPI size (px) — widget grid spans are derived from this, not the other way around. */
+export const WORK_REQUESTS_KPI_CELL_PX = 64;
 export const WORK_REQUESTS_KPI_GAP_PX = 6;
 /** Header row + border slack inside the ops widget shell. */
 export const WORK_REQUESTS_SHELL_HEADER_PX = 40;
@@ -61,23 +61,23 @@ function gridWForContentPx(contentPx: number, gridWidthPx: number, cols: number)
   return Math.max(1, Math.ceil((contentPx + gap) / (colW + gap)));
 }
 
-function gridWForMode(mode: WorkRequestsLayoutMode, gridWidthPx?: number, cols = 16): number {
+function gridWForMode(mode: WorkRequestsLayoutMode, gridWidthPx?: number, cols = 24): number {
   const contentW = kpiContentWidthPx(mode);
   if (gridWidthPx != null && gridWidthPx > 0) {
     const w = gridWForContentPx(contentW, gridWidthPx, cols);
-    if (mode === "1x4") return Math.min(3, Math.max(2, w));
-    if (mode === "2x2") return Math.min(5, Math.max(3, w));
-    return Math.min(cols, Math.max(4, w));
+    if (mode === "1x4") return Math.min(5, Math.max(3, w));
+    if (mode === "2x2") return Math.min(8, Math.max(5, w));
+    return Math.min(cols, Math.max(7, w));
   }
-  if (mode === "1x4") return 2;
-  if (mode === "2x2") return 4;
-  return 5;
+  if (mode === "1x4") return 4;
+  if (mode === "2x2") return 6;
+  return 8;
 }
 
 export function buildWorkRequestsGridPreset(
   mode: WorkRequestsLayoutMode,
   gridWidthPx?: number,
-  cols = 16,
+  cols = 24,
 ): WorkRequestsGridPreset {
   const h = gridHForMode(mode);
   const w = gridWForMode(mode, gridWidthPx, cols);
@@ -95,7 +95,7 @@ export function detectWorkRequestsLayoutMode(gridW: number, gridH: number): Work
   const h22 = gridHForMode("2x2");
   const h14 = gridHForMode("1x4");
 
-  if (h >= h14 - 1 && w <= 3) return "1x4";
+  if (h >= h14 - 1 && w <= 5) return "1x4";
   if (h >= h14 - 1 && ratio < 0.45) return "1x4";
   if (h <= h4 + 0.5 && ratio >= 1.05) return "4x1";
   if (h >= h22 - 0.5 && h <= h22 + 1.5 && ratio >= 0.55 && ratio <= 1.35) return "2x2";
@@ -111,7 +111,7 @@ export function workRequestsLayoutModeFromContext(gridW: number, gridH: number):
 /** Apply snapped w/h + min/max constraints for react-grid-layout. */
 export function snapWorkRequestsGridItem(
   item: LayoutItem,
-  cols = 16,
+  cols = 24,
   gridWidthPx?: number,
 ): LayoutItem {
   const mode = detectWorkRequestsLayoutMode(item.w ?? 6, item.h ?? gridHForMode("4x1"));

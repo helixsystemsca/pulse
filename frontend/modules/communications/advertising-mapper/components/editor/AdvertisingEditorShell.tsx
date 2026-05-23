@@ -5,12 +5,10 @@ import { cn } from "@/lib/cn";
 
 export const AD_EDITOR_HEADER_PX = 52;
 export const AD_EDITOR_FOOTER_PX = 40;
-export const AD_EDITOR_SCENE_RAIL = "clamp(200px, 13vw, 228px)";
-export const AD_EDITOR_INSPECTOR_RAIL = "clamp(280px, 18vw, 340px)";
+export const AD_EDITOR_INSPECTOR_RAIL = "clamp(268px, 17vw, 320px)";
 
 export type AdvertisingEditorShellProps = {
   header: ReactNode;
-  sceneRail: ReactNode;
   viewport: ReactNode;
   inspector: ReactNode;
   footer: ReactNode;
@@ -23,11 +21,10 @@ export type AdvertisingEditorShellProps = {
 };
 
 /**
- * 3-region editor workspace — scene rail | canvas | permanent inspector (CSS Grid).
+ * Viewport-first editor — full-width canvas | thin inspector (no left scene rail).
  */
 export function AdvertisingEditorShell({
   header,
-  sceneRail,
   viewport,
   inspector,
   footer,
@@ -48,24 +45,17 @@ export function AdvertisingEditorShell({
       )}
       style={{
         gridTemplateRows: `${AD_EDITOR_HEADER_PX}px minmax(0, 1fr) ${AD_EDITOR_FOOTER_PX}px`,
-        gridTemplateColumns: `${AD_EDITOR_SCENE_RAIL} minmax(0, 1fr) ${AD_EDITOR_INSPECTOR_RAIL}`,
+        gridTemplateColumns: `minmax(0, 1fr) ${AD_EDITOR_INSPECTOR_RAIL}`,
         gridTemplateAreas: `
-          "header header header"
-          "scene canvas inspector"
-          "footer footer footer"
+          "header header"
+          "canvas inspector"
+          "footer footer"
         `,
       }}
     >
       <div className="min-h-0 overflow-hidden" style={{ gridArea: "header" }}>
         {header}
       </div>
-
-      <aside
-        className="min-h-0 overflow-hidden border-r border-slate-200/80 bg-[#f4f6f9]"
-        style={{ gridArea: "scene" }}
-      >
-        {sceneRail}
-      </aside>
 
       <main className="relative min-h-0 min-w-0 overflow-hidden bg-[#dce3eb]" style={{ gridArea: "canvas" }}>
         {floatingToolbar ? (
@@ -78,10 +68,7 @@ export function AdvertisingEditorShell({
         ) : null}
         <div className="absolute inset-0 min-h-0">{viewport}</div>
         {minimap ? (
-          <div
-            className="pointer-events-none absolute bottom-3 left-3 z-30"
-            aria-hidden={false}
-          >
+          <div className="pointer-events-none absolute bottom-3 left-3 z-30" aria-hidden={false}>
             {minimap}
           </div>
         ) : null}

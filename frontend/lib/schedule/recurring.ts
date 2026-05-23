@@ -1,4 +1,5 @@
 import { expandInclusiveDateRange, parseLocalDate } from "@/lib/schedule/calendar";
+import { expandBlockDates, timeOffMarkerKind } from "@/lib/schedule/time-off-request";
 import type { RecurringShiftRule, Shift, ShiftTypeKey, TimeOffBlock, Worker } from "@/lib/schedule/types";
 import { usesStructuredRecurringSchedule } from "@/lib/schedule/worker-scheduling-model";
 
@@ -50,9 +51,8 @@ export function approvedTimeOffKind(
 ): "vacation" | "sick" | null {
   for (const b of blocks) {
     if (b.workerId !== workerId || b.status !== "approved") continue;
-    if (date >= b.startDate && date <= b.endDate) {
-      return b.kind === "sick" ? "sick" : "vacation";
-    }
+    const dates = expandBlockDates(b);
+    if (dates.includes(date)) return timeOffMarkerKind(b.kind);
   }
   return null;
 }
@@ -150,8 +150,8 @@ function buildTimeOffMarkers(
   const workerMap = new Map(workers.map((w) => [w.id, w]));
   for (const b of blocks) {
     if (b.status !== "approved") continue;
-    const kind = b.kind === "sick" ? "sick" : "vacation";
-    const dates = expandInclusiveDateRange(b.startDate, b.endDate).filter((d) => visible.has(d));
+    const markerKind = timeOffMarkerKind(b.kind);
+    const dates = expandBlockDates(b).filter((d) => visible.has(d));
     for (const date of dates) {
       if (hasVacationOrSickCoverage(base, b.workerId, date)) continue;
       if (out.some((s) => s.workerId === b.workerId && s.date === date && (s.eventType === "vacation" || s.eventType === "sick"))) {
@@ -165,7 +165,7 @@ function buildTimeOffMarkers(
         startTime: "08:00",
         endTime: "16:00",
         shiftType: "day",
-        eventType: kind === "sick" ? "sick" : "vacation",
+        eventType: markerKind === "sick" ? "sick" : "vacation",
         role: w?.role ?? "worker",
         zoneId: defaultZoneId,
         shiftKind: "workforce",
