@@ -1,13 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef } from "react";
 
 import { cn } from "@/lib/cn";
 
-/** Fixed equilateral triangle edge length (px) — uniform grid across viewports. */
-const CELL_PX = 52;
+/** Equilateral triangle side length in screen pixels (smaller = denser grid). */
+const SIDE_PX = 40;
 
-/** Seeded PRNG for stable random opacity across resizes. */
+const ROW_H = (SIDE_PX * Math.sqrt(3)) / 2;
+
+const TEAL_FILLS = ["#99f6e4", "#5eead4", "#2dd4bf", "#22d3ee", "#14b8a6", "#67e8f9"];
+
+/** Seeded PRNG — stable opacity per triangle index. */
 function mulberry32(seed: number) {
   return function next() {
     let t = (seed += 0x6d2b79f5);
@@ -17,79 +21,84 @@ function mulberry32(seed: number) {
   };
 }
 
-type TriangleSpec = {
-  points: string;
-  fill: string;
-  opacity: number;
-};
+function opacityForTriangle(
+  cy: number,
+  height: number,
+  rng: () => number,
+): number | null {
+  const yNorm = Math.min(1, Math.max(0, cy / height));
+  const verticalBias = 0.12 + Math.pow(yNorm, 0.62) * 0.88;
+  const rA = rng();
+  const rB = rng();
+  const rC = rng();
+  const rD = rng();
 
-const TEAL_FILLS = ["#99f6e4", "#5eead4", "#2dd4bf", "#22d3ee", "#14b8a6", "#67e8f9"];
+  if (rA > verticalBias * (0.42 + rB * 0.58)) return null;
 
-/** Uniform triangular lattice — no vertex jitter. */
-function buildTessellation(width: number, height: number, seed = 0x7a3c91): TriangleSpec[] {
-  if (width < 1 || height < 1) return [];
+  const opacity = Math.min(
+    0.28,
+    verticalBias * Math.pow(rC, 1.65) * Math.pow(rD, 1.35) * (0.08 + rB * 0.22),
+  );
+  return opacity < 0.015 ? null : opacity;
+}
 
-  const rng = mulberry32(seed);
-  const cell = CELL_PX;
-  const rowH = (cell * Math.sqrt(3)) / 2;
-  const cols = Math.ceil(width / cell) + 3;
-  const rows = Math.ceil(height / rowH) + 3;
-  const triangles: TriangleSpec[] = [];
+function drawTriangle(
+  ctx: CanvasRenderingContext2D,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  x3: number,
+  y3: number,
+  fill: string,
+  alpha: number,
+) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = fill;
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.lineTo(x3, y3);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
 
-  const verts: { x: number; y: number }[][] = [];
+/** Paint equilateral triangle tessellation in true screen pixels (no stretch). */
+function paintTessellation(ctx: CanvasRenderingContext2D, width: number, height: number) {
+  ctx.clearRect(0, 0, width, height);
 
-  for (let r = 0; r < rows; r++) {
-    verts[r] = [];
-    for (let c = 0; c < cols; c++) {
-      const stagger = (r % 2) * (cell / 2);
-      verts[r][c] = {
-        x: c * cell + stagger - cell,
-        y: r * rowH - rowH * 0.5,
-      };
-    }
-  }
+  const cols = Math.ceil(width / SIDE_PX) + 4;
+  const rows = Math.ceil(height / ROW_H) + 4;
 
   for (let r = 0; r < rows - 1; r++) {
     for (let c = 0; c < cols - 1; c++) {
-      const a = verts[r]![c]!;
-      const b = verts[r]![c + 1]!;
-      const d = verts[r + 1]![c]!;
-      const e = verts[r + 1]![c + 1]!;
+      const stagger = (r % 2) * (SIDE_PX / 2);
+      const ax = c * SIDE_PX + stagger - SIDE_PX;
+      const ay = r * ROW_H - ROW_H * 0.5;
+      const bx = ax + SIDE_PX;
+      const by = ay;
+      const dx = ax + SIDE_PX / 2;
+      const dy = ay + ROW_H;
+      const ex = bx + SIDE_PX / 2;
+      const ey = dy;
 
-      const specs: [{ p: typeof a; q: typeof b; s: typeof d }, { p: typeof b; q: typeof e; s: typeof d }] = [
-        { p: a, q: b, s: d },
-        { p: b, q: e, s: d },
+      const tris: [number, number, number, number, number, number][] = [
+        [ax, ay, bx, by, dx, dy],
+        [bx, by, ex, ey, dx, dy],
       ];
 
-      for (const { p, q, s } of specs) {
-        const cy = (p.y + q.y + s.y) / 3;
-        const yNorm = Math.min(1, Math.max(0, cy / height));
-
-        /** Bottom slightly denser; top breaks apart with heavy random dropout. */
-        const verticalBias = 0.12 + Math.pow(yNorm, 0.62) * 0.88;
-        const rA = rng();
-        const rB = rng();
-        const rC = rng();
-        const rD = rng();
-
-        if (rA > verticalBias * (0.42 + rB * 0.58)) continue;
-
-        const opacity = Math.min(
-          0.28,
-          verticalBias * Math.pow(rC, 1.65) * Math.pow(rD, 1.35) * (0.08 + rB * 0.22),
-        );
-        if (opacity < 0.015) continue;
-
-        triangles.push({
-          points: `${p.x},${p.y} ${q.x},${q.y} ${s.x},${s.y}`,
-          fill: TEAL_FILLS[Math.floor(rng() * TEAL_FILLS.length)]!,
-          opacity,
-        });
-      }
+      tris.forEach((coords, ti) => {
+        const cy = (coords[1] + coords[3] + coords[5]) / 3;
+        const rng = mulberry32(0x7a3c91 + r * 4099 + c * 97 + ti * 31);
+        const opacity = opacityForTriangle(cy, height, rng);
+        if (opacity == null) return;
+        const fill = TEAL_FILLS[Math.floor(rng() * TEAL_FILLS.length)]!;
+        drawTriangle(ctx, coords[0], coords[1], coords[2], coords[3], coords[4], coords[5], fill, opacity);
+      });
     }
   }
-
-  return triangles;
 }
 
 export type LoginTessellationBackgroundProps = {
@@ -97,52 +106,53 @@ export type LoginTessellationBackgroundProps = {
 };
 
 /**
- * Low-opacity uniform triangle overlay for login — sits above {@link AuroraBackground}.
+ * Low-opacity equilateral triangle overlay for login — canvas keeps every
+ * triangle symmetrical; sits above {@link AuroraBackground}.
  */
 export function LoginTessellationBackground({ className }: LoginTessellationBackgroundProps) {
-  const [size, setSize] = useState({ width: 0, height: 0 });
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const read = () => {
-      setSize({ width: window.innerWidth, height: window.innerHeight });
-    };
-    read();
-    window.addEventListener("resize", read);
-    return () => window.removeEventListener("resize", read);
-  }, []);
+    const container = containerRef.current;
+    const canvas = canvasRef.current;
+    if (!container || !canvas) return;
 
-  const triangles = useMemo(
-    () => buildTessellation(size.width, size.height),
-    [size.width, size.height],
-  );
+    const paint = () => {
+      const rect = container.getBoundingClientRect();
+      const w = Math.max(1, Math.round(rect.width));
+      const h = Math.max(1, Math.round(rect.height));
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+      canvas.style.width = `${w}px`;
+      canvas.style.height = `${h}px`;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      paintTessellation(ctx, w, h);
+    };
+
+    paint();
+    const ro = new ResizeObserver(paint);
+    ro.observe(container);
+    window.addEventListener("resize", paint);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", paint);
+    };
+  }, []);
 
   return (
     <div
+      ref={containerRef}
       className={cn("pointer-events-none absolute inset-0 z-[1] overflow-hidden", className)}
       aria-hidden
     >
-      {size.width > 0 && size.height > 0 ? (
-        <svg
-          className="absolute inset-0 h-full w-full"
-          viewBox={`0 0 ${size.width} ${size.height}`}
-          preserveAspectRatio="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          {triangles.map((t, i) => (
-            <polygon
-              key={i}
-              points={t.points}
-              fill={t.fill}
-              fillOpacity={t.opacity}
-              stroke={t.fill}
-              strokeOpacity={t.opacity * 0.25}
-              strokeWidth={0.5}
-            />
-          ))}
-        </svg>
-      ) : null}
+      <canvas ref={canvasRef} className="absolute inset-0 block h-full w-full" />
 
-      {/* Soft top fade so triangles dissolve without hiding the aurora */}
       <div
         className="absolute inset-0"
         style={{
