@@ -1,7 +1,7 @@
 "use client";
 
 import type { ComponentType } from "react";
-import { Magnet, Redo2, Undo2 } from "lucide-react";
+import { Magnet, Minus, Plus, Redo2, Undo2 } from "lucide-react";
 import type { SpatialWorkspaceToolEntry } from "@/spatial-engine/workspace/types";
 import { cn } from "@/lib/cn";
 
@@ -13,6 +13,10 @@ type Props = {
   onSnapToggle: () => void;
   onUndo?: () => void;
   onRedo?: () => void;
+  scalePercent?: number;
+  onZoomIn?: () => void;
+  onZoomOut?: () => void;
+  zoomDisabled?: boolean;
 };
 
 export function AdvertisingFloatingToolbar({
@@ -23,6 +27,10 @@ export function AdvertisingFloatingToolbar({
   onSnapToggle,
   onUndo,
   onRedo,
+  scalePercent = 100,
+  onZoomIn,
+  onZoomOut,
+  zoomDisabled = false,
 }: Props) {
   const navigation = tools.filter((t) => t.group === "navigation");
   const primary = tools.filter((t) => t.group === "primary");
@@ -62,6 +70,37 @@ export function AdvertisingFloatingToolbar({
       {utility.map((tool) => (
         <ToolBtn key={tool.id} tool={tool} active={activeToolId === tool.id} onSelect={() => onToolChange(tool.id)} />
       ))}
+      <Divider />
+      <div
+        className={cn(
+          "flex items-center rounded-lg border border-slate-200/80 bg-slate-50/90",
+          zoomDisabled && "pointer-events-none opacity-50",
+        )}
+        role="group"
+        aria-label="Zoom"
+      >
+        <button
+          type="button"
+          className="flex h-9 w-9 items-center justify-center text-slate-600 hover:bg-white disabled:opacity-40"
+          onClick={onZoomOut}
+          disabled={zoomDisabled || !onZoomOut}
+          aria-label="Zoom out"
+        >
+          <Minus className="h-4 w-4" />
+        </button>
+        <span className="min-w-[3.25rem] border-x border-slate-200/80 px-2 text-center font-mono text-xs font-semibold text-slate-800">
+          {scalePercent}%
+        </span>
+        <button
+          type="button"
+          className="flex h-9 w-9 items-center justify-center text-slate-600 hover:bg-white disabled:opacity-40"
+          onClick={onZoomIn}
+          disabled={zoomDisabled || !onZoomIn}
+          aria-label="Zoom in"
+        >
+          <Plus className="h-4 w-4" />
+        </button>
+      </div>
     </div>
   );
 }

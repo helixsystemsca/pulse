@@ -1907,7 +1907,7 @@ function DashboardBody({
                             : item.i === "workforce"
                               ? "px-1 py-0.5"
                               : item.i === "notifications_work_orders"
-                                ? "!overflow-hidden !p-0 flex min-h-0 flex-1 flex-col items-start justify-start"
+                                ? "!overflow-hidden !p-0 flex min-h-0 flex-1 flex-col items-center justify-center"
                                 : undefined
                       }
                     >

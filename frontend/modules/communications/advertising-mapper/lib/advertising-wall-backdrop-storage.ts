@@ -5,6 +5,13 @@ const STORAGE_VERSION = "v1";
 
 export type StoredWallBackdrop = WallBackdropPatch;
 
+type FacilityWallPlanLike = {
+  id: string;
+  backdropUrl?: string;
+  backdropNaturalWidth?: number;
+  backdropNaturalHeight?: number;
+};
+
 function storageKey(): string {
   const cid = readSession()?.company_id?.trim() || "default";
   return `pulse.advertising.wall-backdrops.${STORAGE_VERSION}:${cid}`;
@@ -42,6 +49,37 @@ export function saveWallBackdrop(wallId: string, backdrop: StoredWallBackdrop | 
   } catch {
     throw new Error("Photo is too large to save in this browser. Try a smaller image.");
   }
+}
+
+/** Persist one wall backdrop (no-op when no image is loaded). */
+export function persistWallBackdropForPlan(
+  wall: Pick<FacilityWallPlanLike, "id" | "backdropUrl" | "backdropNaturalWidth" | "backdropNaturalHeight">,
+): void {
+  if (wall.backdropUrl && wall.backdropNaturalWidth && wall.backdropNaturalHeight) {
+    saveWallBackdrop(wall.id, {
+      backdropUrl: wall.backdropUrl,
+      backdropNaturalWidth: wall.backdropNaturalWidth,
+      backdropNaturalHeight: wall.backdropNaturalHeight,
+    });
+  } else {
+    saveWallBackdrop(wall.id, null);
+  }
+}
+
+/** Save background photos for every wall view (browser local storage, per facility). */
+export function persistAllWallBackdrops(
+  walls: readonly FacilityWallPlanLike[],
+): { savedCount: number } {
+  let savedCount = 0;
+  for (const w of walls) {
+    if (w.backdropUrl && w.backdropNaturalWidth && w.backdropNaturalHeight) {
+      persistWallBackdropForPlan(w);
+      savedCount++;
+    } else {
+      saveWallBackdrop(w.id, null);
+    }
+  }
+  return { savedCount };
 }
 
 export function mergeWallPlanBackdrops<T extends { id: string }>(

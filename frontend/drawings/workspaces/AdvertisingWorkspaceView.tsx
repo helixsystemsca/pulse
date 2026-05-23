@@ -11,7 +11,7 @@ import {
   type AdvertisingLayerVisibility,
 } from "@/modules/communications/advertising-mapper/components/editor/AdvertisingInspectorPanel";
 import { AdvertisingWallStrip } from "@/modules/communications/advertising-mapper/components/editor/AdvertisingWallStrip";
-import { AdvertisingZoomControl } from "@/modules/communications/advertising-mapper/components/editor/AdvertisingZoomControl";
+import { persistAllWallBackdrops } from "@/modules/communications/advertising-mapper/lib/advertising-wall-backdrop-storage";
 import { SnipPresetBar } from "@/modules/communications/advertising-mapper/components/editor/SnipPresetBar";
 import { snipRegionFromBackdrop, type WallSnipRect } from "@/modules/communications/advertising-mapper/lib/ad-snip";
 import { generateEmptySpaceBackdrop } from "@/modules/communications/advertising-mapper/lib/generate-empty-backdrop";
@@ -99,6 +99,7 @@ export function AdvertisingWorkspaceView({
   const [pendingSnip, setPendingSnip] = useState<WallSnipRect | null>(null);
   const [snipBusy, setSnipBusy] = useState(false);
   const [backdropBusy, setBackdropBusy] = useState(false);
+  const [saveNotice, setSaveNotice] = useState<string | null>(null);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
 
   const { viewport, setViewport, zoomBy, resetView } = usePlannerViewport();
@@ -371,6 +372,25 @@ export function AdvertisingWorkspaceView({
 
   const advertisingFullscreenHref = pulseAppHref(spatialWorkspaceFullscreenHref("advertising"));
 
+  const handleSaveBackdrops = useCallback(() => {
+    try {
+      const { savedCount } = persistAllWallBackdrops(walls);
+      setSaveNotice(
+        savedCount > 0
+          ? `Saved ${savedCount} background photo${savedCount === 1 ? "" : "s"} in this browser.`
+          : "No background photos to save yet. Upload a photo per wall view first.",
+      );
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : "Could not save background photos.");
+    }
+  }, [walls]);
+
+  useEffect(() => {
+    if (!saveNotice) return;
+    const t = window.setTimeout(() => setSaveNotice(null), 4000);
+    return () => window.clearTimeout(t);
+  }, [saveNotice]);
+
   return (
     <>
       <SpatialWorkspaceShell
@@ -389,9 +409,7 @@ export function AdvertisingWorkspaceView({
             <AdvertisingEditorHeader
               unit={unit}
               onUnitChange={setUnit}
-              onSave={() => {
-                /* persistence adapter hook — API phase */
-              }}
+              onSave={handleSaveBackdrops}
               onPublish={() => {
                 /* proposal export — API phase */
               }}
@@ -409,6 +427,10 @@ export function AdvertisingWorkspaceView({
             onSnapToggle={() => setSnapEnabled((v) => !v)}
             onUndo={undo}
             onRedo={redo}
+            scalePercent={scalePercent}
+            onZoomIn={() => zoomFocal(1.12)}
+            onZoomOut={() => zoomFocal(0.88)}
+            zoomDisabled={!canZoomViewport}
           />
         }
         rightPanel={
@@ -426,17 +448,14 @@ export function AdvertisingWorkspaceView({
         }
         viewport={
           <div ref={canvasContainerRef} className="relative h-full w-full">
-            <AdvertisingZoomControl
-              className="absolute z-20"
-              style={{
-                left: RULER_THICKNESS_PX + 8,
-                top: RULER_THICKNESS_PX + 8,
-              }}
-              scalePercent={scalePercent}
-              disabled={!canZoomViewport}
-              onZoomIn={() => zoomFocal(1.12)}
-              onZoomOut={() => zoomFocal(0.88)}
-            />
+            {saveNotice ? (
+              <p
+                className="pointer-events-none absolute left-1/2 top-3 z-30 -translate-x-1/2 rounded-lg border border-slate-200/90 bg-white/95 px-3 py-1.5 text-xs font-medium text-slate-700 shadow-md"
+                role="status"
+              >
+                {saveNotice}
+              </p>
+            ) : null}
             <InventoryPlannerCanvas
               wall={wall}
               blocks={wall.blocks}
@@ -458,6 +477,10 @@ export function AdvertisingWorkspaceView({
               onBlockChange={onBlockChange}
               onConstraintCreate={handleConstraintCreate}
               onConstraintPointsChange={onConstraintPointsChange}
+              onConstraintDelete={(id) => {
+                onConstraintDelete(id);
+                if (selectedConstraintId === id) setSelectedConstraintId(null);
+              }}
               onDimensionBadgeClick={(id, focus) => setDimEdit({ id, focus })}
               onInventoryPlace={handleInventoryPlace}
               snipDraftRect={snipDraft}

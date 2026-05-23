@@ -17,15 +17,7 @@ export const MOCK_WALL_PLANS: FacilityWallPlan[] = [
     height_inches: WORKABLE_H,
     backdropKind: "arena",
     gridSnapInches: 6,
-    constraints: [
-      {
-        id: "constraint-pillar-l",
-        type: "polygon",
-        constraintType: "blocked",
-        points: [52, 8, 68, 8, 68, 32, 52, 32],
-        label: "Structural column",
-      },
-    ],
+    constraints: [],
     blocks: [
       {
         id: "l-1",
@@ -94,15 +86,7 @@ export const MOCK_WALL_PLANS: FacilityWallPlan[] = [
     height_inches: WORKABLE_H,
     backdropKind: "arena",
     gridSnapInches: 6,
-    constraints: [
-      {
-        id: "constraint-window-c",
-        type: "polygon",
-        constraintType: "restricted",
-        points: [22, 6, 52, 6, 52, 18, 22, 18],
-        label: "Press box glazing",
-      },
-    ],
+    constraints: [],
     blocks: [
       {
         id: "c-1",

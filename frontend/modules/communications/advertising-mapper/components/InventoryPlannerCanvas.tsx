@@ -53,6 +53,7 @@ type Props = {
   onBlockChange: (id: string, patch: Partial<InventoryBlock>) => void;
   onConstraintCreate: (region: ConstraintRegion) => void;
   onConstraintPointsChange: (id: string, points: number[]) => void;
+  onConstraintDelete?: (id: string) => void;
   onDimensionBadgeClick: (id: string, target: DimensionEditTarget) => void;
   onInventoryPlace?: (x: number, y: number) => void;
   snipDraftRect?: WallSnipRect | null;
@@ -97,6 +98,7 @@ export function InventoryPlannerCanvas({
   onBlockChange,
   onConstraintCreate,
   onConstraintPointsChange,
+  onConstraintDelete,
   onDimensionBadgeClick,
   onInventoryPlace,
   snipDraftRect = null,
@@ -201,7 +203,16 @@ export function InventoryPlannerCanvas({
           return;
         }
       }
-      if (toolMode === "select" && selectedConstraintId && e.key === "Delete") {
+      if (
+        toolMode === "select" &&
+        selectedConstraintId &&
+        (e.key === "Delete" || e.key === "Backspace")
+      ) {
+        if (onConstraintDelete) {
+          e.preventDefault();
+          onConstraintDelete(selectedConstraintId);
+          return;
+        }
         const region = constraints.find((c) => c.id === selectedConstraintId);
         if (!region || region.points.length < 8) return;
         const next = removePolygonVertex(region.points, 0);
@@ -210,7 +221,14 @@ export function InventoryPlannerCanvas({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [constraints, finalizeDraft, onConstraintPointsChange, selectedConstraintId, toolMode]);
+  }, [
+    constraints,
+    finalizeDraft,
+    onConstraintDelete,
+    onConstraintPointsChange,
+    selectedConstraintId,
+    toolMode,
+  ]);
 
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {

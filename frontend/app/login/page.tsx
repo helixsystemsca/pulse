@@ -4,7 +4,7 @@ import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail } from "lucide-react";
 import Image from "next/image";
 import { FormEvent, useEffect, useId, useRef, useState } from "react";
 import { AuthScreenShell } from "@/components/auth/AuthScreenShell";
-import { AuroraBackground } from "@/components/ui/AuroraBackground";
+import { LoginTessellationBackground } from "@/components/ui/LoginTessellationBackground";
 import { isApiMode } from "@/lib/api";
 import {
   attemptMockLogin,
@@ -165,8 +165,8 @@ export default function LoginPage() {
     "min-w-0 flex-1 border-0 bg-transparent p-0 text-sm font-medium text-[color-mix(in_srgb,var(--ds-text-primary)_92%,transparent)] outline-none ring-0 placeholder:text-[color-mix(in_srgb,var(--ds-text-primary)_45%,transparent)] dark:text-ds-foreground dark:placeholder:text-ds-muted";
 
   return (
-    <AuthScreenShell className="login-web-canvas login-web-canvas--aurora relative flex min-h-0 flex-1 flex-col">
-      <AuroraBackground />
+    <AuthScreenShell className="login-web-canvas login-web-canvas--tessellation relative flex min-h-0 flex-1 flex-col">
+      <LoginTessellationBackground />
       <div className="relative z-10 flex min-h-0 flex-1 flex-col">
         <header className="relative z-10 flex w-full items-center justify-end gap-4 px-5 py-2.5 sm:px-8 sm:py-3 lg:px-12">
           <nav className="flex items-center gap-1 sm:gap-2" aria-label="Login header">
@@ -346,7 +346,7 @@ export default function LoginPage() {
 
             <div className="relative mt-5 sm:mt-6">
               <div className="h-px w-full bg-[color-mix(in_srgb,#4c6085_14%,transparent)] dark:bg-ds-border" />
-              <p className="absolute left-1/2 top-1/2 w-max -translate-x-1/2 -translate-y-1/2 bg-[#eef9fc] px-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[color-mix(in_srgb,var(--ds-text-primary)_38%,transparent)] dark:bg-[var(--ds-bg)] dark:text-ds-muted">
+              <p className="absolute left-1/2 top-1/2 w-max -translate-x-1/2 -translate-y-1/2 bg-white/80 px-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[color-mix(in_srgb,var(--ds-text-primary)_38%,transparent)] backdrop-blur-sm dark:bg-[var(--ds-bg)] dark:text-ds-muted">
                 Secure link
               </p>
             </div>
