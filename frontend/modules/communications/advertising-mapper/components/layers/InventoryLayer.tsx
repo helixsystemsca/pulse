@@ -17,6 +17,7 @@ type Props = {
   listening?: boolean;
   violationIds: ReadonlySet<string>;
   onSelect: (id: string) => void;
+  onDragStart?: (id: string) => void;
   onDragEnd: (id: string, node: Konva.Group) => void;
   onTransformEnd: (id: string, node: Konva.Group) => void;
   onDimensionBadgeClick: (id: string, target: DimensionEditTarget) => void;
@@ -30,6 +31,7 @@ function InventoryLayerInner({
   listening = true,
   violationIds,
   onSelect,
+  onDragStart,
   onDragEnd,
   onTransformEnd,
   onDimensionBadgeClick,
@@ -53,6 +55,7 @@ function InventoryLayerInner({
             listening={listening}
             onClick={() => listening && onSelect(block.id)}
             onTap={() => listening && onSelect(block.id)}
+            onDragStart={() => onDragStart?.(block.id)}
             onDragEnd={(e) => onDragEnd(block.id, e.target as Konva.Group)}
             onTransformEnd={(e) => onTransformEnd(block.id, e.target as Konva.Group)}
           >

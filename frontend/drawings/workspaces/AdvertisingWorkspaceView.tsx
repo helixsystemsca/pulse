@@ -74,6 +74,7 @@ export function AdvertisingWorkspaceView({
     addBlock,
     removeBlock,
     updateWall,
+    addWall,
   } = useAdvertisingSpatialRuntime(INITIAL_WALLS, MOCK_WALL_PLANS[0]!.id);
 
   const wall = wallDoc ?? INITIAL_WALLS[0]!;
@@ -85,14 +86,14 @@ export function AdvertisingWorkspaceView({
   const [selectedInventoryId, setSelectedInventoryId] = useState<string | null>(null);
   const [selectedConstraintId, setSelectedConstraintId] = useState<string | null>(null);
   const [toolMode, setToolMode] = useState<PlannerToolMode>("select");
-  const [draftConstraintType] = useState<ConstraintType>("blocked");
+  const [draftConstraintType] = useState<ConstraintType>("mountable");
   const [unit, setUnit] = useState<MeasurementUnit>("ft");
   const [snapEnabled, setSnapEnabled] = useState(true);
   const [showGrid, setShowGrid] = useState(true);
   const [dimEdit, setDimEdit] = useState<{ id: string; focus: DimensionEditTarget } | null>(null);
   const [layerVisibility, setLayerVisibility] = useState<AdvertisingLayerVisibility>({
     backdrop: true,
-    constraints: true,
+    constraints: false,
     inventory: true,
   });
   const [snipDraft, setSnipDraft] = useState<WallSnipRect | null>(null);
@@ -199,6 +200,7 @@ export function AdvertisingWorkspaceView({
       setSelectedConstraintId(region.id);
       setSelectedInventoryId(null);
       setToolMode("select");
+      setSelectedConstraintId(null);
     },
     [onConstraintCreate],
   );
@@ -395,8 +397,8 @@ export function AdvertisingWorkspaceView({
     <>
       <SpatialWorkspaceShell
         workspaceId="advertising"
-        title={wall.name}
-        subtitle={`${wallMeta.total} inventory · ${wallMeta.available} available · ${wallMeta.occupied} occupied`}
+        title="Arena advertising"
+        subtitle={`${wall.name} · ${wallMeta.total} inventory · ${wallMeta.available} available · ${wallMeta.occupied} occupied`}
         activeToolId={toolMode}
         onToolChange={onToolChange}
         workspaceSwitcher={editorFullscreen ? undefined : workspaceSwitcher}
@@ -470,7 +472,6 @@ export function AdvertisingWorkspaceView({
               snapEnabled={snapEnabled}
               showGrid={showGrid}
               showBackdrop={layerVisibility.backdrop}
-              showConstraints={layerVisibility.constraints}
               showInventory={layerVisibility.inventory}
               onSelectInventory={setSelectedInventoryId}
               onSelectConstraint={setSelectedConstraintId}
@@ -535,6 +536,13 @@ export function AdvertisingWorkspaceView({
             activeWallId={wallId}
             unit={unit}
             onWallChange={(id) => {
+              setWallId(id);
+              setSelectedInventoryId(null);
+              setSelectedConstraintId(null);
+            }}
+            onWallRename={(_id, name) => updateWall({ name })}
+            onAddWall={() => {
+              const id = addWall();
               setWallId(id);
               setSelectedInventoryId(null);
               setSelectedConstraintId(null);

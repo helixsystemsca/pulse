@@ -26,6 +26,7 @@ import {
   saveWallBackdrop,
   mergeWallPlanBackdrops,
 } from "@/modules/communications/advertising-mapper/lib/advertising-wall-backdrop-storage";
+import { createEmptyWallPlan } from "@/modules/communications/advertising-mapper/lib/create-wall-plan";
 import type { ConstraintRegion } from "@/modules/communications/advertising-mapper/geometry/types";
 import type { FacilityWallPlan, InventoryBlock } from "@/modules/communications/advertising-mapper/types";
 import {
@@ -203,12 +204,21 @@ export function useAdvertisingSpatialRuntime(initialWalls: FacilityWallPlan[], i
     [updateActiveDocument],
   );
 
+  const addWall = useCallback(() => {
+    const existing = Object.values(documents).length;
+    const plan = createEmptyWallPlan({ name: `View ${existing + 1}` });
+    loadDocument(wallPlanToDocument(plan), { pushHistory: false });
+    setActiveDocumentId(plan.id);
+    return plan.id;
+  }, [documents, loadDocument, setActiveDocumentId]);
+
   return {
     walls,
     wallId,
     wall,
     setWallId,
     updateWall,
+    addWall,
     onBlockChange,
     onConstraintChange,
     onConstraintCreate,

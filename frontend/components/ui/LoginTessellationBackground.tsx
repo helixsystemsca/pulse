@@ -28,16 +28,19 @@ function opacityForTriangle(
 ): number | null {
   const yNorm = Math.min(1, Math.max(0, cy / height));
   const verticalBias = 0.12 + Math.pow(yNorm, 0.62) * 0.88;
+  const inBottomHalf = yNorm >= 0.5;
+  const bottomBoost = inBottomHalf ? 1.12 + (yNorm - 0.5) * 0.5 : 1;
   const rA = rng();
   const rB = rng();
   const rC = rng();
   const rD = rng();
 
-  if (rA > verticalBias * (0.42 + rB * 0.58)) return null;
+  const keepThreshold = verticalBias * ((inBottomHalf ? 0.5 : 0.42) + rB * 0.58);
+  if (rA > keepThreshold) return null;
 
   const opacity = Math.min(
-    0.28,
-    verticalBias * Math.pow(rC, 1.65) * Math.pow(rD, 1.35) * (0.08 + rB * 0.22),
+    inBottomHalf ? 0.34 : 0.28,
+    verticalBias * Math.pow(rC, 1.65) * Math.pow(rD, 1.35) * (0.08 + rB * 0.22) * bottomBoost,
   );
   return opacity < 0.015 ? null : opacity;
 }

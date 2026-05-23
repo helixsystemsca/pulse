@@ -26,6 +26,10 @@ import {
   type PlannerViewport,
 } from "@/modules/communications/advertising-mapper/lib/coordinates";
 import { pointerToWallInches } from "@/modules/communications/advertising-mapper/lib/pointer-to-wall";
+import {
+  constraintRevealMode,
+  constraintsForPlacementReveal,
+} from "@/modules/communications/advertising-mapper/lib/constraint-reveal";
 import { clampBlockSize, clampBlockToWall, snapInches } from "@/modules/communications/advertising-mapper/lib/snap";
 import type {
   DimensionEditTarget,
@@ -60,7 +64,6 @@ type Props = {
   onSnipDraftChange?: (rect: WallSnipRect | null) => void;
   onSnipRegionReady?: (rect: WallSnipRect) => void;
   showBackdrop?: boolean;
-  showConstraints?: boolean;
   showInventory?: boolean;
   /** When false, status hints are rendered by SpatialWorkspaceShell. */
   showFloatingHints?: boolean;
@@ -105,7 +108,6 @@ export function InventoryPlannerCanvas({
   onSnipDraftChange,
   onSnipRegionReady,
   showBackdrop = true,
-  showConstraints = true,
   showInventory = true,
   showFloatingHints = true,
   showMinimap = true,
@@ -118,6 +120,7 @@ export function InventoryPlannerCanvas({
   const [stageSize, setStageSize] = useState({ width: 800, height: 520 });
   const [draftPoints, setDraftPoints] = useState<number[]>([]);
   const [cursorInches, setCursorInches] = useState<{ x: number; y: number } | null>(null);
+  const [inventoryDraggingId, setInventoryDraggingId] = useState<string | null>(null);
   const panRef = useRef<{ active: boolean; startX: number; startY: number; panX: number; panY: number } | null>(null);
   const snipDragRef = useRef<{ x0: number; y0: number } | null>(null);
 
@@ -125,6 +128,17 @@ export function InventoryPlannerCanvas({
   const gridInches = wall.gridSnapInches ?? 6;
   const wallWidthPx = wall.width_inches * BASE_PX_PER_INCH;
   const wallHeightPx = wall.height_inches * BASE_PX_PER_INCH;
+
+  const constraintReveal = constraintRevealMode({
+    toolMode,
+    inventoryDragActive: inventoryDraggingId != null,
+  });
+
+  const visibleConstraints = useMemo(() => {
+    if (!constraintReveal) return [];
+    if (constraintReveal === "edit") return constraints;
+    return constraintsForPlacementReveal(constraints);
+  }, [constraintReveal, constraints]);
 
   const violationIds = useMemo(() => {
     const ids = new Set<string>();
@@ -429,13 +443,14 @@ export function InventoryPlannerCanvas({
                 image={backdropImage}
               />
             ) : null}
-            {showConstraints ? (
+            {constraintReveal ? (
               <ConstraintLayer
-                constraints={constraints}
+                constraints={visibleConstraints}
                 draftPoints={draftPoints}
                 cursorInches={cursorInches}
                 selectedConstraintId={selectedConstraintId}
                 toolMode={toolMode}
+                revealMode={constraintReveal}
                 onSelectConstraint={(id) => {
                   onSelectConstraint(id);
                   onSelectInventory(null);
@@ -461,7 +476,11 @@ export function InventoryPlannerCanvas({
                   onSelectInventory(id);
                   onSelectConstraint(null);
                 }}
-                onDragEnd={finishBlockDrag}
+                onDragStart={(id) => setInventoryDraggingId(id)}
+                onDragEnd={(id, node) => {
+                  setInventoryDraggingId(null);
+                  finishBlockDrag(id, node);
+                }}
                 onTransformEnd={finishBlockTransform}
                 onDimensionBadgeClick={onDimensionBadgeClick}
               />
@@ -496,10 +515,14 @@ export function InventoryPlannerCanvas({
       {showFloatingHints ? (
         <p className="pointer-events-none absolute bottom-3 left-[11rem] z-20 max-w-md rounded-md bg-black/55 px-2 py-1 text-[10px] text-white/85">
           {toolMode === "constraint"
-            ? "Click to place points · click first point to close · Enter finalize · Esc cancel"
-            : toolMode === "snip"
-              ? "Drag over an ad on the photo · release · pick 4′×4′ or 4′×8′ card size"
-              : "Select Pan (H) or Zoom (Z) from toolbar · Snip (S) crops ads from photo · V/I/C shortcuts"}
+            ? "Click to place points · click first point to close · Enter finalize · Esc cancel · use Mountable for ad zones"
+            : toolMode === "inventory"
+              ? "Placement zones shown · click to place a plot · drag cards to move within zones"
+              : toolMode === "snip"
+                ? "Drag over an ad on the photo · release · pick 4′×4′ or 4′×8′ card size"
+                : inventoryDraggingId
+                  ? "Drag into a placement zone · green = mountable · dashed = blocked / restricted"
+                  : "Constraints hidden · C to edit zones · I to place ads · Snip (S) from photo"}
         </p>
       ) : null}
     </div>

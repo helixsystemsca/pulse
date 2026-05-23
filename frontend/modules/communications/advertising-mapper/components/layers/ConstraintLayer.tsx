@@ -27,6 +27,8 @@ type Props = {
   cursorInches: { x: number; y: number } | null;
   selectedConstraintId: string | null;
   toolMode: PlannerToolMode;
+  /** Edit (constraint tool) vs placement hint (inventory / drag). */
+  revealMode?: "edit" | "placement";
   onSelectConstraint: (id: string) => void;
   onAnchorDrag: (constraintId: string, vertexIndex: number, x: number, y: number) => void;
 };
@@ -37,31 +39,42 @@ function ConstraintLayerInner({
   cursorInches,
   selectedConstraintId,
   toolMode,
+  revealMode = "edit",
   onSelectConstraint,
   onAnchorDrag,
 }: Props) {
-  const editAnchors = toolMode === "select" && selectedConstraintId;
+  const editAnchors = revealMode === "edit" && toolMode === "select" && selectedConstraintId;
+  const placementHint = revealMode === "placement";
 
   return (
     <Group>
       {constraints.map((region) => {
         const style = styleForConstraintType(region.constraintType);
         const konvaPts = flatToKonvaPoints(region.points);
-        const selected = region.id === selectedConstraintId;
-        const listening = toolMode === "select" || toolMode === "inventory";
+        const selected = revealMode === "edit" && region.id === selectedConstraintId;
+        const listening = revealMode === "edit" && (toolMode === "select" || toolMode === "inventory");
+        const isMountable = region.constraintType === "mountable";
+        const fill = placementHint && isMountable ? "rgba(34, 197, 94, 0.32)" : style.fill;
+        const stroke =
+          placementHint && isMountable
+            ? "rgba(22, 163, 74, 0.95)"
+            : selected
+              ? "var(--ds-accent)"
+              : style.stroke;
 
         return (
           <Group key={region.id}>
             <Line
               points={konvaPts}
               closed
-              fill={style.fill}
-              stroke={selected ? "var(--ds-accent)" : style.stroke}
-              strokeWidth={selected ? 2 : style.strokeWidth}
-              dash={style.dash}
+              fill={fill}
+              stroke={stroke}
+              strokeWidth={selected ? 2 : placementHint && isMountable ? 2 : style.strokeWidth}
+              dash={placementHint && !isMountable ? [5, 4] : style.dash}
+              opacity={placementHint && region.constraintType === "blocked" ? 0.55 : 1}
               listening={listening}
-              onClick={() => onSelectConstraint(region.id)}
-              onTap={() => onSelectConstraint(region.id)}
+              onClick={() => listening && onSelectConstraint(region.id)}
+              onTap={() => listening && onSelectConstraint(region.id)}
             />
             {editAnchors && selected
               ? pairsFromFlatPoints(region.points).map((p, vertexIndex) => (
