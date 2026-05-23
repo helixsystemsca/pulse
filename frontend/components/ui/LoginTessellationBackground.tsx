@@ -2,10 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { useReducedEffects } from "@/hooks/useReducedEffects";
 import { cn } from "@/lib/cn";
 
-/** Seeded PRNG for stable triangle scatter across resizes. */
+/** Fixed equilateral triangle edge length (px) — uniform grid across viewports. */
+const CELL_PX = 52;
+
+/** Seeded PRNG for stable random opacity across resizes. */
 function mulberry32(seed: number) {
   return function next() {
     let t = (seed += 0x6d2b79f5);
@@ -21,16 +23,17 @@ type TriangleSpec = {
   opacity: number;
 };
 
-const TEAL_FILLS = ["#99f6e4", "#5eead4", "#2dd4bf", "#22d3ee", "#14b8a6", "#0d9488", "#67e8f9"];
+const TEAL_FILLS = ["#99f6e4", "#5eead4", "#2dd4bf", "#22d3ee", "#14b8a6", "#67e8f9"];
 
+/** Uniform triangular lattice — no vertex jitter. */
 function buildTessellation(width: number, height: number, seed = 0x7a3c91): TriangleSpec[] {
   if (width < 1 || height < 1) return [];
 
   const rng = mulberry32(seed);
-  const cell = Math.max(44, Math.min(64, Math.round(width / 28)));
+  const cell = CELL_PX;
   const rowH = (cell * Math.sqrt(3)) / 2;
-  const cols = Math.ceil(width / cell) + 4;
-  const rows = Math.ceil(height / rowH) + 4;
+  const cols = Math.ceil(width / cell) + 3;
+  const rows = Math.ceil(height / rowH) + 3;
   const triangles: TriangleSpec[] = [];
 
   const verts: { x: number; y: number }[][] = [];
@@ -39,11 +42,9 @@ function buildTessellation(width: number, height: number, seed = 0x7a3c91): Tria
     verts[r] = [];
     for (let c = 0; c < cols; c++) {
       const stagger = (r % 2) * (cell / 2);
-      const jitterX = (rng() - 0.5) * cell * 0.42;
-      const jitterY = (rng() - 0.5) * rowH * 0.38;
       verts[r][c] = {
-        x: c * cell + stagger + jitterX - cell * 1.5,
-        y: r * rowH + jitterY - rowH * 0.5,
+        x: c * cell + stagger - cell,
+        y: r * rowH - rowH * 0.5,
       };
     }
   }
@@ -64,20 +65,20 @@ function buildTessellation(width: number, height: number, seed = 0x7a3c91): Tria
         const cy = (p.y + q.y + s.y) / 3;
         const yNorm = Math.min(1, Math.max(0, cy / height));
 
-        /** Stronger coverage at the bottom; sparse / breaking toward the top. */
-        const verticalWeight = Math.pow(yNorm, 0.48);
-        const scatter = 0.22 + rng() * 0.78;
-        const dropout =
-          yNorm < 0.22
-            ? rng() > 0.08 + yNorm * 0.35
-            : yNorm < 0.55
-              ? rng() > 0.04 + (0.55 - yNorm) * 0.12
-              : rng() > 0.015;
+        /** Bottom slightly denser; top breaks apart with heavy random dropout. */
+        const verticalBias = 0.12 + Math.pow(yNorm, 0.62) * 0.88;
+        const rA = rng();
+        const rB = rng();
+        const rC = rng();
+        const rD = rng();
 
-        if (!dropout) continue;
+        if (rA > verticalBias * (0.42 + rB * 0.58)) continue;
 
-        const opacity = Math.min(0.72, verticalWeight * scatter * (0.35 + yNorm * 0.65));
-        if (opacity < 0.04) continue;
+        const opacity = Math.min(
+          0.28,
+          verticalBias * Math.pow(rC, 1.65) * Math.pow(rD, 1.35) * (0.08 + rB * 0.22),
+        );
+        if (opacity < 0.015) continue;
 
         triangles.push({
           points: `${p.x},${p.y} ${q.x},${q.y} ${s.x},${s.y}`,
@@ -96,26 +97,18 @@ export type LoginTessellationBackgroundProps = {
 };
 
 /**
- * Login canvas — teal triangular tessellation, dense/opaque at the bottom,
- * randomly thinning toward the top so the pattern appears to break apart.
+ * Low-opacity uniform triangle overlay for login — sits above {@link AuroraBackground}.
  */
 export function LoginTessellationBackground({ className }: LoginTessellationBackgroundProps) {
-  const reduced = useReducedEffects();
   const [size, setSize] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
-    const el = document.documentElement;
     const read = () => {
       setSize({ width: window.innerWidth, height: window.innerHeight });
     };
     read();
-    const ro = new ResizeObserver(read);
-    ro.observe(el);
     window.addEventListener("resize", read);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener("resize", read);
-    };
+    return () => window.removeEventListener("resize", read);
   }, []);
 
   const triangles = useMemo(
@@ -125,26 +118,9 @@ export function LoginTessellationBackground({ className }: LoginTessellationBack
 
   return (
     <div
-      className={cn("pointer-events-none absolute inset-0 z-0 overflow-hidden", className)}
+      className={cn("pointer-events-none absolute inset-0 z-[1] overflow-hidden", className)}
       aria-hidden
     >
-      {/* Base wash: white top → aqua-teal bottom */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background: `
-            linear-gradient(180deg,
-              #ffffff 0%,
-              #f8fffe 18%,
-              #ecfdf9 42%,
-              #d4f7f0 68%,
-              #a7f0e3 88%,
-              #7ee8d8 100%
-            )
-          `,
-        }}
-      />
-
       {size.width > 0 && size.height > 0 ? (
         <svg
           className="absolute inset-0 h-full w-full"
@@ -159,52 +135,27 @@ export function LoginTessellationBackground({ className }: LoginTessellationBack
               fill={t.fill}
               fillOpacity={t.opacity}
               stroke={t.fill}
-              strokeOpacity={t.opacity * 0.35}
-              strokeWidth={0.6}
+              strokeOpacity={t.opacity * 0.25}
+              strokeWidth={0.5}
             />
           ))}
         </svg>
       ) : null}
 
-      {/* Dissolve into white at the top */}
+      {/* Soft top fade so triangles dissolve without hiding the aurora */}
       <div
         className="absolute inset-0"
         style={{
           background: `
             linear-gradient(180deg,
-              #ffffff 0%,
-              rgba(255, 255, 255, 0.92) 12%,
-              rgba(255, 255, 255, 0.55) 28%,
-              rgba(255, 255, 255, 0.18) 48%,
-              transparent 72%
+              rgba(255, 255, 255, 0.75) 0%,
+              rgba(255, 255, 255, 0.35) 18%,
+              rgba(255, 255, 255, 0.08) 40%,
+              transparent 65%
             )
           `,
         }}
       />
-
-      {/* Soft horizon haze */}
-      <div
-        className="absolute inset-0 opacity-90"
-        style={{
-          background: `
-            radial-gradient(ellipse 120% 80% at 50% 100%,
-              rgba(45, 212, 191, 0.35) 0%,
-              rgba(94, 234, 212, 0.12) 42%,
-              transparent 68%
-            )
-          `,
-        }}
-      />
-
-      {!reduced ? (
-        <div
-          className="absolute inset-0 opacity-[0.04] mix-blend-soft-light"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
-            backgroundSize: "180px 180px",
-          }}
-        />
-      ) : null}
     </div>
   );
 }

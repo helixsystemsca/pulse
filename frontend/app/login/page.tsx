@@ -4,6 +4,7 @@ import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail } from "lucide-react";
 import Image from "next/image";
 import { FormEvent, useEffect, useId, useRef, useState } from "react";
 import { AuthScreenShell } from "@/components/auth/AuthScreenShell";
+import { AuroraBackground } from "@/components/ui/AuroraBackground";
 import { LoginTessellationBackground } from "@/components/ui/LoginTessellationBackground";
 import { isApiMode } from "@/lib/api";
 import {
@@ -165,7 +166,8 @@ export default function LoginPage() {
     "min-w-0 flex-1 border-0 bg-transparent p-0 text-sm font-medium text-[color-mix(in_srgb,var(--ds-text-primary)_92%,transparent)] outline-none ring-0 placeholder:text-[color-mix(in_srgb,var(--ds-text-primary)_45%,transparent)] dark:text-ds-foreground dark:placeholder:text-ds-muted";
 
   return (
-    <AuthScreenShell className="login-web-canvas login-web-canvas--tessellation relative flex min-h-0 flex-1 flex-col">
+    <AuthScreenShell className="login-web-canvas login-web-canvas--aurora login-web-canvas--tessellation relative flex min-h-0 flex-1 flex-col">
+      <AuroraBackground />
       <LoginTessellationBackground />
       <div className="relative z-10 flex min-h-0 flex-1 flex-col">
         <header className="relative z-10 flex w-full items-center justify-end gap-4 px-5 py-2.5 sm:px-8 sm:py-3 lg:px-12">
