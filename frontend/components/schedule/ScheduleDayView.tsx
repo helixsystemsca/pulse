@@ -587,7 +587,8 @@ export function ScheduleDayView({
                 <AssignmentsLockedNotice className="mt-3" />
               ) : null}
 
-              <div className={cn("mt-3", !dailyAssignmentsEnabled && "pointer-events-none opacity-50")}>
+              <div className={cn(!dailyAssignmentsEnabled && "pointer-events-none opacity-50")}>
+              <div className="mt-3">
                 <label htmlFor="schedule-assign-shift-type" className="text-[11px] font-semibold uppercase tracking-wide text-ds-muted">
                   Shift
                 </label>
