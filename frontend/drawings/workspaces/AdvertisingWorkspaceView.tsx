@@ -20,7 +20,8 @@ import {
   DEFAULT_AD_SIZE_PRESET,
   type StandardAdSizePresetId,
 } from "@/modules/communications/advertising-mapper/lib/standard-ad-sizes";
-import { cloneWallPlans, MOCK_WALL_PLANS } from "@/modules/communications/advertising-mapper/data/mock-walls";
+import { getDefaultAdvertisingWallScaffolds } from "@/modules/communications/advertising-mapper/data/mock-walls";
+import { AdvertisingViewportTitle } from "@/modules/communications/advertising-mapper/components/editor/AdvertisingViewportTitle";
 import type { ConstraintRegion, ConstraintType, PlannerToolMode } from "@/modules/communications/advertising-mapper/geometry/types";
 import { useAdvertisingOperationalContext } from "@/modules/communications/advertising-mapper/hooks/useAdvertisingOperationalContext";
 import { useAdvertisingSpatialRuntime } from "@/modules/communications/advertising-mapper/hooks/useAdvertisingSpatialRuntime";
@@ -50,7 +51,7 @@ import {
 } from "@/spatial-engine/workspace";
 import { useSpatialRuntimeStore } from "@/spatial-engine/runtime/spatial-runtime-store";
 
-const INITIAL_WALLS = cloneWallPlans();
+const FALLBACK_WALL = getDefaultAdvertisingWallScaffolds()[0]!;
 
 export function AdvertisingWorkspaceView({
   workspaceSwitcher,
@@ -75,9 +76,9 @@ export function AdvertisingWorkspaceView({
     removeBlock,
     updateWall,
     addWall,
-  } = useAdvertisingSpatialRuntime(INITIAL_WALLS, MOCK_WALL_PLANS[0]!.id);
+  } = useAdvertisingSpatialRuntime("left");
 
-  const wall = wallDoc ?? INITIAL_WALLS[0]!;
+  const wall = wallDoc ?? FALLBACK_WALL;
   const undo = useSpatialRuntimeStore((s) => s.undo);
   const redo = useSpatialRuntimeStore((s) => s.redo);
 
@@ -397,8 +398,8 @@ export function AdvertisingWorkspaceView({
     <>
       <SpatialWorkspaceShell
         workspaceId="advertising"
-        title="Arena advertising"
-        subtitle={`${wall.name} · ${wallMeta.total} inventory · ${wallMeta.available} available · ${wallMeta.occupied} occupied`}
+        title="Advertising"
+        subtitle={`${wallMeta.total} inventory · ${wallMeta.available} available · ${wallMeta.occupied} occupied`}
         activeToolId={toolMode}
         onToolChange={onToolChange}
         workspaceSwitcher={editorFullscreen ? undefined : workspaceSwitcher}
@@ -450,6 +451,15 @@ export function AdvertisingWorkspaceView({
         }
         viewport={
           <div ref={canvasContainerRef} className="relative h-full w-full">
+            <div
+              className="pointer-events-none absolute left-1/2 z-30 -translate-x-1/2"
+              style={{ top: RULER_THICKNESS_PX + 52 }}
+            >
+              <AdvertisingViewportTitle
+                name={wall.name}
+                onRename={(next) => updateWall({ name: next })}
+              />
+            </div>
             {saveNotice ? (
               <p
                 className="pointer-events-none absolute left-1/2 top-3 z-30 -translate-x-1/2 rounded-lg border border-slate-200/90 bg-white/95 px-3 py-1.5 text-xs font-medium text-slate-700 shadow-md"
@@ -540,7 +550,6 @@ export function AdvertisingWorkspaceView({
               setSelectedInventoryId(null);
               setSelectedConstraintId(null);
             }}
-            onWallRename={(_id, name) => updateWall({ name })}
             onAddWall={() => {
               const id = addWall();
               setWallId(id);

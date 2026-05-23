@@ -20,8 +20,13 @@ STANDARD_LOCAL_DEV_ORIGINS: tuple[str, ...] = (
     "http://127.0.0.1:5173",
 )
 
-# Last-resort production allowlist when env leaves CORS empty (misconfigured Render, etc.).
-_DEFAULT_PRODUCTION_FRONTEND_ORIGIN = "https://panorama.helixsystems.ca"
+# Hosted Pulse / Panorama SPA origins merged when env CORS is incomplete (misconfigured Render, etc.).
+_PULSE_HOSTED_FRONTEND_ORIGINS: tuple[str, ...] = (
+    "https://panorama.helixsystems.ca",
+    "https://panorama.helixsystems.co",
+    "https://www.helixsystems.ca",
+)
+_DEFAULT_PRODUCTION_FRONTEND_ORIGIN = _PULSE_HOSTED_FRONTEND_ORIGINS[0]
 
 
 def _origin_netloc_is_safe(origin: str) -> bool:
@@ -374,10 +379,10 @@ class Settings(BaseSettings):
 
         # Primary hosted Pulse / Panorama SPA — merged in every environment so a deployed API without
         # ENVIRONMENT=production (common on Render) still accepts browser traffic from the real SPA.
-        # Production-only merge was insufficient when CORS_ORIGINS was empty and ENVIRONMENT defaulted to development.
-        if _DEFAULT_PRODUCTION_FRONTEND_ORIGIN not in seen:
-            seen.add(_DEFAULT_PRODUCTION_FRONTEND_ORIGIN)
-            out.append(_DEFAULT_PRODUCTION_FRONTEND_ORIGIN)
+        for origin in _PULSE_HOSTED_FRONTEND_ORIGINS:
+            if origin not in seen:
+                seen.add(origin)
+                out.append(origin)
 
         return out
 

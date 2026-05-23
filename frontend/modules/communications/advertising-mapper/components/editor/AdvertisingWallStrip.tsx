@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
-import { Pencil, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
+import type { ReactNode } from "react";
 import { formatMeasurement } from "@/modules/communications/advertising-mapper/lib/measurements";
 import type { FacilityWallPlan, MeasurementUnit } from "@/modules/communications/advertising-mapper/types";
 import { WallBackdropStripControl } from "@/modules/communications/advertising-mapper/components/editor/WallBackdropStripControl";
@@ -18,7 +18,6 @@ type Props = {
   activeWallId: string;
   unit: MeasurementUnit;
   onWallChange: (id: string) => void;
-  onWallRename: (id: string, name: string) => void;
   onAddWall: () => void;
   onBackdropChange?: (patch: BackdropPatch) => void;
   onGenerateEmptySpace?: () => void | Promise<void>;
@@ -31,7 +30,6 @@ export function AdvertisingWallStrip({
   activeWallId,
   unit,
   onWallChange,
-  onWallRename,
   onAddWall,
   onBackdropChange,
   onGenerateEmptySpace,
@@ -48,7 +46,7 @@ export function AdvertisingWallStrip({
 
   return (
     <div className="flex flex-col gap-3 px-4 py-3">
-      <div className="relative flex min-h-[4.25rem] items-center justify-center">
+      <div className="flex min-h-[4.25rem] items-center">
         <div className="flex w-full min-w-0 items-center gap-2 overflow-x-auto pb-0.5 pr-2 [scrollbar-width:thin]">
           <button
             type="button"
@@ -82,10 +80,6 @@ export function AdvertisingWallStrip({
             );
           })}
         </div>
-
-        <div className="pointer-events-none absolute inset-x-0 top-1/2 z-10 flex -translate-y-1/2 justify-center px-[5.5rem]">
-          <ViewportNameCenter name={active.name} onRename={(next) => onWallRename(active.id, next)} />
-        </div>
       </div>
 
       <div className="flex flex-col gap-3 border-t border-slate-200/90 pt-3 lg:flex-row lg:items-end lg:justify-between lg:gap-6">
@@ -109,73 +103,6 @@ export function AdvertisingWallStrip({
           </div>
         ) : null}
       </div>
-    </div>
-  );
-}
-
-function ViewportNameCenter({ name, onRename }: { name: string; onRename: (name: string) => void }) {
-  const inputId = useId();
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(name);
-
-  useEffect(() => {
-    if (!editing) setDraft(name);
-  }, [name, editing]);
-
-  useEffect(() => {
-    if (editing) inputRef.current?.focus();
-  }, [editing]);
-
-  function commit() {
-    const next = draft.trim();
-    if (next && next !== name) onRename(next);
-    else setDraft(name);
-    setEditing(false);
-  }
-
-  return (
-    <div className="pointer-events-auto flex max-w-[min(100%,14rem)] items-center justify-center gap-1.5 rounded-lg border border-slate-200/90 bg-white/95 px-2.5 py-1 shadow-sm backdrop-blur-sm">
-      {editing ? (
-        <label htmlFor={inputId} className="sr-only">
-          Viewport name
-        </label>
-      ) : null}
-      {editing ? (
-        <input
-          ref={inputRef}
-          id={inputId}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={commit}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              commit();
-            }
-            if (e.key === "Escape") {
-              setDraft(name);
-              setEditing(false);
-            }
-          }}
-          className="min-w-0 flex-1 border-0 bg-transparent p-0 text-center text-sm font-semibold text-slate-800 outline-none ring-0"
-          maxLength={48}
-        />
-      ) : (
-        <span className="truncate text-sm font-semibold text-slate-800">{name}</span>
-      )}
-      <button
-        type="button"
-        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-sky-700"
-        aria-label={editing ? "Save viewport name" : "Edit viewport name"}
-        title={editing ? "Save" : "Edit name"}
-        onClick={() => {
-          if (editing) commit();
-          else setEditing(true);
-        }}
-      >
-        <Pencil className="h-3.5 w-3.5" aria-hidden />
-      </button>
     </div>
   );
 }

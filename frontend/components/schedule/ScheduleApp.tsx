@@ -64,6 +64,7 @@ import {
 } from "@/lib/schedule/employee-availability-api";
 import type { EmployeeDailyAvailabilityEntry } from "@/lib/schedule/employee-availability-types";
 import { buildWorkerDragHighlightMap, evaluateWorkerDrop } from "@/lib/schedule/worker-drag-highlights";
+import { persistScheduleShiftToServer } from "@/lib/schedule/persist-shift";
 import {
   isPulseApiShiftId,
   localDateTimeToIso,
@@ -539,6 +540,15 @@ export function ScheduleApp() {
     }
   }, [reloadPulseSchedule, scheduleDepartmentSlug]);
 
+  const ensureShiftOnServer = useCallback(
+    async (shift: Shift): Promise<string | null> => {
+      const id = await persistScheduleShiftToServer(shift, scheduleDepartmentSlug);
+      if (id) await reloadPulseSchedule();
+      return id;
+    },
+    [reloadPulseSchedule, scheduleDepartmentSlug],
+  );
+
   const visibleDatesForScheduleMerge = useMemo(() => {
     if (timeScale === "month") return monthGrid(cursor.y, cursor.m).map((c) => c.date);
     if (timeScale === "week") return weekDatesFromSunday(focusDate);
@@ -738,16 +748,21 @@ export function ScheduleApp() {
       const url = "/api/v1/pulse/schedule/publish";
       await apiFetch(url, {
         method: "POST",
-        body: JSON.stringify({
+        json: {
           period_start: visibleDatesForScheduleMerge[0],
           period_end: visibleDatesForScheduleMerge[visibleDatesForScheduleMerge.length - 1],
           notify_workers: true,
-        }),
+        },
       });
       setScheduleToast("Schedule published and workers notified.");
     } catch (e) {
       console.error("Publish failed", e);
-      setScheduleToast("Publish failed — check your connection and try again.");
+      const detail = formatScheduleSaveError(e);
+      setScheduleToast(
+        detail && detail !== "Could not save schedule."
+          ? `Publish failed: ${detail}`
+          : "Publish failed — check your connection and try again.",
+      );
     } finally {
       setPublishBusy(false);
     }
@@ -865,23 +880,14 @@ export function ScheduleApp() {
       if (mode === "duplicate" && sh.shiftKind === "project_task") {
         return;
       }
-      if (isApiMode() && isPulseApiShiftId(shiftId) && sh.workerId && mode === "move") {
-        if (sh.date === targetDate) return;
-        try {
-          await apiFetch(`/api/v1/pulse/schedule/shifts/${shiftId}`, {
-            method: "PATCH",
-            json: {
-              starts_at: localDateTimeToIso(targetDate, sh.startTime),
-              ends_at: localDateTimeToIso(targetDate, sh.endTime),
-            },
-          });
+      if (mode === "move" && isApiMode() && sh.workerId && sh.eventType === "work") {
+        const moved = { ...sh, date: targetDate };
+        if (sh.date === targetDate && isPulseApiShiftId(shiftId)) return;
+        const serverId = await persistScheduleShiftToServer(moved, scheduleDepartmentSlug);
+        if (serverId) {
           await reloadPulseSchedule();
-        } catch {
-          updateShift(shiftId, { date: targetDate, uiFlags: { ...sh.uiFlags, isUpdated: true } });
+          return;
         }
-        return;
-      }
-      if (mode === "move") {
         if (sh.date !== targetDate) {
           updateShift(shiftId, { date: targetDate, uiFlags: { ...sh.uiFlags, isUpdated: true } });
         }
@@ -895,7 +901,15 @@ export function ScheduleApp() {
         uiFlags: { isNew: true },
       });
     },
-    [addShift, reloadPulseSchedule, scheduleMod.settings.enforceMaxHours, shiftDragEnabled, shiftsForView, updateShift],
+    [
+      addShift,
+      reloadPulseSchedule,
+      scheduleDepartmentSlug,
+      scheduleMod.settings.enforceMaxHours,
+      shiftDragEnabled,
+      shiftsForView,
+      updateShift,
+    ],
   );
 
   const handleWorkerDrop = useCallback(
@@ -1761,6 +1775,7 @@ export function ScheduleApp() {
               zones={zones}
               shiftTypes={shiftTypes}
               onAddOperationalBadge={addWorkerOperationalBadge}
+              ensureShiftOnServer={ensureShiftOnServer}
             />
           ) : null}
           </div>

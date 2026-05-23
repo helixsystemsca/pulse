@@ -74,6 +74,8 @@ type Props = {
   zones: Zone[];
   shiftTypes: ShiftTypeConfig[];
   onAddOperationalBadge?: (workerId: string, date: string, code: string) => void;
+  /** Persist a local shift before routine assignment; returns server shift id. */
+  ensureShiftOnServer?: (shift: Shift) => Promise<string | null>;
 };
 
 function shiftTypeLabel(shiftTypes: ShiftTypeConfig[], key: string): string {
@@ -103,6 +105,7 @@ export function ScheduleRoutinesBoard({
   zones,
   shiftTypes,
   onAddOperationalBadge,
+  ensureShiftOnServer,
 }: Props) {
   const [routines, setRoutines] = useState<RoutineRow[] | null>(null);
   const [routineDetails, setRoutineDetails] = useState<Record<string, RoutineDetail>>({});
@@ -253,11 +256,26 @@ export function ScheduleRoutinesBoard({
     routineId: string,
     opts?: { extras?: Array<{ label: string }>; displayName?: string; kind?: LocalAssignment["kind"] },
   ) {
-    if (!isPulseApiShiftId(row.shift.id)) {
-      setLoadErr(
-        "This shift is not saved on the server yet. Publish or save the schedule shift, then assign the routine again.",
-      );
-      return;
+    let shiftId = row.shift.id;
+    if (!isPulseApiShiftId(shiftId)) {
+      if (!ensureShiftOnServer) {
+        setLoadErr(
+          "This shift is not saved on the server yet. Use Save draft on the Schedule tab, then assign the routine again.",
+        );
+        return;
+      }
+      setSavingRowKey(row.rowKey);
+      setLoadErr(null);
+      const serverId = await ensureShiftOnServer(row.shift);
+      if (!serverId) {
+        setSavingRowKey(null);
+        setLoadErr(
+          "Could not save this shift to the server. Use Save draft on the Schedule tab, then try again.",
+        );
+        return;
+      }
+      shiftId = serverId;
+      setSavingRowKey(null);
     }
 
     let detail: RoutineDetail | null = null;
@@ -290,7 +308,7 @@ export function ScheduleRoutinesBoard({
         routine_id: routineId,
         primary_user_id: row.worker.id,
         date: focusDate,
-        shift_id: row.shift.id,
+        shift_id: shiftId,
         item_assignments: items.map((it) => ({
           routine_item_id: it.id,
           assigned_to_user_id: row.worker.id,

@@ -3,6 +3,7 @@
 import { AlertTriangle, ArrowLeft, Plus, ClipboardList, Trash2, ListChecks } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api";
+import { isPulseApiShiftId } from "@/lib/schedule/pulse-bridge";
 import Link from "next/link";
 import { RoutineAssignModal } from "@/components/schedule/RoutineAssignModal";
 import {
@@ -219,7 +220,7 @@ export function ScheduleDayView({
     })();
 
     const dayShift = shifts.find((s) => s.shiftKind !== "project_task");
-    if (dayShift) {
+    if (dayShift && isPulseApiShiftId(dayShift.id)) {
       setLoadingWQ(true);
       apiFetch<typeof workQueue>(`/api/v1/pulse/schedule/shifts/${dayShift.id}/work-queue`)
         .then((data) => {

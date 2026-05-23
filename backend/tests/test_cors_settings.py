@@ -4,7 +4,13 @@ from __future__ import annotations
 
 import pytest
 
-from app.core.config import Settings, STANDARD_LOCAL_DEV_ORIGINS, _DEFAULT_PRODUCTION_FRONTEND_ORIGIN, get_settings
+from app.core.config import (
+    Settings,
+    STANDARD_LOCAL_DEV_ORIGINS,
+    _DEFAULT_PRODUCTION_FRONTEND_ORIGIN,
+    _PULSE_HOSTED_FRONTEND_ORIGINS,
+    get_settings,
+)
 
 
 def test_production_always_allows_panorama_even_if_pulse_url_is_api_host(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -17,6 +23,9 @@ def test_production_always_allows_panorama_even_if_pulse_url_is_api_host(monkeyp
         s = Settings()
         origins = s.cors_origin_list
         assert _DEFAULT_PRODUCTION_FRONTEND_ORIGIN in origins
+        assert "https://panorama.helixsystems.co" in origins
+        for o in _PULSE_HOSTED_FRONTEND_ORIGINS:
+            assert o in origins
         assert "https://pulse-wssd.onrender.com" in origins
         assert "http://localhost:3000" in origins
         assert "http://localhost:5173" in origins

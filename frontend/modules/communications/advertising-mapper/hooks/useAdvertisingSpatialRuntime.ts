@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   wallPlanToDocument,
   type AdvertisingWallDomain,
@@ -26,6 +26,11 @@ import {
   saveWallBackdrop,
   mergeWallPlanBackdrops,
 } from "@/modules/communications/advertising-mapper/lib/advertising-wall-backdrop-storage";
+import {
+  loadPersistedAdvertisingWalls,
+  savePersistedAdvertisingWalls,
+} from "@/modules/communications/advertising-mapper/lib/advertising-wall-plans-storage";
+import { getDefaultAdvertisingWallScaffolds } from "@/modules/communications/advertising-mapper/data/mock-walls";
 import { createEmptyWallPlan } from "@/modules/communications/advertising-mapper/lib/create-wall-plan";
 import type { ConstraintRegion } from "@/modules/communications/advertising-mapper/geometry/types";
 import type { FacilityWallPlan, InventoryBlock } from "@/modules/communications/advertising-mapper/types";
@@ -66,7 +71,7 @@ function constraintToFeature(region: ConstraintRegion): ConstraintFeatureDocumen
 /**
  * Advertising workspace runtime — `SpatialDocument` is the source of truth per wall.
  */
-export function useAdvertisingSpatialRuntime(initialWalls: FacilityWallPlan[], initialWallId: string) {
+export function useAdvertisingSpatialRuntime(initialWallId = "left") {
   const loadDocument = useSpatialRuntimeStore((s) => s.loadDocument);
   const resetSession = useSpatialRuntimeStore((s) => s.resetSession);
   const setActiveDocumentId = useSpatialRuntimeStore((s) => s.setActiveDocumentId);
@@ -75,15 +80,22 @@ export function useAdvertisingSpatialRuntime(initialWalls: FacilityWallPlan[], i
   const documents = useSpatialRuntimeStore((s) => s.documents);
   const revision = useSpatialRuntimeStore(selectActiveDocumentRevision);
   const activeDocument = useSpatialRuntimeStore(selectActiveDocument);
+  const hydratedRef = useRef(false);
 
   useEffect(() => {
     resetSession("advertising");
+    const persisted = loadPersistedAdvertisingWalls();
+    const base = persisted ?? getDefaultAdvertisingWallScaffolds();
     const storedBackdrops = loadAllWallBackdrops();
-    const wallsWithBackdrops = mergeWallPlanBackdrops(initialWalls, storedBackdrops) as FacilityWallPlan[];
+    const wallsWithBackdrops = mergeWallPlanBackdrops(base, storedBackdrops) as FacilityWallPlan[];
     for (const w of wallsWithBackdrops) {
       loadDocument(wallPlanToDocument(w), { pushHistory: false });
     }
-    setActiveDocumentId(initialWallId);
+    const activeId = wallsWithBackdrops.some((w) => w.id === initialWallId)
+      ? initialWallId
+      : (wallsWithBackdrops[0]?.id ?? initialWallId);
+    setActiveDocumentId(activeId);
+    hydratedRef.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps -- bootstrap once
   }, []);
 
@@ -91,7 +103,15 @@ export function useAdvertisingSpatialRuntime(initialWalls: FacilityWallPlan[], i
     return Object.values(documents)
       .map((e) => wallPlanFromDocument(e.document))
       .filter((w): w is AdvertisingWallDomain => Boolean(w)) as FacilityWallPlan[];
-  }, [documents]);
+  }, [documents, revision]);
+
+  useEffect(() => {
+    if (!hydratedRef.current || Object.keys(documents).length === 0) return;
+    const t = window.setTimeout(() => {
+      savePersistedAdvertisingWalls(walls);
+    }, 400);
+    return () => window.clearTimeout(t);
+  }, [walls, documents]);
 
   const wallId = activeDocumentId ?? initialWallId;
 
