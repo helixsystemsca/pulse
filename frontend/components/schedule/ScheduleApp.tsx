@@ -87,7 +87,10 @@ import { canAccessCompanyConfiguration, sessionHasAnyRole } from "@/lib/pulse-ro
 import { readSession } from "@/lib/pulse-session";
 import { AvailabilitySupervisorDrawer } from "./availability/AvailabilitySupervisorDrawer";
 import { EmployeeAvailabilityDrawer } from "./availability/EmployeeAvailabilityDrawer";
-import { ScheduleBuilderActions, type SchedulePeriodHeaderState } from "./ScheduleBuilderHeader";
+import type { SchedulePeriodHeaderState } from "./ScheduleBuilderHeader";
+import { ScheduleWorkflowBar } from "./ScheduleWorkflowBar";
+import { AssignmentsLockedNotice } from "./AssignmentsLockedNotice";
+import { deriveScheduleWorkflow, pickPeriodForVisibleRange } from "@/lib/schedule/schedule-workflow";
 import { SchedulePageHeader } from "./SchedulePageHeader";
 import { ScheduleUnifiedControlCard } from "./ScheduleUnifiedControlCard";
 import { ScheduleOperationalStatusStrip } from "./ScheduleOperationalStatusStrip";
@@ -415,17 +418,6 @@ export function ScheduleApp() {
     [],
   );
 
-  const reloadActivePeriod = useCallback(async () => {
-    if (!hydrated || !canEdit || !isApiMode()) return;
-    try {
-      const periods = await apiFetch<SchedulePeriodLite[]>(`/api/v1/pulse/schedule/periods`);
-      const open = periods?.find((p) => p?.status === "open" || p?.status === "draft");
-      setActivePeriod(open ?? null);
-    } catch {
-      // non-fatal
-    }
-  }, [canEdit, hydrated]);
-
   const scheduleFacilitySettingsKey = useMemo(() => {
     const s = scheduleMod.settings as { facilityCount?: number; facilityLabels?: string[] };
     return `${s.facilityCount ?? ""}:${JSON.stringify(s.facilityLabels ?? [])}`;
@@ -436,10 +428,6 @@ export function ScheduleApp() {
     void reloadPulseSchedule();
   }, [hydrated, reloadPulseSchedule, scheduleFacilitySettingsKey]);
 
-  useEffect(() => {
-    void reloadActivePeriod();
-  }, [reloadActivePeriod]);
-
   const hasPendingServerSave = useMemo(() => {
     if (!isApiMode()) return false;
     return shifts.some((s) => {
@@ -449,6 +437,30 @@ export function ScheduleApp() {
       return Boolean(s.uiFlags?.isUpdated);
     });
   }, [shifts]);
+
+  const hasPersistedShifts = useMemo(
+    () => shifts.some((s) => isPulseApiShiftId(s.id) && s.shiftKind !== "project_task"),
+    [shifts],
+  );
+
+  const scheduleWorkflow = useMemo(
+    () =>
+      deriveScheduleWorkflow({
+        activePeriod,
+        hasDraftPreview: draftResult !== null,
+        hasPendingServerSave,
+        hasPersistedShifts,
+      }),
+    [activePeriod, draftResult, hasPendingServerSave, hasPersistedShifts],
+  );
+
+  useEffect(() => {
+    if (scheduleWorkflow.assignmentsEnabled) return;
+    if (workspaceView === "routines") {
+      setWorkspaceView("calendar");
+      setScheduleToast("Daily assignments unlock after you publish the schedule.");
+    }
+  }, [scheduleWorkflow.assignmentsEnabled, workspaceView, setScheduleToast]);
 
   function formatScheduleSaveError(e: unknown): string {
     if (e && typeof e === "object" && "body" in e) {
@@ -554,6 +566,26 @@ export function ScheduleApp() {
     if (timeScale === "week") return weekDatesFromSunday(focusDate);
     return [focusDate];
   }, [timeScale, cursor.y, cursor.m, focusDate]);
+
+  const reloadActivePeriod = useCallback(async () => {
+    if (!hydrated || !canEdit || !isApiMode()) return;
+    try {
+      const periods = await apiFetch<SchedulePeriodLite[]>(`/api/v1/pulse/schedule/periods`);
+      const start = visibleDatesForScheduleMerge[0];
+      const end = visibleDatesForScheduleMerge[visibleDatesForScheduleMerge.length - 1];
+      if (start && end) {
+        setActivePeriod(pickPeriodForVisibleRange(periods, start, end));
+      } else {
+        setActivePeriod(periods?.find((p) => p?.status === "open" || p?.status === "draft") ?? null);
+      }
+    } catch {
+      // non-fatal
+    }
+  }, [canEdit, hydrated, visibleDatesForScheduleMerge]);
+
+  useEffect(() => {
+    void reloadActivePeriod();
+  }, [reloadActivePeriod]);
 
   const placementDropWindow = useMemo(
     () => (placementBand === "template" ? null : defaultWindowForShiftBand(placementBand)),
@@ -700,7 +732,14 @@ export function ScheduleApp() {
   const schedulePeriodState: SchedulePeriodHeaderState = activePeriod
     ? {
         kind: "active",
-        status: activePeriod.status === "open" ? "open" : "draft",
+        status:
+          activePeriod.status === "published"
+            ? "published"
+            : activePeriod.status === "archived"
+              ? "archived"
+              : activePeriod.status === "open"
+                ? "open"
+                : "draft",
         rangeLabel: `${activePeriod.start_date} – ${activePeriod.end_date}`,
         deadlineLabel: activePeriod.availability_deadline
           ? ` · Due ${new Date(activePeriod.availability_deadline).toLocaleDateString()}`
@@ -754,6 +793,14 @@ export function ScheduleApp() {
           notify_workers: true,
         },
       });
+      if (activePeriod?.id) {
+        await apiFetch(`/api/v1/pulse/schedule/periods/${activePeriod.id}`, {
+          method: "PATCH",
+          json: { status: "published" },
+        });
+      }
+      await reloadActivePeriod();
+      setDraftResult(null);
       setScheduleToast("Schedule published and workers notified.");
     } catch (e) {
       console.error("Publish failed", e);
@@ -766,7 +813,7 @@ export function ScheduleApp() {
     } finally {
       setPublishBusy(false);
     }
-  }, [visibleDatesForScheduleMerge, setScheduleToast]);
+  }, [activePeriod?.id, visibleDatesForScheduleMerge, reloadActivePeriod, setScheduleToast]);
 
   const handleBuildDraft = useCallback(async () => {
     if (!visibleDatesForScheduleMerge.length) return;
@@ -1374,42 +1421,59 @@ export function ScheduleApp() {
     );
   }
 
-  const builderActions = (
-    <ScheduleBuilderActions
-      showSaveDraft={isApiMode() && canEdit}
-      saveDraftDisabled={saveBusy || !hasPendingServerSave}
-      saveBusy={saveBusy}
-      onSaveDraft={() => void saveScheduleToServer()}
-      showPublish={canPublishSchedule && isApiMode()}
-      publishBusy={publishBusy}
-      onPublish={() => void handlePublish()}
-      showBuildDraft={Boolean(canPublishSchedule && isApiMode() && !draftResult)}
+  const workflowMoreMenu = (
+    <div className="flex flex-col gap-1">
+      <button
+        type="button"
+        className="rounded-lg px-3 py-2 text-left text-sm font-medium text-ds-foreground hover:bg-ds-interactive-hover"
+        onClick={() => setTimeOffOpen(true)}
+      >
+        Time off
+      </button>
+      {canConfigureOrg ? (
+        <button
+          type="button"
+          className="rounded-lg px-3 py-2 text-left text-sm font-medium text-ds-foreground hover:bg-ds-interactive-hover"
+          onClick={() => setSettingsOpen(true)}
+        >
+          Schedule settings
+        </button>
+      ) : null}
+      <div className="border-t border-pulseShell-border pt-2 dark:border-slate-700">
+        <SettingsGear module="schedule" label="Module preferences" className="w-full justify-center border-pulseShell-border" />
+      </div>
+    </div>
+  );
+
+  const builderActions = isApiMode() && canEdit ? (
+    <ScheduleWorkflowBar
+      workflow={scheduleWorkflow}
+      canManage={canPublishSchedule}
       buildingDraft={buildingDraft}
-      onBuildDraft={() => void handleBuildDraft()}
-      moreMenu={
-        <div className="flex flex-col gap-1">
-          <button
-            type="button"
-            className="rounded-lg px-3 py-2 text-left text-sm font-medium text-ds-foreground hover:bg-ds-interactive-hover"
-            onClick={() => setTimeOffOpen(true)}
-          >
-            Time off
-          </button>
-          {canConfigureOrg ? (
-            <button
-              type="button"
-              className="rounded-lg px-3 py-2 text-left text-sm font-medium text-ds-foreground hover:bg-ds-interactive-hover"
-              onClick={() => setSettingsOpen(true)}
-            >
-              Schedule settings
-            </button>
-          ) : null}
-          <div className="border-t border-pulseShell-border pt-2 dark:border-slate-700">
-            <SettingsGear module="schedule" label="Module preferences" className="w-full justify-center border-pulseShell-border" />
-          </div>
-        </div>
-      }
+      saveBusy={saveBusy}
+      publishBusy={publishBusy}
+      hasPendingServerSave={hasPendingServerSave}
+      onGenerateSchedule={() => void handleBuildDraft()}
+      onSaveChanges={() => void saveScheduleToServer()}
+      onRebuildSchedule={() => void handleBuildDraft()}
+      onPublishSchedule={() => void handlePublish()}
+      onOpenDailyAssignments={() => {
+        setWorkspaceView("routines");
+        setTimeScale("day");
+      }}
+      onNotifyWorkers={() => void handlePublish()}
+      onEditDraft={() => {
+        setWorkspaceView("calendar");
+        setScheduleToast("Continue editing the draft on the calendar.");
+      }}
+      onEditPublished={() => {
+        setWorkspaceView("calendar");
+        setScheduleToast("Editing published schedule — save changes and notify workers if needed.");
+      }}
+      moreMenu={workflowMoreMenu}
     />
+  ) : (
+    workflowMoreMenu
   );
 
   return (
@@ -1446,6 +1510,7 @@ export function ScheduleApp() {
                 onOpenAvailabilitySupervisor={() => setAvailabilitySupervisorOpen(true)}
                 onOpenEmployeeAvailability={() => setEmployeeAvailabilityOpen(true)}
                 canConfigureOrg={canConfigureOrg}
+                dailyAssignmentsEnabled={scheduleWorkflow.assignmentsEnabled}
                 disabled={scheduleDragLock}
               />
             }
@@ -1457,6 +1522,7 @@ export function ScheduleApp() {
                 alerts={alerts}
                 pendingAvailability={pendingAvailabilityCount}
                 unpublishedChanges={hasPendingServerSave}
+                scheduleStatusLabel={scheduleWorkflow.statusLabel}
                 trainingConflicts={0}
                 onManagePeriod={() => setShowPeriodModal(true)}
                 onAvailabilityClick={() => setAvailabilitySupervisorOpen(true)}
@@ -1510,6 +1576,7 @@ export function ScheduleApp() {
               onOpenAvailabilitySupervisor={() => setAvailabilitySupervisorOpen(true)}
               onOpenEmployeeAvailability={() => setEmployeeAvailabilityOpen(true)}
               canConfigureOrg={canConfigureOrg}
+              dailyAssignmentsEnabled={scheduleWorkflow.assignmentsEnabled}
               disabled={scheduleDragLock}
             />
           </div>
@@ -1652,6 +1719,7 @@ export function ScheduleApp() {
                         setTrashHovering(false);
                       }}
                       dayProjectBar={dayProjectBar}
+                      dailyAssignmentsEnabled={scheduleWorkflow.assignmentsEnabled}
                     />
                   </div>
                 ) : null}
@@ -1774,6 +1842,7 @@ export function ScheduleApp() {
               shifts={shiftsForView}
               zones={zones}
               shiftTypes={shiftTypes}
+              assignmentsEnabled={scheduleWorkflow.assignmentsEnabled}
               onAddOperationalBadge={addWorkerOperationalBadge}
               ensureShiftOnServer={ensureShiftOnServer}
             />

@@ -51,6 +51,7 @@ import {
   scheduleAssignmentNoteForArea,
 } from "@/lib/schedule/arena-routine-catalog";
 import type { RoutineShiftBand } from "@/lib/routinesService";
+import { AssignmentsLockedNotice } from "@/components/schedule/AssignmentsLockedNotice";
 
 type Props = {
   date: string;
@@ -83,6 +84,8 @@ type Props = {
     employeeAvailabilityIndex?: Record<string, EmployeeDailyAvailabilityEntry[]>;
     useDailyAvailability?: boolean;
   };
+  /** Area assignments require a published schedule. */
+  dailyAssignmentsEnabled?: boolean;
 };
 
 /**
@@ -114,6 +117,7 @@ export function ScheduleDayView({
   onShiftDragSessionEnd,
   dayProjectBar = null,
   dropAvailabilityOpts,
+  dailyAssignmentsEnabled = true,
 }: Props) {
   const [shake, setShake] = useState(false);
   const shakeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -186,6 +190,12 @@ export function ScheduleDayView({
   }, [sorted, dayShiftsAll, workers, settings, timeOffBlocks, zones]);
 
   useEffect(() => {
+    if (!dailyAssignmentsEnabled) {
+      setAssignments([]);
+      setAssignError(null);
+      setAssignLoading(false);
+      return;
+    }
     let cancelled = false;
     setAssignLoading(true);
     setAssignError(null);
@@ -236,7 +246,7 @@ export function ScheduleDayView({
     return () => {
       cancelled = true;
     };
-  }, [date, assignShiftType, shifts]);
+  }, [date, assignShiftType, shifts, dailyAssignmentsEnabled]);
 
   return (
     <div className="overflow-hidden rounded-md border border-pulseShell-border bg-pulseShell-surface shadow-[var(--pulse-shell-shadow)]">
@@ -568,12 +578,16 @@ export function ScheduleDayView({
               <div>
                 <p className="flex items-center gap-2 font-headline text-sm font-bold text-ds-foreground">
                   <ClipboardList className="h-4 w-4 text-ds-muted" aria-hidden />
-                  Assignments
+                  Daily assignments
                 </p>
                 <p className="mt-0.5 text-xs text-ds-muted">Areas and notes for this day (per shift type).</p>
               </div>
 
-              <div className="mt-3">
+              {!dailyAssignmentsEnabled ? (
+                <AssignmentsLockedNotice className="mt-3" />
+              ) : null}
+
+              <div className={cn("mt-3", !dailyAssignmentsEnabled && "pointer-events-none opacity-50")}>
                 <label htmlFor="schedule-assign-shift-type" className="text-[11px] font-semibold uppercase tracking-wide text-ds-muted">
                   Shift
                 </label>
@@ -836,6 +850,7 @@ export function ScheduleDayView({
                   ) : null}
                 </div>
               ) : null}
+              </div>
             </div>
         </aside>
       </div>

@@ -51,6 +51,7 @@ import {
 import { parseLocalDate, formatLocalDate } from "@/lib/schedule/calendar";
 import { isPulseApiShiftId } from "@/lib/schedule/pulse-bridge";
 import { ScheduleRoutineExtraModal } from "@/components/schedule/ScheduleRoutineExtraModal";
+import { AssignmentsLockedNotice } from "@/components/schedule/AssignmentsLockedNotice";
 
 type ScheduledRow = {
   rowKey: string;
@@ -76,6 +77,8 @@ type Props = {
   onAddOperationalBadge?: (workerId: string, date: string, code: string) => void;
   /** Persist a local shift before routine assignment; returns server shift id. */
   ensureShiftOnServer?: (shift: Shift) => Promise<string | null>;
+  /** Requires a published schedule. */
+  assignmentsEnabled?: boolean;
 };
 
 function shiftTypeLabel(shiftTypes: ShiftTypeConfig[], key: string): string {
@@ -106,6 +109,7 @@ export function ScheduleRoutinesBoard({
   shiftTypes,
   onAddOperationalBadge,
   ensureShiftOnServer,
+  assignmentsEnabled = true,
 }: Props) {
   const [routines, setRoutines] = useState<RoutineRow[] | null>(null);
   const [routineDetails, setRoutineDetails] = useState<Record<string, RoutineDetail>>({});
@@ -260,7 +264,7 @@ export function ScheduleRoutinesBoard({
     if (!isPulseApiShiftId(shiftId)) {
       if (!ensureShiftOnServer) {
         setLoadErr(
-          "This shift is not saved on the server yet. Use Save draft on the Schedule tab, then assign the routine again.",
+          "This shift is not saved on the server yet. Use Save changes on the Schedule tab, then assign the routine again.",
         );
         return;
       }
@@ -270,7 +274,7 @@ export function ScheduleRoutinesBoard({
       if (!serverId) {
         setSavingRowKey(null);
         setLoadErr(
-          "Could not save this shift to the server. Use Save draft on the Schedule tab, then try again.",
+          "Could not save this shift to the server. Use Save changes on the Schedule tab, then try again.",
         );
         return;
       }
@@ -445,6 +449,8 @@ export function ScheduleRoutinesBoard({
 
   return (
     <div className="flex min-w-0 flex-col gap-3">
+      {!assignmentsEnabled ? <AssignmentsLockedNotice /> : null}
+      <div className={cn(!assignmentsEnabled && "pointer-events-none opacity-50")}>
       {toast ? (
         <div
           className="fixed bottom-6 left-1/2 z-[250] max-w-md -translate-x-1/2 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-900 shadow-lg dark:border-emerald-500/35 dark:bg-emerald-950/95 dark:text-emerald-100"
@@ -743,6 +749,7 @@ export function ScheduleRoutinesBoard({
             </tbody>
           </table>
         </div>
+      </div>
       </div>
     </div>
   );

@@ -8,7 +8,7 @@ import { buttonVariants } from "@/styles/button-variants";
 export type SchedulePeriodHeaderState =
   | {
       kind: "active";
-      status: "open" | "draft";
+      status: "open" | "draft" | "published" | "archived";
       rangeLabel: string;
       deadlineLabel?: string | null;
     }

@@ -37,6 +37,8 @@ type Props = {
   onSelectInventory: (id: string) => void;
   onBlockChange: (id: string, patch: Partial<InventoryBlock>) => void;
   onBlockDelete: (id: string) => void;
+  onSave?: () => void;
+  onPublish?: () => void;
 };
 
 export function AdvertisingInspectorPanel({
@@ -46,6 +48,8 @@ export function AdvertisingInspectorPanel({
   onSelectInventory,
   onBlockChange,
   onBlockDelete,
+  onSave,
+  onPublish,
 }: Props) {
   const [tab, setTab] = useState<RailTab>("current");
   const [query, setQuery] = useState("");
@@ -86,11 +90,26 @@ export function AdvertisingInspectorPanel({
 
   const currentRevenue = useMemo(() => computeCampaignPricing(wall.blocks), [wall.blocks]);
   const availableOpportunity = useMemo(() => computeAvailableOpportunity(wall.blocks), [wall.blocks]);
+  const wallDims = `${formatMeasurement(wall.width_inches, unit)} × ${formatMeasurement(wall.height_inches, unit)}`;
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-white/98" data-ad-rail="current-available">
+    <div className="flex h-full min-h-0 flex-col bg-white" data-ad-rail="current-available">
+      <div className="shrink-0 border-b border-slate-200/80 px-3 py-2">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Context</p>
+        <p className="mt-0.5 truncate text-sm font-semibold text-slate-900">{wall.name}</p>
+        <p className="text-[11px] text-slate-500">
+          Advertising surface · <span className="font-mono tabular-nums text-slate-700">{wallDims}</span>
+        </p>
+        {selectedBlock ? (
+          <p className="mt-1 truncate text-[11px] font-medium text-sky-800">
+            {selectedBlock.inventoryId ?? selectedBlock.name}
+            <span className="font-normal text-slate-500"> · selected</span>
+          </p>
+        ) : null}
+      </div>
+
       <div
-        className="grid shrink-0 grid-cols-2 gap-0 border-b border-slate-200/80 bg-slate-50/60 p-0.5"
+        className="grid shrink-0 grid-cols-2 gap-0 border-b border-slate-200/80 bg-slate-50/50 p-0.5"
         role="tablist"
         aria-label="Ad inventory"
       >
@@ -102,22 +121,22 @@ export function AdvertisingInspectorPanel({
         </RailTabButton>
       </div>
 
-      <div className="shrink-0 border-b border-slate-100 p-2">
+      <div className="shrink-0 border-b border-slate-100 px-2 py-1.5">
         <div className="relative">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+          <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-400" />
           <input
             type="search"
-            placeholder={tab === "current" ? "Search current ads…" : "Search available plots…"}
+            placeholder={tab === "current" ? "Filter ads…" : "Filter plots…"}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-8 pr-3 text-xs text-slate-800 shadow-sm placeholder:text-slate-400"
+            className="w-full rounded-md border border-slate-200/90 bg-slate-50/80 py-1.5 pl-7 pr-2 text-[11px] text-slate-800 placeholder:text-slate-400 focus:border-sky-300 focus:bg-white focus:outline-none"
           />
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         {tab === "current" ? (
-          <div className="space-y-2 p-2">
+          <div className="space-y-1 p-1.5">
             {currentBlocks.map((block) => (
               <CurrentAdCard
                 key={block.id}
@@ -137,7 +156,7 @@ export function AdvertisingInspectorPanel({
             ) : null}
           </div>
         ) : (
-          <div className="space-y-2 p-2">
+          <div className="space-y-1 p-1.5">
             {availablePlots.map((block) => (
               <AvailablePlotCard
                 key={block.id}
@@ -159,7 +178,7 @@ export function AdvertisingInspectorPanel({
       </div>
 
       {selectedBlock ? (
-        <div className="max-h-[38%] shrink-0 overflow-y-auto border-t border-slate-200 bg-slate-50/60">
+        <div className="max-h-[32%] shrink-0 overflow-y-auto overscroll-contain border-t border-slate-200/80 bg-slate-50/40">
           <InventoryDetailsPanel
             block={selectedBlock}
             unit={unit}
@@ -171,20 +190,27 @@ export function AdvertisingInspectorPanel({
       ) : null}
 
       {tab === "current" ? (
-        <RevenueFooter
-          title="Revenue summary"
-          lines={currentRevenue.lines}
-          highlightKey="monthly"
-          actions
-        />
+        <RevenueFooter title="Revenue" lines={currentRevenue.lines} highlightKey="monthly" />
       ) : (
-        <RevenueFooter
-          title="Missed revenue"
-          lines={availableOpportunity.lines}
-          highlightKey="monthly"
-          tone="missed"
-        />
+        <RevenueFooter title="Opportunity" lines={availableOpportunity.lines} highlightKey="monthly" tone="missed" />
       )}
+
+      <div className="flex shrink-0 items-center gap-1.5 border-t border-slate-200/80 bg-slate-50/60 px-2 py-1.5">
+        <button
+          type="button"
+          className={cn(buttonVariants({ intent: "secondary", surface: "light" }), "h-7 flex-1 px-2 text-[10px]")}
+          onClick={onSave}
+        >
+          Save
+        </button>
+        <button
+          type="button"
+          className={cn(buttonVariants({ intent: "primary", surface: "light" }), "h-7 flex-1 px-2 text-[10px]")}
+          onClick={onPublish}
+        >
+          Publish
+        </button>
+      </div>
     </div>
   );
 }
@@ -204,7 +230,7 @@ function RailTabButton({
       role="tab"
       aria-selected={active}
       className={cn(
-        "rounded-md px-3 py-2 text-xs font-semibold transition-colors",
+        "rounded px-2 py-1.5 text-[11px] font-semibold transition-colors",
         active
           ? "bg-white text-sky-800 shadow-sm ring-1 ring-slate-200/90"
           : "text-slate-500 hover:bg-white/60 hover:text-slate-800",
@@ -262,8 +288,8 @@ function CurrentAdCard({
   return (
     <div
       className={cn(
-        "w-full rounded-xl border p-2.5 text-left transition-colors",
-        selected ? "border-sky-400 bg-sky-50/90 ring-1 ring-sky-200" : "border-slate-200 bg-white hover:border-slate-300",
+        "w-full rounded-md border p-1.5 text-left transition-colors",
+        selected ? "border-sky-400/90 bg-sky-50/80 ring-1 ring-sky-200/60" : "border-slate-200/80 bg-white hover:border-slate-300",
       )}
     >
       <div className="flex gap-2.5">
@@ -324,7 +350,7 @@ function AvailablePlotCard({
     <div
       className={cn(
         "w-full rounded-xl border p-2.5 text-left transition-colors",
-        selected ? "border-amber-400 bg-amber-50/80 ring-1 ring-amber-200" : "border-slate-200 bg-white hover:border-slate-300",
+        selected ? "border-amber-400/90 bg-amber-50/70 ring-1 ring-amber-200/60" : "border-slate-200/80 bg-white hover:border-slate-300",
       )}
     >
       <div className="flex items-start justify-between gap-2">
@@ -363,7 +389,7 @@ function Row({ label, value }: { label: string; value: string }) {
 
 function AdThumb({ assetUrl, label }: { assetUrl?: string; label: string }) {
   return (
-    <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
+    <div className="h-11 w-11 shrink-0 overflow-hidden rounded border border-slate-200/80 bg-slate-100">
       {assetUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={assetUrl} alt="" className="h-full w-full object-cover" />
@@ -381,18 +407,16 @@ function RevenueFooter({
   lines,
   highlightKey,
   tone = "revenue",
-  actions = false,
 }: {
   title: string;
   lines: { key: string; label: string; amount: number }[];
   highlightKey: string;
   tone?: "revenue" | "missed";
-  actions?: boolean;
 }) {
   return (
-    <div className="shrink-0 border-t border-slate-200/80 bg-slate-50/50 px-3 py-2">
-      <h4 className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{title}</h4>
-      <ul className="mt-2 space-y-1 text-xs">
+    <div className="shrink-0 border-t border-slate-200/80 bg-slate-50/40 px-2 py-1.5">
+      <h4 className="text-[9px] font-semibold uppercase tracking-wide text-slate-500">{title}</h4>
+      <ul className="mt-1 space-y-0.5 text-[10px]">
         {lines.map((line) => {
           const isHighlight = line.key === highlightKey;
           const isFirstMonth = line.key === "first";
@@ -418,16 +442,6 @@ function RevenueFooter({
           );
         })}
       </ul>
-      {actions ? (
-        <div className="mt-3 flex flex-col gap-2">
-          <button type="button" className={cn(buttonVariants({ intent: "primary", surface: "light" }), "w-full text-xs")}>
-            Add to Campaign
-          </button>
-          <button type="button" className={cn(buttonVariants({ intent: "secondary", surface: "light" }), "w-full text-xs")}>
-            Request Approval
-          </button>
-        </div>
-      ) : null}
     </div>
   );
 }

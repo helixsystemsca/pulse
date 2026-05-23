@@ -70,6 +70,7 @@ type Props = {
   /** When false, minimap is rendered by SpatialWorkspaceShell. */
   showMinimap?: boolean;
   editorLightMode?: boolean;
+  onCursorInchesChange?: (pt: { x: number; y: number } | null) => void;
   className?: string;
 };
 
@@ -112,6 +113,7 @@ export function InventoryPlannerCanvas({
   showFloatingHints = true,
   showMinimap = true,
   editorLightMode = false,
+  onCursorInchesChange,
   className,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -404,6 +406,7 @@ export function InventoryPlannerCanvas({
         onMouseMove={(e) => {
           const pt = wallPointFromEvent(e.evt);
           setCursorInches(pt);
+          onCursorInchesChange?.(pt);
           const snip = snipDragRef.current;
           if (snip && pt) {
             const rect = normalizeSnipRect(snip.x0, snip.y0, pt.x, pt.y, wall, 4);
@@ -417,6 +420,10 @@ export function InventoryPlannerCanvas({
               panY: p.panY + (e.evt.clientY - p.startY),
             });
           }
+        }}
+        onMouseLeave={() => {
+          setCursorInches(null);
+          onCursorInchesChange?.(null);
         }}
         onMouseUp={(e) => {
           if (snipDragRef.current) {

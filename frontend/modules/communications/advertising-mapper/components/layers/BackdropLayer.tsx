@@ -3,6 +3,7 @@
 import { memo, type ReactNode } from "react";
 import { Group, Image as KonvaImage, Line, Rect } from "react-konva";
 import { BASE_PX_PER_INCH } from "@/modules/communications/advertising-mapper/lib/coordinates";
+import { backdropImageLetterbox } from "@/modules/communications/advertising-mapper/lib/backdrop-fit";
 import type { FacilityWallPlan } from "@/modules/communications/advertising-mapper/types";
 
 type Props = {
@@ -38,9 +39,31 @@ function BackdropLayerInner({ wall, widthPx, heightPx, showGrid, gridInches, ima
     }
   }
 
+  const imageRect = image
+    ? backdropImageLetterbox(
+        widthPx,
+        heightPx,
+        image,
+        wall.backdropNaturalWidth,
+        wall.backdropNaturalHeight,
+      )
+    : null;
+
   return (
     <Group listening={false}>
-      {image ? (
+      {image && imageRect ? (
+        <>
+          <Rect width={widthPx} height={heightPx} fill="#1a1f28" listening={false} />
+          <KonvaImage
+            image={image}
+            x={imageRect.x}
+            y={imageRect.y}
+            width={imageRect.width}
+            height={imageRect.height}
+            listening={false}
+          />
+        </>
+      ) : image ? (
         <KonvaImage image={image} width={widthPx} height={heightPx} listening={false} />
       ) : (
         <>

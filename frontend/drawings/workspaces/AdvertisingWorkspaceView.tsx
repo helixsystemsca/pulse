@@ -7,6 +7,8 @@ import { PlannerMinimap } from "@/modules/communications/advertising-mapper/comp
 import { AdvertisingEditorHeaderBar } from "@/modules/communications/advertising-mapper/components/editor/AdvertisingEditorHeaderBar";
 import { AdvertisingEditorShell } from "@/modules/communications/advertising-mapper/components/editor/AdvertisingEditorShell";
 import { AdvertisingEditorStatusBar } from "@/modules/communications/advertising-mapper/components/editor/AdvertisingEditorStatusBar";
+import { AdvertisingSceneRail } from "@/modules/communications/advertising-mapper/components/editor/AdvertisingSceneRail";
+import { wallInchesFromBackdropFit } from "@/modules/communications/advertising-mapper/lib/backdrop-fit";
 import { AdvertisingFloatingToolbar } from "@/modules/communications/advertising-mapper/components/editor/AdvertisingFloatingToolbar";
 import {
   AdvertisingInspectorPanel,
@@ -30,10 +32,7 @@ import { RULER_THICKNESS_PX } from "@/modules/communications/advertising-mapper/
 import {
   rescaleWallPlanToInches,
 } from "@/modules/communications/advertising-mapper/lib/wall-workable-area";
-import {
-  drawableInchesFromContainer,
-  viewportAt100Percent,
-} from "@/modules/communications/advertising-mapper/lib/viewport-at-100";
+import { drawableInchesFromContainer, viewportAt100Percent } from "@/modules/communications/advertising-mapper/lib/viewport-at-100";
 import type {
   DimensionEditTarget,
   FacilityWallPlan,
@@ -100,7 +99,7 @@ export function AdvertisingWorkspaceView({
   const [snipBusy, setSnipBusy] = useState(false);
   const [backdropBusy, setBackdropBusy] = useState(false);
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
-  const [inspectorOpen, setInspectorOpen] = useState(false);
+  const [cursorInches, setCursorInches] = useState<{ x: number; y: number } | null>(null);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
 
   const { viewport, setViewport, zoomBy, resetView } = usePlannerViewport();
@@ -129,7 +128,20 @@ export function AdvertisingWorkspaceView({
     const el = canvasContainerRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    const target = drawableInchesFromContainer(rect.width, rect.height);
+    const hasPhoto =
+      wall.backdropUrl &&
+      wall.backdropNaturalWidth &&
+      wall.backdropNaturalHeight &&
+      wall.backdropNaturalWidth > 0 &&
+      wall.backdropNaturalHeight > 0;
+    const target = hasPhoto
+      ? wallInchesFromBackdropFit(
+          rect.width,
+          rect.height,
+          wall.backdropNaturalWidth!,
+          wall.backdropNaturalHeight!,
+        )
+      : drawableInchesFromContainer(rect.width, rect.height);
     const sameSize =
       Math.abs(wall.width_inches - target.width_inches) < 0.05 &&
       Math.abs(wall.height_inches - target.height_inches) < 0.05;
@@ -156,7 +168,17 @@ export function AdvertisingWorkspaceView({
         return;
       }
       const rect = el.getBoundingClientRect();
-      const target = drawableInchesFromContainer(rect.width, rect.height);
+      const hasPhoto =
+        (patch.backdropNaturalWidth ?? wall.backdropNaturalWidth) &&
+        (patch.backdropNaturalHeight ?? wall.backdropNaturalHeight);
+      const target = hasPhoto
+        ? wallInchesFromBackdropFit(
+            rect.width,
+            rect.height,
+            patch.backdropNaturalWidth ?? wall.backdropNaturalWidth!,
+            patch.backdropNaturalHeight ?? wall.backdropNaturalHeight!,
+          )
+        : drawableInchesFromContainer(rect.width, rect.height);
       updateWall({
         ...patch,
         ...rescaleWallPlanToInches(wall, target.width_inches, target.height_inches),
@@ -409,8 +431,6 @@ export function AdvertisingWorkspaceView({
         immersive={immersive}
         fullscreen={editorFullscreen}
         className={editorFullscreen ? undefined : "min-h-0 flex-1"}
-        inspectorOpen={inspectorOpen}
-        inspectorWidthPx={360}
         header={
           <AdvertisingEditorHeaderBar
             workspaceSwitcher={workspaceSwitcher}
@@ -421,24 +441,13 @@ export function AdvertisingWorkspaceView({
             inventoryOccupied={wallMeta.occupied}
             unit={unit}
             onUnitChange={setUnit}
-            onSave={handleSaveBackdrops}
-            onPublish={() => {
-              /* proposal export — API phase */
-            }}
             fullscreenHref={editorFullscreen ? undefined : advertisingFullscreenHref}
           />
         }
-        footer={
-          <AdvertisingEditorStatusBar
+        sceneRail={
+          <AdvertisingSceneRail
             walls={walls}
             activeWallId={wallId}
-            wall={wall}
-            unit={unit}
-            scalePercent={scalePercent}
-            snapEnabled={snapEnabled}
-            showGrid={showGrid}
-            inspectorOpen={inspectorOpen}
-            onInspectorToggle={() => setInspectorOpen((v) => !v)}
             onWallChange={(id) => {
               setWallId(id);
               setSelectedInventoryId(null);
@@ -453,6 +462,16 @@ export function AdvertisingWorkspaceView({
             onBackdropChange={handleBackdropChange}
             onGenerateEmptySpace={handleGenerateEmptyBackdrop}
             generateBusy={backdropBusy}
+          />
+        }
+        footer={
+          <AdvertisingEditorStatusBar
+            wall={wall}
+            unit={unit}
+            scalePercent={scalePercent}
+            snapEnabled={snapEnabled}
+            showGrid={showGrid}
+            cursorInches={cursorInches}
             onZoomIn={() => zoomFocal(1.12)}
             onZoomOut={() => zoomFocal(0.88)}
             onResetView={canPanViewport || canZoomViewport ? syncWallToViewport : () => {}}
@@ -475,6 +494,10 @@ export function AdvertisingWorkspaceView({
             }}
             onBlockChange={onBlockChange}
             onBlockDelete={handleBlockDelete}
+            onSave={handleSaveBackdrops}
+            onPublish={() => {
+              /* proposal export — API phase */
+            }}
           />
         }
         viewport={
@@ -522,6 +545,7 @@ export function AdvertisingWorkspaceView({
               showFloatingHints={false}
               showMinimap={false}
               editorLightMode
+              onCursorInchesChange={setCursorInches}
               className="h-full w-full"
             />
             {pendingSnip ? (

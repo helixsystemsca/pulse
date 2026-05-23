@@ -81,6 +81,8 @@ export type ScheduleOperationalStatusStripProps = {
   alerts: ScheduleAlerts;
   pendingAvailability: number;
   unpublishedChanges: boolean;
+  /** From schedule workflow (Draft, Published, Unsaved changes, …). */
+  scheduleStatusLabel?: string;
   trainingConflicts?: number;
   onManagePeriod?: () => void;
   onAvailabilityClick?: () => void;
@@ -93,6 +95,7 @@ export function ScheduleOperationalStatusStrip({
   alerts,
   pendingAvailability,
   unpublishedChanges,
+  scheduleStatusLabel,
   trainingConflicts = 0,
   onManagePeriod,
   onAvailabilityClick,
@@ -151,8 +154,22 @@ export function ScheduleOperationalStatusStrip({
       <span>
         {parsedDays > 0 ? `${parsedDays} days` : null}
         {parsedDays > 0 ? " · " : null}
-        <span className={period.status === "open" ? "text-emerald-700 dark:text-emerald-300" : ""}>
-          {period.status === "open" ? "Availability open" : "Period draft"}
+        <span
+          className={
+            period.status === "open"
+              ? "text-emerald-700 dark:text-emerald-300"
+              : period.status === "published"
+                ? "text-emerald-700 dark:text-emerald-300"
+                : ""
+          }
+        >
+          {period.status === "open"
+            ? "Availability open"
+            : period.status === "published"
+              ? "Published · operationally active"
+              : period.status === "archived"
+                ? "Archived"
+                : "Period draft"}
         </span>
         {period.deadlineLabel ? <span>{period.deadlineLabel}</span> : null}
         {onManagePeriod ? (
@@ -234,8 +251,17 @@ export function ScheduleOperationalStatusStrip({
         icon={RefreshCw}
         iconClassName={unpublishedChanges ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}
         label="Changes"
-        value={unpublishedChanges ? "Unpublished edits" : "Synced"}
-        sub={unpublishedChanges ? "Save draft to persist" : "Live view"}
+        value={
+          scheduleStatusLabel ??
+          (unpublishedChanges ? "Unsaved changes" : "Synced")
+        }
+        sub={
+          unpublishedChanges
+            ? "Save changes before publishing"
+            : scheduleStatusLabel === "Published"
+              ? "Operationally active"
+              : "Live view"
+        }
       />
       <StatCell
         icon={Timer}

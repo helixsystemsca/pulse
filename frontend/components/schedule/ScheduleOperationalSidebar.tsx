@@ -36,6 +36,8 @@ type Props = {
   onOpenAvailabilitySupervisor: () => void;
   onOpenEmployeeAvailability: () => void;
   canConfigureOrg: boolean;
+  /** Daily assignments (routines board) require a published schedule. */
+  dailyAssignmentsEnabled?: boolean;
   disabled?: boolean;
 };
 
@@ -62,6 +64,7 @@ export function ScheduleOperationalSidebar({
   onOpenAvailabilitySupervisor,
   onOpenEmployeeAvailability,
   canConfigureOrg,
+  dailyAssignmentsEnabled = true,
   disabled,
 }: Props) {
   const isHeader = variant === "header";
@@ -74,15 +77,21 @@ export function ScheduleOperationalSidebar({
       ["my-shifts", "My shifts", User],
       ["personnel", "Personnel", Users],
       ["reports", "Reports", BarChart2],
-      ["routines", "Assignments", ClipboardList],
+      ["routines", "Daily Assignments", ClipboardList],
     ] as const
-  ).map(([key, label, Icon]) => (
+  ).map(([key, label, Icon]) => {
+    const routinesLocked = key === "routines" && !dailyAssignmentsEnabled;
+    return (
     <button
       key={key}
       type="button"
-      disabled={disabled}
+      disabled={disabled || routinesLocked}
       onClick={() => onWorkspaceViewChange(key)}
-      title={label}
+      title={
+        routinesLocked
+          ? "Daily assignments become available after schedule publication."
+          : label
+      }
       className={cn(
         "flex items-center gap-2 rounded-lg text-left font-semibold transition-colors",
         isInline ? "shrink-0 px-2 py-1.5 text-xs" : "gap-2 px-2 py-2 text-sm",
@@ -91,12 +100,14 @@ export function ScheduleOperationalSidebar({
         workspaceView === key
           ? "bg-[color-mix(in_srgb,var(--ds-accent)_14%,transparent)] text-[var(--ds-accent)]"
           : "text-ds-foreground hover:bg-ds-interactive-hover",
+        routinesLocked && "cursor-not-allowed opacity-50",
       )}
     >
       <Icon className={cn("shrink-0 opacity-90", isInline ? "h-3.5 w-3.5" : "h-4 w-4")} />
       {showExpanded ? <span className="truncate">{label}</span> : null}
     </button>
-  ));
+    );
+  });
 
   const searchField = showExpanded ? (
     <div className="relative min-w-0">

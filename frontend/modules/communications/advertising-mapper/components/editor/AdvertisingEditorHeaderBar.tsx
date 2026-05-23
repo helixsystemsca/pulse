@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { ChevronDown, Maximize2 } from "lucide-react";
+import { Maximize2 } from "lucide-react";
 import type { MeasurementUnit } from "@/modules/communications/advertising-mapper/types";
 import { AdvertisingViewportTitle } from "@/modules/communications/advertising-mapper/components/editor/AdvertisingViewportTitle";
 import { cn } from "@/lib/cn";
@@ -16,8 +16,6 @@ export type AdvertisingEditorHeaderBarProps = {
   inventoryOccupied: number;
   unit: MeasurementUnit;
   onUnitChange: (unit: MeasurementUnit) => void;
-  onSave?: () => void;
-  onPublish?: () => void;
   fullscreenHref?: string;
 };
 
@@ -31,8 +29,6 @@ export function AdvertisingEditorHeaderBar({
   inventoryOccupied,
   unit,
   onUnitChange,
-  onSave,
-  onPublish,
   fullscreenHref,
 }: AdvertisingEditorHeaderBarProps) {
   return (
@@ -76,21 +72,6 @@ export function AdvertisingEditorHeaderBar({
               </button>
             ))}
           </div>
-          <button
-            type="button"
-            className={cn(buttonVariants({ intent: "secondary", surface: "light" }), "h-7 px-2.5 text-[11px]")}
-            onClick={onSave}
-          >
-            Save
-          </button>
-          <button
-            type="button"
-            className={cn(buttonVariants({ intent: "primary", surface: "light" }), "h-7 gap-0.5 px-2.5 text-[11px]")}
-            onClick={onPublish}
-          >
-            Publish
-            <ChevronDown className="h-3 w-3 opacity-70" aria-hidden />
-          </button>
           {fullscreenHref ? (
             <a
               href={fullscreenHref}
