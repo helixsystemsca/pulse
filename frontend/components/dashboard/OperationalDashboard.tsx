@@ -41,6 +41,7 @@ import { TrainingComplianceWidget } from "@/components/dashboard/widgets/trainin
 import { ImportantDatesOpsWidget } from "@/components/dashboard/widgets/ops/ImportantDatesOpsWidget";
 import { NotificationsWorkOrdersOpsWidget } from "@/components/dashboard/widgets/ops/NotificationsWorkOrdersOpsWidget";
 import {
+  buildWorkRequestsGridPreset,
   snapWorkRequestsGridItem,
   workRequestsLayoutModeFromContext,
   WORK_REQUESTS_WIDGET_ID,
@@ -111,7 +112,7 @@ function layoutItemsCollide(a: LayoutItem, b: LayoutItem): boolean {
  * Legacy 12-col layouts saved to localStorage become overlapping when `cols` is 8 (correctBounds forces
  * multiple full-width tiles to x=0). Clamp geometry and push colliding rows down so the grid is valid.
  */
-function sanitizeLayoutForGrid(layout: Layout, cols: number): Layout {
+function sanitizeLayoutForGrid(layout: Layout, cols: number, gridWidthPx?: number): Layout {
   const ids = layout.map((l) => l.i);
   const clamped = layout.map((item) => {
     const minW = Math.max(1, Math.min(Number(item.minW ?? 1), cols));
@@ -143,13 +144,13 @@ function sanitizeLayoutForGrid(layout: Layout, cols: number): Layout {
   const byId = new Map(placed.map((p) => [p.i, p]));
   const ordered = ids.map((i) => byId.get(i)).filter((x): x is LayoutItem => x != null);
   return ordered.map((item) =>
-    item.i === WORK_REQUESTS_WIDGET_ID ? snapWorkRequestsGridItem(item, cols) : item,
+    item.i === WORK_REQUESTS_WIDGET_ID ? snapWorkRequestsGridItem(item, cols, gridWidthPx) : item,
   );
 }
 
-function applyWorkRequestsLayoutSnaps(layout: Layout, cols: number): Layout {
+function applyWorkRequestsLayoutSnaps(layout: Layout, cols: number, gridWidthPx?: number): Layout {
   return layout.map((item) =>
-    item.i === WORK_REQUESTS_WIDGET_ID ? snapWorkRequestsGridItem(item, cols) : item,
+    item.i === WORK_REQUESTS_WIDGET_ID ? snapWorkRequestsGridItem(item, cols, gridWidthPx) : item,
   );
 }
 
@@ -1406,7 +1407,20 @@ function DashboardBody({
     if (isDeptDashboard) return [];
     return [
       { i: "important_dates", x: 0, y: 0, w: 5, h: 12, minW: 3, minH: 6 },
-      { i: WORK_REQUESTS_WIDGET_ID, x: 5, y: 0, w: 6, h: 2, minW: 4, minH: 2, maxH: 2 },
+      (() => {
+        const p = buildWorkRequestsGridPreset("4x1", 1200, DASHBOARD_GRID_COLS);
+        return {
+          i: WORK_REQUESTS_WIDGET_ID,
+          x: 5,
+          y: 0,
+          w: p.w,
+          h: p.h,
+          minW: p.minW,
+          minH: p.minH,
+          maxH: p.maxH,
+          maxW: p.maxW,
+        };
+      })(),
       { i: "training_compliance", x: 11, y: 0, w: 5, h: 12, minW: 3, minH: 6 },
       { i: "workforce", x: 0, y: 12, w: 6, h: 10, minW: 4, minH: 6 },
       { i: "low_inventory", x: 6, y: 12, w: 5, h: 10, minW: 3, minH: 6 },
@@ -1467,11 +1481,17 @@ function DashboardBody({
     const merged = sanitizeLayoutForGrid(
       (loadedFromStorage ? filtered : [...filtered, ...missing]) as Layout,
       DASHBOARD_GRID_COLS,
+      width,
     );
     setLayout(merged);
     setCustomConfigs(parsedConfigs);
     setLayoutHydrated(true);
-  }, [builtinWidgetIdsSignature, customWidgetStorageKey, dashboardContext, defaultLayout, layoutStorageKey]);
+  }, [builtinWidgetIdsSignature, customWidgetStorageKey, dashboardContext, defaultLayout, layoutStorageKey, width]);
+
+  useEffect(() => {
+    if (!layoutHydrated || isInteractingRef.current) return;
+    setLayout((prev) => applyWorkRequestsLayoutSnaps(prev, DASHBOARD_GRID_COLS, width));
+  }, [width, layoutHydrated]);
 
   const persistLayout = useCallback(
     (next: Layout) => {
@@ -1751,21 +1771,22 @@ function DashboardBody({
               }}
               onResize={(next) => {
                 if (!canEditLayout || !editMode) return;
-                setLayout(next as Layout);
+                setLayout(applyWorkRequestsLayoutSnaps(next as Layout, DASHBOARD_GRID_COLS, width));
               }}
               onDragStop={(next) => {
                 if (!canEditLayout || !editMode) return;
                 setIsInteracting(false);
-                const compacted = stableCompactor.compact(next as Layout, DASHBOARD_GRID_COLS) as Layout;
+                const snapped = applyWorkRequestsLayoutSnaps(next as Layout, DASHBOARD_GRID_COLS, width);
+                const compacted = stableCompactor.compact(snapped, DASHBOARD_GRID_COLS) as Layout;
                 setLayout(compacted);
                 persistLayout(compacted);
               }}
               onResizeStop={(next) => {
                 if (!canEditLayout || !editMode) return;
                 setIsInteracting(false);
-                const snapped = applyWorkRequestsLayoutSnaps(next as Layout, DASHBOARD_GRID_COLS);
+                const snapped = applyWorkRequestsLayoutSnaps(next as Layout, DASHBOARD_GRID_COLS, width);
                 const compacted = stableCompactor.compact(snapped, DASHBOARD_GRID_COLS) as Layout;
-                const finalLayout = applyWorkRequestsLayoutSnaps(compacted, DASHBOARD_GRID_COLS);
+                const finalLayout = applyWorkRequestsLayoutSnaps(compacted, DASHBOARD_GRID_COLS, width);
                 setLayout(finalLayout);
                 persistLayout(finalLayout);
               }}
@@ -1886,7 +1907,7 @@ function DashboardBody({
                             : item.i === "workforce"
                               ? "px-1 py-0.5"
                               : item.i === "notifications_work_orders"
-                                ? "px-1.5 py-1.5"
+                                ? "!overflow-hidden !p-0 flex min-h-0 flex-1 flex-col items-start justify-start"
                                 : undefined
                       }
                     >

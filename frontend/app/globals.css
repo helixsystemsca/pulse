@@ -1348,38 +1348,43 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
     box-shadow: 0 1px 2px rgb(0 0 0 / 0.22), 0 6px 18px -8px rgb(0 0 0 / 0.35);
   }
 
-  /** Work requests KPI grid — layout modes resize the grid; cards stay square. */
+  /** Work requests KPI grid — fixed card size; outer widget snaps to fit. */
   .ops-work-requests-kpi-grid {
     display: grid;
-    height: 100%;
+    width: fit-content;
+    max-width: 100%;
+    height: fit-content;
+    max-height: 100%;
     min-height: 0;
-    width: 100%;
-    gap: 0.375rem;
-    place-content: center;
+    min-width: 0;
+    align-content: start;
+    justify-content: start;
     transition:
-      grid-template-columns 280ms ease,
-      grid-template-rows 280ms ease,
-      gap 280ms ease;
+      grid-template-columns 220ms ease,
+      grid-template-rows 220ms ease;
   }
   .ops-work-requests-kpi-grid--4x1 {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    grid-template-rows: minmax(0, 1fr);
+    grid-template-columns: repeat(4, 76px);
+    grid-template-rows: 76px;
+    justify-content: start;
   }
   .ops-work-requests-kpi-grid--2x2 {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(2, 76px);
+    grid-template-rows: repeat(2, 76px);
   }
   .ops-work-requests-kpi-grid--1x4 {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: repeat(4, minmax(0, 1fr));
+    grid-template-columns: 76px;
+    grid-template-rows: repeat(4, 76px);
+    justify-content: start;
   }
   .ops-work-requests-kpi-cell {
     display: flex;
+    width: 76px;
+    height: 76px;
     min-width: 0;
     min-height: 0;
-    align-items: center;
-    justify-content: center;
-    container-type: size;
+    align-items: stretch;
+    justify-content: stretch;
   }
 
   .ops-kpi-tile {
@@ -1404,20 +1409,18 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
       padding 280ms ease,
       box-shadow 280ms ease;
   }
-  /** Square KPI cards — sized by the smaller grid cell dimension, never stretched. */
+  /** Square KPI cards — fixed px size (see WORK_REQUESTS_KPI_CELL_PX). */
   .ops-kpi-tile--grid {
-    aspect-ratio: 1 / 1;
-    width: min(100cqw, 100cqh, 100%);
-    height: auto;
-    max-width: 100%;
-    max-height: 100%;
-    padding: 0.45rem 0.5rem 0.5rem;
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    padding: 0.4rem 0.45rem 0.45rem;
   }
   .ops-kpi-tile__value {
     font-size: clamp(0.875rem, 38cqi, 1.65rem);
-  }
-  .ops-kpi-tile--grid .ops-kpi-tile__value {
-    margin-top: auto;
   }
 
   .ops-kpi-pill {

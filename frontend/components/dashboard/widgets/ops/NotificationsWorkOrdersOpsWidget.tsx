@@ -3,7 +3,11 @@
 import { Loader2 } from "lucide-react";
 
 import type { DashboardViewModel } from "@/components/dashboard/OperationalDashboard";
-import type { WorkRequestsLayoutMode } from "@/components/dashboard/widgets/ops/work-requests-widget-layout";
+import {
+  WORK_REQUESTS_KPI_CELL_PX,
+  WORK_REQUESTS_KPI_GAP_PX,
+  type WorkRequestsLayoutMode,
+} from "@/components/dashboard/widgets/ops/work-requests-widget-layout";
 import { cn } from "@/lib/cn";
 
 const KPI_TONE_CLASS = {
@@ -48,7 +52,10 @@ function KpiCell({
 
   return (
     <div className="ops-work-requests-kpi-cell">
-      <div className={cn("ops-kpi-tile ops-kpi-tile--grid", KPI_TILE_CLASS[tone])}>
+      <div
+        className={cn("ops-kpi-tile ops-kpi-tile--grid", KPI_TILE_CLASS[tone])}
+        style={{ width: WORK_REQUESTS_KPI_CELL_PX, height: WORK_REQUESTS_KPI_CELL_PX }}
+      >
         <div className="flex w-full items-start gap-1">
           <span
             className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full"
@@ -61,7 +68,7 @@ function KpiCell({
         </div>
         <div
           className={cn(
-            "ops-kpi-tile__value mt-1 w-full text-left font-bold leading-none tabular-nums tracking-tight",
+            "ops-kpi-tile__value mt-auto w-full text-left font-bold leading-none tabular-nums tracking-tight",
             !loading && KPI_TONE_CLASS[tone],
             loading && "text-[color-mix(in_srgb,var(--ds-text-primary)_40%,transparent)]",
           )}
@@ -88,6 +95,7 @@ export function NotificationsWorkOrdersOpsWidget({
   return (
     <div
       className={cn("ops-work-requests-kpi-grid", GRID_MODE_CLASS[layoutMode])}
+      style={{ gap: WORK_REQUESTS_KPI_GAP_PX }}
       data-layout-mode={layoutMode}
       role="group"
       aria-label="Work request KPIs"
