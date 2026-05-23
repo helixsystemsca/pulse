@@ -34,6 +34,8 @@ type Props = {
   showConflictHints?: boolean;
   onSubmitRequest: (payload: { workerId: string; dates: string[]; kind: TimeOffRequestKind; note?: string }) => void;
   onReviewRequest: (id: string, status: "approved" | "denied" | "needs_review") => void;
+  /** Supervisors: open directly on approval queue (e.g. from Availability → Requests). */
+  initialSupervisorTab?: SupervisorTab;
 };
 
 type SupervisorTab = "queue" | "request";
@@ -52,6 +54,7 @@ export function TimeOffOperationsDrawer({
   showConflictHints = true,
   onSubmitRequest,
   onReviewRequest,
+  initialSupervisorTab,
 }: Props) {
   const now = getServerDate();
   const [supervisorTab, setSupervisorTab] = useState<SupervisorTab>(isSupervisor ? "queue" : "request");
@@ -83,8 +86,10 @@ export function TimeOffOperationsDrawer({
     setNote("");
     setKind("vacation");
     setOnBehalfWorkerId("");
-    setSupervisorTab(isSupervisor ? "queue" : "request");
-  }, [open, isSupervisor]);
+    setSupervisorTab(
+      isSupervisor ? (initialSupervisorTab ?? "queue") : "request",
+    );
+  }, [open, isSupervisor, initialSupervisorTab]);
 
   const selectedList = useMemo(() => sortIsoDates([...selectedDates]), [selectedDates]);
 

@@ -222,6 +222,7 @@ export function ScheduleApp() {
     "Shift definitions" | "Organization" | undefined
   >(undefined);
   const [timeOffOpen, setTimeOffOpen] = useState(false);
+  const [timeOffSupervisorTab, setTimeOffSupervisorTab] = useState<"queue" | "request" | undefined>();
   const [dragSession, setDragSession] = useState<ScheduleDragSession | null>(null);
   const [placementDutyRole, setPlacementDutyRole] = useState<string>("worker");
   const [placementBand, setPlacementBand] = useState<SchedulePlacementBand>("template");
@@ -272,7 +273,6 @@ export function ScheduleApp() {
   const addShift = useScheduleStore((s) => s.addShift);
   const updateShift = useScheduleStore((s) => s.updateShift);
   const deleteShift = useScheduleStore((s) => s.deleteShift);
-  const addTimeOffBlock = useScheduleStore((s) => s.addTimeOffBlock);
   const applyPulseScheduleSnapshot = useScheduleStore((s) => s.applyPulseScheduleSnapshot);
   const setWorkers = useScheduleStore((s) => s.setWorkers);
   const deploymentBadgeOverlays = useScheduleStore((s) => s.deploymentBadgeOverlays);
@@ -1440,8 +1440,18 @@ export function ScheduleApp() {
         }}
         onNotifyWorkers={() => void handlePublish()}
         onEditPublished={() => setWorkspaceView("calendar")}
-        onOpenAvailabilityRequests={() => setAvailabilitySupervisorOpen(true)}
-        onOpenTimeOff={() => setTimeOffOpen(true)}
+        onOpenAvailabilityRequests={() => {
+          if (canPublishSchedule) {
+            setTimeOffSupervisorTab("queue");
+            setTimeOffOpen(true);
+          } else {
+            setAvailabilitySupervisorOpen(true);
+          }
+        }}
+        onOpenTimeOff={() => {
+          setTimeOffSupervisorTab(undefined);
+          setTimeOffOpen(true);
+        }}
         onOpenAvailabilityPreferences={() => setEmployeeAvailabilityOpen(true)}
         onOpenSettings={canConfigureOrg ? () => setSettingsOpen(true) : undefined}
       />
@@ -1477,8 +1487,18 @@ export function ScheduleApp() {
                 }
                 onClearFacilityFilter={() => setFacilityFilterIds([])}
                 onOpenSettings={() => setSettingsOpen(true)}
-                onOpenTimeOff={() => setTimeOffOpen(true)}
-                onOpenAvailabilitySupervisor={() => setAvailabilitySupervisorOpen(true)}
+                onOpenTimeOff={() => {
+                  setTimeOffSupervisorTab(undefined);
+                  setTimeOffOpen(true);
+                }}
+                onOpenAvailabilitySupervisor={() => {
+                  if (canPublishSchedule) {
+                    setTimeOffSupervisorTab("queue");
+                    setTimeOffOpen(true);
+                  } else {
+                    setAvailabilitySupervisorOpen(true);
+                  }
+                }}
                 onOpenEmployeeAvailability={() => setEmployeeAvailabilityOpen(true)}
                 canConfigureOrg={canConfigureOrg}
                 dailyAssignmentsEnabled={scheduleWorkflow.assignmentsEnabled}
@@ -1497,7 +1517,14 @@ export function ScheduleApp() {
                 scheduleStatusLabel={scheduleWorkflow.statusLabel}
                 trainingConflicts={0}
                 onManagePeriod={() => setShowPeriodModal(true)}
-                onAvailabilityClick={() => setAvailabilitySupervisorOpen(true)}
+                onAvailabilityClick={() => {
+                  if (canPublishSchedule) {
+                    setTimeOffSupervisorTab("queue");
+                    setTimeOffOpen(true);
+                  } else {
+                    setAvailabilitySupervisorOpen(true);
+                  }
+                }}
               />
             }
             controls={
@@ -1544,8 +1571,18 @@ export function ScheduleApp() {
               }
               onClearFacilityFilter={() => setFacilityFilterIds([])}
               onOpenSettings={() => setSettingsOpen(true)}
-              onOpenTimeOff={() => setTimeOffOpen(true)}
-              onOpenAvailabilitySupervisor={() => setAvailabilitySupervisorOpen(true)}
+              onOpenTimeOff={() => {
+                setTimeOffSupervisorTab(undefined);
+                setTimeOffOpen(true);
+              }}
+              onOpenAvailabilitySupervisor={() => {
+                if (canPublishSchedule) {
+                  setTimeOffSupervisorTab("queue");
+                  setTimeOffOpen(true);
+                } else {
+                  setAvailabilitySupervisorOpen(true);
+                }
+              }}
               onOpenEmployeeAvailability={() => setEmployeeAvailabilityOpen(true)}
               canConfigureOrg={canConfigureOrg}
               dailyAssignmentsEnabled={scheduleWorkflow.assignmentsEnabled}
@@ -2013,8 +2050,9 @@ export function ScheduleApp() {
         currentUserName={session?.full_name?.trim() || session?.email || "You"}
         isSupervisor={canPublishSchedule}
         onClose={() => setTimeOffOpen(false)}
-        onSubmitRequest={(p) => submitTimeOffRequest(p)}
-        onReviewRequest={(id, status) => reviewTimeOffRequest(id, status)}
+        onSubmitRequest={(p) => useScheduleStore.getState().submitTimeOffRequest(p)}
+        onReviewRequest={(id, status) => useScheduleStore.getState().reviewTimeOffRequest(id, status)}
+        initialSupervisorTab={timeOffSupervisorTab}
       />
 
       <AvailabilitySupervisorDrawer

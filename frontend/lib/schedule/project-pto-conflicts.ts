@@ -1,4 +1,5 @@
 import type { ProjectBlackoutWindow, OperationalImpactLevel, ProjectScheduleOverlayMeta } from "@/lib/schedule/project-overlay-styles";
+import { expandBlockDates } from "@/lib/schedule/time-off-request";
 import type { ScheduleSettings, Shift, TimeOffBlock, Worker } from "@/lib/schedule/types";
 
 export type PtoProjectOverlap = {
@@ -162,7 +163,9 @@ export function pendingPtoCountForRange(
   ptoStart: string,
   ptoEnd: string,
 ): number {
-  return timeOffBlocks.filter(
-    (b) => b.status === "pending" && datesOverlap(ptoStart, ptoEnd, b.startDate, b.endDate),
-  ).length;
+  return timeOffBlocks.filter((b) => {
+    if (b.status !== "pending") return false;
+    const dates = expandBlockDates(b);
+    return dates.some((d) => d >= ptoStart && d <= ptoEnd);
+  }).length;
 }
