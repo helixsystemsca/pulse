@@ -5,7 +5,7 @@ import { useEffect, useRef } from "react";
 import { cn } from "@/lib/cn";
 
 /** Equilateral triangle side length in screen pixels (smaller = denser grid). */
-const SIDE_PX = 40;
+const SIDE_PX = 48;
 
 const ROW_H = (SIDE_PX * Math.sqrt(3)) / 2;
 
