@@ -42,6 +42,7 @@ export const PRODUCT_PATH_PREFIXES = [
   "/devices",
   "/zones",
   "/dashboard",
+  "/team-management",
   "/system",
   "/standards",
   "/kiosk",

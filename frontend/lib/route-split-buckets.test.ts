@@ -85,5 +85,9 @@ describe("route-split-buckets", () => {
     expect(isProductPath("/maintenance")).toBe(true);
     expect(isProductPath("/maintenance/work-orders")).toBe(true);
     expect(isProductPath("/system/companies/_param")).toBe(true);
+
+    expect(isProductPath("/team-management")).toBe(true);
+    expect(isProductPath("/team-management/coordination")).toBe(true);
+    expect(isMarketingPath("/team-management")).toBe(false);
   });
 });
