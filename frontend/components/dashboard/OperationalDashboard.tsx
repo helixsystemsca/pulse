@@ -38,6 +38,8 @@ import { cn } from "@/lib/cn";
 import { DASH } from "@/styles/dashboardTheme";
 import { UI } from "@/styles/ui";
 import { buildWorkspaceRenderContext, type DashboardWidgetRenderContext } from "@/lib/dashboard/render-context";
+import { workforceTierFlags } from "@/lib/dashboard/widget-layout-modes";
+import { WidgetAdaptiveBody } from "@/components/dashboard/widgets/WidgetAdaptiveBody";
 import {
   addWorkspaceWidget,
   allWorkspaceWidgetIds,
@@ -73,11 +75,6 @@ import {
 } from "@/lib/dashboard/operational-notifications";
 import { useOperationalNotificationsStore } from "@/lib/dashboard/operational-notifications-store";
 
-function workRequestsLayoutFromContext(ctx: DashboardWidgetRenderContext) {
-  if (ctx.logicalH >= 4) return "1x4" as const;
-  if (ctx.logicalH >= 2) return "2x2" as const;
-  return "4x1" as const;
-}
 const OPS_DASH_HEADER_TOOL = "ops-dash-header-icon-btn";
 const OPS_DASH_HEADER_TOOL_ACTIVE = "ops-dash-header-icon-btn--active";
 
@@ -407,6 +404,30 @@ function workforceStatusLineFromTitle(title: string): string | null {
   const i = title.indexOf(" · ");
   if (i === -1) return null;
   return title.slice(i + 3).trim() || null;
+}
+
+function WorkforceCountStrip({ counts }: { counts: DashboardViewModel["workforce"]["counts"] }) {
+  const chips = [
+    { label: "On site", value: counts.onSite, tone: "text-emerald-700 dark:text-emerald-300" },
+    { label: "On shift", value: counts.onShiftNow, tone: "text-[var(--ds-accent)]" },
+    { label: "Upcoming", value: counts.upcomingToday, tone: "text-amber-700 dark:text-amber-300" },
+    { label: "Off site", value: counts.offSite, tone: "text-[color-mix(in_srgb,var(--ds-text-primary)_62%,transparent)]" },
+  ];
+  return (
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      {chips.map((chip) => (
+        <div
+          key={chip.label}
+          className="rounded-lg bg-[color-mix(in_srgb,var(--ds-text-primary)_5%,transparent)] px-2.5 py-2 text-center"
+        >
+          <p className={cn("text-lg font-bold tabular-nums leading-none", chip.tone)}>{chip.value}</p>
+          <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-[color-mix(in_srgb,var(--ds-text-primary)_55%,transparent)]">
+            {chip.label}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function isWorkforceRosterNowGroup(b: WorkforceBubble): boolean {
@@ -1144,7 +1165,7 @@ function DashboardBody({
         accent: "none" as const,
         shellJumpHref: pulseAppHref("/schedule"),
         shellJumpLabel: "Open schedule",
-        render: () => <ImportantDatesOpsWidget />,
+        render: (ctx?: DashboardWidgetRenderContext) => <ImportantDatesOpsWidget layoutContext={ctx} />,
       },
       notifications_work_orders: {
         title: "Work requests",
@@ -1152,11 +1173,7 @@ function DashboardBody({
         shellJumpHref: pulseApp.to(workOrdersHref),
         shellJumpLabel: "Open work requests",
         render: (ctx?: DashboardWidgetRenderContext) => (
-          <NotificationsWorkOrdersOpsWidget
-            model={model}
-            kpiLoading={workRequestKpiLoading}
-            layoutMode={ctx ? workRequestsLayoutFromContext(ctx) : "4x1"}
-          />
+          <NotificationsWorkOrdersOpsWidget model={model} kpiLoading={workRequestKpiLoading} layoutContext={ctx} />
         ),
       },
       training_compliance: {
@@ -1176,12 +1193,18 @@ function DashboardBody({
       workforce: {
         title: "Workforce",
         accent: "none" as const,
-        render: () => (
-          <div
-            className={cn(
-              workforceCardShell,
-              "flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-x-auto overflow-y-visible",
-            )}
+        render: (ctx?: DashboardWidgetRenderContext) => {
+          const tier = ctx?.heightTier ?? "expanded";
+          const zone = ctx?.zone ?? "hero";
+          const flags = workforceTierFlags(tier);
+          const rosterMinH =
+            tier === "compact" ? "min-h-0" : tier === "tall" ? "min-h-[10rem]" : "min-h-[7.25rem]";
+
+          return (
+          <WidgetAdaptiveBody
+            tier={tier}
+            zone={zone}
+            className={cn(workforceCardShell, "overflow-x-auto overflow-y-visible")}
           >
             <div className="shrink-0">
               <p className="text-xs font-semibold text-[color-mix(in_srgb,var(--ds-text-primary)_92%,transparent)]">
@@ -1191,8 +1214,12 @@ function DashboardBody({
                 {model.workforce.summaryLine}
               </p>
             </div>
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1.5">
-              <div className="flex min-h-[7.25rem] min-w-0 flex-1 flex-col py-0.5">
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-between gap-2">
+              {flags.showCountStrip && !flags.showRoster ? (
+                <WorkforceCountStrip counts={model.workforce.counts} />
+              ) : null}
+              {flags.showRoster ? (
+              <div className={cn("flex min-w-0 flex-1 flex-col py-0.5", rosterMinH)}>
                 <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--ds-accent)]">Scheduled today</p>
                 {model.workforce.scheduledTodayRoster.length === 0 ? (
                   <p className="mt-1 text-xs text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]">
@@ -1229,7 +1256,14 @@ function DashboardBody({
                     );
                     const bandGrid = (items: typeof roster) =>
                       items.length === 0 ? null : (
-                        <div className="flex min-h-0 min-w-0 w-max max-w-full flex-1 flex-nowrap items-start justify-start gap-x-0.5 gap-y-2 overflow-x-auto overflow-y-visible pb-0.5 pt-0.5">
+                        <div
+                          className="flex min-h-0 min-w-0 w-max max-w-full flex-1 flex-nowrap items-start justify-start gap-x-0.5 gap-y-2 overflow-x-auto overflow-y-visible pb-0.5 pt-0.5"
+                          style={
+                            flags.avatarScale !== 1
+                              ? { transform: `scale(${flags.avatarScale})`, transformOrigin: "top center" }
+                              : undefined
+                          }
+                        >
                           {items.map(bubble)}
                         </div>
                       );
@@ -1273,23 +1307,64 @@ function DashboardBody({
                   })()
                 )}
               </div>
+              ) : null}
+              {flags.showSecondaryBands ? (
+                <div className="mt-auto grid min-h-0 gap-3 border-t border-[color-mix(in_srgb,var(--ds-text-primary)_10%,transparent)] pt-3 sm:grid-cols-2">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[color-mix(in_srgb,var(--ds-text-primary)_48%,transparent)]">
+                      On schedule
+                    </p>
+                    {model.workforce.onScheduleToday.length === 0 ? (
+                      <p className="mt-1 text-[11px] text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]">None</p>
+                    ) : (
+                      <ul className="mt-1 space-y-1">
+                        {model.workforce.onScheduleToday.slice(0, 4).map((b) => (
+                          <li key={b.id} className="truncate text-[11px] font-medium text-[color-mix(in_srgb,var(--ds-text-primary)_78%,transparent)]">
+                            {b.displayName}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[color-mix(in_srgb,var(--ds-text-primary)_48%,transparent)]">
+                      Off site
+                    </p>
+                    {model.workforce.offSite.length === 0 ? (
+                      <p className="mt-1 text-[11px] text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]">None</p>
+                    ) : (
+                      <ul className="mt-1 space-y-1">
+                        {model.workforce.offSite.slice(0, 4).map((b) => (
+                          <li key={b.id} className="truncate text-[11px] font-medium text-[color-mix(in_srgb,var(--ds-text-primary)_78%,transparent)]">
+                            {b.displayName}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              ) : null}
+              {flags.showCountStrip && flags.showRoster ? (
+                <WorkforceCountStrip counts={model.workforce.counts} />
+              ) : null}
             </div>
-          </div>
-        ),
+          </WidgetAdaptiveBody>
+          );
+        },
       },
       low_inventory: {
         title: "Low inventory",
         accent: "none" as const,
         shellJumpHref: pulseAppHref("/dashboard/inventory"),
         shellJumpLabel: "Open inventory",
-        render: () => <LowInventoryOpsWidget model={model} />,
+        render: (ctx?: DashboardWidgetRenderContext) => <LowInventoryOpsWidget model={model} layoutContext={ctx} />,
       },
       co2_monitoring: {
         title: "CO₂ monitoring",
         accent: "none" as const,
         shellJumpHref: pulseAppHref("/monitoring"),
         shellJumpLabel: "Open monitoring",
-        render: () => <Co2MonitoringOpsWidget />,
+        render: (ctx?: DashboardWidgetRenderContext) => <Co2MonitoringOpsWidget layoutContext={ctx} />,
       },
       pool_readings: {
         title: "Pool readings",
@@ -1303,14 +1378,14 @@ function DashboardBody({
         accent: "none" as const,
         shellJumpHref: pulseAppHref("/schedule"),
         shellJumpLabel: "Open schedule",
-        render: () => <FacilityScheduleOpsWidget />,
+        render: (ctx?: DashboardWidgetRenderContext) => <FacilityScheduleOpsWidget layoutContext={ctx} />,
       },
       routine_assignments: {
         title: "Routine assignments",
         accent: "none" as const,
         shellJumpHref: pulseAppHref("/standards/routines"),
         shellJumpLabel: "Open routines",
-        render: () => <RoutineAssignmentsOpsWidget />,
+        render: (ctx?: DashboardWidgetRenderContext) => <RoutineAssignmentsOpsWidget layoutContext={ctx} />,
       },
     } as const;
   }, [model, workOrdersHref, workRequestKpiLoading]);
@@ -1467,7 +1542,7 @@ function DashboardBody({
   const shellBodyClass = (widgetId: string) => {
     if (widgetId === "pool_readings") return "p-0";
     if (widgetId === "notifications_work_orders") {
-      return "!overflow-hidden !p-0 flex min-h-0 flex-1 flex-col items-center justify-center";
+      return "!overflow-hidden !p-0 flex min-h-0 flex-1 flex-col";
     }
     return undefined;
   };

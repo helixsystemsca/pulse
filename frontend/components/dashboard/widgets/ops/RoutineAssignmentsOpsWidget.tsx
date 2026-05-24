@@ -4,7 +4,10 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ClipboardList } from "lucide-react";
 
+import { WidgetAdaptiveBody } from "@/components/dashboard/widgets/WidgetAdaptiveBody";
 import { isApiMode } from "@/lib/api";
+import type { DashboardWidgetRenderContext } from "@/lib/dashboard/render-context";
+import { routineAssignmentLimits } from "@/lib/dashboard/widget-layout-modes";
 import { readSession } from "@/lib/pulse-session";
 import { listMyRoutineAssignments, listRoutines, type RoutineAssignmentDetail, type RoutineRow } from "@/lib/routinesService";
 const DEMO_ASSIGNMENTS: { routineName: string; date: string }[] = [
@@ -123,7 +126,7 @@ function RoutineAssignmentsInner({
     const routines = state.routines.slice(0, rLimit);
 
     return (
-      <div className="space-y-4">
+      <div className="flex min-h-0 flex-1 flex-col space-y-4 overflow-auto">
         {showAssignments ? (
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[color-mix(in_srgb,var(--ds-text-primary)_48%,transparent)]">
@@ -181,7 +184,7 @@ function RoutineAssignmentsInner({
   }, [state, compact, maxAssignments, maxRoutines, showAssignments, showLibrary]);
 
   return (
-    <div className="space-y-2">
+    <div className="flex h-full min-h-0 flex-1 flex-col space-y-2">
       <div className="flex items-center gap-2 text-[11px] font-semibold text-[color-mix(in_srgb,var(--ds-text-primary)_55%,transparent)]">
         <ClipboardList className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
         <span>Shift routines & handoffs</span>
@@ -204,11 +207,20 @@ function RoutineAssignmentsInner({
   );
 }
 
-export function RoutineAssignmentsOpsWidget() {
+export function RoutineAssignmentsOpsWidget({ layoutContext }: { layoutContext?: DashboardWidgetRenderContext }) {
+  const tier = layoutContext?.heightTier ?? "expanded";
+  const zone = layoutContext?.zone ?? "hero";
+  const limits = routineAssignmentLimits(tier);
+
   return (
-    <div className="ops-dash-inner-card flex h-full min-h-0 flex-col p-3">
-      <RoutineAssignmentsInner showFooterLinks={false} />
-    </div>
+    <WidgetAdaptiveBody tier={tier} zone={zone} className="ops-dash-inner-card p-3">
+      <RoutineAssignmentsInner
+        compact={limits.compact}
+        maxAssignments={limits.maxAssignments}
+        maxRoutines={limits.maxRoutines}
+        showFooterLinks={tier !== "compact"}
+      />
+    </WidgetAdaptiveBody>
   );
 }
 

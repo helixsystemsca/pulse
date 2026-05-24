@@ -4,6 +4,9 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CalendarRange } from "lucide-react";
 
+import { WidgetAdaptiveBody } from "@/components/dashboard/widgets/WidgetAdaptiveBody";
+import type { DashboardWidgetRenderContext } from "@/lib/dashboard/render-context";
+import { facilityScheduleLimits } from "@/lib/dashboard/widget-layout-modes";
 import { cn } from "@/lib/cn";
 
 const BC_TZ = "America/Vancouver";
@@ -192,11 +195,20 @@ function FacilityScheduleInner({
 }
 
 /** Built-in operations tile body (wrapped by `OpsWidgetShell` in `OperationalDashboard`). */
-export function FacilityScheduleOpsWidget() {
+export function FacilityScheduleOpsWidget({ layoutContext }: { layoutContext?: DashboardWidgetRenderContext }) {
+  const tier = layoutContext?.heightTier ?? "medium";
+  const zone = layoutContext?.zone ?? "edge";
+  const limits = facilityScheduleLimits(tier);
+
   return (
-    <div className="ops-dash-inner-card flex h-full min-h-0 flex-col p-3">
-      <FacilityScheduleInner showFooterLinks={false} />
-    </div>
+    <WidgetAdaptiveBody tier={tier} zone={zone} className="ops-dash-inner-card p-3">
+      <FacilityScheduleInner
+        compact={limits.compact}
+        maxLocations={limits.maxLocations}
+        maxPerLocation={limits.maxPerLocation}
+        showFooterLinks={false}
+      />
+    </WidgetAdaptiveBody>
   );
 }
 

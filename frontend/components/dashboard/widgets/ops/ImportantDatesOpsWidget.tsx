@@ -3,6 +3,9 @@
 import { useMemo } from "react";
 import { CalendarDays } from "lucide-react";
 
+import { WidgetAdaptiveBody } from "@/components/dashboard/widgets/WidgetAdaptiveBody";
+import type { DashboardWidgetRenderContext } from "@/lib/dashboard/render-context";
+import { elasticListLimits } from "@/lib/dashboard/widget-layout-modes";
 import { getServerNow } from "@/lib/serverTime";
 import { cn } from "@/lib/cn";
 
@@ -19,7 +22,10 @@ function formatShort(d: Date): string {
 /**
  * Manager-calendar style milestones (deterministic from server clock until a live calendar feed exists).
  */
-export function ImportantDatesOpsWidget() {
+export function ImportantDatesOpsWidget({ layoutContext }: { layoutContext?: DashboardWidgetRenderContext }) {
+  const tier = layoutContext?.heightTier ?? "medium";
+  const zone = layoutContext?.zone ?? "edge";
+  const limits = elasticListLimits(tier);
   const items = useMemo(() => {
     const now = new Date(getServerNow());
     return [
@@ -27,21 +33,21 @@ export function ImportantDatesOpsWidget() {
       { label: "Chemical delivery", date: addDays(now, 1), tone: "accent" as const },
       { label: "Staff safety stand-up", date: addDays(now, 3), tone: "neutral" as const },
       { label: "Pool vacuum / deep clean", date: addDays(now, 7), tone: "neutral" as const },
+      { label: "Lifeguard in-service training", date: addDays(now, 10), tone: "neutral" as const },
+      { label: "Filter backwash maintenance", date: addDays(now, 12), tone: "neutral" as const },
     ];
   }, []);
 
   return (
-    <div className="ops-dash-inner-card flex h-full min-h-0 flex-col p-3">
-      <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold text-[color-mix(in_srgb,var(--ds-text-primary)_55%,transparent)]">
-        <CalendarDays className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
-        <span>Synced to manager calendar</span>
-      </div>
-      <ul className="min-h-0 flex-1 space-y-2 overflow-auto pr-0.5">
-        {items.map((row) => (
+    <WidgetAdaptiveBody tier={tier} zone={zone} className="ops-dash-inner-card p-3">
+      <CardHeader />
+      <ul className={cn("min-h-0 flex-1 overflow-auto pr-0.5", limits.spacious ? "space-y-2.5" : "space-y-2")}>
+        {items.slice(0, limits.maxItems).map((row) => (
           <li
             key={row.label}
             className={cn(
-              "flex items-start justify-between gap-3 rounded-lg px-2.5 py-2 text-xs",
+              "flex items-start justify-between gap-3 rounded-lg text-xs",
+              limits.spacious ? "px-3 py-2.5" : "px-2.5 py-2",
               row.tone === "accent"
                 ? "bg-[color-mix(in_srgb,var(--ds-accent)_14%,transparent)] ring-1 ring-[color-mix(in_srgb,var(--ds-accent)_28%,transparent)]"
                 : "bg-[color-mix(in_srgb,var(--ds-text-primary)_4%,transparent)]",
@@ -56,6 +62,15 @@ export function ImportantDatesOpsWidget() {
           </li>
         ))}
       </ul>
+    </WidgetAdaptiveBody>
+  );
+}
+
+function CardHeader() {
+  return (
+    <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold text-[color-mix(in_srgb,var(--ds-text-primary)_55%,transparent)]">
+      <CalendarDays className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
+      <span>Synced to manager calendar</span>
     </div>
   );
 }

@@ -15,7 +15,7 @@ export type ComplianceRadialProps = {
   missing: number;
   totalSlots: number;
   /** Larger chart in peek / wide tiles */
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
   /**
    * `overall` — three segments (completed / expiring / missing), center = compliance including expiring-soon.
    * `strict_mandatory` — two segments (fully complete vs not), center = % of routines-tier slots marked completed only.
@@ -46,8 +46,8 @@ export function ComplianceRadial({
   const gStrictDone = `tc-sd-${uid}`;
   const gStrictRest = `tc-sr-${uid}`;
 
-  const radius = size === "sm" ? 38 : size === "lg" ? 54 : 46;
-  const stroke = size === "sm" ? 6 : size === "lg" ? 7.5 : 6.5;
+  const radius = size === "sm" ? 38 : size === "lg" ? 54 : size === "xl" ? 64 : 46;
+  const stroke = size === "sm" ? 6 : size === "lg" ? 7.5 : size === "xl" ? 8 : 6.5;
   const dimension = radius * 2 + stroke * 2 + 8;
   const cx = dimension / 2;
   const cy = dimension / 2;

@@ -1373,43 +1373,60 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
     box-shadow: 0 1px 2px rgb(0 0 0 / 0.22), 0 6px 18px -8px rgb(0 0 0 / 0.35);
   }
 
-  /** Work requests KPI grid — fixed card size; outer widget snaps to fit. */
+  /** Work requests KPI grid — cell size driven by height tier via CSS variables. */
   .ops-work-requests-kpi-grid {
     display: grid;
-    width: fit-content;
+    width: 100%;
     max-width: 100%;
-    height: fit-content;
+    height: 100%;
     max-height: 100%;
     min-height: 0;
     min-width: 0;
-    align-content: start;
-    justify-content: start;
+    align-content: center;
+    justify-content: center;
+    justify-items: center;
+    align-items: center;
     transition:
       grid-template-columns 220ms ease,
       grid-template-rows 220ms ease;
   }
   .ops-work-requests-kpi-grid--4x1 {
-    grid-template-columns: repeat(4, 76px);
-    grid-template-rows: 76px;
-    justify-content: start;
+    grid-template-columns: repeat(4, var(--ops-kpi-cell-px, 76px));
+    grid-template-rows: var(--ops-kpi-cell-px, 76px);
   }
   .ops-work-requests-kpi-grid--2x2 {
-    grid-template-columns: repeat(2, 76px);
-    grid-template-rows: repeat(2, 76px);
+    grid-template-columns: repeat(2, var(--ops-kpi-cell-px, 76px));
+    grid-template-rows: repeat(2, var(--ops-kpi-cell-px, 76px));
   }
   .ops-work-requests-kpi-grid--1x4 {
-    grid-template-columns: 76px;
-    grid-template-rows: repeat(4, 76px);
-    justify-content: start;
+    grid-template-columns: var(--ops-kpi-cell-px, 76px);
+    grid-template-rows: repeat(4, var(--ops-kpi-cell-px, 76px));
   }
   .ops-work-requests-kpi-cell {
     display: flex;
-    width: 76px;
-    height: 76px;
+    width: var(--ops-kpi-cell-px, 76px);
+    height: var(--ops-kpi-cell-px, 76px);
     min-width: 0;
     min-height: 0;
     align-items: stretch;
     justify-content: stretch;
+  }
+
+  /** Height-aware widget bodies — tier-driven spacing and fill behavior. */
+  .dash-widget-adaptive {
+    container-type: size;
+  }
+  .dash-widget-adaptive[data-height-tier="compact"] {
+    --dash-widget-density: 0.85;
+  }
+  .dash-widget-adaptive[data-height-tier="medium"] {
+    --dash-widget-density: 1;
+  }
+  .dash-widget-adaptive[data-height-tier="expanded"] {
+    --dash-widget-density: 1.12;
+  }
+  .dash-widget-adaptive[data-height-tier="tall"] {
+    --dash-widget-density: 1.25;
   }
 
   .ops-kpi-tile {

@@ -1,6 +1,7 @@
 import type { WidgetZoneClass, WidgetHeightTier, WorkspaceColumnId, WorkspaceWidgetSlot } from "@/lib/dashboard/workspace-layout";
 import { columnWidthPx, WIDGET_HEIGHT_TIER_MIN_PX } from "@/lib/dashboard/workspace-layout";
-import { getWidgetMode, type WidgetMode, type WidgetRenderContext } from "@/components/dashboard/widgets/widgetSizing";
+import type { WidgetMode, WidgetRenderContext } from "@/components/dashboard/widgets/widgetSizing";
+import { modeFromHeightTier } from "@/lib/dashboard/widget-layout-modes";
 import { DASHBOARD_WIDGET_HEADER_HEIGHT_PX } from "@/lib/dashboard/tokens";
 
 export type DashboardWidgetRenderContext = WidgetRenderContext & {
@@ -29,12 +30,7 @@ export function buildWorkspaceRenderContext(
   const heightPx = bodyPx + DASHBOARD_WIDGET_HEADER_HEIGHT_PX;
   const logicalW = zone === "hero" ? 2 : 1;
   const logicalH = TIER_LOGICAL_H[slot.heightTier];
-  const mode: WidgetMode = getWidgetMode({
-    gridW: logicalW,
-    gridH: logicalH,
-    widthPx,
-    heightPx,
-  });
+  const mode: WidgetMode = modeFromHeightTier(slot.heightTier, zone);
   return {
     mode,
     gridW: logicalW,
