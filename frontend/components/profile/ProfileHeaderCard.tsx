@@ -243,8 +243,8 @@ export function ProfileHeaderCard({
       <div className="relative border-t border-white/15 bg-black/[0.06] px-6 py-3 dark:border-white/10 dark:bg-black/25">
         <p className="text-center text-[11px] font-semibold text-ds-muted sm:text-left">
           Emergency contacts are managed by your supervisor or HR in{" "}
-          <Link href="/dashboard/workers" className="font-bold text-[#2B4C7E] underline-offset-2 hover:underline dark:text-[#36F1CD]">
-            Team Management
+          <Link href="/dashboard/permissions" className="font-bold text-[#2B4C7E] underline-offset-2 hover:underline dark:text-[#36F1CD]">
+            Permissions
           </Link>
           .
         </p>

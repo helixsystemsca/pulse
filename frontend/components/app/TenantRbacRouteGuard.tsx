@@ -48,7 +48,7 @@ export function TenantRbacRouteGuard({ children }: { children: ReactNode }) {
         <p className="text-sm font-semibold text-ds-foreground">No access</p>
         <p className="max-w-md text-xs text-ds-muted">
           You do not have permission to open this page. If you need access, ask a company administrator to update your
-          role in Team Management.
+          role in Permissions.
         </p>
       </div>
     );

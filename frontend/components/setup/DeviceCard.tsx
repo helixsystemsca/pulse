@@ -310,7 +310,7 @@ function BleDeviceCard(props: BleProps) {
           <p className="text-ds-muted">
             {device.type === "equipment_tag"
               ? "Unassigned equipment tag — assign to a tracked asset with the button below."
-              : "Not assigned to a worker yet — assign from Team Management when ready."}
+              : "Not assigned to a worker yet — assign from Permissions when ready."}
           </p>
         )}
         {assignmentHint ? <p className="text-[11px] text-ds-muted">{assignmentHint}</p> : null}

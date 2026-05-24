@@ -34,6 +34,7 @@ import {
   Settings,
   Sparkles,
   UserCog,
+  Users,
   Waves,
   Wrench,
 } from "lucide-react";
@@ -65,6 +66,7 @@ const ICONS: Record<string, LucideIcon> = {
   layers: Layers,
   building: Building2,
   "user-cog": UserCog,
+  users: Users,
   "scroll-text": ScrollText,
   settings: Settings,
 };

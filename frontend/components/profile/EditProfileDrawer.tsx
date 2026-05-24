@@ -155,7 +155,7 @@ export function EditProfileDrawer({
             profile_notes: bio.trim() || null,
           });
         } catch {
-          onToast("Profile saved. Phone or notes may need a supervisor to update in Team Management.");
+          onToast("Profile saved. Phone or notes may need a supervisor to update in Permissions.");
         }
       }
 

@@ -76,7 +76,7 @@ export type PulseAuthSession = {
   feature_allow_extra?: string[] | null;
   /** Legacy overlay assignment id (`tenant_roles`); informational—does not override the permission matrix modules. */
   tenant_role_id?: string | null;
-  /** From `/auth/me`; may open `/dashboard/workers`. */
+  /** From `/auth/me`; may open Permissions (`/dashboard/permissions`). */
   workers_roster_access?: boolean;
   /** True when a system administrator is viewing the app as this tenant user (JWT + `/auth/me`). */
   is_impersonating?: boolean;

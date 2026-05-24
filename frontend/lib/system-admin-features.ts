@@ -34,7 +34,7 @@ export const SYSTEM_ADMIN_FEATURE_LABELS: Record<string, string> = {
   work_requests: "Work Requests",
   procedures: "Procedures",
   team_insights: "Team Insights",
-  team_management: "Team Management",
+  team_management: "Permissions",
   messaging: "Messaging",
   inventory: "Inventory",
   equipment: "Equipment",

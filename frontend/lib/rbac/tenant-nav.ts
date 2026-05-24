@@ -115,7 +115,7 @@ export function explainMasterFeatureVisibility(
     }
     return { visible: true };
   }
-  if (feature.key === "team_management") {
+  if (feature.key === "team_management" || feature.key === "permissions") {
     if (isSystemAdmin) return { visible: true };
     if (!session) return { visible: false, reason: "No session." };
     if (session.workers_roster_access === true) return { visible: true };
@@ -127,7 +127,7 @@ export function explainMasterFeatureVisibility(
       return {
         visible: false,
         reason:
-          "Team Management needs roster delegate / tenant admin, or both `team_management` in enabled_features and `team_management.view` in rbac_permissions.",
+          "Permissions needs roster delegate / tenant admin, or both `team_management` in enabled_features and `team_management.view` in rbac_permissions.",
       };
     }
     if (!fe) {
@@ -177,7 +177,7 @@ export function explainMasterFeatureVisibility(
 }
 
 /** Maintenance-owned analytics — not shown to other departments even when the feature is enabled. */
-const HR_DEPARTMENT_OWNERSHIP_KEYS = new Set(["team_insights"]);
+const HR_DEPARTMENT_OWNERSHIP_KEYS = new Set(["team_insights", "workforce_insights"]);
 
 function passesOwnershipDepartmentGate(
   session: PulseAuthSession,
@@ -202,7 +202,7 @@ export function isMasterFeatureVisibleForSession(
   if (feature.key === "project_management") {
     return canShowProjectManagement(session, isSystemAdmin);
   }
-  if (feature.key === "team_management") {
+  if (feature.key === "team_management" || feature.key === "permissions") {
     return canShowTeamManagement(session, isSystemAdmin);
   }
   if (!session) return false;

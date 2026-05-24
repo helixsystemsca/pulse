@@ -29,9 +29,20 @@ export function isPulseNavActive(href: string, pathname: string): boolean {
     return pathname === "/dashboard/maintenance" || pathname.startsWith("/dashboard/maintenance/");
   if (href === "/standards")
     return pathname === "/standards" || pathname.startsWith("/standards/") || pathname === "/dashboard/procedures";
+  if (href === "/team-management") {
+    return pathname === "/team-management" || pathname.startsWith("/team-management/");
+  }
   if (href === "/dashboard/team-insights")
-    return pathname === "/dashboard/team-insights" || pathname.startsWith("/dashboard/team-insights/");
-  if (href === "/dashboard/workers") return pathname === "/dashboard/workers";
+    return (
+      pathname === "/dashboard/team-insights" ||
+      pathname.startsWith("/dashboard/team-insights/") ||
+      pathname === "/team-management/insights" ||
+      pathname.startsWith("/team-management/insights/")
+    );
+  if (href === "/dashboard/permissions")
+    return pathname === "/dashboard/permissions" || pathname.startsWith("/dashboard/permissions/");
+  if (href === "/dashboard/workers")
+    return pathname === "/dashboard/workers" || pathname === "/dashboard/permissions" || pathname.startsWith("/dashboard/permissions/");
   if (href === "/dashboard/inventory") return pathname === "/dashboard/inventory";
   if (href === "/project-management")
     return (

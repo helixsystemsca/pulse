@@ -58,7 +58,7 @@ export function defaultWorkspaceLayout(): WorkspaceLayout {
   return {
     left: [
       { id: WORK_REQUESTS_WIDGET_ID, heightTier: "compact" },
-      { id: "training_compliance", heightTier: "medium" },
+      { id: "training_compliance", heightTier: "compact" },
       { id: "co2_monitoring", heightTier: "compact" },
     ],
     hero: [

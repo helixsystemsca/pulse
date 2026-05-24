@@ -1,6 +1,6 @@
-import { TeamInsightsApp } from "@/components/team/TeamInsightsApp";
+import { redirect } from "next/navigation";
 
-export default function TeamInsightsPage() {
-  return <TeamInsightsApp />;
+/** Legacy gamification insights — operational Team Insights lives under Team Management. */
+export default function LegacyTeamInsightsRedirectPage() {
+  redirect("/team-management/insights");
 }
-

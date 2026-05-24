@@ -433,7 +433,7 @@ export function AccessDebugModal({
                   <p className="font-bold uppercase tracking-wide">Authorization unresolved</p>
                   <p className="mt-2">
                     The resolver could not assign a valid department matrix slot. Set HR department and an explicit{" "}
-                    <span className="font-mono">matrix_slot</span>, or use Apply department baselines in Team Management.
+                    <span className="font-mono">matrix_slot</span>, or use Apply department baselines in Permissions.
                   </p>
                   {debug.matrix_slot_inference_trace?.length ? (
                     <ul className="mt-3 list-inside list-disc space-y-1 text-xs text-red-100/90">

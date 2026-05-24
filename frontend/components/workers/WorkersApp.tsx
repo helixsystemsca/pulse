@@ -1,7 +1,7 @@
 ﻿"use client";
 
 /**
- * Team Management (formerly Workers & Roles): role permissions, roster, profile drawer, create user, settings.
+ * Permissions (formerly Team Management / Workers & Roles): role permissions, roster, profile drawer, create user, settings.
  */
 import {
   AlertCircle,
@@ -458,7 +458,7 @@ type PermissionRole = (typeof PERMISSION_ROLE_OPTIONS)[number];
 export function WorkersApp() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const pathname = usePathname() || "/dashboard/workers";
+  const pathname = usePathname() || "/dashboard/permissions";
   const { session, refresh } = usePulseAuth();
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
   const sessionCompanyId = session?.company_id ?? null;
@@ -1478,8 +1478,8 @@ export function WorkersApp() {
   if (!canOpenWorkers) {
     return (
       <p className="text-sm text-pulse-muted">
-        You do not have access to Team Management. A company administrator can turn on the Team Management module for
-        your tenant (system admin → company features) and assign it to your role under Permissions on this page.
+        You do not have access to Permissions. A company administrator can turn on the team management module for your
+        tenant (system admin → company features) and assign it to your role on this page.
       </p>
     );
   }
@@ -1487,8 +1487,8 @@ export function WorkersApp() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Team Management"
-        description="Manage personnel, roles, permissions, and operational readiness."
+        title="Permissions"
+        description="Manage personnel, roles, access matrix, and operational readiness settings."
         icon={Shield}
         actions={
           <>
@@ -3094,7 +3094,7 @@ export function WorkersApp() {
             {profile && list.find((r) => r.id === profile.id)?.is_unresolved ? (
               <div className="mb-4 rounded-lg border border-red-500/50 bg-red-500/15 px-3 py-2.5 text-sm text-red-50">
                 Authorization is unresolved for this worker. Set HR department and matrix slot, or use Apply department
-                baselines in Team Management.
+                baselines in Permissions.
               </div>
             ) : null}
 

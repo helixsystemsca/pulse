@@ -182,7 +182,7 @@ export const RBAC_PERMISSION_CATALOG: readonly RbacPermissionMeta[] = [
     category: "People & Quality",
   },
   { key: "team_insights.view", label: "View team insights", description: "Analytics and team insights.", module: "team_insights", category: "People & Quality" },
-  { key: "team_management.view", label: "Team management", description: "Workers, roles, and HR roster tools.", module: "team_management", category: "People & Quality" },
+  { key: "team_management.view", label: "Permissions", description: "Workers, roles, and access matrix tools.", module: "team_management", category: "People & Quality" },
   { key: "messaging.view", label: "View messaging", description: "Internal messaging and notifications hub.", module: "messaging", category: "Communications" },
   { key: "schedule.view", label: "View schedule", description: "Scheduling and classes.", module: "schedule", category: "Operations" },
   {

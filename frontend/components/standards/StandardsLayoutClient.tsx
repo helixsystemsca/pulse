@@ -1,19 +1,8 @@
 "use client";
 
-import { ListChecks } from "lucide-react";
-import { PageBody } from "@/components/ui/PageBody";
-import { PageHeader } from "@/components/ui/PageHeader";
+import type { ReactNode } from "react";
 
-/** Standards section shell — primary navigation lives in the sidebar flyout. */
-export function StandardsLayoutClient({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Standards"
-        description="Procedures, workforce qualifications, certifications, and operational compliance readiness."
-        icon={ListChecks}
-      />
-      <PageBody>{children}</PageBody>
-    </div>
-  );
+/** Standards section shell — section title and nav live in the sidebar flyout and each sub-app header. */
+export function StandardsLayoutClient({ children }: { children: ReactNode }) {
+  return <>{children}</>;
 }

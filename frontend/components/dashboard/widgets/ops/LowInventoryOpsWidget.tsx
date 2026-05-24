@@ -3,25 +3,11 @@
 import { Package } from "lucide-react";
 
 import type { DashboardViewModel } from "@/components/dashboard/OperationalDashboard";
-import { WidgetAdaptiveBody } from "@/components/dashboard/widgets/WidgetAdaptiveBody";
-import type { DashboardWidgetRenderContext } from "@/lib/dashboard/render-context";
-import { elasticListLimits } from "@/lib/dashboard/widget-layout-modes";
 import { cn } from "@/lib/cn";
 
-export function LowInventoryOpsWidget({
-  model,
-  layoutContext,
-}: {
-  model: DashboardViewModel;
-  layoutContext?: DashboardWidgetRenderContext;
-}) {
-  const tier = layoutContext?.heightTier ?? "medium";
-  const zone = layoutContext?.zone ?? "edge";
-  const limits = elasticListLimits(tier);
-  const listItems = model.inventory.shoppingList.slice(0, limits.maxItems);
-
+export function LowInventoryOpsWidget({ model }: { model: DashboardViewModel }) {
   return (
-    <WidgetAdaptiveBody tier={tier} zone={zone} className="ops-dash-inner-card p-3">
+    <div className="ops-dash-inner-card flex h-full min-h-0 flex-col p-3">
       <div className="mb-3 flex items-start justify-between gap-2">
         <div>
           <p className="text-xs font-semibold text-[color-mix(in_srgb,var(--ds-text-primary)_92%,transparent)]">Consumables</p>
@@ -52,11 +38,11 @@ export function LowInventoryOpsWidget({
       ) : null}
 
       <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[color-mix(in_srgb,var(--ds-text-primary)_48%,transparent)]">Low stock list</p>
-      {listItems.length === 0 ? (
+      {model.inventory.shoppingList.length === 0 ? (
         <p className="mt-2 text-xs text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]">Nothing flagged.</p>
       ) : (
-        <ul className={cn("mt-2 min-h-0 flex-1 overflow-auto pr-0.5", limits.spacious ? "space-y-2" : "space-y-1.5")}>
-          {listItems.map((item) => (
+        <ul className="mt-2 min-h-0 flex-1 space-y-1.5 overflow-auto pr-0.5">
+          {model.inventory.shoppingList.map((item) => (
             <li
               key={item}
               className="flex items-center gap-2 rounded-full border border-[rgb(226_232_240/0.8)] bg-[linear-gradient(90deg,#ffffff,#f8fafc)] px-2.5 py-1.5 text-xs font-medium text-[color-mix(in_srgb,var(--ds-text-primary)_88%,transparent)] shadow-[0_1px_0_rgb(255_255_255)_inset,0_3px_10px_-6px_rgb(15_23_42/0.08)]"
@@ -67,6 +53,6 @@ export function LowInventoryOpsWidget({
           ))}
         </ul>
       )}
-    </WidgetAdaptiveBody>
+    </div>
   );
 }

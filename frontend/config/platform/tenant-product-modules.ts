@@ -71,7 +71,7 @@ export const MODULE_LABEL: Record<CanonicalFeatureKey, string> = {
   logs_inspections: "Inspections & Logs",
   inventory: "Inventory",
   standards: "Standards",
-  team_management: "Team Management",
+  team_management: "Permissions",
   team_insights: "Team Insights",
   equipment: "Equipment",
   live_map: "Live Map",

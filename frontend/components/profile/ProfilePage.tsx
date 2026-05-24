@@ -325,7 +325,7 @@ export function ProfilePage() {
           d === 0
             ? "Expires today — coordinate a refresher with your supervisor."
             : `Expires in ${d} days`,
-        href: "/dashboard/workers",
+        href: "/dashboard/permissions",
         actionLabel: "View certifications",
         accent: "amber",
       });
@@ -621,7 +621,7 @@ export function ProfilePage() {
                     Open training
                   </Link>
                   <Link
-                    href="/dashboard/workers"
+                    href="/dashboard/permissions"
                     className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "rounded-xl px-3 py-2 text-xs font-bold")}
                   >
                     Certifications

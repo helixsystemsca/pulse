@@ -1341,8 +1341,8 @@ export function WorkRequestsApp() {
     return (
       <p className="text-sm text-pulse-muted">
         You don&apos;t have access to Work Requests with this account. Access is managed under{" "}
-        <Link href="/dashboard/workers" className="ds-link">
-          Workers &amp; Roles
+        <Link href="/dashboard/permissions" className="ds-link">
+          Permissions
         </Link>
         .
       </p>

@@ -156,7 +156,7 @@ export function DashboardAddWidgetWizard({
               {availablePages.length === 0 ? (
                 <p className="col-span-2 text-sm text-slate-600 dark:text-ds-muted">
                   No modules are unlocked for your role yet. Ask an administrator to enable communications or shared
-                  tools in Team Management.
+                  tools in Permissions.
                 </p>
               ) : null}
               {availablePages.map((p) => (

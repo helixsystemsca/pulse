@@ -237,6 +237,9 @@ export function canAccessClassicNavHref(session: PulseAuthSession | null, href: 
   if (h === "/admin") {
     return isTenantFullAdminSession(session);
   }
+  if (isPermissionsHref(h)) {
+    return canShowTeamManagementNavItem(session, false);
+  }
 
   const gate = classicNavGate(href);
   if (gate.kind === "deny") return false;
@@ -273,7 +276,7 @@ export function canShowClassicSidebarItem(
 ): boolean {
   if (!session) return false;
   if (session.is_system_admin === true || session.role === "system_admin") return true;
-  if (isWorkersManagementHref(href)) return canShowTeamManagementNavItem(session, isSystemAdmin);
+  if (isPermissionsHref(href)) return canShowTeamManagementNavItem(session, isSystemAdmin);
   return canAccessClassicNavHref(session, href);
 }
 
@@ -328,7 +331,18 @@ export function canShowTeamManagementNavItem(session: PulseAuthSession | null, i
   return tenantHasAnyCompanyModule(session, ["team_management"]) && hasRbacPermission(session, "team_management.view");
 }
 
-export function isWorkersManagementHref(href: string): boolean {
+/** Roster, roles, and permission matrix (formerly Team Management). */
+export function isPermissionsHref(href: string): boolean {
   const h = normalizeHref(href);
-  return h === "/dashboard/workers" || h.startsWith("/dashboard/workers/");
+  return (
+    h === "/dashboard/permissions" ||
+    h.startsWith("/dashboard/permissions/") ||
+    h === "/dashboard/workers" ||
+    h.startsWith("/dashboard/workers/")
+  );
+}
+
+/** @deprecated Use {@link isPermissionsHref} */
+export function isWorkersManagementHref(href: string): boolean {
+  return isPermissionsHref(href);
 }
