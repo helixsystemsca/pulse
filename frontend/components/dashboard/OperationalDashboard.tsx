@@ -1548,10 +1548,10 @@ function DashboardBody({
 
   const shellBodyClass = (widgetId: string) => {
     if (widgetId === "pool_readings") {
-      return "!overflow-hidden !p-1 flex min-h-0 flex-1 flex-col items-stretch justify-start w-full min-w-0";
+      return "!overflow-hidden !p-1.5 flex min-h-0 flex-1 flex-col items-stretch justify-start w-full min-w-0";
     }
     if (widgetId === "notifications_work_orders") {
-      return "!overflow-x-auto !overflow-y-hidden !p-2 flex min-h-0 flex-1 flex-col items-stretch justify-start w-full min-w-0";
+      return "!overflow-hidden !p-1.5 flex min-h-0 flex-1 flex-col items-stretch justify-start w-full min-w-0";
     }
     if (widgetId === "training_compliance") {
       return "!overflow-hidden !p-1.5 flex min-h-0 flex-1 flex-col items-stretch justify-start w-full min-w-0";

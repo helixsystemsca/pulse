@@ -15,14 +15,14 @@ const KPI_TONE_CLASS = {
   amber: "!text-[var(--ds-warning)]",
   teal: "!text-[var(--ds-palette-verdigris)]",
   lobster: "!text-[#e85d6f]",
-  accent: "!text-[var(--ds-accent)]",
+  neutral: "!text-[color-mix(in_srgb,var(--ds-text-primary)_78%,transparent)]",
 } as const;
 
 const KPI_TILE_CLASS = {
   amber: "ops-kpi-tile--amber",
   teal: "ops-kpi-tile--teal",
   lobster: "ops-kpi-tile--lobster",
-  accent: "ops-kpi-tile--accent",
+  neutral: "ops-kpi-tile--neutral",
 } as const;
 
 const GRID_MODE_CLASS: Record<WorkRequestsLayoutMode, string> = {
@@ -49,7 +49,7 @@ function KpiCell({
         ? "var(--ds-palette-verdigris)"
         : tone === "lobster"
           ? "#e85d6f"
-          : "var(--ds-accent)";
+          : "color-mix(in srgb, var(--ds-text-primary) 38%, transparent)";
 
   return (
     <div className="ops-work-requests-kpi-cell">
@@ -91,22 +91,24 @@ export function NotificationsWorkOrdersOpsWidget({
   const kpi = model.workRequests.kpi;
 
   return (
-    <div
-      className={cn("ops-work-requests-kpi-grid", GRID_MODE_CLASS[layoutMode])}
-      style={
-        {
-          gap: WORK_REQUESTS_KPI_GAP_PX,
-          ["--ops-wr-kpi-cell" as string]: `${WORK_REQUESTS_KPI_CELL_PX}px`,
-        } as CSSProperties
-      }
-      data-layout-mode={layoutMode}
-      role="group"
-      aria-label="Work request KPIs"
-    >
-      <KpiCell label="Pending approval" value={kpi?.pendingApproval ?? null} tone="amber" loading={kpiLoading} />
-      <KpiCell label="In progress" value={kpi?.inProgress ?? null} tone="teal" loading={kpiLoading} />
-      <KpiCell label="Overdue" value={kpi?.overdueAny ?? null} tone="lobster" loading={kpiLoading} />
-      <KpiCell label="Total active" value={kpi?.total ?? null} tone="accent" loading={kpiLoading} />
+    <div className="flex h-full min-h-0 w-full min-w-0 flex-col">
+      <div
+        className={cn("ops-work-requests-kpi-grid min-h-0 flex-1", GRID_MODE_CLASS[layoutMode])}
+        style={
+          {
+            gap: WORK_REQUESTS_KPI_GAP_PX,
+            ["--ops-wr-kpi-cell" as string]: `${WORK_REQUESTS_KPI_CELL_PX}px`,
+          } as CSSProperties
+        }
+        data-layout-mode={layoutMode}
+        role="group"
+        aria-label="Work request KPIs"
+      >
+        <KpiCell label="Pending approval" value={kpi?.pendingApproval ?? null} tone="amber" loading={kpiLoading} />
+        <KpiCell label="In progress" value={kpi?.inProgress ?? null} tone="teal" loading={kpiLoading} />
+        <KpiCell label="Overdue" value={kpi?.overdueAny ?? null} tone="lobster" loading={kpiLoading} />
+        <KpiCell label="Total active" value={kpi?.total ?? null} tone="neutral" loading={kpiLoading} />
+      </div>
     </div>
   );
 }

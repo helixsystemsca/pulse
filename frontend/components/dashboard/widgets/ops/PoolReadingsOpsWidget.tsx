@@ -13,14 +13,14 @@ function PoolCard(props: (typeof poolControllers)[number]) {
   const { name, chlorine, ph, flow, temp, co2FeederActive, chlorineFeederActive } = props;
 
   return (
-    <div className="flex h-full min-h-0 min-w-0 flex-col rounded-md border border-[color-mix(in_srgb,var(--ds-text-primary)_10%,transparent)] bg-white/95 p-1 dark:bg-slate-900/70">
+    <div className="flex h-full min-h-0 min-w-0 flex-col rounded-md border border-[color-mix(in_srgb,var(--ds-text-primary)_10%,transparent)] bg-white/95 p-1.5 dark:bg-slate-900/70">
       <p
-        className="truncate text-[9px] font-bold leading-tight text-[color-mix(in_srgb,var(--ds-text-primary)_92%,transparent)]"
+        className="shrink-0 truncate text-[9px] font-bold leading-tight text-[color-mix(in_srgb,var(--ds-text-primary)_92%,transparent)]"
         title={poolDisplayName(name)}
       >
         {poolDisplayName(name)}
       </p>
-      <dl className="mt-0.5 grid min-w-0 grid-cols-2 gap-x-1 gap-y-0.5 text-[9px] leading-none">
+      <dl className="mt-1 grid min-h-0 flex-1 grid-cols-2 content-center gap-x-1 gap-y-2 text-[9px] leading-none">
         <div className="flex min-w-0 items-center gap-0.5 text-[color-mix(in_srgb,var(--ds-text-primary)_58%,transparent)]">
           <Droplets className="h-2.5 w-2.5 shrink-0 text-sky-600 dark:text-sky-400" aria-hidden />
           <dt className="sr-only">Chlorine</dt>
@@ -54,7 +54,7 @@ function PoolCard(props: (typeof poolControllers)[number]) {
           </dd>
         </div>
       </dl>
-      <div className="mt-auto flex min-w-0 gap-0.5 pt-0.5">
+      <div className="mt-auto flex shrink-0 min-w-0 gap-1 pt-1">
         <span
           className={cn(
             "min-w-0 flex-1 truncate rounded px-1 py-px text-center text-[7px] font-bold uppercase tracking-wide",
@@ -84,10 +84,10 @@ function PoolCard(props: (typeof poolControllers)[number]) {
 export function PoolReadingsOpsWidget() {
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden">
-      <p className="shrink-0 px-1 pt-0.5 text-[9px] font-semibold leading-none text-[color-mix(in_srgb,var(--ds-text-primary)_55%,transparent)]">
+      <p className="shrink-0 text-[9px] font-semibold leading-none text-[color-mix(in_srgb,var(--ds-text-primary)_55%,transparent)]">
         Live chemistry · demo
       </p>
-      <div className="grid min-h-0 flex-1 grid-cols-3 gap-1 px-1 pb-1 pt-0.5">
+      <div className="grid h-full min-h-0 flex-1 grid-cols-3 grid-rows-1 gap-1.5 pt-1">
         {poolControllers.map((c) => (
           <PoolCard key={c.id} {...c} />
         ))}
