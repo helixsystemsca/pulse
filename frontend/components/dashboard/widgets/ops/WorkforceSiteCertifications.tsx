@@ -1,84 +1,60 @@
 "use client";
 
-import { ShieldCheck, ShieldOff } from "lucide-react";
-
 import type { WorkforceSiteCertCoverage } from "@/lib/dashboard/workforce-site-certs";
-import type { WidgetHeightTier } from "@/lib/dashboard/workspace-layout";
-import { opsWidgetFillLayout } from "@/lib/dashboard/ops-widget-fill";
 import { cn } from "@/lib/cn";
+
+function certIndicatorTitle(row: WorkforceSiteCertCoverage): string {
+  const covered = row.status === "covered";
+  if (covered && row.holderNames.length > 0) {
+    return `${row.label}: on site (${row.holderNames.join(", ")})`;
+  }
+  if (covered) return `${row.label}: on site`;
+  return `${row.label}: missing on site`;
+}
 
 export function WorkforceSiteCertifications({
   items,
-  heightTier = "expanded",
 }: {
   items: WorkforceSiteCertCoverage[];
-  heightTier?: WidgetHeightTier;
+  /** @deprecated Height tier no longer affects cert strip layout. */
+  heightTier?: string;
 }) {
-  const fillRows = opsWidgetFillLayout(heightTier);
-
   return (
-    <div
-      className={cn(
-        "flex min-h-0 flex-col border-t border-[color-mix(in_srgb,var(--ds-text-primary)_10%,transparent)] pt-2",
-        fillRows && "flex-1",
-      )}
-    >
+    <div className="shrink-0 border-t border-[color-mix(in_srgb,var(--ds-text-primary)_10%,transparent)] pt-2">
       <p className="shrink-0 text-[10px] font-bold uppercase tracking-[0.1em] text-[color-mix(in_srgb,var(--ds-text-primary)_48%,transparent)]">
         Certifications on site
       </p>
-      <ul
-        className={cn(
-          "mt-1.5 flex min-h-0 flex-col",
-          fillRows ? "flex-1 justify-between gap-2" : "gap-1.5",
-        )}
+      <div
+        className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 rounded-md bg-[color-mix(in_srgb,var(--ds-text-primary)_4%,transparent)] px-2 py-1.5"
+        role="list"
+        aria-label="Certifications on site"
       >
         {items.map((row) => {
           const covered = row.status === "covered";
           return (
-            <li
+            <span
               key={row.id}
-              className={cn(
-                "flex min-h-0 items-center justify-between gap-2 rounded-lg px-2.5",
-                fillRows ? "flex-1 py-2.5" : "py-2",
-                covered
-                  ? "bg-[color-mix(in_srgb,var(--ds-success)_12%,transparent)] ring-1 ring-[color-mix(in_srgb,var(--ds-success)_22%,transparent)]"
-                  : "bg-[color-mix(in_srgb,var(--ds-danger)_10%,transparent)] ring-1 ring-[color-mix(in_srgb,var(--ds-danger)_20%,transparent)]",
-              )}
-              title={
-                covered && row.holderNames.length > 0
-                  ? `On site: ${row.holderNames.join(", ")}`
-                  : covered
-                    ? "Covered by staff on site"
-                    : "No one on site holds this certification"
-              }
+              role="listitem"
+              className="inline-flex min-w-0 max-w-full items-center gap-1.5"
+              title={certIndicatorTitle(row)}
             >
-              <div className="flex min-w-0 flex-1 items-center gap-2">
-                {covered ? (
-                  <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
-                ) : (
-                  <ShieldOff className="h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" aria-hidden />
-                )}
-                <span
-                  className={cn(
-                    "min-w-0 truncate font-semibold text-[color-mix(in_srgb,var(--ds-text-primary)_92%,transparent)]",
-                    fillRows ? "text-sm" : "text-xs",
-                  )}
-                >
-                  {row.label}
-                </span>
-              </div>
               <span
                 className={cn(
-                  "shrink-0 text-[10px] font-bold uppercase tracking-wide",
-                  covered ? "text-emerald-800 dark:text-emerald-200" : "text-rose-800 dark:text-rose-200",
+                  "h-1.5 w-1.5 shrink-0 rounded-full",
+                  covered
+                    ? "bg-emerald-500 shadow-[0_0_0_2px_color-mix(in_srgb,var(--ds-success)_28%,transparent)]"
+                    : "bg-rose-500 shadow-[0_0_0_2px_color-mix(in_srgb,var(--ds-danger)_22%,transparent)]",
                 )}
-              >
-                {covered ? "On site" : "Missing"}
+                aria-hidden
+              />
+              <span className="truncate text-[10px] font-medium leading-tight text-[color-mix(in_srgb,var(--ds-text-primary)_88%,transparent)]">
+                {row.label}
               </span>
-            </li>
+              <span className="sr-only">{covered ? "on site" : "missing"}</span>
+            </span>
           );
         })}
-      </ul>
+      </div>
     </div>
   );
 }
