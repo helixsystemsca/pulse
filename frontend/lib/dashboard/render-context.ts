@@ -1,58 +1,55 @@
-import type { LayoutItem } from "react-grid-layout";
+import type { WidgetZoneClass, WidgetHeightTier, WorkspaceColumnId, WorkspaceWidgetSlot } from "@/lib/dashboard/workspace-layout";
+import { columnWidthPx, WIDGET_HEIGHT_TIER_MIN_PX } from "@/lib/dashboard/workspace-layout";
 import { getWidgetMode, type WidgetMode, type WidgetRenderContext } from "@/components/dashboard/widgets/widgetSizing";
-import {
-  gridUnitsToLogicalTile,
-  gridUnitsToTile,
-  widgetPixelSizeFromGridUnits,
-} from "@/lib/dashboard/tile-grid";
-import {
-  DASHBOARD_GRID_COLS,
-  DASHBOARD_GRID_GAP_PX,
-  DASHBOARD_GRID_ROW_HEIGHT_PX,
-} from "@/lib/dashboard/tokens";
+import { DASHBOARD_WIDGET_HEADER_HEIGHT_PX } from "@/lib/dashboard/tokens";
 
 export type DashboardWidgetRenderContext = WidgetRenderContext & {
-  /** Logical tile width (1 = base tile). */
+  zone: WidgetZoneClass;
+  column: WorkspaceColumnId;
+  heightTier: WidgetHeightTier;
   logicalW: number;
-  /** Logical tile height. */
   logicalH: number;
-  /** Atomic tile footprint. */
-  tileW: number;
-  tileH: number;
 };
 
-export function buildWidgetRenderContext(
-  item: LayoutItem,
-  gridWidthPx: number,
-  cols = DASHBOARD_GRID_COLS,
+const TIER_LOGICAL_H: Record<WidgetHeightTier, number> = {
+  compact: 1,
+  medium: 2,
+  expanded: 3,
+  tall: 4,
+};
+
+export function buildWorkspaceRenderContext(
+  slot: WorkspaceWidgetSlot,
+  column: WorkspaceColumnId,
+  containerWidthPx: number,
 ): DashboardWidgetRenderContext {
-  const w = item.w ?? 1;
-  const h = item.h ?? 1;
-  const { widthPx, heightPx } = widgetPixelSizeFromGridUnits({
-    gridWidthPx,
-    cols,
-    w,
-    h,
-    rowHeight: DASHBOARD_GRID_ROW_HEIGHT_PX,
-    gap: DASHBOARD_GRID_GAP_PX,
-  });
-  const tile = gridUnitsToTile(w, h);
-  const logical = gridUnitsToLogicalTile(w, h);
+  const zone: WidgetZoneClass = column === "hero" ? "hero" : "edge";
+  const widthPx = columnWidthPx(containerWidthPx, column);
+  const bodyPx = WIDGET_HEIGHT_TIER_MIN_PX[slot.heightTier];
+  const heightPx = bodyPx + DASHBOARD_WIDGET_HEADER_HEIGHT_PX;
+  const logicalW = zone === "hero" ? 2 : 1;
+  const logicalH = TIER_LOGICAL_H[slot.heightTier];
   const mode: WidgetMode = getWidgetMode({
-    gridW: logical.lw,
-    gridH: logical.lh,
+    gridW: logicalW,
+    gridH: logicalH,
     widthPx,
     heightPx,
   });
   return {
     mode,
-    gridW: logical.lw,
-    gridH: logical.lh,
+    gridW: logicalW,
+    gridH: logicalH,
     widthPx,
     heightPx,
-    logicalW: logical.lw,
-    logicalH: logical.lh,
-    tileW: tile.tw,
-    tileH: tile.th,
+    zone,
+    column,
+    heightTier: slot.heightTier,
+    logicalW,
+    logicalH,
   };
+}
+
+/** @deprecated Grid layout context — use buildWorkspaceRenderContext */
+export function buildWidgetRenderContext(): never {
+  throw new Error("buildWidgetRenderContext is deprecated; use buildWorkspaceRenderContext");
 }

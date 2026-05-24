@@ -40,7 +40,7 @@ export const TILE_UNIT_ROWS = 1;
 export const DASHBOARD_TILE_COLS = DASHBOARD_GRID_COLS;
 
 /** Layout persistence version — bump when grid semantics change. */
-export const DASHBOARD_LAYOUT_STORAGE_VERSION = 10;
+export const DASHBOARD_LAYOUT_STORAGE_VERSION = 11;
 
 export const DASHBOARD_TOKENS = {
   baseTileHeightPx: DASHBOARD_BASE_TILE_HEIGHT_PX,

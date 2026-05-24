@@ -1324,6 +1324,21 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
     box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08);
   }
 
+  .dash-workspace-column--hero {
+    min-width: 0;
+  }
+  .dash-workspace-column--edge {
+    min-width: 0;
+  }
+  .dash-workspace-slot {
+    background: var(--ops-dash-widget-bg, #fff);
+    border-radius: var(--dash-widget-radius, 12px);
+    border: 1px solid rgb(226 232 240 / 0.9);
+  }
+  .dark .dash-workspace-slot {
+    border-color: rgb(255 255 255 / 0.08);
+  }
+
   .ops-dash-widget-header {
     border-bottom: 1px solid rgb(241 245 249);
     background: linear-gradient(180deg, #ffffff 0%, #fafbfd 100%);

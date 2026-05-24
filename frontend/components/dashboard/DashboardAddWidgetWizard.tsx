@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { LayoutItem } from "react-grid-layout";
+import type { WorkspaceWidgetSlot } from "@/lib/dashboard/workspace-layout";
 import type { PulseAuthSession } from "@/lib/pulse-session";
 import {
   type CustomDashboardWidgetConfig,
@@ -11,7 +11,7 @@ import {
   defaultSliceOptions,
   newCustomWidgetId,
 } from "@/lib/dashboardPageWidgetCatalog";
-import { defaultLayoutItemForWidget } from "@/lib/dashboard/tile-grid";
+import { defaultHeightTier } from "@/lib/dashboard/workspace-layout";
 
 type Step = 1 | 2 | 3;
 
@@ -33,7 +33,7 @@ export function DashboardAddWidgetWizard({
   initialConfig: CustomDashboardWidgetConfig | null;
   session: PulseAuthSession | null;
   onClose: () => void;
-  onSave: (config: CustomDashboardWidgetConfig, layoutItem: LayoutItem | null) => void;
+  onSave: (config: CustomDashboardWidgetConfig, slot: WorkspaceWidgetSlot | null) => void;
 }) {
   const availablePages = useMemo(() => catalogPagesForSession(session), [session]);
   const [step, setStep] = useState<Step>(1);
@@ -116,11 +116,9 @@ export function DashboardAddWidgetWizard({
       sliceOptions,
       title: title.trim() || `${p.label} peek`,
     };
-    const layoutItem: LayoutItem | null =
-      mode === "edit"
-        ? null
-        : { ...defaultLayoutItemForWidget(id), x: 0, y: Infinity };
-    onSave(config, layoutItem);
+    const slot: WorkspaceWidgetSlot | null =
+      mode === "edit" ? null : { id, heightTier: defaultHeightTier(id) };
+    onSave(config, slot);
     onClose();
   }
 

@@ -4,8 +4,8 @@ import { AlertTriangle, Check, Monitor, Pencil, Plus, Settings } from "lucide-re
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { useContainerWidth, verticalCompactor, type Layout, type LayoutItem } from "react-grid-layout";
-import { DashboardGrid } from "@/components/dashboard/engine/DashboardGrid";
+import { useContainerWidth } from "react-grid-layout";
+import { WorkspaceDashboard } from "@/components/dashboard/engine/WorkspaceDashboard";
 import { DashboardAddWidgetWizard } from "@/components/dashboard/DashboardAddWidgetWizard";
 import { DashboardViewTabs } from "@/components/dashboard/DashboardViewTabs";
 import { DashboardCustomPeekWidget } from "@/components/dashboard/DashboardCustomPeekWidget";
@@ -37,29 +37,27 @@ import { OpsWidgetShell } from "@/components/dashboard/widgets/ops/OpsWidgetShel
 import { cn } from "@/lib/cn";
 import { DASH } from "@/styles/dashboardTheme";
 import { UI } from "@/styles/ui";
-import { buildWidgetRenderContext, type DashboardWidgetRenderContext } from "@/lib/dashboard/render-context";
-import { getWidgetArchetype } from "@/lib/dashboard/archetypes";
+import { buildWorkspaceRenderContext, type DashboardWidgetRenderContext } from "@/lib/dashboard/render-context";
+import {
+  addWorkspaceWidget,
+  allWorkspaceWidgetIds,
+  defaultWorkspaceLayout,
+  isLegacyGridLayout,
+  mergeMissingDefaults,
+  migrateGridLayoutToWorkspace,
+  parseWorkspaceLayout,
+  removeWorkspaceWidget,
+  sanitizeWorkspaceLayout,
+  widgetZoneClass,
+  workspaceLayoutIsEmpty,
+  type WorkspaceLayout,
+  type WorkspaceWidgetSlot,
+} from "@/lib/dashboard/workspace-layout";
+import { DASHBOARD_LAYOUT_STORAGE_VERSION } from "@/lib/dashboard/tokens";
 import { TrainingComplianceWidget } from "@/components/dashboard/widgets/training/TrainingComplianceWidget";
 import { ImportantDatesOpsWidget } from "@/components/dashboard/widgets/ops/ImportantDatesOpsWidget";
 import { NotificationsWorkOrdersOpsWidget } from "@/components/dashboard/widgets/ops/NotificationsWorkOrdersOpsWidget";
-import {
-  buildWorkRequestsGridPreset,
-  workRequestsLayoutModeFromContext,
-  WORK_REQUESTS_WIDGET_ID,
-} from "@/components/dashboard/widgets/ops/work-requests-widget-layout";
-import {
-  applyTileSnapsToLayout,
-  DASHBOARD_GRID_COLS,
-  defaultLayoutItemForWidget,
-  gridUnitsToTile,
-  migrateLegacyDashboardLayout,
-  migrateLayoutToArchetypeFootprints,
-  tileFootprintShape,
-  TILE_UNIT_COLS,
-  TILE_UNIT_ROWS,
-  widgetTileTier,
-} from "@/lib/dashboard/tile-grid";
-import { DASHBOARD_LAYOUT_STORAGE_VERSION } from "@/lib/dashboard/tokens";
+import { WORK_REQUESTS_WIDGET_ID } from "@/components/dashboard/widgets/ops/work-requests-widget-layout";
 import { LowInventoryOpsWidget } from "@/components/dashboard/widgets/ops/LowInventoryOpsWidget";
 import { Co2MonitoringOpsWidget } from "@/components/dashboard/widgets/ops/Co2MonitoringOpsWidget";
 import { PoolReadingsOpsWidget } from "@/components/dashboard/widgets/ops/PoolReadingsOpsWidget";
@@ -75,61 +73,11 @@ import {
 } from "@/lib/dashboard/operational-notifications";
 import { useOperationalNotificationsStore } from "@/lib/dashboard/operational-notifications-store";
 
-import "react-grid-layout/css/styles.css";
-import "react-resizable/css/styles.css";
-
-function layoutItemsCollide(a: LayoutItem, b: LayoutItem): boolean {
-  if (a.i === b.i) return false;
-  const ax = a.x ?? 0;
-  const ay = a.y ?? 0;
-  const aw = a.w ?? 1;
-  const ah = a.h ?? 1;
-  const bx = b.x ?? 0;
-  const by = b.y ?? 0;
-  const bw = b.w ?? 1;
-  const bh = b.h ?? 1;
-  return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
+function workRequestsLayoutFromContext(ctx: DashboardWidgetRenderContext) {
+  if (ctx.logicalH >= 4) return "1x4" as const;
+  if (ctx.logicalH >= 2) return "2x2" as const;
+  return "4x1" as const;
 }
-
-/**
- * Legacy 12-col layouts saved to localStorage become overlapping when `cols` is 8 (correctBounds forces
- * multiple full-width tiles to x=0). Clamp geometry and push colliding rows down so the grid is valid.
- */
-function sanitizeLayoutForGrid(layout: Layout, cols: number, gridWidthPx?: number): Layout {
-  const ids = layout.map((l) => l.i);
-  const clamped = layout.map((item) => {
-    const minW = Math.max(1, Math.min(Number(item.minW ?? 1), cols));
-    let w = Math.max(minW, Math.min(Number(item.w ?? 1), cols));
-    let x = Number(item.x ?? 0);
-    x = Math.max(0, Math.min(x, cols - w));
-    if (x + w > cols) x = Math.max(0, cols - w);
-    const minH = Math.max(1, Number(item.minH ?? 1));
-    const h = Math.max(minH, Number(item.h ?? 1));
-    return {
-      ...item,
-      x,
-      w,
-      h,
-      minW: Math.min(minW, cols) as number,
-    };
-  });
-  const sorted = [...clamped].sort((a, b) => (a.y ?? 0) - (b.y ?? 0) || (a.x ?? 0) - (b.x ?? 0));
-  const placed: LayoutItem[] = [];
-  for (const raw of sorted) {
-    let y = Number(raw.y ?? 0);
-    let guard = 0;
-    while (guard < 500 && placed.some((p) => layoutItemsCollide({ ...raw, y }, p))) {
-      y++;
-      guard++;
-    }
-    placed.push({ ...raw, y });
-  }
-  const byId = new Map(placed.map((p) => [p.i, p]));
-  const ordered = ids.map((i) => byId.get(i)).filter((x): x is LayoutItem => x != null);
-  return applyTileSnapsToLayout(ordered, cols, gridWidthPx, "footprint");
-}
-
-/** Operations dashboard header: icon tools get a teal hover inside the unified actions card. */
 const OPS_DASH_HEADER_TOOL = "ops-dash-header-icon-btn";
 const OPS_DASH_HEADER_TOOL_ACTIVE = "ops-dash-header-icon-btn--active";
 
@@ -1207,11 +1155,7 @@ function DashboardBody({
           <NotificationsWorkOrdersOpsWidget
             model={model}
             kpiLoading={workRequestKpiLoading}
-            layoutMode={
-              ctx
-                ? workRequestsLayoutModeFromContext(ctx.gridW, ctx.gridH)
-                : "4x1"
-            }
+            layoutMode={ctx ? workRequestsLayoutFromContext(ctx) : "4x1"}
           />
         ),
       },
@@ -1378,71 +1322,13 @@ function DashboardBody({
   /** Stable while the set of built-in widget ids is unchanged — avoids re-hydrating layout on every `model` tick. */
   const builtinWidgetIdsSignature = [...allWidgetKeys].sort().join("|");
 
-  const defaultLayout = useMemo((): Layout => {
-    if (isDeptDashboard) return [];
-    const cols = DASHBOARD_GRID_COLS;
-    const gridW = 1200;
-    const row0: LayoutItem[] = [];
-    let x = 0;
-    const important = defaultLayoutItemForWidget("important_dates", cols, gridW);
-    row0.push({ ...important, x, y: 0 });
-    x += important.w ?? 6;
-    const wrPreset = buildWorkRequestsGridPreset("4x1", gridW, cols);
-    row0.push({
-      i: WORK_REQUESTS_WIDGET_ID,
-      x,
-      y: 0,
-      w: wrPreset.w,
-      h: wrPreset.h,
-      minW: wrPreset.minW,
-      minH: wrPreset.minH,
-      maxH: wrPreset.maxH,
-      maxW: wrPreset.maxW,
-    });
-    x += wrPreset.w;
-    const training = defaultLayoutItemForWidget("training_compliance", cols, gridW);
-    row0.push({ ...training, x: Math.min(x, cols - (training.w ?? 6)), y: 0 });
-    const row0Bottom = Math.max(...row0.map((l) => (l.y ?? 0) + (l.h ?? 1)));
-
-    const workforce = defaultLayoutItemForWidget("workforce", cols, gridW);
-    const lowInv = defaultLayoutItemForWidget("low_inventory", cols, gridW);
-    const co2 = defaultLayoutItemForWidget("co2_monitoring", cols, gridW);
-    const row1: LayoutItem[] = [
-      { ...workforce, x: 0, y: row0Bottom },
-      { ...lowInv, x: workforce.w ?? 6, y: row0Bottom },
-      {
-        ...co2,
-        x: (workforce.w ?? 6) + (lowInv.w ?? 6),
-        y: row0Bottom,
-      },
-    ];
-    const row1Bottom = Math.max(...row1.map((l) => (l.y ?? 0) + (l.h ?? 1)));
-
-    const facility = defaultLayoutItemForWidget("facility_schedule", cols, gridW);
-    const routines = defaultLayoutItemForWidget("routine_assignments", cols, gridW);
-    const row2: LayoutItem[] = [
-      { ...facility, x: 0, y: row1Bottom },
-      { ...routines, x: facility.w ?? 8, y: row1Bottom },
-    ];
-    const row2Bottom = Math.max(...row2.map((l) => (l.y ?? 0) + (l.h ?? 1)));
-
-    const pool = defaultLayoutItemForWidget("pool_readings", cols, gridW);
-  return applyTileSnapsToLayout(
-      [...row0, ...row1, ...row2, { ...pool, x: 0, y: row2Bottom }],
-      cols,
-      gridW,
-      "footprint",
-    );
+  const defaultLayout = useMemo((): WorkspaceLayout => {
+    if (isDeptDashboard) return { left: [], hero: [], right: [] };
+    return defaultWorkspaceLayout();
   }, [isDeptDashboard]);
 
-  const [layout, setLayout] = useState<Layout>(defaultLayout);
-  const [isInteracting, setIsInteracting] = useState(false);
-  const isInteractingRef = useRef(false);
-  useEffect(() => {
-    isInteractingRef.current = isInteracting;
-  }, [isInteracting]);
+  const [layout, setLayout] = useState<WorkspaceLayout>(defaultLayout);
 
-  // Load saved layout (v2) and custom peek configs; migrate legacy v1 layout once.
   useEffect(() => {
     let parsedConfigs: Record<string, CustomDashboardWidgetConfig> = {};
     try {
@@ -1452,73 +1338,51 @@ function DashboardBody({
       parsedConfigs = {};
     }
 
-    let nextLayout: Layout | null = null;
+    const validIds = new Set([
+      ...(builtinWidgetIdsSignature.length ? builtinWidgetIdsSignature.split("|") : []),
+      ...Object.keys(parsedConfigs),
+    ]);
+
+    let nextLayout: WorkspaceLayout | null = null;
     let loadedFromStorage = false;
     try {
       let raw = window.localStorage.getItem(layoutStorageKey);
-      let legacyKey: string | null = null;
-      let migrateArchetypeFootprints = false;
       if (!raw) {
-        legacyKey = `pulse_dashboard_layout_v9_${dashboardContext}_standard`;
-        raw = window.localStorage.getItem(legacyKey);
-        migrateArchetypeFootprints = !!raw;
-      }
-      if (!raw) {
-        legacyKey = `pulse_dashboard_layout_v8_${dashboardContext}_standard`;
-        raw = window.localStorage.getItem(legacyKey);
-      }
-      if (!raw) {
-        legacyKey = `pulse_dashboard_layout_v7_${dashboardContext}_standard`;
-        raw = window.localStorage.getItem(legacyKey);
+        for (const legacyKey of [
+          `pulse_dashboard_layout_v10_${dashboardContext}_standard`,
+          `pulse_dashboard_layout_v9_${dashboardContext}_standard`,
+          `pulse_dashboard_layout_v8_${dashboardContext}_standard`,
+          `pulse_dashboard_layout_v7_${dashboardContext}_standard`,
+        ]) {
+          raw = window.localStorage.getItem(legacyKey);
+          if (raw) break;
+        }
       }
       if (raw) {
-        nextLayout = JSON.parse(raw) as Layout;
-        loadedFromStorage = Array.isArray(nextLayout);
-        if (legacyKey?.includes("_v7_") || legacyKey?.includes("_v8_")) {
-          nextLayout = migrateLegacyDashboardLayout(nextLayout);
-        } else if (migrateArchetypeFootprints) {
-          nextLayout = migrateLayoutToArchetypeFootprints(nextLayout);
+        const parsed = JSON.parse(raw) as unknown;
+        if (parseWorkspaceLayout(parsed)) {
+          nextLayout = parsed as WorkspaceLayout;
+          loadedFromStorage = true;
+        } else if (isLegacyGridLayout(parsed)) {
+          nextLayout = migrateGridLayoutToWorkspace(parsed as import("react-grid-layout").LayoutItem[]);
+          loadedFromStorage = true;
         }
       }
     } catch {
       nextLayout = null;
     }
-    // Do not load pre-v5 12-column layouts into the 8-col grid (they overlap after bounds correction).
+
     if (!loadedFromStorage || !nextLayout) nextLayout = defaultLayout;
 
-    const validBuiltins = new Set(
-      builtinWidgetIdsSignature.length ? builtinWidgetIdsSignature.split("|") : [],
-    );
-    const filtered: LayoutItem[] = [];
-    for (const l of nextLayout) {
-      if (!l || typeof l.i !== "string") continue;
-      if (l.i.startsWith("cw_")) {
-        if (parsedConfigs[l.i]) filtered.push(l);
-      } else if (validBuiltins.has(l.i)) {
-        filtered.push(l);
-      }
-    }
-    // Only merge in default widgets when there was no saved layout (first visit / cleared storage).
-    // If we always merged missing defaults, removed widgets would reappear on every load / deploy.
-    const present = new Set(filtered.map((x) => x.i));
-    const missing = defaultLayout.filter((l) => !present.has(l.i));
-    const merged = sanitizeLayoutForGrid(
-      (loadedFromStorage ? filtered : [...filtered, ...missing]) as Layout,
-      DASHBOARD_GRID_COLS,
-      width,
-    );
+    let merged = sanitizeWorkspaceLayout(nextLayout, validIds);
+    merged = mergeMissingDefaults(merged, validIds, !loadedFromStorage);
     setLayout(merged);
     setCustomConfigs(parsedConfigs);
     setLayoutHydrated(true);
-  }, [builtinWidgetIdsSignature, customWidgetStorageKey, dashboardContext, defaultLayout, layoutStorageKey, width]);
-
-  useEffect(() => {
-    if (!layoutHydrated || isInteractingRef.current) return;
-    setLayout((prev) => applyTileSnapsToLayout(prev, DASHBOARD_GRID_COLS, width, "footprint"));
-  }, [width, layoutHydrated]);
+  }, [builtinWidgetIdsSignature, customWidgetStorageKey, dashboardContext, defaultLayout, layoutStorageKey]);
 
   const persistLayout = useCallback(
-    (next: Layout) => {
+    (next: WorkspaceLayout) => {
       if (!layoutHydrated) return;
       try {
         window.localStorage.setItem(layoutStorageKey, JSON.stringify(next));
@@ -1538,57 +1402,75 @@ function DashboardBody({
     }
   }, [customConfigs, customWidgetStorageKey, layoutHydrated]);
 
-  const layoutKeys = useMemo(() => new Set(layout.map((l) => l.i)), [layout]);
+  const layoutKeys = useMemo(() => new Set(allWorkspaceWidgetIds(layout)), [layout]);
   const availableToAdd = useMemo(() => allWidgetKeys.filter((k) => !layoutKeys.has(k)), [allWidgetKeys, layoutKeys]);
 
-  const removeWidget = useCallback((id: string) => {
-    setLayout((prev) => {
-      const next = prev.filter((l) => l.i !== id);
-      persistLayout(next);
-      return next;
-    });
-    if (id.startsWith("cw_")) {
-      setCustomConfigs((prev) => {
-        const next = { ...prev };
-        delete next[id];
+  const removeWidget = useCallback(
+    (id: string) => {
+      setLayout((prev) => {
+        const next = removeWorkspaceWidget(prev, id);
+        persistLayout(next);
         return next;
       });
-    }
-  }, [persistLayout]);
+      if (id.startsWith("cw_")) {
+        setCustomConfigs((prev) => {
+          const next = { ...prev };
+          delete next[id];
+          return next;
+        });
+      }
+    },
+    [persistLayout],
+  );
 
   const addWidget = useCallback(
     (id: string) => {
       if (layoutKeys.has(id)) return;
-      const base = defaultLayout.find((l) => l.i === id);
-      const next: LayoutItem =
-        base ?? defaultLayoutItemForWidget(id, DASHBOARD_GRID_COLS, width);
       setLayout((prev) => {
-        const merged = [...prev, { ...next, x: 0, y: Infinity }] as Layout;
-        persistLayout(merged);
-        return merged;
-      });
-    },
-    [defaultLayout, layoutKeys, persistLayout, width],
-  );
-
-  const saveCustomPeek = useCallback((config: CustomDashboardWidgetConfig, layoutItem: LayoutItem | null) => {
-    setCustomConfigs((prev) => ({ ...prev, [config.id]: config }));
-    if (layoutItem) {
-      setLayout((prev) => {
-        const next = [...prev, layoutItem] as Layout;
+        const next = addWorkspaceWidget(prev, id);
         persistLayout(next);
         return next;
       });
-    }
-  }, [persistLayout]);
-
-  const stableCompactor = useMemo(() => verticalCompactor, []);
-
-  const buildWidgetContext = useCallback(
-    (item: LayoutItem): DashboardWidgetRenderContext =>
-      buildWidgetRenderContext(item, width, DASHBOARD_GRID_COLS),
-    [width],
+    },
+    [layoutKeys, persistLayout],
   );
+
+  const saveCustomPeek = useCallback(
+    (config: CustomDashboardWidgetConfig, _slot: WorkspaceWidgetSlot | null) => {
+      setCustomConfigs((prev) => ({ ...prev, [config.id]: config }));
+      if (_slot === null) return;
+      setLayout((prev) => {
+        const next = addWorkspaceWidget(prev, config.id, "left");
+        persistLayout(next);
+        return next;
+      });
+    },
+    [persistLayout],
+  );
+
+  const renderWorkspaceWidget = useCallback(
+    (slot: WorkspaceWidgetSlot, ctx: DashboardWidgetRenderContext): ReactNode => {
+      if (slot.id.startsWith("cw_")) {
+        const cfg = customConfigs[slot.id];
+        if (!cfg) return null;
+        return <DashboardCustomPeekWidget config={cfg} model={model} mode={ctx.mode} opsEmbedded />;
+      }
+      const w = (widgetRegistry as Record<string, unknown>)[slot.id] as
+        | { render: (ctx?: DashboardWidgetRenderContext) => ReactNode }
+        | null
+        | undefined;
+      return w?.render(ctx) ?? null;
+    },
+    [customConfigs, model, widgetRegistry],
+  );
+
+  const shellBodyClass = (widgetId: string) => {
+    if (widgetId === "pool_readings") return "p-0";
+    if (widgetId === "notifications_work_orders") {
+      return "!overflow-hidden !p-0 flex min-h-0 flex-1 flex-col items-center justify-center";
+    }
+    return undefined;
+  };
 
   const headerShowLayoutTools = canEditLayout && !readOnly;
   const headerShowFullscreen = !isKiosk;
@@ -1653,14 +1535,7 @@ function DashboardBody({
                       type="button"
                       variant="secondary"
                       onClick={() => {
-                        if (editMode) {
-                          setIsInteracting(false);
-                          setLayout((current) => {
-                            const compacted = stableCompactor.compact(current as Layout, DASHBOARD_GRID_COLS) as Layout;
-                            persistLayout(compacted);
-                            return compacted;
-                          });
-                        }
+                        if (editMode) persistLayout(layout);
                         setEditMode((v) => !v);
                       }}
                       title={editMode ? "Done editing layout" : "Edit dashboard layout"}
@@ -1704,7 +1579,7 @@ function DashboardBody({
         </div>
       ) : null}
 
-      {isDeptDashboard && layout.length === 0 && layoutHydrated && !editMode ? (
+      {isDeptDashboard && workspaceLayoutIsEmpty(layout) && layoutHydrated && !editMode ? (
         <div className="rounded-xl border border-dashed border-ds-border bg-[color-mix(in_srgb,var(--ds-text-primary)_3%,transparent)] px-6 py-10 text-center">
           <p className="text-base font-semibold text-ds-foreground">Your dashboard is empty</p>
           <p className="mx-auto mt-2 max-w-md text-sm text-ds-muted">
@@ -1732,163 +1607,96 @@ function DashboardBody({
           "pulse-dashboard-grid min-w-0",
           isKiosk && "min-h-0 flex-1 overflow-y-auto overscroll-contain",
           editMode && "pulse-dashboard-edit",
-          isDeptDashboard && layout.length === 0 && !editMode && "hidden",
+          isDeptDashboard && workspaceLayoutIsEmpty(layout) && !editMode && "hidden",
         )}
       >
           {mounted ? (
-            <DashboardGrid
+            <WorkspaceDashboard
               layout={layout}
-              width={width}
-              editMode={editMode}
-              canEditLayout={canEditLayout}
-              isInteracting={isInteracting}
-              onInteractionStart={() => setIsInteracting(true)}
-              onLayoutPreview={(next) => setLayout(next)}
-              onInteractionEnd={(finalLayout) => {
-                setIsInteracting(false);
-                setLayout(finalLayout);
-                persistLayout(finalLayout);
+              containerWidth={width}
+              editMode={editMode && canEditLayout}
+              onLayoutChange={(next) => {
+                setLayout(next);
+                persistLayout(next);
               }}
-            >
-              {layout.map((item) => {
-                const tileFootprint = gridUnitsToTile(item.w ?? TILE_UNIT_COLS, item.h ?? TILE_UNIT_ROWS);
-                const tileAttrs = {
-                  "data-tile-w": tileFootprint.tw,
-                  "data-tile-h": tileFootprint.th,
-                  "data-tile-shape": tileFootprintShape(tileFootprint),
-                  "data-tile-tier": widgetTileTier(item.i),
-                } as const;
-
-                if (item.i.startsWith("cw_")) {
-                  const cfg = customConfigs[item.i];
-                  if (!cfg) return <div key={item.i} />;
-                  const headerRight = !readOnly ? (
-                    <div className="flex items-center gap-1">
-                      {!editMode ? (
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          onClick={() => {
-                            setPeekWizardInitial(cfg);
-                            setPeekWizardMode("edit");
-                            setShowPeekWizard(true);
-                          }}
-                          className="inline-flex h-5 items-center px-1.5 py-0"
-                          aria-label="Edit peek widget"
-                          title="Edit widget"
-                        >
-                          <Settings className="h-3 w-3" aria-hidden />
-                        </Button>
-                      ) : null}
-                      {editMode ? (
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          onClick={() => removeWidget(item.i)}
-                          className="h-5 min-w-5 px-0 text-[11px] leading-none"
-                          aria-label={`Remove ${cfg.title}`}
-                          title="Remove widget"
-                        >
-                          ×
-                        </Button>
-                      ) : null}
-                    </div>
-                  ) : null;
-                  const peekPage = catalogPage(cfg.pageId);
-                  const peekJumpHref = pulseAppHref(peekPage?.href ?? "/overview");
-                  const peekJumpLabel = peekPage ? `Open ${peekPage.label}` : "Open page";
-                  return (
-                    <div
-                      key={item.i}
-                      className={["h-full min-h-0 transition-transform", editMode ? "cursor-grab active:cursor-grabbing" : ""].join(" ")}
-                      {...tileAttrs}
-                    >
-                      <OpsWidgetShell
-                        title={cfg.title}
-                        archetype={getWidgetArchetype(item.i).archetype}
-                        jumpHref={peekJumpHref}
-                        jumpLabel={peekJumpLabel}
-                        headerRight={headerRight}
-                        className="h-full"
-                      >
-                        <DashboardCustomPeekWidget
-                          config={cfg}
-                          model={model}
-                          mode={buildWidgetContext(item).mode}
-                          opsEmbedded
-                        />
-                      </OpsWidgetShell>
-                    </div>
-                  );
-                }
-
-                const w = (widgetRegistry as Record<string, unknown>)[item.i] as
-                  | {
-                      title: string;
-                      accent?: string;
-                      shellJumpHref?: string;
-                      shellJumpLabel?: string;
-                      render: (ctx?: DashboardWidgetRenderContext) => ReactNode;
-                    }
-                  | null
-                  | undefined;
-                if (!w) return <div key={item.i} />;
+              renderSlot={(slot, _column, ctx) => {
+                const zone = widgetZoneClass(slot.id);
+                const title =
+                  slot.id.startsWith("cw_")
+                    ? (customConfigs[slot.id]?.title ?? "Widget")
+                    : ((widgetRegistry as Record<string, { title: string }>)[slot.id]?.title ?? slot.id);
 
                 const headerRight =
                   !readOnly && editMode ? (
                     <Button
                       type="button"
                       variant="secondary"
-                      onClick={() => removeWidget(item.i)}
+                      onClick={() => removeWidget(slot.id)}
                       className="h-5 min-w-5 px-0 text-[11px] leading-none"
-                      aria-label={`Remove ${w.title}`}
-                      title="Remove widget"
+                      aria-label={`Remove ${title}`}
                     >
                       ×
                     </Button>
+                  ) : slot.id.startsWith("cw_") && !readOnly ? (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => {
+                        const cfg = customConfigs[slot.id];
+                        if (!cfg) return;
+                        setPeekWizardInitial(cfg);
+                        setPeekWizardMode("edit");
+                        setShowPeekWizard(true);
+                      }}
+                      className="inline-flex h-5 items-center px-1.5 py-0"
+                      aria-label="Edit peek widget"
+                    >
+                      <Settings className="h-3 w-3" aria-hidden />
+                    </Button>
                   ) : null;
+
+                const registryEntry = (widgetRegistry as Record<string, { shellJumpHref?: string; shellJumpLabel?: string }>)[slot.id];
+                const peekPage = slot.id.startsWith("cw_") ? catalogPage(customConfigs[slot.id]?.pageId ?? "") : null;
 
                 return (
                   <div
-                    key={item.i}
                     data-guided-tour-anchor={
-                      item.i === "notifications_work_orders"
+                      slot.id === "notifications_work_orders"
                         ? "dashboard-alerts"
-                        : item.i === "workforce"
+                        : slot.id === "workforce"
                           ? "dashboard-workforce"
-                          : item.i === "low_inventory"
+                          : slot.id === "low_inventory"
                             ? "dashboard-inventory"
                             : undefined
                     }
-                    className={cn("h-full min-h-0 transition-transform", editMode && "cursor-grab active:cursor-grabbing")}
-                    {...tileAttrs}
+                    className="flex h-full min-h-0 flex-col"
                   >
                     <OpsWidgetShell
-                      title={w.title}
-                      archetype={getWidgetArchetype(item.i).archetype}
-                      chrome={item.i === "pool_readings" ? "minimal" : "standard"}
-                      jumpHref={w.shellJumpHref}
-                      jumpLabel={w.shellJumpLabel}
+                      title={title}
+                      archetype={zone === "hero" ? "elastic" : "kpi"}
+                      chrome={slot.id === "pool_readings" ? "minimal" : "standard"}
+                      jumpHref={
+                        slot.id.startsWith("cw_")
+                          ? pulseAppHref(peekPage?.href ?? "/overview")
+                          : registryEntry?.shellJumpHref
+                      }
+                      jumpLabel={
+                        slot.id.startsWith("cw_")
+                          ? peekPage
+                            ? `Open ${peekPage.label}`
+                            : "Open page"
+                          : registryEntry?.shellJumpLabel
+                      }
                       headerRight={headerRight}
                       className="h-full"
-                      bodyClassName={
-                        item.i === "pool_readings"
-                          ? "p-0"
-                          : item.i === "co2_monitoring"
-                            ? "px-2 py-1"
-                            : item.i === "workforce"
-                              ? "px-1 py-0.5"
-                              : item.i === "notifications_work_orders"
-                                ? "!overflow-hidden !p-0 flex min-h-0 flex-1 flex-col items-center justify-center"
-                                : undefined
-                      }
+                      bodyClassName={shellBodyClass(slot.id)}
                     >
-                      {w.render(buildWidgetContext(item))}
+                      {renderWorkspaceWidget(slot, ctx)}
                     </OpsWidgetShell>
                   </div>
                 );
-              })}
-            </DashboardGrid>
+              }}
+            />
           ) : null}
       </div>
 
