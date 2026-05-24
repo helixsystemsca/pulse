@@ -1335,6 +1335,12 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   .ops-dash-widget-body {
     background: var(--ops-dash-inner-bg, rgb(241 245 250 / 0.72));
   }
+  .dash-base-widget-header {
+    padding-inline: var(--dash-widget-padding, 16px);
+  }
+  .dash-base-widget-body {
+    padding: var(--dash-widget-padding, 16px);
+  }
   .dark .ops-dash-widget-body {
     background: var(--ops-dash-inner-bg, #0a0f18);
   }

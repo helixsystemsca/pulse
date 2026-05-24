@@ -4,7 +4,8 @@ import { AlertTriangle, Check, Monitor, Pencil, Plus, Settings } from "lucide-re
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { GridLayout, useContainerWidth, verticalCompactor, type Layout, type LayoutItem } from "react-grid-layout";
+import { useContainerWidth, verticalCompactor, type Layout, type LayoutItem } from "react-grid-layout";
+import { DashboardGrid } from "@/components/dashboard/engine/DashboardGrid";
 import { DashboardAddWidgetWizard } from "@/components/dashboard/DashboardAddWidgetWizard";
 import { DashboardViewTabs } from "@/components/dashboard/DashboardViewTabs";
 import { DashboardCustomPeekWidget } from "@/components/dashboard/DashboardCustomPeekWidget";
@@ -36,7 +37,8 @@ import { OpsWidgetShell } from "@/components/dashboard/widgets/ops/OpsWidgetShel
 import { cn } from "@/lib/cn";
 import { DASH } from "@/styles/dashboardTheme";
 import { UI } from "@/styles/ui";
-import { getWidgetMode, type WidgetMode, type WidgetRenderContext } from "@/components/dashboard/widgets/widgetSizing";
+import { buildWidgetRenderContext, type DashboardWidgetRenderContext } from "@/lib/dashboard/render-context";
+import { getWidgetArchetype } from "@/lib/dashboard/archetypes";
 import { TrainingComplianceWidget } from "@/components/dashboard/widgets/training/TrainingComplianceWidget";
 import { ImportantDatesOpsWidget } from "@/components/dashboard/widgets/ops/ImportantDatesOpsWidget";
 import { NotificationsWorkOrdersOpsWidget } from "@/components/dashboard/widgets/ops/NotificationsWorkOrdersOpsWidget";
@@ -48,17 +50,16 @@ import {
 import {
   applyTileSnapsToLayout,
   DASHBOARD_GRID_COLS,
-  DASHBOARD_GRID_GAP_PX,
-  DASHBOARD_GRID_ROW_HEIGHT_PX,
   defaultLayoutItemForWidget,
   gridUnitsToTile,
   migrateLegacyDashboardLayout,
+  migrateLayoutToArchetypeFootprints,
   tileFootprintShape,
-  widgetPixelSizeFromGridUnits,
   TILE_UNIT_COLS,
   TILE_UNIT_ROWS,
   widgetTileTier,
 } from "@/lib/dashboard/tile-grid";
+import { DASHBOARD_LAYOUT_STORAGE_VERSION } from "@/lib/dashboard/tokens";
 import { LowInventoryOpsWidget } from "@/components/dashboard/widgets/ops/LowInventoryOpsWidget";
 import { Co2MonitoringOpsWidget } from "@/components/dashboard/widgets/ops/Co2MonitoringOpsWidget";
 import { PoolReadingsOpsWidget } from "@/components/dashboard/widgets/ops/PoolReadingsOpsWidget";
@@ -1164,7 +1165,7 @@ function DashboardBody({
 
   /** Kiosk fullscreen uses the same persisted layout as the in-app dashboard (not a separate TV layout). */
   const layoutStorageKey = useMemo(() => {
-    return `pulse_dashboard_layout_v9_${dashboardContext}_standard`;
+    return `pulse_dashboard_layout_v${DASHBOARD_LAYOUT_STORAGE_VERSION}_${dashboardContext}_standard`;
   }, [dashboardContext]);
 
   const customWidgetStorageKey = useMemo(() => {
@@ -1202,7 +1203,7 @@ function DashboardBody({
         accent: "none" as const,
         shellJumpHref: pulseApp.to(workOrdersHref),
         shellJumpLabel: "Open work requests",
-        render: (ctx?: WidgetRenderContext) => (
+        render: (ctx?: DashboardWidgetRenderContext) => (
           <NotificationsWorkOrdersOpsWidget
             model={model}
             kpiLoading={workRequestKpiLoading}
@@ -1219,7 +1220,7 @@ function DashboardBody({
         accent: "none" as const,
         shellJumpHref: pulseAppHref("/standards/training/compliance#training-matrix"),
         shellJumpLabel: "Open training matrix",
-        render: (ctx?: WidgetRenderContext) => (
+        render: (ctx?: DashboardWidgetRenderContext) => (
           <TrainingComplianceWidget
             training={model.training}
             variant="dashboard"
@@ -1456,6 +1457,12 @@ function DashboardBody({
     try {
       let raw = window.localStorage.getItem(layoutStorageKey);
       let legacyKey: string | null = null;
+      let migrateArchetypeFootprints = false;
+      if (!raw) {
+        legacyKey = `pulse_dashboard_layout_v9_${dashboardContext}_standard`;
+        raw = window.localStorage.getItem(legacyKey);
+        migrateArchetypeFootprints = !!raw;
+      }
       if (!raw) {
         legacyKey = `pulse_dashboard_layout_v8_${dashboardContext}_standard`;
         raw = window.localStorage.getItem(legacyKey);
@@ -1467,8 +1474,10 @@ function DashboardBody({
       if (raw) {
         nextLayout = JSON.parse(raw) as Layout;
         loadedFromStorage = Array.isArray(nextLayout);
-        if (legacyKey) {
+        if (legacyKey?.includes("_v7_") || legacyKey?.includes("_v8_")) {
           nextLayout = migrateLegacyDashboardLayout(nextLayout);
+        } else if (migrateArchetypeFootprints) {
+          nextLayout = migrateLayoutToArchetypeFootprints(nextLayout);
         }
       }
     } catch {
@@ -1573,36 +1582,11 @@ function DashboardBody({
     }
   }, [persistLayout]);
 
-  const dragCompactor = useMemo(
-    () => ({
-      type: null,
-      allowOverlap: true,
-      compact: (l: Layout) => l,
-    }),
-    [],
-  );
   const stableCompactor = useMemo(() => verticalCompactor, []);
-  const activeCompactor = isInteracting ? dragCompactor : stableCompactor;
 
   const buildWidgetContext = useCallback(
-    (item: LayoutItem): WidgetRenderContext => {
-      const { widthPx, heightPx } = widgetPixelSizeFromGridUnits({
-        gridWidthPx: width,
-        cols: DASHBOARD_GRID_COLS,
-        w: item.w ?? 1,
-        h: item.h ?? 1,
-        rowHeight: DASHBOARD_GRID_ROW_HEIGHT_PX,
-        gap: DASHBOARD_GRID_GAP_PX,
-      });
-      const tile = gridUnitsToTile(item.w ?? 1, item.h ?? 1);
-      const mode: WidgetMode = getWidgetMode({
-        gridW: tile.tw,
-        gridH: tile.th,
-        widthPx,
-        heightPx,
-      });
-      return { mode, gridW: item.w ?? 1, gridH: item.h ?? 1, widthPx, heightPx };
-    },
+    (item: LayoutItem): DashboardWidgetRenderContext =>
+      buildWidgetRenderContext(item, width, DASHBOARD_GRID_COLS),
     [width],
   );
 
@@ -1752,59 +1736,16 @@ function DashboardBody({
         )}
       >
           {mounted ? (
-            <GridLayout
+            <DashboardGrid
               layout={layout}
               width={width}
-              gridConfig={{
-                cols: DASHBOARD_GRID_COLS,
-                rowHeight: DASHBOARD_GRID_ROW_HEIGHT_PX,
-                margin: [DASHBOARD_GRID_GAP_PX, DASHBOARD_GRID_GAP_PX],
-                containerPadding: [0, 0],
-              }}
-              dragConfig={{
-                enabled: canEditLayout && editMode,
-                bounded: false,
-                // Whole widget is draggable in edit mode; cancel common interactive controls.
-                cancel: "button, a, input, textarea, select, option, [role='button'], .dashboard-no-drag",
-              }}
-              resizeConfig={{
-                enabled: canEditLayout && editMode,
-                // Allow edge pulls (not just the corner) while respecting each widget's minW/minH.
-                handles: ["n", "s", "e", "w", "ne", "nw", "se", "sw"],
-              }}
-              compactor={activeCompactor}
-              onDragStart={() => {
-                if (!canEditLayout || !editMode) return;
-                setIsInteracting(true);
-              }}
-              onResizeStart={() => {
-                if (!canEditLayout || !editMode) return;
-                setIsInteracting(true);
-              }}
-              onDrag={(next) => {
-                if (!canEditLayout || !editMode) return;
-                // Keep UI responsive while dragging, but don't persist here.
-                setLayout(next as Layout);
-              }}
-              onResize={(next) => {
-                if (!canEditLayout || !editMode) return;
-                setLayout(applyTileSnapsToLayout(next as Layout, DASHBOARD_GRID_COLS, width, "quantize"));
-              }}
-              onDragStop={(next) => {
-                if (!canEditLayout || !editMode) return;
+              editMode={editMode}
+              canEditLayout={canEditLayout}
+              isInteracting={isInteracting}
+              onInteractionStart={() => setIsInteracting(true)}
+              onLayoutPreview={(next) => setLayout(next)}
+              onInteractionEnd={(finalLayout) => {
                 setIsInteracting(false);
-                const snapped = applyTileSnapsToLayout(next as Layout, DASHBOARD_GRID_COLS, width, "footprint");
-                const compacted = stableCompactor.compact(snapped, DASHBOARD_GRID_COLS) as Layout;
-                const finalLayout = applyTileSnapsToLayout(compacted, DASHBOARD_GRID_COLS, width, "footprint");
-                setLayout(finalLayout);
-                persistLayout(finalLayout);
-              }}
-              onResizeStop={(next) => {
-                if (!canEditLayout || !editMode) return;
-                setIsInteracting(false);
-                const snapped = applyTileSnapsToLayout(next as Layout, DASHBOARD_GRID_COLS, width, "footprint");
-                const compacted = stableCompactor.compact(snapped, DASHBOARD_GRID_COLS) as Layout;
-                const finalLayout = applyTileSnapsToLayout(compacted, DASHBOARD_GRID_COLS, width, "footprint");
                 setLayout(finalLayout);
                 persistLayout(finalLayout);
               }}
@@ -1864,6 +1805,7 @@ function DashboardBody({
                     >
                       <OpsWidgetShell
                         title={cfg.title}
+                        archetype={getWidgetArchetype(item.i).archetype}
                         jumpHref={peekJumpHref}
                         jumpLabel={peekJumpLabel}
                         headerRight={headerRight}
@@ -1886,7 +1828,7 @@ function DashboardBody({
                       accent?: string;
                       shellJumpHref?: string;
                       shellJumpLabel?: string;
-                      render: (ctx?: WidgetRenderContext) => ReactNode;
+                      render: (ctx?: DashboardWidgetRenderContext) => ReactNode;
                     }
                   | null
                   | undefined;
@@ -1923,6 +1865,8 @@ function DashboardBody({
                   >
                     <OpsWidgetShell
                       title={w.title}
+                      archetype={getWidgetArchetype(item.i).archetype}
+                      chrome={item.i === "pool_readings" ? "minimal" : "standard"}
                       jumpHref={w.shellJumpHref}
                       jumpLabel={w.shellJumpLabel}
                       headerRight={headerRight}
@@ -1944,7 +1888,7 @@ function DashboardBody({
                   </div>
                 );
               })}
-            </GridLayout>
+            </DashboardGrid>
           ) : null}
       </div>
 

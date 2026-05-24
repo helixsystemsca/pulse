@@ -34,7 +34,7 @@ describe("tile-grid", () => {
     );
     expect(snapped.w! % TILE_UNIT_COLS).toBe(0);
     expect(snapped.h! % TILE_UNIT_ROWS).toBe(0);
-    expect(gridUnitsToTile(snapped.w!, snapped.h!)).toEqual({ tw: 9, th: 7 });
+    expect(gridUnitsToTile(snapped.w!, snapped.h!)).toEqual({ tw: 12, th: 8 });
   });
 
   it("picks nearest footprint by tile distance", () => {
@@ -44,10 +44,10 @@ describe("tile-grid", () => {
     });
   });
 
-  it("classifies footprint shapes on atomic grid", () => {
-    expect(tileFootprintShape({ tw: 4, th: 2 })).toBe("2x1");
-    expect(tileFootprintShape({ tw: 3, th: 5 })).toBe("1x2");
-    expect(tileFootprintShape({ tw: 24, th: 7 })).toBe("large");
+  it("classifies footprint shapes on logical tile grid", () => {
+    expect(tileFootprintShape({ tw: 12, th: 4 })).toBe("2x1");
+    expect(tileFootprintShape({ tw: 6, th: 8 })).toBe("1x2");
+    expect(tileFootprintShape({ tw: 24, th: 12 })).toBe("large");
   });
 
   it("quantizes layout items to atomic increments", () => {
@@ -66,8 +66,8 @@ describe("tile-grid", () => {
     const migrated = migrateLegacyDashboardLayout([
       { i: "workforce", x: 0, y: 12, w: 6, h: 10 },
     ]);
-    expect(migrated[0]?.w).toBe(9);
-    expect(migrated[0]?.h).toBe(6);
+    expect(migrated[0]?.w).toBe(12);
+    expect(migrated[0]?.h).toBe(12);
     expect(migrated[0]?.x).toBe(0);
   });
 });
