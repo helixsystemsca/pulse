@@ -1373,16 +1373,42 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
     box-shadow: 0 1px 2px rgb(0 0 0 / 0.22), 0 6px 18px -8px rgb(0 0 0 / 0.35);
   }
 
-  /** Work requests KPI grid — fixed row height; columns stretch to fill widget width. */
+  /**
+   * Operations dashboard: widget bodies and inner cards stretch to slot height.
+   * Pair with {@link OPS_WIDGET_BODY_CLASS} on OpsWidgetShell bodies.
+   */
+  .pulse-operations-dashboard .ops-dash-widget-body--fill {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .pulse-operations-dashboard .ops-dash-widget-body--fill > * {
+    flex: 1 1 auto;
+    min-height: 0;
+    min-width: 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  .pulse-operations-dashboard .ops-dash-inner-card {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /** Work requests KPI grid — min row height; grows to fill widget body. */
   .ops-work-requests-kpi-grid {
     display: grid;
     width: 100%;
     max-width: 100%;
-    height: fit-content;
+    height: 100%;
     max-height: 100%;
     min-height: 0;
     min-width: 0;
-    align-content: start;
+    align-content: stretch;
     justify-content: stretch;
     transition:
       grid-template-columns 220ms ease,
@@ -1390,22 +1416,22 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   }
   .ops-work-requests-kpi-grid--4x1 {
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    grid-template-rows: var(--ops-wr-kpi-cell, 74px);
+    grid-template-rows: minmax(var(--ops-wr-kpi-cell, 74px), 1fr);
   }
   .ops-work-requests-kpi-grid--2x2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: repeat(2, var(--ops-wr-kpi-cell, 74px));
+    grid-template-rows: repeat(2, minmax(var(--ops-wr-kpi-cell, 74px), 1fr));
   }
   .ops-work-requests-kpi-grid--1x4 {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: repeat(4, var(--ops-wr-kpi-cell, 74px));
+    grid-template-rows: repeat(4, minmax(var(--ops-wr-kpi-cell, 74px), 1fr));
   }
   .ops-work-requests-kpi-cell {
     display: flex;
     width: 100%;
-    height: var(--ops-wr-kpi-cell, 74px);
+    height: 100%;
     min-width: 0;
-    min-height: 0;
+    min-height: var(--ops-wr-kpi-cell, 74px);
     align-items: stretch;
     justify-content: stretch;
   }

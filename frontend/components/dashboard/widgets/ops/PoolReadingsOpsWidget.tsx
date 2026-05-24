@@ -20,8 +20,8 @@ function PoolCard(props: (typeof poolControllers)[number]) {
       >
         {poolDisplayName(name)}
       </p>
-      <dl className="mt-1 grid min-h-0 flex-1 grid-cols-2 content-center gap-x-1 gap-y-2 text-[9px] leading-none">
-        <div className="flex min-w-0 items-center gap-0.5 text-[color-mix(in_srgb,var(--ds-text-primary)_58%,transparent)]">
+      <dl className="mt-1 grid min-h-0 flex-1 grid-cols-2 grid-rows-[repeat(2,minmax(0,1fr))] gap-x-1 gap-y-2 text-[9px] leading-none">
+        <div className="flex h-full min-w-0 items-center gap-0.5 text-[color-mix(in_srgb,var(--ds-text-primary)_58%,transparent)]">
           <Droplets className="h-2.5 w-2.5 shrink-0 text-sky-600 dark:text-sky-400" aria-hidden />
           <dt className="sr-only">Chlorine</dt>
           <dd className="min-w-0 truncate">
@@ -29,7 +29,7 @@ function PoolCard(props: (typeof poolControllers)[number]) {
             <span className="text-[8px]">ppm</span>
           </dd>
         </div>
-        <div className="flex min-w-0 items-center gap-0.5 text-[color-mix(in_srgb,var(--ds-text-primary)_58%,transparent)]">
+        <div className="flex h-full min-w-0 items-center gap-0.5 text-[color-mix(in_srgb,var(--ds-text-primary)_58%,transparent)]">
           <Gauge className="h-2.5 w-2.5 shrink-0 text-violet-600 dark:text-violet-400" aria-hidden />
           <dt className="sr-only">pH</dt>
           <dd className="min-w-0 truncate">
@@ -37,7 +37,7 @@ function PoolCard(props: (typeof poolControllers)[number]) {
             <span className="text-[8px]">pH</span>
           </dd>
         </div>
-        <div className="flex min-w-0 items-center gap-0.5 text-[color-mix(in_srgb,var(--ds-text-primary)_58%,transparent)]">
+        <div className="flex h-full min-w-0 items-center gap-0.5 text-[color-mix(in_srgb,var(--ds-text-primary)_58%,transparent)]">
           <Wind className="h-2.5 w-2.5 shrink-0 text-teal-600 dark:text-teal-400" aria-hidden />
           <dt className="sr-only">Flow</dt>
           <dd className="min-w-0 truncate">
@@ -45,7 +45,7 @@ function PoolCard(props: (typeof poolControllers)[number]) {
             <span className="text-[8px]">GPM</span>
           </dd>
         </div>
-        <div className="flex min-w-0 items-center gap-0.5 text-[color-mix(in_srgb,var(--ds-text-primary)_58%,transparent)]">
+        <div className="flex h-full min-w-0 items-center gap-0.5 text-[color-mix(in_srgb,var(--ds-text-primary)_58%,transparent)]">
           <Thermometer className="h-2.5 w-2.5 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
           <dt className="sr-only">Temperature</dt>
           <dd className="min-w-0 truncate">
@@ -87,10 +87,12 @@ export function PoolReadingsOpsWidget() {
       <p className="shrink-0 text-[9px] font-semibold leading-none text-[color-mix(in_srgb,var(--ds-text-primary)_55%,transparent)]">
         Live chemistry · demo
       </p>
-      <div className="grid h-full min-h-0 flex-1 grid-cols-3 grid-rows-1 gap-1.5 pt-1">
-        {poolControllers.map((c) => (
-          <PoolCard key={c.id} {...c} />
-        ))}
+      <div className="ops-dash-inner-card mt-1 flex min-h-0 flex-1 flex-col p-1.5">
+        <div className="grid h-full min-h-0 flex-1 grid-cols-3 grid-rows-[minmax(0,1fr)] items-stretch gap-1.5">
+          {poolControllers.map((c) => (
+            <PoolCard key={c.id} {...c} />
+          ))}
+        </div>
       </div>
     </div>
   );

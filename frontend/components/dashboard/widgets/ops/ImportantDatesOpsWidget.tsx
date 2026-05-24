@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { CalendarDays } from "lucide-react";
 
 import type { DashboardWidgetRenderContext } from "@/lib/dashboard/render-context";
-import type { WidgetHeightTier } from "@/lib/dashboard/workspace-layout";
+import { opsWidgetFillLayout } from "@/lib/dashboard/ops-widget-fill";
 import { getServerNow } from "@/lib/serverTime";
 import { cn } from "@/lib/cn";
 
@@ -18,10 +18,6 @@ function formatShort(d: Date): string {
   return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 }
 
-function spreadsRows(tier: WidgetHeightTier): boolean {
-  return tier === "expanded" || tier === "tall";
-}
-
 /**
  * Manager-calendar style milestones (deterministic from server clock until a live calendar feed exists).
  */
@@ -30,8 +26,7 @@ export function ImportantDatesOpsWidget({
 }: {
   layoutContext?: DashboardWidgetRenderContext | null;
 }) {
-  const tier = layoutContext?.heightTier ?? "medium";
-  const fillRows = spreadsRows(tier);
+  const fillRows = opsWidgetFillLayout(layoutContext?.heightTier);
 
   const items = useMemo(() => {
     const now = new Date(getServerNow());
@@ -45,6 +40,7 @@ export function ImportantDatesOpsWidget({
 
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden">
+      <div className="ops-dash-inner-card flex min-h-0 flex-1 flex-col gap-1.5 p-1.5">
       <div
         className={cn(
           "flex shrink-0 items-center gap-1.5 rounded-md bg-[color-mix(in_srgb,var(--ds-text-primary)_5%,transparent)] px-2 font-semibold text-[color-mix(in_srgb,var(--ds-text-primary)_55%,transparent)]",
@@ -57,7 +53,7 @@ export function ImportantDatesOpsWidget({
 
       <ul
         className={cn(
-          "mt-1.5 flex min-h-0 flex-1 flex-col",
+          "flex min-h-0 flex-1 flex-col",
           fillRows ? "justify-between gap-2" : "gap-1.5 overflow-y-auto pr-0.5",
         )}
       >
@@ -91,6 +87,7 @@ export function ImportantDatesOpsWidget({
           </li>
         ))}
       </ul>
+      </div>
     </div>
   );
 }

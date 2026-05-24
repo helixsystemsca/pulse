@@ -4,11 +4,8 @@ import { ShieldCheck, ShieldOff } from "lucide-react";
 
 import type { WorkforceSiteCertCoverage } from "@/lib/dashboard/workforce-site-certs";
 import type { WidgetHeightTier } from "@/lib/dashboard/workspace-layout";
+import { opsWidgetFillLayout } from "@/lib/dashboard/ops-widget-fill";
 import { cn } from "@/lib/cn";
-
-function spreadsRows(tier: WidgetHeightTier): boolean {
-  return tier === "expanded" || tier === "tall";
-}
 
 export function WorkforceSiteCertifications({
   items,
@@ -17,7 +14,7 @@ export function WorkforceSiteCertifications({
   items: WorkforceSiteCertCoverage[];
   heightTier?: WidgetHeightTier;
 }) {
-  const fillRows = spreadsRows(heightTier);
+  const fillRows = opsWidgetFillLayout(heightTier);
 
   return (
     <div

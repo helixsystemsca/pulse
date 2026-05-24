@@ -6,7 +6,7 @@ import { ClipboardList } from "lucide-react";
 
 import { isApiMode } from "@/lib/api";
 import type { DashboardWidgetRenderContext } from "@/lib/dashboard/render-context";
-import type { WidgetHeightTier } from "@/lib/dashboard/workspace-layout";
+import { opsWidgetFillLayout } from "@/lib/dashboard/ops-widget-fill";
 import { routineAssignmentRowCap } from "@/lib/dashboard/widget-tier-disclosure";
 import { readSession } from "@/lib/pulse-session";
 import { listMyRoutineAssignments, listRoutines, type RoutineAssignmentDetail, type RoutineRow } from "@/lib/routinesService";
@@ -17,10 +17,6 @@ const DEMO_ASSIGNMENTS: { routineName: string; date: string }[] = [
   { routineName: "Chemical room check", date: "Today" },
   { routineName: "Closing checklist", date: "Tonight" },
 ];
-
-function spreadsShell(tier: WidgetHeightTier): boolean {
-  return tier === "expanded" || tier === "tall";
-}
 
 function formatAssignmentDate(d: string | null | undefined): string {
   if (!d) return "—";
@@ -263,18 +259,20 @@ function RoutineAssignmentsInner({
 }
 
 export function RoutineAssignmentsOpsWidget({ layoutContext }: { layoutContext?: DashboardWidgetRenderContext }) {
+  const fillShell = opsWidgetFillLayout(layoutContext?.heightTier);
   const tier = layoutContext?.heightTier ?? "expanded";
-  const fillShell = spreadsShell(tier);
   const { maxAssignments, maxRoutines } = routineAssignmentRowCap(tier);
 
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden">
-      <RoutineAssignmentsInner
-        fillShell={fillShell}
-        maxAssignments={maxAssignments}
-        maxRoutines={maxRoutines}
-        showFooterLinks={false}
-      />
+      <div className="ops-dash-inner-card flex min-h-0 flex-1 flex-col overflow-hidden p-1.5">
+        <RoutineAssignmentsInner
+          fillShell={fillShell}
+          maxAssignments={maxAssignments}
+          maxRoutines={maxRoutines}
+          showFooterLinks={false}
+        />
+      </div>
     </div>
   );
 }

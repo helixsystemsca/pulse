@@ -38,6 +38,7 @@ import { cn } from "@/lib/cn";
 import { DASH } from "@/styles/dashboardTheme";
 import { UI } from "@/styles/ui";
 import { buildWorkspaceRenderContext, type DashboardWidgetRenderContext } from "@/lib/dashboard/render-context";
+import { OPS_WIDGET_BODY_CLASS } from "@/lib/dashboard/ops-widget-fill";
 import {
   computeWorkforceSiteCertCoverage,
   type WorkforceSiteCertCoverage,
@@ -1213,7 +1214,7 @@ function DashboardBody({
                 </p>
               </div>
               <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1.5">
-                <div className="flex min-h-[7.25rem] shrink-0 min-w-0 flex-col py-0.5">
+                <div className="flex min-h-[7.25rem] flex-1 min-w-0 flex-col py-0.5">
                   <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--ds-accent)]">
                     Scheduled today
                   </p>
@@ -1546,36 +1547,7 @@ function DashboardBody({
     [customConfigs, model, widgetRegistry],
   );
 
-  const shellBodyClass = (widgetId: string) => {
-    if (widgetId === "pool_readings") {
-      return "!overflow-hidden !p-1.5 flex min-h-0 flex-1 flex-col items-stretch justify-start w-full min-w-0";
-    }
-    if (widgetId === "notifications_work_orders") {
-      return "!overflow-hidden !p-1.5 flex min-h-0 flex-1 flex-col items-stretch justify-start w-full min-w-0";
-    }
-    if (widgetId === "training_compliance") {
-      return "!overflow-hidden !p-1.5 flex min-h-0 flex-1 flex-col items-stretch justify-start w-full min-w-0";
-    }
-    if (widgetId === "co2_monitoring") {
-      return "!overflow-hidden !p-1.5 flex min-h-0 flex-1 flex-col items-stretch justify-start w-full min-w-0";
-    }
-    if (widgetId === "important_dates") {
-      return "!overflow-hidden !p-1.5 flex min-h-0 flex-1 flex-col items-stretch justify-start w-full min-w-0";
-    }
-    if (widgetId === "low_inventory") {
-      return "!overflow-hidden !p-1.5 flex min-h-0 flex-1 flex-col items-stretch justify-start w-full min-w-0";
-    }
-    if (widgetId === "facility_schedule") {
-      return "!overflow-hidden !p-1.5 flex min-h-0 flex-1 flex-col items-stretch justify-start w-full min-w-0";
-    }
-    if (widgetId === "routine_assignments") {
-      return "!overflow-hidden !p-1.5 flex min-h-0 flex-1 flex-col items-stretch justify-start w-full min-w-0";
-    }
-    if (widgetId === "workforce") {
-      return "!overflow-hidden !p-1.5 flex min-h-0 flex-1 flex-col items-stretch justify-start w-full min-w-0";
-    }
-    return undefined;
-  };
+  const shellBodyClass = () => OPS_WIDGET_BODY_CLASS;
 
   const headerShowLayoutTools = canEditLayout && !readOnly;
   const headerShowFullscreen = !isKiosk;
@@ -1794,7 +1766,7 @@ function DashboardBody({
                       }
                       headerRight={headerRight}
                       className="h-full"
-                      bodyClassName={shellBodyClass(slot.id)}
+                      bodyClassName={shellBodyClass()}
                     >
                       {renderWorkspaceWidget(slot, ctx)}
                     </OpsWidgetShell>

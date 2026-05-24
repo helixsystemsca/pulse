@@ -5,12 +5,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CalendarRange } from "lucide-react";
 
 import type { DashboardWidgetRenderContext } from "@/lib/dashboard/render-context";
-import type { WidgetHeightTier } from "@/lib/dashboard/workspace-layout";
+import { opsWidgetFillLayout } from "@/lib/dashboard/ops-widget-fill";
 import { cn } from "@/lib/cn";
-
-function spreadsShell(tier: WidgetHeightTier): boolean {
-  return tier === "expanded" || tier === "tall";
-}
 
 const BC_TZ = "America/Vancouver";
 
@@ -242,17 +238,18 @@ export function FacilityScheduleOpsWidget({
 }: {
   layoutContext?: DashboardWidgetRenderContext | null;
 }) {
-  const tier = layoutContext?.heightTier ?? "medium";
-  const fillShell = spreadsShell(tier);
+  const fillShell = opsWidgetFillLayout(layoutContext?.heightTier);
 
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden">
-      <FacilityScheduleInner
-        showFooterLinks={false}
-        fillShell={fillShell}
-        maxLocations={fillShell ? 6 : 4}
-        maxPerLocation={fillShell ? 10 : 6}
-      />
+      <div className="ops-dash-inner-card flex min-h-0 flex-1 flex-col overflow-hidden p-1.5">
+        <FacilityScheduleInner
+          showFooterLinks={false}
+          fillShell={fillShell}
+          maxLocations={fillShell ? 6 : 4}
+          maxPerLocation={fillShell ? 10 : 6}
+        />
+      </div>
     </div>
   );
 }

@@ -261,38 +261,39 @@ export function WelcomeLoaderModal({
                   phase === "loading" ? "pb-[3.25rem] sm:pb-14" : "pb-7 sm:pb-8",
                 ].join(" ")}
               >
-                <div className="relative mx-auto h-[7.75rem] w-[7.75rem] sm:h-[8.25rem] sm:w-[8.25rem]">
+                <div className="relative mx-auto h-[9.3rem] w-[9.3rem] sm:h-[9.9rem] sm:w-[9.9rem]">
                   <Image
                     src="/images/panoramalogo2.png"
                     alt=""
                     fill
                     priority
-                    sizes="(max-width: 640px) 132px, 144px"
+                    sizes="(max-width: 640px) 158px, 173px"
                     className="object-contain object-center"
                   />
                 </div>
 
               {phase === "loading" ? (
-                <>
+                <div className="mt-5 px-[0.25in]">
                   <h1
                     id="welcome-loader-title"
-                    className="mt-5 whitespace-nowrap font-headline text-xl font-extrabold tracking-tight text-[#1f2a44] sm:text-2xl"
+                    className="whitespace-nowrap font-headline text-xl font-extrabold tracking-tight text-[#1f2a44] sm:text-2xl"
                   >
                     Preparing your workspace...
                   </h1>
                   <p className="mt-1.5 whitespace-nowrap text-sm font-medium text-[#51647a]">
                     Gathering the latest from your operation
                   </p>
-                </>
+                </div>
               ) : (
                 <motion.div
+                  className="mt-5 px-[0.25in]"
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
                 >
                   <h1
                     id="welcome-loader-title"
-                    className="mt-5 whitespace-nowrap font-headline text-xl font-extrabold tracking-tight text-[#1f2a44] sm:text-2xl"
+                    className="whitespace-nowrap font-headline text-xl font-extrabold tracking-tight text-[#1f2a44] sm:text-2xl"
                   >
                     {welcomeLine}
                   </h1>

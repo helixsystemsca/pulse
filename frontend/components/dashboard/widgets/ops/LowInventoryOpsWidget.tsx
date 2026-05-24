@@ -4,12 +4,8 @@ import { Package } from "lucide-react";
 
 import type { DashboardViewModel } from "@/components/dashboard/OperationalDashboard";
 import type { DashboardWidgetRenderContext } from "@/lib/dashboard/render-context";
-import type { WidgetHeightTier } from "@/lib/dashboard/workspace-layout";
+import { opsWidgetFillLayout } from "@/lib/dashboard/ops-widget-fill";
 import { cn } from "@/lib/cn";
-
-function spreadsRows(tier: WidgetHeightTier): boolean {
-  return tier === "expanded" || tier === "tall";
-}
 
 export function LowInventoryOpsWidget({
   model,
@@ -18,12 +14,12 @@ export function LowInventoryOpsWidget({
   model: DashboardViewModel;
   layoutContext?: DashboardWidgetRenderContext | null;
 }) {
-  const tier = layoutContext?.heightTier ?? "medium";
-  const fillRows = spreadsRows(tier);
+  const fillRows = opsWidgetFillLayout(layoutContext?.heightTier);
   const items = model.inventory.shoppingList;
 
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden">
+      <div className="ops-dash-inner-card flex min-h-0 flex-1 flex-col gap-1.5 p-1.5">
       <div
         className={cn(
           "flex shrink-0 items-start justify-between gap-2 rounded-lg px-2.5",
@@ -117,6 +113,7 @@ export function LowInventoryOpsWidget({
             ))}
           </ul>
         )}
+      </div>
       </div>
     </div>
   );
