@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-export type XPBarProps = {
+export type GamificationXpBarProps = {
   currentXP: number;
   requiredXP: number;
   labelMode?: "fraction" | "remaining";
@@ -14,17 +14,16 @@ function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
 }
 
-export function XPBar({
+export function GamificationXpBar({
   currentXP,
   requiredXP,
   labelMode = "fraction",
   size = "md",
   className = "",
-}: XPBarProps) {
+}: GamificationXpBarProps) {
   const safeRequired = Math.max(1, requiredXP || 0);
   const pct = useMemo(() => clamp((currentXP / safeRequired) * 100, 0, 100), [currentXP, safeRequired]);
 
-  // Trigger a smooth "animate on load" fill.
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     const t = window.setTimeout(() => setMounted(true), 30);
@@ -37,9 +36,15 @@ export function XPBar({
 
   return (
     <div className={className}>
-      <div className={`w-full overflow-hidden rounded-full bg-ds-secondary ${barH}`} role="progressbar" aria-valuemin={0} aria-valuemax={safeRequired} aria-valuenow={currentXP}>
+      <div
+        className={`w-full overflow-hidden rounded-full bg-ds-secondary ${barH}`}
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={safeRequired}
+        aria-valuenow={currentXP}
+      >
         <div
-          className={`h-full rounded-full bg-[#4C6085] shadow-[0_0_0_1px_rgba(76,96,133,0.18)] transition-[width] duration-[800ms] ease-out`}
+          className="h-full rounded-full bg-[#4C6085] shadow-[0_0_0_1px_rgba(76,96,133,0.18)] transition-[width] duration-[800ms] ease-out"
           style={{ width: `${mounted ? pct : 0}%` }}
         />
       </div>
@@ -57,4 +62,3 @@ export function XPBar({
     </div>
   );
 }
-

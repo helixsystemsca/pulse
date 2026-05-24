@@ -48,8 +48,8 @@ export const RBAC_PERMISSION_CATALOG: readonly RbacPermissionMeta[] = [
   },
   {
     key: "dashboard.team_insights.view",
-    label: "Team insights dashboard",
-    description: "Maintenance team insights dashboard flyout entry.",
+    label: "Gamification dashboard (legacy)",
+    description: "Unwired XP/badges dashboard surface; operational insights are under Team Management.",
     module: "dashboard",
     category: "Reporting",
   },

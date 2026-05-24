@@ -1,8 +1,9 @@
 import type { WidgetHeightTier } from "@/lib/dashboard/workspace-layout";
 import type { WorkRequestsLayoutMode } from "@/lib/dashboard/snap/work-requests";
 
-/** Fixed layout mode by tier — KPI cell size stays constant; only grid arrangement changes. */
+/** Compact ops tile always uses a single KPI row; taller tiers keep alternate arrangements. */
 export function workRequestsLayoutForTier(tier: WidgetHeightTier): WorkRequestsLayoutMode {
+  if (tier === "compact" || tier === "medium") return "4x1";
   if (tier === "tall") return "1x4";
   if (tier === "expanded") return "2x2";
   return "4x1";

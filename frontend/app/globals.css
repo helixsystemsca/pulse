@@ -1389,23 +1389,23 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
       grid-template-rows 220ms ease;
   }
   .ops-work-requests-kpi-grid--4x1 {
-    grid-template-columns: repeat(4, 76px);
-    grid-template-rows: 76px;
+    grid-template-columns: repeat(4, var(--ops-wr-kpi-cell, 74px));
+    grid-template-rows: var(--ops-wr-kpi-cell, 74px);
     justify-content: start;
   }
   .ops-work-requests-kpi-grid--2x2 {
-    grid-template-columns: repeat(2, 76px);
-    grid-template-rows: repeat(2, 76px);
+    grid-template-columns: repeat(2, var(--ops-wr-kpi-cell, 74px));
+    grid-template-rows: repeat(2, var(--ops-wr-kpi-cell, 74px));
   }
   .ops-work-requests-kpi-grid--1x4 {
-    grid-template-columns: 76px;
-    grid-template-rows: repeat(4, 76px);
+    grid-template-columns: var(--ops-wr-kpi-cell, 74px);
+    grid-template-rows: repeat(4, var(--ops-wr-kpi-cell, 74px));
     justify-content: start;
   }
   .ops-work-requests-kpi-cell {
     display: flex;
-    width: 76px;
-    height: 76px;
+    width: var(--ops-wr-kpi-cell, 74px);
+    height: var(--ops-wr-kpi-cell, 74px);
     min-width: 0;
     min-height: 0;
     align-items: stretch;
@@ -1445,7 +1445,7 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
     padding: 0.4rem 0.45rem 0.45rem;
   }
   .ops-kpi-tile__value {
-    font-size: clamp(0.875rem, 38cqi, 1.65rem);
+    font-size: clamp(1rem, 42cqi, 1.65rem);
   }
 
   .ops-kpi-pill {

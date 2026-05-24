@@ -2,8 +2,8 @@
 
 import { Flame } from "lucide-react";
 import { useResolvedAvatarSrc } from "@/lib/useResolvedAvatarSrc";
-import { XPBar } from "@/components/team/XPBar";
-import type { TeamInsightsWorker } from "@/lib/teamInsightsService";
+import { GamificationXpBar } from "@/components/gamification/GamificationXpBar";
+import type { GamificationWorker } from "@/lib/gamification/team-gamification-service";
 
 function rolePill(role: string): string {
   const r = (role || "worker").toLowerCase();
@@ -13,7 +13,6 @@ function rolePill(role: string): string {
   return "bg-ds-secondary text-ds-muted";
 }
 
-/** Shown on cards; API still uses `worker` for the operations roster role. */
 function roleLabelForDisplay(role: string): string {
   const r = (role || "").toLowerCase().trim();
   if (r === "worker") return "Operations";
@@ -39,12 +38,12 @@ function titleForLevel(level: number): string {
   return "Getting Started";
 }
 
-export function WorkerRow({
+export function GamificationWorkerRow({
   worker,
   rank,
   onClick,
 }: {
-  worker: TeamInsightsWorker;
+  worker: GamificationWorker;
   rank: number;
   onClick: () => void;
 }) {
@@ -78,7 +77,7 @@ export function WorkerRow({
       </div>
 
       <div className="hidden w-[260px] shrink-0 sm:block">
-        <XPBar currentXP={worker.xpIntoLevel} requiredXP={required} size="sm" labelMode="fraction" />
+        <GamificationXpBar currentXP={worker.xpIntoLevel} requiredXP={required} size="sm" labelMode="fraction" />
       </div>
 
       <div className="hidden shrink-0 items-center gap-2 sm:flex">
@@ -102,4 +101,3 @@ export function WorkerRow({
     </button>
   );
 }
-

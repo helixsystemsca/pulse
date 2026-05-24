@@ -1,9 +1,9 @@
 "use client";
 
 import { PulseDrawer } from "@/components/schedule/PulseDrawer";
-import { WorkerProfile } from "@/components/team/WorkerProfile";
+import { GamificationWorkerProfile } from "@/components/gamification/GamificationWorkerProfile";
 
-export function WorkerProfileModal({
+export function GamificationWorkerProfileModal({
   userId,
   open,
   onClose,
@@ -21,8 +21,7 @@ export function WorkerProfileModal({
       placement="center"
       wide
     >
-      {userId ? <WorkerProfile userId={userId} mode="insights" /> : null}
+      {userId ? <GamificationWorkerProfile userId={userId} mode="gamification" /> : null}
     </PulseDrawer>
   );
 }
-

@@ -1,6 +1,8 @@
 import { apiFetch } from "@/lib/api";
 
-export type TeamInsightsBadge = {
+/** Legacy XP / badges roster API (`/api/v1/team/insights`). Not linked from product nav. */
+
+export type GamificationBadge = {
   id: string;
   name: string;
   description: string;
@@ -9,7 +11,7 @@ export type TeamInsightsBadge = {
   unlockedAt?: string | null;
 };
 
-export type TeamInsightsWorker = {
+export type GamificationWorker = {
   userId: string;
   fullName: string;
   email: string;
@@ -23,10 +25,10 @@ export type TeamInsightsWorker = {
   streak: number;
   lastStreakActivityDate?: string | null;
   avatarBorder?: string | null;
-  badges: TeamInsightsBadge[];
+  badges: GamificationBadge[];
 };
 
-export type TeamInsightsActivity = {
+export type GamificationActivity = {
   createdAt: string;
   userId: string;
   userName: string;
@@ -35,7 +37,7 @@ export type TeamInsightsActivity = {
   xpDelta: number;
 };
 
-export type TeamInsightsSummary = {
+export type GamificationSummary = {
   totalTeamXp: number;
   activeStreaks: number;
   topPerformerUserId?: string | null;
@@ -46,28 +48,26 @@ export type TeamInsightsSummary = {
   mostImprovedDelta: number;
 };
 
-export type TeamInsightsHighlightPerson = {
+export type GamificationHighlightPerson = {
   userId: string;
   fullName: string;
   score: number;
 };
 
-export type TeamInsightsXpHighlights = {
-  topContributorsWeek: TeamInsightsHighlightPerson[];
-  reliabilityLeaders: TeamInsightsHighlightPerson[];
-  crossTrainingLeaders: TeamInsightsHighlightPerson[];
-  complianceLeaders: TeamInsightsHighlightPerson[];
+export type GamificationXpHighlights = {
+  topContributorsWeek: GamificationHighlightPerson[];
+  reliabilityLeaders: GamificationHighlightPerson[];
+  crossTrainingLeaders: GamificationHighlightPerson[];
+  complianceLeaders: GamificationHighlightPerson[];
 };
 
-export type TeamInsightsPayload = {
-  summary: TeamInsightsSummary;
-  workers: TeamInsightsWorker[];
-  recentActivity: TeamInsightsActivity[];
-  xpHighlights?: TeamInsightsXpHighlights;
+export type GamificationPayload = {
+  summary: GamificationSummary;
+  workers: GamificationWorker[];
+  recentActivity: GamificationActivity[];
+  xpHighlights?: GamificationXpHighlights;
 };
 
-export async function fetchTeamInsights(): Promise<TeamInsightsPayload> {
-  // Primary route
-  return apiFetch<TeamInsightsPayload>("/api/v1/team/insights");
+export async function fetchTeamGamification(): Promise<GamificationPayload> {
+  return apiFetch<GamificationPayload>("/api/v1/team/insights");
 }
-

@@ -12,7 +12,6 @@ import {
   Target,
   TrendingUp,
   UserRound,
-  Wrench,
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -674,25 +673,6 @@ export function ProfilePage() {
           onError={setErr}
         />
 
-        {sessionHasAnyRole(session, "manager", "company_admin") ? (
-          <Card padding="lg" variant="secondary" className="border-dashed border-ds-border">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="flex items-center gap-2 font-headline text-sm font-extrabold text-ds-foreground">
-                  <Wrench className="h-4 w-4 text-ds-accent" aria-hidden />
-                  Manager tools
-                </p>
-                <p className="mt-1 text-xs text-ds-muted">Award bonus XP when someone goes above and beyond.</p>
-              </div>
-              <Link
-                href="/dashboard/team-insights"
-                className={cn(buttonVariants({ surface: "light", intent: "accent" }), "rounded-xl px-4 py-2 text-xs font-bold")}
-              >
-                Open Team Insights
-              </Link>
-            </div>
-          </Card>
-        ) : null}
       </PageBody>
 
       <ProfileCustomizationModal

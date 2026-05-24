@@ -48,9 +48,6 @@ function featureForDashboard(def: DashboardAccessDef): string {
 
 function rbacForDashboard(def: DashboardAccessDef): readonly string[] {
   if (def.id === "monitoring") return [def.viewPermission];
-  if (def.id === "team_insights") {
-    return [...dashboardRbacAnyOf(def.viewPermission), "team_insights.view"];
-  }
   if (def.id === "logs_inspections_dashboard") {
     return [...dashboardRbacAnyOf(def.viewPermission), "compliance.view"];
   }

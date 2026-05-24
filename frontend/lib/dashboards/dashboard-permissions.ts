@@ -118,18 +118,6 @@ export const DASHBOARD_ACCESS_REGISTRY: readonly DashboardAccessDef[] = [
     sortOrder: 30,
   },
   {
-    id: "team_insights",
-    label: "Team Insights",
-    route: "/dashboard/team-insights",
-    icon: "sparkles",
-    navGroup: "Department Dashboards",
-    viewPermission: "dashboard.team_insights.view",
-    matrixFeatureKey: "dashboard_team_insights",
-    contractFeature: "team_insights",
-    ownershipDepartment: "maintenance",
-    sortOrder: 50,
-  },
-  {
     id: "logs_inspections_dashboard",
     label: "Inspections & Logs",
     route: "/dashboard/compliance",

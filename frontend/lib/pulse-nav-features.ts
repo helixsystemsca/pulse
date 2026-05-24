@@ -49,7 +49,6 @@ export function featureKeyForTenantNavHref(href: string): string | undefined {
     if (href.startsWith("/team-management/insights")) return "team_insights";
     return "team_management";
   }
-  if (href === "/dashboard/team-insights" || href.startsWith("/dashboard/team-insights")) return "team_insights";
   if (href === "/dashboard/permissions" || href.startsWith("/dashboard/permissions")) return "team_management";
   if (href === "/dashboard/workers" || href.startsWith("/dashboard/workers")) return "team_management";
   if (href === "/dashboard/inventory") return "inventory";

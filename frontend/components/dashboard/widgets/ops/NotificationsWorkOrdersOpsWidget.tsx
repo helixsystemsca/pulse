@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { Loader2 } from "lucide-react";
 
 import type { DashboardViewModel } from "@/components/dashboard/OperationalDashboard";
@@ -52,10 +53,7 @@ function KpiCell({
 
   return (
     <div className="ops-work-requests-kpi-cell">
-      <div
-        className={cn("ops-kpi-tile ops-kpi-tile--grid", KPI_TILE_CLASS[tone])}
-        style={{ width: WORK_REQUESTS_KPI_CELL_PX, height: WORK_REQUESTS_KPI_CELL_PX }}
-      >
+      <div className={cn("ops-kpi-tile ops-kpi-tile--grid", KPI_TILE_CLASS[tone])}>
         <div className="flex w-full items-start gap-1">
           <span
             className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full"
@@ -95,7 +93,12 @@ export function NotificationsWorkOrdersOpsWidget({
   return (
     <div
       className={cn("ops-work-requests-kpi-grid", GRID_MODE_CLASS[layoutMode])}
-      style={{ gap: WORK_REQUESTS_KPI_GAP_PX }}
+      style={
+        {
+          gap: WORK_REQUESTS_KPI_GAP_PX,
+          ["--ops-wr-kpi-cell" as string]: `${WORK_REQUESTS_KPI_CELL_PX}px`,
+        } as CSSProperties
+      }
       data-layout-mode={layoutMode}
       role="group"
       aria-label="Work request KPIs"

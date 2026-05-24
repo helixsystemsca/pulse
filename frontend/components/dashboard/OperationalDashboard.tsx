@@ -39,9 +39,10 @@ import { DASH } from "@/styles/dashboardTheme";
 import { UI } from "@/styles/ui";
 import { buildWorkspaceRenderContext, type DashboardWidgetRenderContext } from "@/lib/dashboard/render-context";
 import {
-  workRequestsLayoutForTier,
-  workforceShowsSecondarySections,
-} from "@/lib/dashboard/widget-tier-disclosure";
+  computeWorkforceSiteCertCoverage,
+  type WorkforceSiteCertCoverage,
+} from "@/lib/dashboard/workforce-site-certs";
+import { WorkforceSiteCertifications } from "@/components/dashboard/widgets/ops/WorkforceSiteCertifications";
 import {
   addWorkspaceWidget,
   allWorkspaceWidgetIds,
@@ -160,6 +161,8 @@ export type DashboardViewModel = {
      */
     scheduledTodayRoster: WorkforceBubble[];
     counts: { onSite: number; onShiftNow: number; upcomingToday: number; onScheduleToday: number; offSite: number };
+    /** Required facility certs — covered when held by someone on site (else scheduled staff). */
+    siteCertifications: WorkforceSiteCertCoverage[];
   };
   workRequests: {
     awaitingCount: number;
@@ -601,6 +604,12 @@ function demoModel(): DashboardViewModel {
       offSite: demoWorkforceOffSite,
       scheduledTodayRoster: demoScheduledTodayRoster,
       counts: { onSite: 1, onShiftNow: 1, upcomingToday: 1, onScheduleToday: 0, offSite: 1 },
+      siteCertifications: [
+        { id: "ro", label: "Refrigeration Operator", status: "covered", holderNames: ["Taylor Cruz"] },
+        { id: "pool", label: "Pool Operator", status: "missing", holderNames: [] },
+        { id: "fa", label: "First Aid", status: "covered", holderNames: ["Avery Rowe"] },
+        { id: "whmis", label: "WHMIS", status: "covered", holderNames: ["Taylor Cruz", "Avery Rowe"] },
+      ],
     },
     workRequests: {
       kpi: { pendingApproval: 2, inProgress: 4, overdueAny: 1, total: 12 },
@@ -699,6 +708,7 @@ type WorkerOut = {
     type?: "enter" | "exit";
     timestamp?: string | number | null;
   };
+  certifications?: string[];
 };
 
 type ShiftOut = {
@@ -1044,6 +1054,11 @@ function buildLiveModel(
         onScheduleToday: onScheduleToday.length,
         offSite: offSite.length,
       },
+      siteCertifications: computeWorkforceSiteCertCoverage(
+        workers,
+        [...onSite, ...onShiftNow].map((b) => b.id),
+        scheduledIdsOnCalendar,
+      ),
     },
     workRequests: {
       awaitingCount: unassigned || openItems.filter((i) => i.status === "open").length,
@@ -1143,7 +1158,9 @@ function DashboardBody({
         accent: "none" as const,
         shellJumpHref: pulseAppHref("/schedule"),
         shellJumpLabel: "Open schedule",
-        render: () => <ImportantDatesOpsWidget />,
+        render: (ctx?: DashboardWidgetRenderContext) => (
+          <ImportantDatesOpsWidget layoutContext={ctx ?? null} />
+        ),
       },
       notifications_work_orders: {
         title: "Work requests",
@@ -1154,7 +1171,7 @@ function DashboardBody({
           <NotificationsWorkOrdersOpsWidget
             model={model}
             kpiLoading={workRequestKpiLoading}
-            layoutMode={ctx ? workRequestsLayoutForTier(ctx.heightTier) : "4x1"}
+            layoutMode="4x1"
           />
         ),
       },
@@ -1176,13 +1193,15 @@ function DashboardBody({
         title: "Workforce",
         accent: "none" as const,
         render: (ctx?: DashboardWidgetRenderContext) => {
-          const showSecondary = workforceShowsSecondarySections(ctx?.heightTier ?? "expanded");
+          const tier = ctx?.heightTier ?? "expanded";
+          const showCertCoverage = tier === "expanded" || tier === "tall";
+          const showSecondary = tier === "tall";
 
           return (
             <div
               className={cn(
                 workforceCardShell,
-                "flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-x-auto overflow-y-visible",
+                "flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden",
               )}
             >
               <div className="shrink-0">
@@ -1193,8 +1212,8 @@ function DashboardBody({
                   {model.workforce.summaryLine}
                 </p>
               </div>
-              <div className="flex min-h-0 min-w-0 flex-col gap-1.5">
-                <div className="flex min-h-[7.25rem] min-w-0 flex-col py-0.5">
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1.5">
+                <div className="flex min-h-[7.25rem] shrink-0 min-w-0 flex-col py-0.5">
                   <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--ds-accent)]">
                     Scheduled today
                   </p>
@@ -1279,8 +1298,14 @@ function DashboardBody({
                     })()
                   )}
                 </div>
+                {showCertCoverage ? (
+                  <WorkforceSiteCertifications
+                    items={model.workforce.siteCertifications}
+                    heightTier={tier}
+                  />
+                ) : null}
                 {showSecondary ? (
-                  <div className="mt-3 grid gap-3 border-t border-[color-mix(in_srgb,var(--ds-text-primary)_10%,transparent)] pt-3 sm:grid-cols-2">
+                  <div className="mt-3 grid shrink-0 gap-3 border-t border-[color-mix(in_srgb,var(--ds-text-primary)_10%,transparent)] pt-3 sm:grid-cols-2">
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[color-mix(in_srgb,var(--ds-text-primary)_48%,transparent)]">
                         On schedule
@@ -1335,7 +1360,9 @@ function DashboardBody({
         accent: "none" as const,
         shellJumpHref: pulseAppHref("/dashboard/inventory"),
         shellJumpLabel: "Open inventory",
-        render: () => <LowInventoryOpsWidget model={model} />,
+        render: (ctx?: DashboardWidgetRenderContext) => (
+          <LowInventoryOpsWidget model={model} layoutContext={ctx ?? null} />
+        ),
       },
       co2_monitoring: {
         title: "CO₂ monitoring",
@@ -1356,7 +1383,9 @@ function DashboardBody({
         accent: "none" as const,
         shellJumpHref: pulseAppHref("/schedule"),
         shellJumpLabel: "Open schedule",
-        render: () => <FacilityScheduleOpsWidget />,
+        render: (ctx?: DashboardWidgetRenderContext) => (
+          <FacilityScheduleOpsWidget layoutContext={ctx ?? null} />
+        ),
       },
       routine_assignments: {
         title: "Routine assignments",
@@ -1518,9 +1547,32 @@ function DashboardBody({
   );
 
   const shellBodyClass = (widgetId: string) => {
-    if (widgetId === "pool_readings") return "p-0";
+    if (widgetId === "pool_readings") {
+      return "!overflow-hidden !p-1 flex min-h-0 flex-1 flex-col items-stretch justify-start w-full min-w-0";
+    }
     if (widgetId === "notifications_work_orders") {
-      return "!overflow-hidden !p-0 flex min-h-0 flex-1 flex-col items-center justify-center";
+      return "!overflow-x-auto !overflow-y-hidden !p-2 flex min-h-0 flex-1 flex-col items-stretch justify-start w-full min-w-0";
+    }
+    if (widgetId === "training_compliance") {
+      return "!overflow-hidden !p-1.5 flex min-h-0 flex-1 flex-col items-stretch justify-start w-full min-w-0";
+    }
+    if (widgetId === "co2_monitoring") {
+      return "!overflow-hidden !p-1.5 flex min-h-0 flex-1 flex-col items-stretch justify-start w-full min-w-0";
+    }
+    if (widgetId === "important_dates") {
+      return "!overflow-hidden !p-1.5 flex min-h-0 flex-1 flex-col items-stretch justify-start w-full min-w-0";
+    }
+    if (widgetId === "low_inventory") {
+      return "!overflow-hidden !p-1.5 flex min-h-0 flex-1 flex-col items-stretch justify-start w-full min-w-0";
+    }
+    if (widgetId === "facility_schedule") {
+      return "!overflow-hidden !p-1.5 flex min-h-0 flex-1 flex-col items-stretch justify-start w-full min-w-0";
+    }
+    if (widgetId === "routine_assignments") {
+      return "!overflow-hidden !p-1.5 flex min-h-0 flex-1 flex-col items-stretch justify-start w-full min-w-0";
+    }
+    if (widgetId === "workforce") {
+      return "!overflow-hidden !p-1.5 flex min-h-0 flex-1 flex-col items-stretch justify-start w-full min-w-0";
     }
     return undefined;
   };

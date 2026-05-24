@@ -6,14 +6,21 @@ import { ClipboardList } from "lucide-react";
 
 import { isApiMode } from "@/lib/api";
 import type { DashboardWidgetRenderContext } from "@/lib/dashboard/render-context";
+import type { WidgetHeightTier } from "@/lib/dashboard/workspace-layout";
 import { routineAssignmentRowCap } from "@/lib/dashboard/widget-tier-disclosure";
 import { readSession } from "@/lib/pulse-session";
 import { listMyRoutineAssignments, listRoutines, type RoutineAssignmentDetail, type RoutineRow } from "@/lib/routinesService";
+import { cn } from "@/lib/cn";
+
 const DEMO_ASSIGNMENTS: { routineName: string; date: string }[] = [
   { routineName: "Opening pool deck", date: "Today" },
   { routineName: "Chemical room check", date: "Today" },
   { routineName: "Closing checklist", date: "Tonight" },
 ];
+
+function spreadsShell(tier: WidgetHeightTier): boolean {
+  return tier === "expanded" || tier === "tall";
+}
 
 function formatAssignmentDate(d: string | null | undefined): string {
   if (!d) return "—";
@@ -24,6 +31,17 @@ function formatAssignmentDate(d: string | null | undefined): string {
   } catch {
     return d;
   }
+}
+
+function spreadListClass(fillShell: boolean, count: number, tight?: boolean) {
+  return cn(
+    "mt-1.5 min-h-0",
+    fillShell && count > 0
+      ? cn("flex flex-1 flex-col justify-between", tight ? "gap-1" : "gap-2")
+      : tight
+        ? "space-y-1"
+        : "space-y-1.5",
+  );
 }
 
 type LoadState =
@@ -68,6 +86,7 @@ function RoutineAssignmentsInner({
   maxRoutines,
   variant = "full",
   showFooterLinks = true,
+  fillShell = false,
 }: {
   compact?: boolean;
   maxAssignments?: number;
@@ -75,34 +94,46 @@ function RoutineAssignmentsInner({
   /** `full` = built-in tile; peek slices pick `assignments` or `library` only. */
   variant?: "full" | "assignments" | "library";
   showFooterLinks?: boolean;
+  fillShell?: boolean;
 }) {
   const state = useRoutineAssignmentsBoardState();
   const showAssignments = variant !== "library";
   const showLibrary = variant !== "assignments";
+  const mutedText = "text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]";
+  const fillCenter = fillShell ? "flex flex-1 items-center justify-center text-center px-2" : "";
 
   const body = useMemo(() => {
     if (state.kind === "loading") {
-      return <p className="text-xs text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]">Loading routines…</p>;
+      return <p className={cn("text-xs", mutedText, fillCenter)}>Loading routines…</p>;
     }
     if (state.kind === "demo") {
       if (!showAssignments) {
         return (
-          <p className="text-xs text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]">
+          <p className={cn("text-xs", mutedText, fillCenter)}>
             Sign in to list published routines for this tenant.
           </p>
         );
       }
       const aCap = maxAssignments ?? (compact ? 2 : 4);
+      const demoRows = DEMO_ASSIGNMENTS.slice(0, aCap);
       return (
-        <div className="space-y-3">
-          <p className="text-[11px] text-[color-mix(in_srgb,var(--ds-text-primary)_58%,transparent)]">
+        <div className={cn(fillShell && "flex min-h-0 flex-1 flex-col")}>
+          <p
+            className={cn(
+              "text-[11px] text-[color-mix(in_srgb,var(--ds-text-primary)_58%,transparent)]",
+              fillShell ? "shrink-0" : "",
+            )}
+          >
             Demo assignments — sign in with a live tenant to load real routine handoffs.
           </p>
-          <ul className="space-y-1.5">
-            {DEMO_ASSIGNMENTS.slice(0, aCap).map((row) => (
+          <ul className={spreadListClass(fillShell, demoRows.length)}>
+            {demoRows.map((row) => (
               <li
                 key={row.routineName}
-                className="flex items-center justify-between gap-2 rounded-lg bg-[color-mix(in_srgb,var(--ds-text-primary)_5%,transparent)] px-2 py-1.5 text-xs font-medium text-[color-mix(in_srgb,var(--ds-text-primary)_88%,transparent)]"
+                className={cn(
+                  "flex items-center justify-between gap-2 rounded-lg bg-[color-mix(in_srgb,var(--ds-text-primary)_5%,transparent)] px-2 font-medium text-[color-mix(in_srgb,var(--ds-text-primary)_88%,transparent)]",
+                  fillShell ? "min-h-0 flex-1 py-2.5 text-sm" : "py-1.5 text-xs",
+                )}
               >
                 <span className="min-w-0 truncate">{row.routineName}</span>
                 <span className="shrink-0 text-[11px] font-bold text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]">
@@ -125,25 +156,42 @@ function RoutineAssignmentsInner({
     const routines = state.routines.slice(0, rLimit);
 
     return (
-      <div className="space-y-4">
+      <div
+        className={cn(
+          fillShell ? "flex min-h-0 flex-1 flex-col gap-4" : "space-y-4",
+          fillShell && showAssignments && showLibrary && "justify-between",
+        )}
+      >
         {showAssignments ? (
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[color-mix(in_srgb,var(--ds-text-primary)_48%,transparent)]">
+          <div
+            className={cn(
+              fillShell && assignments.length > 0 && "flex min-h-0 min-w-0 flex-1 flex-col",
+            )}
+          >
+            <p className="shrink-0 text-[10px] font-bold uppercase tracking-[0.1em] text-[color-mix(in_srgb,var(--ds-text-primary)_48%,transparent)]">
               Your assignments
             </p>
             {assignments.length === 0 ? (
-              <p className="mt-1.5 text-xs text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]">
+              <p className={cn("mt-1.5 text-xs", mutedText, !showLibrary && fillCenter)}>
                 Nothing delegated to you right now. Supervisors can assign routines from the schedule.
               </p>
             ) : (
-              <ul className="mt-1.5 space-y-1.5">
+              <ul className={spreadListClass(fillShell, assignments.length)}>
                 {assignments.map((a) => (
                   <li
                     key={a.id}
-                    className="ops-dash-row flex items-start justify-between gap-2 px-2 py-1.5"
+                    className={cn(
+                      "ops-dash-row flex items-start justify-between gap-2 px-2",
+                      fillShell ? "min-h-0 flex-1 py-2.5" : "py-1.5",
+                    )}
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs font-semibold text-[color-mix(in_srgb,var(--ds-text-primary)_92%,transparent)]">
+                      <p
+                        className={cn(
+                          "truncate font-semibold text-[color-mix(in_srgb,var(--ds-text-primary)_92%,transparent)]",
+                          fillShell ? "text-sm" : "text-xs",
+                        )}
+                      >
                         {a.routine.name}
                       </p>
                       <p className="mt-0.5 text-[11px] text-[color-mix(in_srgb,var(--ds-text-primary)_55%,transparent)]">
@@ -161,16 +209,24 @@ function RoutineAssignmentsInner({
         ) : null}
 
         {showLibrary ? (
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[color-mix(in_srgb,var(--ds-text-primary)_48%,transparent)]">
+          <div className={cn(fillShell && routines.length > 0 && "flex min-h-0 min-w-0 flex-1 flex-col")}>
+            <p className="shrink-0 text-[10px] font-bold uppercase tracking-[0.1em] text-[color-mix(in_srgb,var(--ds-text-primary)_48%,transparent)]">
               Routine library
             </p>
             {routines.length === 0 ? (
-              <p className="mt-1.5 text-xs text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]">No routines published yet.</p>
+              <p className={cn("mt-1.5 text-xs", mutedText, !showAssignments && fillCenter)}>No routines published yet.</p>
             ) : (
-              <ul className="mt-1.5 space-y-1">
+              <ul className={spreadListClass(fillShell, routines.length, true)}>
                 {routines.map((r) => (
-                  <li key={r.id} className="truncate text-xs text-[color-mix(in_srgb,var(--ds-text-primary)_78%,transparent)]">
+                  <li
+                    key={r.id}
+                    className={cn(
+                      "truncate text-[color-mix(in_srgb,var(--ds-text-primary)_78%,transparent)]",
+                      fillShell
+                        ? "ops-dash-row flex min-h-0 flex-1 items-center px-2 py-2.5 text-sm font-medium"
+                        : "text-xs",
+                    )}
+                  >
                     · {r.name}
                   </li>
                 ))}
@@ -180,17 +236,17 @@ function RoutineAssignmentsInner({
         ) : null}
       </div>
     );
-  }, [state, compact, maxAssignments, maxRoutines, showAssignments, showLibrary]);
+  }, [state, compact, maxAssignments, maxRoutines, showAssignments, showLibrary, fillShell, fillCenter, mutedText]);
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2 text-[11px] font-semibold text-[color-mix(in_srgb,var(--ds-text-primary)_55%,transparent)]">
+    <div className={cn(fillShell ? "flex h-full min-h-0 flex-col" : "space-y-2")}>
+      <div className="flex shrink-0 items-center gap-2 text-[11px] font-semibold text-[color-mix(in_srgb,var(--ds-text-primary)_55%,transparent)]">
         <ClipboardList className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
         <span>Shift routines & handoffs</span>
       </div>
-      {body}
+      <div className={cn(fillShell && "flex min-h-0 flex-1 flex-col")}>{body}</div>
       {showFooterLinks && !compact ? (
-        <div className="flex flex-wrap gap-x-3 gap-y-1 pt-1">
+        <div className="flex shrink-0 flex-wrap gap-x-3 gap-y-1 pt-1">
           <Link
             href="/standards/routines"
             className="text-[11px] font-semibold text-[var(--ds-accent)] underline-offset-2 hover:underline"
@@ -208,11 +264,13 @@ function RoutineAssignmentsInner({
 
 export function RoutineAssignmentsOpsWidget({ layoutContext }: { layoutContext?: DashboardWidgetRenderContext }) {
   const tier = layoutContext?.heightTier ?? "expanded";
+  const fillShell = spreadsShell(tier);
   const { maxAssignments, maxRoutines } = routineAssignmentRowCap(tier);
 
   return (
-    <div className="ops-dash-inner-card flex h-full min-h-0 flex-col p-3">
+    <div className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden">
       <RoutineAssignmentsInner
+        fillShell={fillShell}
         maxAssignments={maxAssignments}
         maxRoutines={maxRoutines}
         showFooterLinks={false}

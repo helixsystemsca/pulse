@@ -8,7 +8,7 @@ import { fetchWorkerProfile, type WorkerProfilePayload } from "@/lib/workerProfi
 import { useResolvedAvatarSrc } from "@/lib/useResolvedAvatarSrc";
 import { humanizeRole } from "@/lib/pulse-roles";
 
-export type WorkerProfileMode = "insights" | "admin";
+export type GamificationWorkerProfileMode = "gamification" | "admin";
 
 function roleTitle(role: string) {
   const r = (role || "worker").trim();
@@ -25,13 +25,13 @@ function borderRing(border: string | null | undefined): string {
   return "ring-1 ring-ds-border";
 }
 
-export function WorkerProfile({
+export function GamificationWorkerProfile({
   userId,
   mode,
   adminControls,
 }: {
   userId: string;
-  mode: WorkerProfileMode;
+  mode: GamificationWorkerProfileMode;
   adminControls?: React.ReactNode;
 }) {
   const [data, setData] = useState<WorkerProfilePayload | null>(null);
@@ -59,6 +59,7 @@ export function WorkerProfile({
 
   const avatarSrc = useResolvedAvatarSrc(data?.avatarUrl ?? null);
   const badges = useMemo(() => (data?.badges ?? []).slice(0, mode === "admin" ? 0 : 24), [data?.badges, mode]);
+  const showGamification = mode === "gamification";
 
   if (loading) {
     return <p className="text-sm text-ds-muted">Loading…</p>;
@@ -89,7 +90,7 @@ export function WorkerProfile({
                 <Mail className="h-4 w-4" aria-hidden />
                 {data.email}
               </span>
-              {mode === "insights" ? (
+              {showGamification ? (
                 <span className="inline-flex items-center gap-1.5 font-semibold text-ds-foreground/80">
                   Lv {data.level}
                 </span>
@@ -103,12 +104,10 @@ export function WorkerProfile({
           </div>
         </div>
 
-        {mode === "admin" && adminControls ? (
-          <div className="w-full lg:w-auto">{adminControls}</div>
-        ) : null}
+        {mode === "admin" && adminControls ? <div className="w-full lg:w-auto">{adminControls}</div> : null}
       </div>
 
-      {mode === "insights" ? (
+      {showGamification ? (
         <Card padding="md">
           <div className="flex items-center justify-between gap-3">
             <p className="text-sm font-semibold text-ds-foreground">XP Progress</p>
@@ -128,7 +127,7 @@ export function WorkerProfile({
         </Card>
       ) : null}
 
-      {mode === "insights" ? (
+      {showGamification ? (
         <Card padding="md">
           <p className="text-sm font-semibold text-ds-foreground">Badges</p>
           {badges.length === 0 ? (
@@ -152,7 +151,7 @@ export function WorkerProfile({
         </Card>
       ) : null}
 
-      {mode === "insights" ? (
+      {showGamification ? (
         <Card padding="md">
           <p className="text-sm font-semibold text-ds-foreground">Recent XP</p>
           {data.recentXp.length === 0 ? (
@@ -180,4 +179,3 @@ export function WorkerProfile({
     </div>
   );
 }
-

@@ -60,7 +60,7 @@ export const MODULE_LABEL: Record<CanonicalFeatureKey, string> = {
   dashboard_leadership: "Leadership dashboard",
   dashboard_project: "Project dashboard",
   dashboard_inspections: "Inspections & logs dashboard",
-  dashboard_team_insights: "Team insights dashboard",
+  dashboard_team_insights: "Gamification dashboard (legacy)",
   dashboard_dept_communications: "Communications dashboard",
   dashboard_dept_aquatics: "Aquatics dashboard",
   dashboard_dept_reception: "Reception dashboard",

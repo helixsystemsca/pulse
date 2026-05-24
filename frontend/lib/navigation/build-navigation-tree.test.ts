@@ -162,25 +162,26 @@ describe("buildNavigationTree", () => {
     expect(visualsKeys).not.toContain("xplor_indesign");
   });
 
-  it("hides maintenance-owned team insights from communications users", () => {
+  it("hides maintenance-owned workforce insights from communications users", () => {
     const tree = buildNavigationTree(
       session({
         hr_department: "communications",
-        contract_features: ["dashboard", "team_insights"],
-        enabled_features: ["dashboard_dept_communications", "team_insights"],
-        rbac_permissions: ["dashboard.dept.communications.view", "team_insights.view", "dashboard.team_insights.view"],
+        contract_features: ["dashboard", "team_management", "team_insights"],
+        enabled_features: ["dashboard_dept_communications", "team_management", "team_insights"],
+        rbac_permissions: [
+          "dashboard.dept.communications.view",
+          "team_management.view",
+          "team_insights.view",
+          "dashboard.team_insights.view",
+        ],
       }),
     );
-    const dashboardKeys =
-      tree.find((d) => d.domain === "Dashboards")?.groups.flatMap((g) => g.items.map((i) => i.key)) ?? [];
-    expect(dashboardKeys).not.toContain("team_insights");
-    expect(dashboardKeys).not.toContain("dashboard_dept_communications");
+    const workforceKeys =
+      tree.find((d) => d.domain === "Team Management")?.groups.flatMap((g) => g.items.map((i) => i.key)) ?? [];
+    expect(workforceKeys).not.toContain("workforce_insights");
     const commsDashboardKeys =
       tree.find((d) => d.domain === "Communications")?.groups.flatMap((g) => g.items.map((i) => i.key)) ?? [];
     expect(commsDashboardKeys).toContain("dashboard_dept_communications");
-    const standardsKeys =
-      tree.find((d) => d.domain === "Standards")?.groups.flatMap((g) => g.items.map((i) => i.key)) ?? [];
-    expect(standardsKeys).not.toContain("team_insights");
   });
 
   it("lists monitoring under Operations, not Dashboards", () => {

@@ -32,13 +32,8 @@ export function isPulseNavActive(href: string, pathname: string): boolean {
   if (href === "/team-management") {
     return pathname === "/team-management" || pathname.startsWith("/team-management/");
   }
-  if (href === "/dashboard/team-insights")
-    return (
-      pathname === "/dashboard/team-insights" ||
-      pathname.startsWith("/dashboard/team-insights/") ||
-      pathname === "/team-management/insights" ||
-      pathname.startsWith("/team-management/insights/")
-    );
+  if (href === "/team-management/insights")
+    return pathname === "/team-management/insights" || pathname.startsWith("/team-management/insights/");
   if (href === "/dashboard/permissions")
     return pathname === "/dashboard/permissions" || pathname.startsWith("/dashboard/permissions/");
   if (href === "/dashboard/workers")

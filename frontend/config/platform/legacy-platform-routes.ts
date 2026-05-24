@@ -51,7 +51,7 @@ export const LEGACY_PLATFORM_ROUTE_ALIASES: readonly LegacyPlatformRouteAlias[] 
     route: "analytics",
     feature: "team_insights",
     rbacAnyOf: ["team_insights.view"],
-    canonicalRoute: "/dashboard/team-insights",
+    canonicalRoute: "/team-management/insights",
     suppressCanonicalForDepartments: ["admin"],
   },
   {

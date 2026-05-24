@@ -7,7 +7,7 @@ export const NAV_ROUTE_ALIASES: Readonly<Record<string, string>> = {
   "/dashboard/maintenance/work-requests": "/dashboard/maintenance",
   "/dashboard/maintenance/work-orders": "/dashboard/maintenance",
   "/dashboard/maintenance/inspections": "/dashboard/compliance",
-  "/dashboard/maintenance/analytics": "/dashboard/team-insights",
+  "/dashboard/maintenance/analytics": "/team-management/insights",
   "/dashboard/maintenance/messaging": "/dashboard/messages",
   "/dashboard/maintenance/preventative": "/dashboard/maintenance",
   "/operations": "/monitoring",

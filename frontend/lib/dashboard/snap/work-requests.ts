@@ -11,7 +11,7 @@ export type WorkRequestsLayoutMode = "4x1" | "2x2" | "1x4";
 export const WORK_REQUESTS_WIDGET_ID = "notifications_work_orders";
 
 /** Fixed square KPI size (px) — widget grid spans are derived from this, not the other way around. */
-export const WORK_REQUESTS_KPI_CELL_PX = 64;
+export const WORK_REQUESTS_KPI_CELL_PX = 74;
 export const WORK_REQUESTS_KPI_GAP_PX = 6;
 /** Header row inside the widget shell (matches dashboard token). */
 export const WORK_REQUESTS_SHELL_HEADER_PX = DASHBOARD_WIDGET_HEADER_HEIGHT_PX;

@@ -20,7 +20,7 @@ export type WorkspaceLayout = {
   right: WorkspaceWidgetSlot[];
 };
 
-export const HERO_WIDGET_IDS = new Set(["workforce", "routine_assignments"]);
+export const HERO_WIDGET_IDS = new Set(["workforce", "routine_assignments", "facility_schedule"]);
 
 export const HEIGHT_TIER_ORDER: WidgetHeightTier[] = ["compact", "medium", "expanded", "tall"];
 
@@ -48,9 +48,10 @@ export function allowedColumnForWidget(widgetId: string): WorkspaceColumnId | "l
 }
 
 export function defaultHeightTier(widgetId: string): WidgetHeightTier {
+  if (widgetId === "facility_schedule") return "tall";
   if (HERO_WIDGET_IDS.has(widgetId)) return "expanded";
   if (widgetId === WORK_REQUESTS_WIDGET_ID || widgetId === "co2_monitoring") return "compact";
-  if (widgetId === "facility_schedule" || widgetId === "pool_readings") return "tall";
+  if (widgetId === "pool_readings") return "tall";
   return "medium";
 }
 
@@ -58,17 +59,17 @@ export function defaultWorkspaceLayout(): WorkspaceLayout {
   return {
     left: [
       { id: WORK_REQUESTS_WIDGET_ID, heightTier: "compact" },
-      { id: "training_compliance", heightTier: "compact" },
+      { id: "training_compliance", heightTier: "medium" },
       { id: "co2_monitoring", heightTier: "compact" },
     ],
     hero: [
       { id: "workforce", heightTier: "expanded" },
       { id: "routine_assignments", heightTier: "expanded" },
+      { id: "facility_schedule", heightTier: "tall" },
     ],
     right: [
       { id: "important_dates", heightTier: "medium" },
       { id: "low_inventory", heightTier: "medium" },
-      { id: "facility_schedule", heightTier: "tall" },
     ],
   };
 }
@@ -126,7 +127,13 @@ export function migrateGridLayoutToWorkspace(items: LayoutItem[]): WorkspaceLayo
   const right: WorkspaceWidgetSlot[] = [];
 
   for (const [id] of present) {
-    if (HERO_WIDGET_IDS.has(id)) continue;
+    if (HERO_WIDGET_IDS.has(id)) {
+      if (!hero.some((s) => s.id === id)) {
+        const item = present.get(id)!;
+        hero.push({ id, heightTier: gridHToTier(item.h ?? 4, "hero") });
+      }
+      continue;
+    }
     const zone = "edge" as const;
     const slot: WorkspaceWidgetSlot = {
       id,
@@ -154,12 +161,20 @@ export function sanitizeWorkspaceLayout(
   validWidgetIds: Set<string>,
 ): WorkspaceLayout {
   const seen = new Set<string>();
+  const heroRelocated: WorkspaceWidgetSlot[] = [];
+
   const pick = (slots: WorkspaceWidgetSlot[], column: WorkspaceColumnId): WorkspaceWidgetSlot[] => {
     const out: WorkspaceWidgetSlot[] = [];
     for (const slot of slots) {
       if (!slot?.id || seen.has(slot.id) || !validWidgetIds.has(slot.id)) continue;
       const allowed = allowedColumnForWidget(slot.id);
-      if (allowed === "hero" && column !== "hero") continue;
+      if (allowed === "hero" && column !== "hero") {
+        heroRelocated.push({
+          id: slot.id,
+          heightTier: HEIGHT_TIER_ORDER.includes(slot.heightTier) ? slot.heightTier : defaultHeightTier(slot.id),
+        });
+        continue;
+      }
       if (allowed === "left-or-right" && column === "hero") continue;
       seen.add(slot.id);
       out.push({
@@ -169,11 +184,18 @@ export function sanitizeWorkspaceLayout(
     }
     return out;
   };
-  return {
-    left: pick(layout.left, "left"),
-    hero: pick(layout.hero, "hero"),
-    right: pick(layout.right, "right"),
-  };
+
+  const left = pick(layout.left, "left");
+  const hero = pick(layout.hero, "hero");
+  const right = pick(layout.right, "right");
+
+  for (const slot of heroRelocated) {
+    if (seen.has(slot.id)) continue;
+    seen.add(slot.id);
+    hero.push(slot);
+  }
+
+  return { left, hero, right };
 }
 
 export function mergeMissingDefaults(

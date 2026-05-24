@@ -8,16 +8,29 @@ import {
 } from "@/lib/dashboard/workspace-layout";
 
 describe("workspace-layout", () => {
-  it("assigns hero zone to workforce and routine assignments", () => {
+  it("assigns hero zone to workforce, routines, and facility schedule", () => {
     expect(widgetZoneClass("workforce")).toBe("hero");
     expect(widgetZoneClass("routine_assignments")).toBe("hero");
+    expect(widgetZoneClass("facility_schedule")).toBe("hero");
     expect(widgetZoneClass("notifications_work_orders")).toBe("edge");
   });
 
   it("places hero widgets only in hero column by default", () => {
     const layout = defaultWorkspaceLayout();
-    expect(layout.hero.map((s) => s.id)).toEqual(["workforce", "routine_assignments"]);
+    expect(layout.hero.map((s) => s.id)).toEqual(["workforce", "routine_assignments", "facility_schedule"]);
+    expect(layout.right.some((s) => s.id === "facility_schedule")).toBe(false);
     expect(layout.left.some((s) => s.id === "workforce")).toBe(false);
+  });
+
+  it("relocates hero widgets from edge columns when sanitizing", () => {
+    const bad = {
+      left: [],
+      hero: [{ id: "workforce", heightTier: "expanded" as const }],
+      right: [{ id: "facility_schedule", heightTier: "tall" as const }],
+    };
+    const clean = sanitizeWorkspaceLayout(bad, new Set(["workforce", "facility_schedule"]));
+    expect(clean.hero.map((s) => s.id)).toContain("facility_schedule");
+    expect(clean.right).toHaveLength(0);
   });
 
   it("migrates legacy grid items into columns", () => {
