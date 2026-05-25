@@ -173,6 +173,12 @@ export async function listMyRoutineAssignments(params?: { shift_id?: string }): 
   return apiFetch<RoutineAssignmentDetail[]>(`/api/v1/routines/assignments/my${q ? `?${q}` : ""}`);
 }
 
+/** Supervisor / ops view — all assignments on a calendar day for scheduled handoffs. */
+export async function listRoutineAssignmentsForDate(date: string): Promise<RoutineAssignmentDetail[]> {
+  const sp = new URLSearchParams({ date });
+  return apiFetch<RoutineAssignmentDetail[]>(`/api/v1/routines/assignments/day?${sp}`);
+}
+
 export async function getRoutineRun(runId: string): Promise<RoutineRunDetail> {
   return apiFetch<RoutineRunDetail>(`/api/v1/routines/runs/${runId}`);
 }

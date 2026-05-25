@@ -449,6 +449,107 @@ async def create_routine_assignment(
     )
 
 
+async def _routine_assignment_detail_out(
+    db: AsyncSession,
+    cid: str,
+    a: PulseRoutineAssignment,
+) -> Optional[RoutineAssignmentDetailOut]:
+    routine = await db.get(PulseRoutine, a.routine_id)
+    if not routine or routine.company_id != cid:
+        return None
+    aid = str(a.id)
+    iq = await db.execute(
+        select(PulseRoutineItem)
+        .where(PulseRoutineItem.company_id == cid, PulseRoutineItem.routine_id == str(routine.id))
+        .order_by(PulseRoutineItem.position.asc(), PulseRoutineItem.created_at.asc())
+    )
+    items = iq.scalars().all()
+    band = await resolve_shift_band_for_shift_id(db, cid, str(a.shift_id)) if a.shift_id else None
+    items = filter_items_for_shift_band(items, band)
+    routine_out = RoutineDetailOut(
+        **RoutineOut.model_validate(routine).model_dump(),
+        items=[RoutineItemOut.model_validate(i) for i in items],
+    )
+    ias = (
+        await db.execute(
+            select(PulseRoutineItemAssignment).where(
+                PulseRoutineItemAssignment.company_id == cid,
+                PulseRoutineItemAssignment.routine_assignment_id == aid,
+            )
+        )
+    ).scalars().all()
+    extras = (
+        await db.execute(
+            select(PulseRoutineAssignmentExtra).where(
+                PulseRoutineAssignmentExtra.company_id == cid,
+                PulseRoutineAssignmentExtra.routine_assignment_id == aid,
+            )
+        )
+    ).scalars().all()
+    return RoutineAssignmentDetailOut(
+        id=aid,
+        company_id=str(a.company_id),
+        routine_id=str(a.routine_id),
+        shift_id=str(a.shift_id) if a.shift_id else None,
+        date=str(a.date) if a.date else None,
+        primary_user_id=str(a.primary_user_id),
+        assigned_by_user_id=str(a.assigned_by_user_id) if a.assigned_by_user_id else None,
+        created_at=a.created_at,
+        routine=routine_out,
+        item_assignments=[
+            {
+                "routine_item_id": str(x.routine_item_id) if x.routine_item_id else None,
+                "assigned_to_user_id": str(x.assigned_to_user_id),
+                "reason": x.reason,
+            }
+            for x in ias
+        ],
+        extras=[
+            {
+                "id": str(e.id),
+                "label": e.label,
+                "assigned_to_user_id": str(e.assigned_to_user_id) if e.assigned_to_user_id else None,
+                "completed": bool(e.completed),
+                "completed_by_user_id": str(e.completed_by_user_id) if e.completed_by_user_id else None,
+                "completed_at": e.completed_at,
+                "note": e.note,
+            }
+            for e in extras
+        ],
+    )
+
+
+@router.get("/assignments/day", response_model=list[RoutineAssignmentDetailOut])
+async def list_routine_assignments_for_day(
+    db: Db,
+    cid: CompanyId,
+    user: Annotated[User, Depends(require_tenant_user)],
+    date: str = Query(..., description="Calendar date (YYYY-MM-DD)"),
+) -> list[RoutineAssignmentDetailOut]:
+    """All routine assignments on a calendar day — for ops dashboard / supervisor handoff view."""
+    try:
+        assigned_date = date.fromisoformat(str(date).strip())
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date (expected YYYY-MM-DD)") from None
+
+    q = await db.execute(
+        select(PulseRoutineAssignment)
+        .where(
+            PulseRoutineAssignment.company_id == cid,
+            PulseRoutineAssignment.date == assigned_date,
+        )
+        .order_by(PulseRoutineAssignment.created_at.desc())
+        .limit(500)
+    )
+    rows = q.scalars().all()
+    out: list[RoutineAssignmentDetailOut] = []
+    for a in rows:
+        detail = await _routine_assignment_detail_out(db, cid, a)
+        if detail:
+            out.append(detail)
+    return out
+
+
 @router.get("/assignments/my", response_model=list[RoutineAssignmentDetailOut])
 async def list_my_routine_assignments(
     db: Db,
@@ -501,74 +602,11 @@ async def list_my_routine_assignments(
 
     out: list[RoutineAssignmentDetailOut] = []
     for a in candidates:
-        aid = str(a.id)
-        if aid not in involved_ids:
+        if str(a.id) not in involved_ids:
             continue
-        routine = await db.get(PulseRoutine, a.routine_id)
-        if not routine or routine.company_id != cid:
-            continue
-        iq = await db.execute(
-            select(PulseRoutineItem)
-            .where(PulseRoutineItem.company_id == cid, PulseRoutineItem.routine_id == str(routine.id))
-            .order_by(PulseRoutineItem.position.asc(), PulseRoutineItem.created_at.asc())
-        )
-        items = iq.scalars().all()
-        band = await resolve_shift_band_for_shift_id(db, cid, str(a.shift_id)) if a.shift_id else None
-        items = filter_items_for_shift_band(items, band)
-        routine_out = RoutineDetailOut(
-            **RoutineOut.model_validate(routine).model_dump(),
-            items=[RoutineItemOut.model_validate(i) for i in items],
-        )
-        ias = (
-            await db.execute(
-                select(PulseRoutineItemAssignment).where(
-                    PulseRoutineItemAssignment.company_id == cid,
-                    PulseRoutineItemAssignment.routine_assignment_id == aid,
-                )
-            )
-        ).scalars().all()
-        extras = (
-            await db.execute(
-                select(PulseRoutineAssignmentExtra).where(
-                    PulseRoutineAssignmentExtra.company_id == cid,
-                    PulseRoutineAssignmentExtra.routine_assignment_id == aid,
-                )
-            )
-        ).scalars().all()
-
-        out.append(
-            RoutineAssignmentDetailOut(
-                id=aid,
-                company_id=str(a.company_id),
-                routine_id=str(a.routine_id),
-                shift_id=str(a.shift_id) if a.shift_id else None,
-                date=str(a.date) if a.date else None,
-                primary_user_id=str(a.primary_user_id),
-                assigned_by_user_id=str(a.assigned_by_user_id) if a.assigned_by_user_id else None,
-                created_at=a.created_at,
-                routine=routine_out,
-                item_assignments=[
-                    {
-                        "routine_item_id": str(x.routine_item_id) if x.routine_item_id else None,
-                        "assigned_to_user_id": str(x.assigned_to_user_id),
-                        "reason": x.reason,
-                    }
-                    for x in ias
-                ],
-                extras=[
-                    {
-                        "id": str(e.id),
-                        "label": e.label,
-                        "assigned_to_user_id": str(e.assigned_to_user_id) if e.assigned_to_user_id else None,
-                        "completed": bool(e.completed),
-                        "completed_by_user_id": str(e.completed_by_user_id) if e.completed_by_user_id else None,
-                        "completed_at": e.completed_at,
-                        "note": e.note,
-                    }
-                    for e in extras
-                ],
-            )
-        )
+        detail = await _routine_assignment_detail_out(db, cid, a)
+        if detail:
+            out.append(detail)
     return out
 
 

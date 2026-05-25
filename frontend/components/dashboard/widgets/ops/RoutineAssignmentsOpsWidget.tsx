@@ -4,30 +4,54 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ClipboardList } from "lucide-react";
 
-import { isApiMode } from "@/lib/api";
+import { apiFetch, isApiMode } from "@/lib/api";
 import type { DashboardWidgetRenderContext } from "@/lib/dashboard/render-context";
 import { opsWidgetFillLayout } from "@/lib/dashboard/ops-widget-fill";
+import {
+  buildDayRoutineWorkerRows,
+  localCalendarDayBoundsMs,
+  type DayRoutineWorkerRow,
+} from "@/lib/dashboard/routine-assignments-day-board";
 import { routineAssignmentRowCap } from "@/lib/dashboard/widget-tier-disclosure";
 import { readSession } from "@/lib/pulse-session";
-import { listMyRoutineAssignments, listRoutines, type RoutineAssignmentDetail, type RoutineRow } from "@/lib/routinesService";
+import { mergedScheduleShiftsForCalendarDate, localScheduleDateKey } from "@/lib/schedule/dashboardScheduleDay";
+import {
+  OPERATIONAL_BADGE_REGISTRY,
+  operationalBadgeChipLabel,
+} from "@/lib/schedule/operational-scheduling-model";
+import { operationalBadgeClasses } from "@/lib/schedule/schedule-semantic-styles";
+import {
+  listRoutineAssignmentsForDate,
+  listRoutines,
+  type RoutineRow,
+} from "@/lib/routinesService";
+import {
+  pulseWorkersToSchedule,
+  type PulseShiftApi,
+  type PulseWorkerApi,
+  type PulseZoneApi,
+} from "@/lib/schedule/pulse-bridge";
+import { useScheduleStore } from "@/lib/schedule/schedule-store";
+import type { Shift, Worker } from "@/lib/schedule/types";
+import type { RoutineAssignmentDetail } from "@/lib/routinesService";
 import { cn } from "@/lib/cn";
 
-const DEMO_ASSIGNMENTS: { routineName: string; date: string }[] = [
-  { routineName: "Opening pool deck", date: "Today" },
-  { routineName: "Chemical room check", date: "Today" },
-  { routineName: "Closing checklist", date: "Tonight" },
+const DEMO_WORKFORCE_ROWS: DayRoutineWorkerRow[] = [
+  {
+    workerId: "demo-1",
+    workerName: "Alex Chen",
+    shiftWindow: "06:00–14:00",
+    routines: [{ assignmentId: "d1", name: "Arena A — Day" }],
+    badges: ["GROUNDS"],
+  },
+  {
+    workerId: "demo-2",
+    workerName: "Jordan Lee",
+    shiftWindow: "14:00–22:00",
+    routines: [{ assignmentId: "d2", name: "Arena B — Afternoon" }],
+    badges: ["EXTRA"],
+  },
 ];
-
-function formatAssignmentDate(d: string | null | undefined): string {
-  if (!d) return "—";
-  try {
-    const dt = new Date(`${d}T12:00:00`);
-    if (Number.isNaN(dt.getTime())) return d;
-    return dt.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-  } catch {
-    return d;
-  }
-}
 
 function spreadListClass(fillShell: boolean, count: number, tight?: boolean) {
   return cn(
@@ -43,9 +67,18 @@ function spreadListClass(fillShell: boolean, count: number, tight?: boolean) {
 type LoadState =
   | { kind: "loading" }
   | { kind: "demo" }
-  | { kind: "live"; assignments: RoutineAssignmentDetail[]; routines: RoutineRow[] };
+  | {
+      kind: "live";
+      dateStr: string;
+      dateLabel: string;
+      shifts: Shift[];
+      workers: Worker[];
+      assignments: RoutineAssignmentDetail[];
+      routines: RoutineRow[];
+    };
 
 export function useRoutineAssignmentsBoardState() {
+  const deploymentBadgeOverlays = useScheduleStore((s) => s.deploymentBadgeOverlays);
   const [state, setState] = useState<LoadState>({ kind: "loading" });
 
   useEffect(() => {
@@ -57,12 +90,54 @@ export function useRoutineAssignmentsBoardState() {
         if (!cancel) setState({ kind: "demo" });
         return;
       }
+
+      const now = Date.now();
+      const dateStr = localScheduleDateKey(now);
+      const dateLabel = new Date(now).toLocaleDateString(undefined, {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      });
+      const { dayStartMs, dayEndMsExclusive } = localCalendarDayBoundsMs(now);
+      const from = new Date(dayStartMs).toISOString();
+      const to = new Date(dayEndMsExclusive).toISOString();
+
       try {
-        const [assignments, routines] = await Promise.all([
-          listMyRoutineAssignments(),
+        const [assignments, routines, shiftList, pulseWorkers, pulseZones] = await Promise.all([
+          listRoutineAssignmentsForDate(dateStr),
           listRoutines().catch(() => [] as RoutineRow[]),
+          apiFetch<PulseShiftApi[]>(
+            `/api/v1/pulse/schedule/shifts?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+          ).catch((e) => {
+            const st = (e as { status?: number })?.status;
+            if (st === 403) return [] as PulseShiftApi[];
+            throw e;
+          }),
+          apiFetch<PulseWorkerApi[]>("/api/v1/pulse/workers").catch(() => [] as PulseWorkerApi[]),
+          apiFetch<PulseZoneApi[]>("/api/v1/pulse/schedule-facilities").catch(() => [] as PulseZoneApi[]),
         ]);
-        if (!cancel) setState({ kind: "live", assignments, routines });
+
+        const storeWorkers = useScheduleStore.getState().workers;
+        const workers =
+          storeWorkers.length > 0 ? storeWorkers : pulseWorkersToSchedule(pulseWorkers);
+        const shifts = mergedScheduleShiftsForCalendarDate({
+          dateStr,
+          pulseShifts: shiftList,
+          pulseWorkers,
+          pulseZones,
+        });
+
+        if (!cancel) {
+          setState({
+            kind: "live",
+            dateStr,
+            dateLabel,
+            shifts,
+            workers,
+            assignments,
+            routines,
+          });
+        }
       } catch {
         if (!cancel) setState({ kind: "demo" });
       }
@@ -73,7 +148,88 @@ export function useRoutineAssignmentsBoardState() {
     };
   }, []);
 
+  const workforce = useMemo(() => {
+    if (state.kind !== "live") return [] as DayRoutineWorkerRow[];
+    return buildDayRoutineWorkerRows({
+      dateStr: state.dateStr,
+      shifts: state.shifts,
+      workers: state.workers,
+      assignments: state.assignments,
+      deploymentBadgeOverlays,
+    });
+  }, [state, deploymentBadgeOverlays]);
+
+  if (state.kind === "live") {
+    return { kind: "live" as const, workforce, routines: state.routines, dateLabel: state.dateLabel };
+  }
   return state;
+}
+
+function WorkforceRoutineRow({
+  row,
+  compact,
+  fillShell,
+}: {
+  row: DayRoutineWorkerRow;
+  compact?: boolean;
+  fillShell?: boolean;
+}) {
+  return (
+    <li
+      className={cn(
+        "ops-dash-row flex flex-col gap-1 px-2",
+        fillShell ? "min-h-0 flex-1 justify-center py-2.5" : "py-1.5",
+      )}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <p
+          className={cn(
+            "min-w-0 truncate font-semibold text-[color-mix(in_srgb,var(--ds-text-primary)_92%,transparent)]",
+            fillShell ? "text-sm" : "text-xs",
+          )}
+        >
+          {row.workerName}
+        </p>
+        {row.shiftWindow ? (
+          <span className="shrink-0 text-[10px] font-bold tabular-nums text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]">
+            {row.shiftWindow}
+          </span>
+        ) : null}
+      </div>
+      {(row.badges.length > 0 || row.routines.length > 0) && (
+        <div className="flex flex-wrap items-center gap-1">
+          {row.badges.map((code) => {
+            const def = OPERATIONAL_BADGE_REGISTRY[code];
+            return (
+              <span
+                key={code}
+                className={cn(
+                  "rounded-md border px-1.5 py-0.5 text-[9px] font-bold uppercase",
+                  operationalBadgeClasses(def?.group ?? "special"),
+                )}
+                title={def?.detail}
+              >
+                {operationalBadgeChipLabel(code)}
+              </span>
+            );
+          })}
+          {row.routines.map((r) => (
+            <span
+              key={r.assignmentId}
+              className="rounded-md border border-violet-200/80 bg-violet-50/90 px-1.5 py-0.5 text-[10px] font-medium text-violet-900 dark:border-violet-500/30 dark:bg-violet-950/60 dark:text-violet-100"
+            >
+              {r.name}
+            </span>
+          ))}
+        </div>
+      )}
+      {row.badges.length === 0 && row.routines.length === 0 ? (
+        <p className="text-[10px] text-[color-mix(in_srgb,var(--ds-text-primary)_50%,transparent)]">
+          On shift — no routines or badges yet
+        </p>
+      ) : null}
+    </li>
+  );
 }
 
 function RoutineAssignmentsInner({
@@ -110,8 +266,7 @@ function RoutineAssignmentsInner({
           </p>
         );
       }
-      const aCap = maxAssignments ?? (compact ? 2 : 4);
-      const demoRows = DEMO_ASSIGNMENTS.slice(0, aCap);
+      const rows = DEMO_WORKFORCE_ROWS.slice(0, maxAssignments ?? (compact ? 2 : 4));
       return (
         <div className={cn(fillShell && "flex min-h-0 flex-1 flex-col")}>
           <p
@@ -120,22 +275,11 @@ function RoutineAssignmentsInner({
               fillShell ? "shrink-0" : "",
             )}
           >
-            Demo assignments — sign in with a live tenant to load real routine handoffs.
+            Demo workforce handoffs — sign in to sync with the schedule board.
           </p>
-          <ul className={spreadListClass(fillShell, demoRows.length)}>
-            {demoRows.map((row) => (
-              <li
-                key={row.routineName}
-                className={cn(
-                  "flex items-center justify-between gap-2 rounded-lg bg-[color-mix(in_srgb,var(--ds-text-primary)_5%,transparent)] px-2 font-medium text-[color-mix(in_srgb,var(--ds-text-primary)_88%,transparent)]",
-                  fillShell ? "min-h-0 flex-1 py-2.5 text-sm" : "py-1.5 text-xs",
-                )}
-              >
-                <span className="min-w-0 truncate">{row.routineName}</span>
-                <span className="shrink-0 text-[11px] font-bold text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]">
-                  {row.date}
-                </span>
-              </li>
+          <ul className={spreadListClass(fillShell, rows.length)}>
+            {rows.map((row) => (
+              <WorkforceRoutineRow key={row.workerId} row={row} compact={compact} fillShell={fillShell} />
             ))}
           </ul>
         </div>
@@ -146,10 +290,10 @@ function RoutineAssignmentsInner({
       return null;
     }
 
-    const aLimit = maxAssignments ?? (compact ? 3 : 6);
     const rLimit = maxRoutines ?? (compact ? 3 : 5);
-    const assignments = state.assignments.slice(0, aLimit);
     const routines = state.routines.slice(0, rLimit);
+    const wLimit = maxAssignments ?? (compact ? 3 : 6);
+    const workforce = state.workforce.slice(0, wLimit);
 
     return (
       <div
@@ -161,43 +305,25 @@ function RoutineAssignmentsInner({
         {showAssignments ? (
           <div
             className={cn(
-              fillShell && assignments.length > 0 && "flex min-h-0 min-w-0 flex-1 flex-col",
+              fillShell && workforce.length > 0 && "flex min-h-0 min-w-0 flex-1 flex-col",
             )}
           >
             <p className="shrink-0 text-[10px] font-bold uppercase tracking-[0.1em] text-[color-mix(in_srgb,var(--ds-text-primary)_48%,transparent)]">
-              Your assignments
+              Today&apos;s workforce · {state.dateLabel}
             </p>
-            {assignments.length === 0 ? (
+            {workforce.length === 0 ? (
               <p className={cn("mt-1.5 text-xs", mutedText, !showLibrary && fillCenter)}>
-                Nothing delegated to you right now. Supervisors can assign routines from the schedule.
+                No one scheduled today, or assign routines from Schedule → Daily assignments.
               </p>
             ) : (
-              <ul className={spreadListClass(fillShell, assignments.length)}>
-                {assignments.map((a) => (
-                  <li
-                    key={a.id}
-                    className={cn(
-                      "ops-dash-row flex items-start justify-between gap-2 px-2",
-                      fillShell ? "min-h-0 flex-1 py-2.5" : "py-1.5",
-                    )}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p
-                        className={cn(
-                          "truncate font-semibold text-[color-mix(in_srgb,var(--ds-text-primary)_92%,transparent)]",
-                          fillShell ? "text-sm" : "text-xs",
-                        )}
-                      >
-                        {a.routine.name}
-                      </p>
-                      <p className="mt-0.5 text-[11px] text-[color-mix(in_srgb,var(--ds-text-primary)_55%,transparent)]">
-                        {a.item_assignments.length} item{a.item_assignments.length === 1 ? "" : "s"} linked
-                      </p>
-                    </div>
-                    <span className="shrink-0 text-[11px] font-bold tabular-nums text-[color-mix(in_srgb,var(--ds-text-primary)_58%,transparent)]">
-                      {formatAssignmentDate(a.date)}
-                    </span>
-                  </li>
+              <ul className={spreadListClass(fillShell, workforce.length)}>
+                {workforce.map((row) => (
+                  <WorkforceRoutineRow
+                    key={row.workerId}
+                    row={row}
+                    compact={compact}
+                    fillShell={fillShell}
+                  />
                 ))}
               </ul>
             )}
@@ -295,6 +421,7 @@ export function RoutineAssignmentsPeekSlice({
       maxAssignments={compact ? 2 : dense ? 5 : 6}
       maxRoutines={maxRoutines}
       variant={variant}
+      showFooterLinks
     />
   );
 }
