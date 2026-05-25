@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { Search, Upload } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { useWorkforceQualifications } from "@/components/standards/workforce-training/useWorkforceQualifications";
+import { useWorkforceQualifications } from "@/components/standards/workforce-training/WorkforceQualificationsContext";
 import { QualificationStatusChip } from "@/components/standards/workforce-training/QualificationStatusChip";
 import { WorkerTrainingMatrixPanel } from "@/components/training/WorkerTrainingMatrixPanel";
 import { dsInputClass, dsLabelClass } from "@/components/ui/ds-form-classes";

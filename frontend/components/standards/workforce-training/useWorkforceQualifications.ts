@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isApiMode } from "@/lib/api";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
-import { readSession } from "@/lib/pulse-session";
+import { useSessionCompanyId } from "@/hooks/useSessionCompanyId";
 import { fetchWorkerDetail, fetchWorkerList, type WorkerDetail } from "@/lib/workersService";
 import {
   employeeCertificationsFromWorkerDetails,
@@ -21,8 +21,49 @@ import {
   type CanonicalCertificationDef,
 } from "@/lib/standards/certification-registry";
 
-export function useWorkforceQualifications() {
-  const session = readSession();
+const WORKER_DETAIL_CAP = 120;
+const WORKER_DETAIL_CONCURRENCY = 6;
+const DEBUG =
+  typeof process !== "undefined" && process.env.NEXT_PUBLIC_DEBUG_WORKFORCE_FETCH === "1";
+
+async function mapWithConcurrency<T, R>(
+  items: readonly T[],
+  limit: number,
+  fn: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  if (items.length === 0) return [];
+  const out: R[] = new Array(items.length);
+  let next = 0;
+  const run = async () => {
+    while (next < items.length) {
+      const i = next++;
+      out[i] = await fn(items[i]!, i);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, run));
+  return out;
+}
+
+export type WorkforceQualificationsState = {
+  api: boolean;
+  registry: CanonicalCertificationDef[];
+  rows: EmployeeCertificationRecord[];
+  workers: WorkerDetail[];
+  loading: boolean;
+  err: string | null;
+  reload: () => Promise<void>;
+  updateRegistry: (next: CanonicalCertificationDef[]) => void;
+  expiring: EmployeeCertificationRecord[];
+  expired: EmployeeCertificationRecord[];
+  missingProof: EmployeeCertificationRecord[];
+  pendingVerification: EmployeeCertificationRecord[];
+  byWorker: ReturnType<typeof groupCertificationsByWorker>;
+  coverage: ReturnType<typeof registryCoverageStats>;
+  compliancePct: number;
+};
+
+export function useWorkforceQualificationsState(): WorkforceQualificationsState {
+  const companyId = useSessionCompanyId();
   const api = isApiMode();
   const [registry, setRegistry] = useState<CanonicalCertificationDef[]>(() => readCompanyCertificationRegistry());
   const [rows, setRows] = useState<EmployeeCertificationRecord[]>([]);
@@ -30,33 +71,57 @@ export function useWorkforceQualifications() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  const loadGenRef = useRef(0);
+  const lastLoadAtRef = useRef(0);
+
   const load = useCallback(async () => {
+    const gen = ++loadGenRef.current;
     const reg = readCompanyCertificationRegistry();
     setRegistry(reg);
+
     if (!api) {
       setRows([]);
       setWorkers([]);
+      setLoading(false);
+      setErr(null);
       return;
     }
+
+    const now = Date.now();
+    if (DEBUG && now - lastLoadAtRef.current < 500) {
+      console.warn("[workforce-qualifications] load() called again within 500ms — check effect deps");
+    }
+    lastLoadAtRef.current = now;
+    if (DEBUG) console.debug("[workforce-qualifications] load start", { companyId, gen });
+
     setLoading(true);
     setErr(null);
     try {
-      const list = await fetchWorkerList(session?.company_id ?? null, { include_inactive: false });
-      const active = (list.items ?? []).filter((w) => w.is_active);
-      const details = await Promise.all(
-        active.slice(0, 120).map((w) => fetchWorkerDetail(session?.company_id ?? null, w.id)),
+      const list = await fetchWorkerList(companyId, { include_inactive: false });
+      if (gen !== loadGenRef.current) return;
+
+      const active = (list.items ?? []).filter((w) => w.is_active).slice(0, WORKER_DETAIL_CAP);
+      const details = await mapWithConcurrency(active, WORKER_DETAIL_CONCURRENCY, (w) =>
+        fetchWorkerDetail(companyId, w.id),
       );
+      if (gen !== loadGenRef.current) return;
+
       setWorkers(details);
       setRows(employeeCertificationsFromWorkerDetails(details, reg));
+      if (DEBUG) console.debug("[workforce-qualifications] load done", { workers: details.length, gen });
     } catch (e) {
+      if (gen !== loadGenRef.current) return;
       setErr(parseClientApiError(e).message);
     } finally {
-      setLoading(false);
+      if (gen === loadGenRef.current) setLoading(false);
     }
-  }, [api, session]);
+  }, [api, companyId]);
 
   useEffect(() => {
     void load();
+    return () => {
+      loadGenRef.current += 1;
+    };
   }, [load]);
 
   const expiring = useMemo(() => expiringCertifications(rows, 60), [rows]);

@@ -1,5 +1,6 @@
 /** Client for `/api/workers` — roster, HR detail, summaries, settings. */
 import { apiFetch } from "@/lib/api";
+import { dedupeInflightRequest } from "@/lib/api-request-dedupe";
 
 export type WorkerRow = {
   id: string;
@@ -214,7 +215,9 @@ export async function fetchWorkerList(
   if (params?.q?.trim()) sp.set("q", params.q.trim());
   if (params?.include_inactive === false) sp.set("include_inactive", "false");
   const q = sp.toString();
-  return apiFetch<{ items: WorkerRow[] }>(`/api/workers${q ? `?${q}` : ""}`);
+  const path = `/api/workers${q ? `?${q}` : ""}`;
+  const dedupeKey = `workers:list:${path}`;
+  return dedupeInflightRequest(dedupeKey, () => apiFetch<{ items: WorkerRow[] }>(path));
 }
 
 export async function fetchWorkerDetail(companyId: string | null, id: string): Promise<WorkerDetail> {

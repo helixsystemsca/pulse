@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Award, ChevronRight, Settings2 } from "lucide-react";
 import { readSession } from "@/lib/pulse-session";
 import { canManageCertificationRegistry } from "@/lib/standards/workforce-training-access";
-import { useWorkforceQualifications } from "@/components/standards/workforce-training/useWorkforceQualifications";
+import { useWorkforceQualifications } from "@/components/standards/workforce-training/WorkforceQualificationsContext";
 import { QualificationStatusChip } from "@/components/standards/workforce-training/QualificationStatusChip";
 import { dsInputClass, dsLabelClass } from "@/components/ui/ds-form-classes";
 import { Button } from "@/components/ui/Button";

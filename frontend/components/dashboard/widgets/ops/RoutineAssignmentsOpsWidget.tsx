@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ClipboardList } from "lucide-react";
 
 import { apiFetch, isApiMode } from "@/lib/api";
+import { parseClientApiError } from "@/lib/parse-client-api-error";
 import type { DashboardWidgetRenderContext } from "@/lib/dashboard/render-context";
 import { opsWidgetFillLayout } from "@/lib/dashboard/ops-widget-fill";
 import {
@@ -14,7 +15,8 @@ import {
 } from "@/lib/dashboard/routine-assignments-day-board";
 import { routineAssignmentRowCap } from "@/lib/dashboard/widget-tier-disclosure";
 import { readSession } from "@/lib/pulse-session";
-import { mergedScheduleShiftsForCalendarDate, localScheduleDateKey } from "@/lib/schedule/dashboardScheduleDay";
+import { mergedScheduleShiftsForCalendarDate } from "@/lib/schedule/dashboardScheduleDay";
+import { routineAssignmentsDisplayDate } from "@/lib/schedule/routine-assignments-sync";
 import {
   OPERATIONAL_BADGE_REGISTRY,
   operationalBadgeChipLabel,
@@ -75,6 +77,7 @@ type LoadState =
       workers: Worker[];
       assignments: RoutineAssignmentDetail[];
       routines: RoutineRow[];
+      loadErr: string | null;
     };
 
 export function useRoutineAssignmentsBoardState() {
@@ -92,19 +95,27 @@ export function useRoutineAssignmentsBoardState() {
       }
 
       const now = Date.now();
-      const dateStr = localScheduleDateKey(now);
-      const dateLabel = new Date(now).toLocaleDateString(undefined, {
+      const dateStr = routineAssignmentsDisplayDate(now);
+      const dateLabel = new Date(`${dateStr}T12:00:00`).toLocaleDateString(undefined, {
         weekday: "short",
         month: "short",
         day: "numeric",
       });
-      const { dayStartMs, dayEndMsExclusive } = localCalendarDayBoundsMs(now);
+      const { dayStartMs, dayEndMsExclusive } = localCalendarDayBoundsMs(
+        new Date(`${dateStr}T12:00:00`).getTime(),
+      );
       const from = new Date(dayStartMs).toISOString();
       const to = new Date(dayEndMsExclusive).toISOString();
 
+      let loadErr: string | null = null;
       try {
         const [assignments, routines, shiftList, pulseWorkers, pulseZones] = await Promise.all([
-          listRoutineAssignmentsForDate(dateStr),
+          listRoutineAssignmentsForDate(dateStr).catch((e) => {
+            const { message, status } = parseClientApiError(e);
+            if (status === 404) return [] as RoutineAssignmentDetail[];
+            loadErr = message || "Could not load routine assignments for this day.";
+            return [] as RoutineAssignmentDetail[];
+          }),
           listRoutines().catch(() => [] as RoutineRow[]),
           apiFetch<PulseShiftApi[]>(
             `/api/v1/pulse/schedule/shifts?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
@@ -136,10 +147,22 @@ export function useRoutineAssignmentsBoardState() {
             workers,
             assignments,
             routines,
+            loadErr,
           });
         }
-      } catch {
-        if (!cancel) setState({ kind: "demo" });
+      } catch (e) {
+        if (cancel) return;
+        const { message } = parseClientApiError(e);
+        setState({
+          kind: "live",
+          dateStr,
+          dateLabel,
+          shifts: [],
+          workers: [],
+          assignments: [],
+          routines: [],
+          loadErr: message || "Could not load routine assignments.",
+        });
       }
     };
     void run();
@@ -160,7 +183,13 @@ export function useRoutineAssignmentsBoardState() {
   }, [state, deploymentBadgeOverlays]);
 
   if (state.kind === "live") {
-    return { kind: "live" as const, workforce, routines: state.routines, dateLabel: state.dateLabel };
+    return {
+      kind: "live" as const,
+      workforce,
+      routines: state.routines,
+      dateLabel: state.dateLabel,
+      loadErr: state.loadErr,
+    };
   }
   return state;
 }
@@ -309,11 +338,14 @@ function RoutineAssignmentsInner({
             )}
           >
             <p className="shrink-0 text-[10px] font-bold uppercase tracking-[0.1em] text-[color-mix(in_srgb,var(--ds-text-primary)_48%,transparent)]">
-              Today&apos;s workforce · {state.dateLabel}
+              Workforce · {state.dateLabel}
             </p>
+            {state.loadErr ? (
+              <p className="mt-1 text-[11px] font-medium text-amber-700 dark:text-amber-300">{state.loadErr}</p>
+            ) : null}
             {workforce.length === 0 ? (
               <p className={cn("mt-1.5 text-xs", mutedText, !showLibrary && fillCenter)}>
-                No one scheduled today, or assign routines from Schedule → Daily assignments.
+                No scheduled workers or routine assignments for this day. Assign on Schedule → Daily assignments.
               </p>
             ) : (
               <ul className={spreadListClass(fillShell, workforce.length)}>

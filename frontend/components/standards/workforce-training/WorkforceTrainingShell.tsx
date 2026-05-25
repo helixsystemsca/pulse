@@ -9,7 +9,8 @@ import {
   LayoutDashboard,
   Users,
 } from "lucide-react";
-import { readSession } from "@/lib/pulse-session";
+import { usePulseAuth } from "@/hooks/usePulseAuth";
+import { WorkforceQualificationsProvider } from "@/components/standards/workforce-training/WorkforceQualificationsContext";
 import { trainingTeamMatrixAccess } from "@/lib/pulse-roles";
 import { cn } from "@/lib/cn";
 import {
@@ -34,7 +35,7 @@ const TABS: { id: WorkforceTrainingSection; label: string; icon: typeof LayoutDa
 ];
 
 export function WorkforceTrainingShell({ section }: { section: string }) {
-  const session = readSession();
+  const { session } = usePulseAuth();
   const leadership = trainingTeamMatrixAccess(session);
   const activeSection: WorkforceTrainingSection = isWorkforceTrainingSection(section)
     ? section
@@ -63,6 +64,7 @@ export function WorkforceTrainingShell({ section }: { section: string }) {
   const fallback = firstAllowedWorkforceTrainingSection(session);
 
   return (
+    <WorkforceQualificationsProvider>
     <div className="space-y-6">
       <header className="space-y-1">
         <h2 className="text-lg font-bold tracking-tight text-ds-foreground">Workforce qualifications</h2>
@@ -119,5 +121,6 @@ export function WorkforceTrainingShell({ section }: { section: string }) {
         </Link>
       ) : null}
     </div>
+    </WorkforceQualificationsProvider>
   );
 }

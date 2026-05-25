@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { isApiMode } from "@/lib/api";
 import { flushSync } from "react-dom";
 import { ChevronLeft, ChevronRight, ClipboardList, Loader2 } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -39,10 +40,15 @@ import type { Shift, ShiftTypeConfig, Worker, Zone } from "@/lib/schedule/types"
 import {
   createRoutineAssignment,
   getRoutine,
+  listRoutineAssignmentsForDate,
   listRoutines,
   type RoutineDetail,
   type RoutineRow,
 } from "@/lib/routinesService";
+import {
+  mapRoutineAssignmentsToRows,
+  writeRoutineAssignmentsFocusDate,
+} from "@/lib/schedule/routine-assignments-sync";
 import {
   fetchTrainingMatrix,
   mapApiAssignments,
@@ -88,6 +94,13 @@ function shiftTypeLabel(shiftTypes: ShiftTypeConfig[], key: string): string {
 }
 
 const SHIFT_BANDS: RoutineShiftBand[] = ["day", "afternoon", "night"];
+
+/** `dragLeave` on `<tr>` fires when moving between cells — only clear hover when pointer leaves the row. */
+function isDragLeavingElement(e: React.DragEvent<HTMLElement>): boolean {
+  const related = e.relatedTarget as Node | null;
+  if (!related) return true;
+  return !e.currentTarget.contains(related);
+}
 
 function routineChipClass(band: RoutineShiftBand | null): string {
   if (band === "night") {
@@ -151,6 +164,10 @@ export function ScheduleRoutinesBoard({
 
   const workerById = useMemo(() => new Map(workers.map((w) => [w.id, w])), [workers]);
 
+  useEffect(() => {
+    writeRoutineAssignmentsFocusDate(focusDate);
+  }, [focusDate]);
+
   const scheduledRows = useMemo((): ScheduledRow[] => {
     const dayShifts = shifts
       .filter(
@@ -169,6 +186,45 @@ export function ScheduleRoutinesBoard({
       return { rowKey: `${worker.id}:${shift.id}`, worker, shift };
     });
   }, [shifts, focusDate, workerById]);
+
+  const scheduledRowsKey = useMemo(
+    () => scheduledRows.map((r) => r.rowKey).join("|"),
+    [scheduledRows],
+  );
+
+  const assignmentsHydratedRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    assignmentsHydratedRef.current = null;
+  }, [focusDate]);
+
+  useEffect(() => {
+    if (!isApiMode() || !assignmentsEnabled || scheduledRows.length === 0) return;
+    const hydrateKey = `${focusDate}:${scheduledRowsKey}`;
+    if (assignmentsHydratedRef.current === hydrateKey) return;
+
+    let cancel = false;
+    void (async () => {
+      try {
+        const list = await listRoutineAssignmentsForDate(focusDate);
+        if (cancel) return;
+        setAssignedByRow(mapRoutineAssignmentsToRows(list, scheduledRows));
+        assignmentsHydratedRef.current = hydrateKey;
+      } catch (err) {
+        if (cancel) return;
+        const { message, status } = parseClientApiError(err);
+        if (status === 404) {
+          setAssignedByRow({});
+          assignmentsHydratedRef.current = hydrateKey;
+          return;
+        }
+        setLoadErr((message || "Could not load saved routine assignments.") + " Assignments still save when you drop routines.");
+      }
+    })();
+    return () => {
+      cancel = true;
+    };
+  }, [focusDate, scheduledRowsKey, assignmentsEnabled]);
 
   const routineGroups = useMemo(
     () => groupArenaRoutines(routines ?? []),
@@ -351,6 +407,8 @@ export function ScheduleRoutinesBoard({
           },
         ],
       }));
+      writeRoutineAssignmentsFocusDate(focusDate);
+      assignmentsHydratedRef.current = `${focusDate}:${scheduledRowsKey}`;
       setToast(`Assigned “${display}” to ${row.worker.name}.`);
     } catch (err) {
       const { message, status, requestUrl } = parseClientApiError(err);
@@ -438,9 +496,9 @@ export function ScheduleRoutinesBoard({
         onDragStart={(e) => void onRoutineDragStart(e, r)}
         onDragEnd={onRoutineDragEnd}
         className={cn(
-          "rounded-lg border px-2 py-2 text-left text-xs font-semibold transition-colors hover:opacity-90",
+          "rounded-lg border px-2 py-2 text-left text-xs font-semibold transition-opacity hover:opacity-90",
           routineChipClass(band),
-          draggingRoutineId === r.id && "ring-2 ring-[var(--ds-accent)]",
+          draggingRoutineId === r.id && "opacity-45",
         )}
         title={r.name}
       >
@@ -528,23 +586,25 @@ export function ScheduleRoutinesBoard({
             <ChevronRight className="h-4 w-4" />
           </button>
         </div>
-        {draggingRoutineId ? (
-          <p className="text-xs text-ds-muted">
-            Dragging{" "}
-            <span className="font-semibold text-ds-foreground">
-              {routines?.find((r) => r.id === draggingRoutineId)?.name ?? "routine"}
-            </span>
-            — rows highlight{" "}
-            <span className="text-[var(--ds-success)]">green</span> when eligible and{" "}
-            <span className="text-[var(--ds-danger)]">red</span> when not.
-          </p>
-        ) : draggingBadge ? (
-          <p className="text-xs text-ds-muted">
-            Dragging <span className="font-semibold text-ds-foreground">{draggingBadge}</span> badge onto a worker row.
-          </p>
-        ) : (
-          <p className="text-xs text-ds-muted">Drag routines or badges onto worker rows.</p>
-        )}
+        <p className="min-h-[2.5rem] text-xs leading-snug text-ds-muted">
+          {draggingRoutineId ? (
+            <>
+              Dragging{" "}
+              <span className="font-semibold text-ds-foreground">
+                {routines?.find((r) => r.id === draggingRoutineId)?.name ?? "routine"}
+              </span>
+              — rows highlight <span className="text-[var(--ds-success)]">green</span> when eligible and{" "}
+              <span className="text-[var(--ds-danger)]">red</span> when not.
+            </>
+          ) : draggingBadge ? (
+            <>
+              Dragging <span className="font-semibold text-ds-foreground">{draggingBadge}</span> badge onto any part of a
+              worker row.
+            </>
+          ) : (
+            <>Drag routines or badges onto any part of a worker row.</>
+          )}
+        </p>
       </div>
 
       {loadErr ? (
@@ -587,7 +647,7 @@ export function ScheduleRoutinesBoard({
                   className={cn(
                     "rounded-md border px-2.5 py-1.5 text-xs font-bold uppercase tracking-wide",
                     operationalBadgeClasses(def.group),
-                    draggingBadge === def.code && "ring-2 ring-[var(--ds-accent)]",
+                    draggingBadge === def.code && "opacity-45",
                   )}
                 >
                   {operationalBadgeChipLabel(def.code)}
@@ -644,7 +704,13 @@ export function ScheduleRoutinesBoard({
         </aside>
 
         <div className="min-w-0 overflow-x-auto rounded-xl border border-pulseShell-border/90 bg-pulseShell-surface/95 shadow-sm dark:border-slate-700/80 dark:bg-slate-950/80">
-          <table className="w-full min-w-[520px] border-collapse text-sm">
+          <table className="w-full min-w-[520px] table-fixed border-collapse text-sm">
+            <colgroup>
+              <col className="w-[26%]" />
+              <col className="w-[28%]" />
+              <col className="w-[16%]" />
+              <col className="w-[30%]" />
+            </colgroup>
             <thead>
               <tr className="border-b border-ds-border text-left text-[10px] font-bold uppercase tracking-wider text-ds-muted">
                 <th className="px-3 py-2">Worker</th>
@@ -667,7 +733,45 @@ export function ScheduleRoutinesBoard({
                   const assigned = assignedByRow[row.rowKey] ?? [];
                   const opBadges = rowOperationalBadges(row);
                   const isSaving = savingRowKey === row.rowKey;
-                  const dropActive = draggingRoutineId || draggingBadge;
+                  const dropActive = Boolean(draggingRoutineId || draggingBadge);
+                  const showEmptyPlaceholder = assigned.length === 0 && opBadges.length === 0 && !isSaving;
+                  const rowDropHighlight =
+                    hoverRowKey === row.rowKey && dropActive && (draggingBadge || ev?.eligible);
+
+                  const acceptRowDrag = (e: React.DragEvent) => {
+                    const routineOk = routineDropZoneAccepts(e, draggingRoutineId);
+                    const badgeOk = routineBadgeDropZoneAccepts(e, draggingBadge);
+                    return routineOk || badgeOk;
+                  };
+
+                  const onRowDragOver = (e: React.DragEvent) => {
+                    if (!acceptRowDrag(e)) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (draggingBadge) e.dataTransfer.dropEffect = "copy";
+                    else e.dataTransfer.dropEffect = ev?.eligible ? "copy" : "none";
+                    setHoverRowKey(row.rowKey);
+                  };
+
+                  const onRowDragEnter = (e: React.DragEvent) => {
+                    if (!acceptRowDrag(e)) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setHoverRowKey(row.rowKey);
+                  };
+
+                  const onRowDragLeave = (e: React.DragEvent) => {
+                    if (!isDragLeavingElement(e)) return;
+                    if (hoverRowKey === row.rowKey) setHoverRowKey(null);
+                  };
+
+                  const onRowDrop = (e: React.DragEvent) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleRowDrop(e, row);
+                  };
+
+                  const rowCellClass = "px-3 py-2.5 align-middle";
 
                   return (
                     <tr
@@ -675,53 +779,64 @@ export function ScheduleRoutinesBoard({
                       className={cn(
                         "relative border-b border-ds-border/80 transition-colors",
                         highlight && workerHighlightOverlayClass(highlight),
-                        hoverRowKey === row.rowKey &&
-                          (draggingBadge || ev?.eligible) &&
-                          "ring-1 ring-inset ring-[var(--ds-accent)]/30",
+                        rowDropHighlight && "ring-1 ring-inset ring-[var(--ds-accent)]/30",
                       )}
-                      onDragOver={(e) => {
-                        const routineOk = routineDropZoneAccepts(e, draggingRoutineId);
-                        const badgeOk = routineBadgeDropZoneAccepts(e, draggingBadge);
-                        if (!routineOk && !badgeOk) return;
-                        e.preventDefault();
-                        if (draggingBadge) e.dataTransfer.dropEffect = "copy";
-                        else e.dataTransfer.dropEffect = ev?.eligible ? "copy" : "none";
-                        setHoverRowKey(row.rowKey);
-                      }}
-                      onDragLeave={() => {
-                        if (hoverRowKey === row.rowKey) setHoverRowKey(null);
-                      }}
-                      onDrop={(e) => handleRowDrop(e, row)}
+                      onDragEnter={onRowDragEnter}
+                      onDragOver={onRowDragOver}
+                      onDragLeave={onRowDragLeave}
+                      onDrop={onRowDrop}
                     >
-                      <td className="px-3 py-2.5 font-medium text-ds-foreground">{row.worker.name}</td>
-                      <td className="px-3 py-2.5 text-ds-foreground">
+                      <td
+                        className={cn(rowCellClass, "font-medium text-ds-foreground")}
+                        onDragEnter={onRowDragEnter}
+                        onDragOver={onRowDragOver}
+                        onDrop={onRowDrop}
+                      >
+                        {row.worker.name}
+                      </td>
+                      <td
+                        className={cn(rowCellClass, "text-ds-foreground")}
+                        onDragEnter={onRowDragEnter}
+                        onDragOver={onRowDragOver}
+                        onDrop={onRowDrop}
+                      >
                         {shiftTypeLabel(shiftTypes, row.shift.shiftType)} · {row.shift.startTime}–{row.shift.endTime}
                       </td>
-                      <td className="px-3 py-2.5 text-ds-muted">{zoneLabel(row.shift.zoneId)}</td>
-                      <td className="px-3 py-2.5">
-                        <div className="flex min-h-[2rem] flex-wrap items-center gap-1">
-                          {isSaving ? (
-                            <Loader2 className="h-4 w-4 animate-spin text-ds-muted" aria-hidden />
-                          ) : null}
-                          {opBadges.map((code) => {
-                            const def = OPERATIONAL_BADGE_REGISTRY[code];
-                            return (
-                              <span
-                                key={code}
-                                className={cn(
-                                  "rounded-md border px-2 py-0.5 text-[10px] font-bold uppercase",
-                                  operationalBadgeClasses(def?.group ?? "special"),
-                                )}
-                                title={def?.detail}
-                              >
-                                {operationalBadgeChipLabel(code)}
-                              </span>
-                            );
-                          })}
-                          {assigned.length === 0 && opBadges.length === 0 && !isSaving && !dropActive ? (
-                            <span className="text-xs text-ds-muted">Drop routine or badge here</span>
-                          ) : assigned.length > 0 ? (
-                            assigned
+                      <td
+                        className={cn(rowCellClass, "text-ds-muted")}
+                        onDragEnter={onRowDragEnter}
+                        onDragOver={onRowDragOver}
+                        onDrop={onRowDrop}
+                      >
+                        {zoneLabel(row.shift.zoneId)}
+                      </td>
+                      <td
+                        className={rowCellClass}
+                        onDragEnter={onRowDragEnter}
+                        onDragOver={onRowDragOver}
+                        onDrop={onRowDrop}
+                      >
+                        <div className="flex min-h-[2.75rem] flex-col justify-center gap-0.5">
+                          <div className="flex min-h-[2rem] flex-wrap items-center gap-1">
+                            {isSaving ? (
+                              <Loader2 className="h-4 w-4 animate-spin text-ds-muted" aria-hidden />
+                            ) : null}
+                            {opBadges.map((code) => {
+                              const def = OPERATIONAL_BADGE_REGISTRY[code];
+                              return (
+                                <span
+                                  key={code}
+                                  className={cn(
+                                    "rounded-md border px-2 py-0.5 text-[10px] font-bold uppercase",
+                                    operationalBadgeClasses(def?.group ?? "special"),
+                                  )}
+                                  title={def?.detail}
+                                >
+                                  {operationalBadgeChipLabel(code)}
+                                </span>
+                              );
+                            })}
+                            {assigned
                               .filter((a) => a.kind !== "grounds")
                               .map((a) => (
                                 <span
@@ -737,15 +852,35 @@ export function ScheduleRoutinesBoard({
                                   {a.routineName}
                                   {a.extraNote ? ` — ${a.extraNote}` : ""}
                                 </span>
-                              ))
-                          ) : null}
-                        </div>
-                        {draggingRoutineId && ev?.tooltip ? (
-                          <p className="mt-1 text-[10px] text-ds-muted" title={ev.tooltip}>
-                            {ev.tone === "good" ? "Eligible" : ev.tone === "warning" ? "Caution" : "Not eligible"} —{" "}
-                            {ev.tooltip}
+                              ))}
+                            {showEmptyPlaceholder ? (
+                              <span
+                                className={cn(
+                                  "text-xs text-ds-muted",
+                                  dropActive && "invisible",
+                                )}
+                                aria-hidden={dropActive}
+                              >
+                                Drop routine or badge here
+                              </span>
+                            ) : null}
+                          </div>
+                          <p
+                            className="min-h-[1.125rem] text-[10px] leading-tight text-ds-muted"
+                            title={draggingRoutineId && ev?.tooltip ? ev.tooltip : undefined}
+                          >
+                            {draggingRoutineId && ev?.tooltip ? (
+                              <>
+                                {ev.tone === "good" ? "Eligible" : ev.tone === "warning" ? "Caution" : "Not eligible"} —{" "}
+                                {ev.tooltip}
+                              </>
+                            ) : (
+                              <span className="invisible select-none" aria-hidden>
+                                —
+                              </span>
+                            )}
                           </p>
-                        ) : null}
+                        </div>
                       </td>
                     </tr>
                   );

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { AlertTriangle, BookOpen, CheckCircle2, Clock, FileWarning, ShieldCheck, Users } from "lucide-react";
-import { useWorkforceQualifications } from "@/components/standards/workforce-training/useWorkforceQualifications";
+import { useWorkforceQualifications } from "@/components/standards/workforce-training/WorkforceQualificationsContext";
 import { QualificationStatusChip } from "@/components/standards/workforce-training/QualificationStatusChip";
 
 function KpiCard({

@@ -119,7 +119,8 @@ export function WelcomeLoaderModal({
 }: WelcomeLoaderModalProps) {
   const [hydrated, setHydrated] = useState(false);
   const [skipEntirely, setSkipEntirely] = useState(false);
-  const [open, setOpen] = useState(true);
+  /** Stay closed until we know welcome was already shown this session (avoids flash on /overview remount). */
+  const [open, setOpen] = useState(false);
   const [phase, setPhase] = useState<WelcomePhase>("loading");
   /** 0–100: wave bar reveals left-to-right while preparing; completes when data is ready. */
   const [loadProgress, setLoadProgress] = useState(0);
@@ -136,9 +137,11 @@ export function WelcomeLoaderModal({
       if (sessionStorage.getItem(storageKey) === "true") {
         setSkipEntirely(true);
         setOpen(false);
+      } else {
+        setOpen(true);
       }
     } catch {
-      /* private mode or storage blocked — still show welcome once */
+      setOpen(true);
     }
   }, [storageKey]);
 

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { useWorkforceQualifications } from "@/components/standards/workforce-training/useWorkforceQualifications";
+import { useWorkforceQualifications } from "@/components/standards/workforce-training/WorkforceQualificationsContext";
 import { QualificationStatusChip } from "@/components/standards/workforce-training/QualificationStatusChip";
 import type { EmployeeCertificationRecord } from "@/lib/standards/employee-certifications";
 import { cn } from "@/lib/cn";

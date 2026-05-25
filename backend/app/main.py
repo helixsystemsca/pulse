@@ -10,8 +10,11 @@ Layers:
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -167,6 +170,39 @@ app = FastAPI(
 )
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+@app.exception_handler(RequestValidationError)
+async def _validation_exception_with_cors(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
+    return JSONResponse(status_code=422, content={"detail": exc.errors()})
+
+
+@app.exception_handler(StarletteHTTPException)
+async def _http_exception_with_cors(request: Request, exc: StarletteHTTPException) -> JSONResponse:
+    detail = exc.detail
+    if not isinstance(detail, (str, dict, list)):
+        detail = str(detail)
+    return JSONResponse(status_code=exc.status_code, content={"detail": detail})
+
+
+@app.exception_handler(Exception)
+async def _unhandled_exception_with_cors(request: Request, exc: Exception) -> JSONResponse:
+    """Ensure 500 responses are JSON (still wrapped by CORSMiddleware)."""
+    if isinstance(exc, StarletteHTTPException):
+        detail = exc.detail
+        if not isinstance(detail, (str, dict, list)):
+            detail = str(detail)
+        return JSONResponse(status_code=exc.status_code, content={"detail": detail})
+    origin = request.headers.get("origin", "")
+    _cors_log.exception(
+        "Unhandled exception %s %s origin=%s",
+        request.method,
+        request.url.path,
+        origin[:120] if origin else "(none)",
+    )
+    return JSONResponse(status_code=500, content={"detail": "internal_server_error"})
 
 # Health checks (no /api prefix — easy for load balancers and platform probes).
 app.include_router(health_router)

@@ -15,13 +15,16 @@ export function setRoutineDragData(dt: DataTransfer, payload: RoutineDragPayload
 export function readRoutineDragPayload(dt: DataTransfer): RoutineDragPayload | null {
   try {
     const raw = dt.getData(ROUTINE_DRAG_MIME);
-    if (!raw) return null;
-    const o = JSON.parse(raw) as RoutineDragPayload;
-    if (typeof o.routineId === "string" && o.routineId.trim()) return { routineId: o.routineId.trim() };
-    return null;
+    if (raw) {
+      const o = JSON.parse(raw) as RoutineDragPayload;
+      if (typeof o.routineId === "string" && o.routineId.trim()) return { routineId: o.routineId.trim() };
+    }
   } catch {
-    return null;
+    /* fall through */
   }
+  const plain = dt.getData("text/plain").trim();
+  if (plain.length >= 8 && plain.includes("-")) return { routineId: plain };
+  return null;
 }
 
 export function routineDropZoneAccepts(e: DragEvent, draggingRoutineId: string | null): boolean {
