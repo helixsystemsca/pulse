@@ -1,46 +1,55 @@
 "use client";
 
-import { Sparkles } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { Link2, Shield, Smartphone, Sparkles, Zap, type LucideProps } from "lucide-react";
 import { useCallback, useState } from "react";
+import { cn } from "@/lib/cn";
 import "./coming-soon-card.css";
 
 export type UpcomingFeature = {
-  icon: string;
+  Icon: LucideIcon;
   title: string;
   description: string;
 };
 
 const DEFAULT_FEATURES: UpcomingFeature[] = [
   {
-    icon: "📱",
+    Icon: Smartphone,
     title: "Mobile App",
-    description: "iOS & Android apps for on-the-go management",
+    description: "iOS & Android for on-the-go management",
   },
   {
-    icon: "🔐",
+    Icon: Shield,
     title: "Microsoft SSO",
-    description: "Seamless single sign-on with your Microsoft account",
+    description: "Sign-on with your Microsoft account",
   },
   {
-    icon: "🔗",
+    Icon: Link2,
     title: "Xplor Integration",
-    description: "Direct sync with Xplor for unified operations",
+    description: "Sync with Xplor for unified ops",
   },
   {
-    icon: "⚡",
+    Icon: Zap,
     title: "SAP Integration",
-    description: "Enterprise-grade ERP connectivity",
+    description: "Enterprise ERP connectivity",
   },
 ];
+
+function FeatureIcon({ icon: Icon }: { icon: LucideIcon }) {
+  const props: LucideProps = { className: "h-[18px] w-[18px] text-white", strokeWidth: 2, "aria-hidden": true };
+  return <Icon {...props} />;
+}
 
 type LoginComingSoonFeaturesCardProps = {
   features?: UpcomingFeature[];
   onNotify?: () => void | Promise<void>;
+  className?: string;
 };
 
 export function LoginComingSoonFeaturesCard({
   features = DEFAULT_FEATURES,
   onNotify,
+  className,
 }: LoginComingSoonFeaturesCardProps) {
   const [notified, setNotified] = useState(false);
 
@@ -57,16 +66,18 @@ export function LoginComingSoonFeaturesCard({
   }, [onNotify]);
 
   return (
-    <div className="coming-soon-card" role="region" aria-label="Upcoming features">
+    <div
+      className={cn("coming-soon-card coming-soon-card--dock-left", className)}
+      role="region"
+      aria-label="Upcoming features"
+    >
       <div className="coming-soon-header">
         <div className="coming-soon-badge">
-          <Sparkles className="h-3.5 w-3.5" aria-hidden />
-          Coming Soon
+          <Sparkles className="h-3 w-3 shrink-0" aria-hidden />
+          <span>Soon</span>
         </div>
         <h2 className="coming-soon-title">Future Features</h2>
-        <p className="coming-soon-subtitle">
-          We&apos;re constantly improving. Here&apos;s what&apos;s on the horizon.
-        </p>
+        <p className="coming-soon-subtitle">What&apos;s on the horizon.</p>
       </div>
 
       <ul className="features-list">
@@ -76,8 +87,8 @@ export function LoginComingSoonFeaturesCard({
             className="feature-item"
             style={{ animationDelay: `${0.5 + index * 0.1}s` }}
           >
-            <div className="feature-icon" aria-hidden>
-              {feature.icon}
+            <div className="feature-icon">
+              <FeatureIcon icon={feature.Icon} />
             </div>
             <div className="feature-content">
               <div className="feature-title">{feature.title}</div>
@@ -88,14 +99,19 @@ export function LoginComingSoonFeaturesCard({
       </ul>
 
       <div className="coming-soon-footer">
-        <p className="notify-text">Want updates when features launch?</p>
+        <p className="notify-text">Get launch updates?</p>
         {!notified ? (
-          <button type="button" className="notify-btn" onClick={() => void handleNotify()} aria-label="Subscribe to feature updates">
+          <button
+            type="button"
+            className="notify-btn"
+            onClick={() => void handleNotify()}
+            aria-label="Subscribe to feature updates"
+          >
             Notify Me
           </button>
         ) : (
           <div className="notify-success" role="status">
-            ✓ You&apos;ll be notified!
+            ✓ Notified
           </div>
         )}
       </div>

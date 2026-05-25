@@ -186,6 +186,7 @@ export default function LoginPage() {
         </header>
 
         <main className="relative z-10 flex min-h-0 flex-1 flex-col justify-center px-4 pb-4 pt-1 sm:px-6 sm:pb-5 md:px-8">
+          <LoginComingSoonFeaturesCard />
           <div className="login-content">
             <div className="login-content__form">
             <div className="flex w-full justify-center">
@@ -354,8 +355,6 @@ export default function LoginPage() {
               </p>
             </div>
             </div>
-
-            <LoginComingSoonFeaturesCard />
           </div>
         </main>
 

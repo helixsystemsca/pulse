@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, CalendarPlus, Settings, Sparkles } from "lucide-react";
+import { Bell, CalendarPlus, Pencil, Settings, Sparkles } from "lucide-react";
 import type { SchedulePrimaryAction, ScheduleWorkflowViewModel } from "@/lib/schedule/schedule-workflow";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
@@ -118,21 +118,14 @@ export function ScheduleWorkflowBar({
         <button
           type="button"
           onClick={onEditPublished}
-          className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-3 py-2 text-sm")}
+          className={cn(
+            buttonVariants({ surface: "light", intent: "secondary" }),
+            "inline-flex h-9 w-9 items-center justify-center p-0",
+          )}
+          aria-label="Edit schedule"
+          title="Edit schedule"
         >
-          Edit
-        </button>
-      ) : null}
-
-      {workflow.showSecondaryNotify && onNotifyWorkers && primary !== "notify_workers" ? (
-        <button
-          type="button"
-          disabled={notifyBusy}
-          onClick={onNotifyWorkers}
-          className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "gap-1.5 px-3 py-2 text-sm")}
-        >
-          <Bell className="h-4 w-4" />
-          Notify
+          <Pencil className="h-4 w-4" aria-hidden />
         </button>
       ) : null}
 

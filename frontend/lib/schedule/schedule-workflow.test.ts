@@ -69,14 +69,16 @@ describe("deriveScheduleWorkflow", () => {
     expect(vm.showSecondaryPublish).toBe(true);
   });
 
-  it("published — assignments primary", () => {
+  it("published — edit icon only; assignments via sidebar", () => {
     const vm = deriveScheduleWorkflow({
       activePeriod: { ...period, status: "published" },
       hasDraftPreview: false,
       hasPendingServerSave: false,
       hasPersistedShifts: true,
     });
-    expect(vm.primaryAction).toBe("open_daily_assignments");
+    expect(vm.primaryAction).toBeNull();
+    expect(vm.showSecondaryNotify).toBe(false);
+    expect(vm.showSecondaryEdit).toBe(true);
     expect(vm.showAvailabilityTools).toBe(false);
     expect(vm.assignmentsEnabled).toBe(true);
   });

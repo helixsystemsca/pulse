@@ -102,12 +102,12 @@ function deriveActions(
       };
     case "published":
       return {
-        primaryAction: "open_daily_assignments",
+        primaryAction: null,
         showAvailabilityTools: false,
         showSecondarySave: false,
         showSecondaryRebuild: false,
         showSecondaryPublish: false,
-        showSecondaryNotify: true,
+        showSecondaryNotify: false,
         showSecondaryEdit: true,
       };
     case "draft_saved":
