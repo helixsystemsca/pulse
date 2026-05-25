@@ -11,12 +11,17 @@ import { DashboardViewTabs } from "@/components/dashboard/DashboardViewTabs";
 import { DashboardCustomPeekWidget } from "@/components/dashboard/DashboardCustomPeekWidget";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { apiFetch, isApiMode } from "@/lib/api";
+import { apiFetch, classifyApiFailure, isApiMode } from "@/lib/api";
 import { useHydratedClock } from "@/hooks/useHydratedClock";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { pulseApp, pulseAppHref, pulseTenantNav } from "@/lib/pulse-app";
 import { catalogPage } from "@/lib/dashboardPageWidgetCatalog";
-import { canAccessPulseTenantApis, readSession, type PulseAuthSession } from "@/lib/pulse-session";
+import {
+  canAccessPulseTenantApis,
+  isPulseAuthTeardown,
+  readSession,
+  type PulseAuthSession,
+} from "@/lib/pulse-session";
 import { canAccessCompanyConfiguration, sessionHasAnyRole } from "@/lib/pulse-roles";
 import { getServerDate, getServerNow } from "@/lib/serverTime";
 import { useResolvedAvatarSrc } from "@/lib/useResolvedAvatarSrc";
@@ -2025,13 +2030,10 @@ export function OperationalDashboard({
       setLiveModel(withWelcome);
       useOperationalNotificationsStore.getState().setItems(withWelcome.alerts);
     } catch (err) {
-      const e = err as Error & { status?: number; body?: unknown };
-      if (e.status === 403) {
-        setError(
-          "You don’t have access to this dashboard with the current account. Tenant users see live data here; system admins should impersonate a company user from System admin.",
-        );
+      if (isPulseAuthTeardown()) {
+        setError(null);
       } else {
-        setError("Could not load dashboard. Check that the API is running and you are signed in.");
+        setError(classifyApiFailure(err).userMessage);
       }
       setLiveModel(null);
       useOperationalNotificationsStore.getState().clear();

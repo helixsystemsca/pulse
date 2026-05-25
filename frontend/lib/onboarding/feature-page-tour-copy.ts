@@ -89,6 +89,11 @@ const FEATURE_PAGE_TOUR_COPY: Partial<Record<string, FeaturePageTourCopy>> = {
     welcomeSubtitle: "Routine templates, daily assignments, and shift handoffs.",
     workspaceDescription: "Configure routines, assign them to shifts, and review handoff notes day to day.",
   },
+  xplor_indesign: {
+    welcomeSubtitle: "Export tagged facility schedules into InDesign-ready layouts.",
+    workspaceDescription:
+      "This is the Xplor → InDesign pipeline. It helps expedite publication by reducing manual editing.",
+  },
   messaging: {
     welcomeSubtitle: "Operational inbox and administrator product feedback.",
     toolbarDescription:

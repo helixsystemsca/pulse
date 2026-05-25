@@ -113,6 +113,64 @@ export type ApiErrorBody = {
   detail?: unknown;
 };
 
+export type ApiFetchError = Error & {
+  status?: number;
+  body?: unknown;
+  requestUrl?: string;
+  /** Browser blocked the response or the connection failed (often reported as CORS in DevTools). */
+  networkError?: boolean;
+};
+
+function isLikelyNetworkOrCorsFailure(err: unknown): boolean {
+  if (!(err instanceof TypeError)) return false;
+  const msg = err.message.toLowerCase();
+  return (
+    msg.includes("failed to fetch") ||
+    msg.includes("networkerror") ||
+    msg.includes("load failed")
+  );
+}
+
+/** Map API failures to user-facing copy (401 after deploy is often mistaken for CORS). */
+export function classifyApiFailure(err: unknown): {
+  kind: "session_expired" | "forbidden" | "network" | "server" | "unknown";
+  userMessage: string;
+} {
+  const e = err as ApiFetchError;
+  if (e?.networkError || isLikelyNetworkOrCorsFailure(err)) {
+    return {
+      kind: "network",
+      userMessage:
+        "Could not reach the API (network or server waking up). Wait a moment and Retry, or sign out and sign in again if this keeps happening.",
+    };
+  }
+  if (e?.status === 401) {
+    return {
+      kind: "session_expired",
+      userMessage:
+        "Your session is no longer valid — common after a deploy or permission change. Sign out, sign in again, then reload.",
+    };
+  }
+  if (e?.status === 403) {
+    return {
+      kind: "forbidden",
+      userMessage:
+        "You don’t have access to this dashboard with the current account. Tenant users see live data here; system admins should impersonate a company user from System admin.",
+    };
+  }
+  if (typeof e?.status === "number" && e.status >= 500) {
+    return {
+      kind: "server",
+      userMessage:
+        "The API returned a server error. Try Retry; if DevTools → Network shows HTTP 500 (not 401), check Render logs for that route.",
+    };
+  }
+  return {
+    kind: "unknown",
+    userMessage: "Could not load dashboard. Check that the API is running and you are signed in.",
+  };
+}
+
 export async function apiFetch<T>(
   path: string,
   init?: RequestInit & { json?: unknown },
@@ -130,12 +188,23 @@ export async function apiFetch<T>(
   if (bearer && !headers.has("Authorization")) {
     headers.set("Authorization", `Bearer ${bearer}`);
   }
-  const res = await fetch(url, {
-    ...init,
-    headers,
-    credentials: fetchCredentialsForUrl(url, init),
-    body: init?.json !== undefined ? JSON.stringify(init.json) : init?.body,
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      ...init,
+      headers,
+      credentials: fetchCredentialsForUrl(url, init),
+      body: init?.json !== undefined ? JSON.stringify(init.json) : init?.body,
+    });
+  } catch (err) {
+    if (isLikelyNetworkOrCorsFailure(err)) {
+      const networkErr = new Error("Network request failed") as ApiFetchError;
+      networkErr.networkError = true;
+      networkErr.requestUrl = url;
+      throw networkErr;
+    }
+    throw err;
+  }
   if (res.status === 204) {
     return undefined as T;
   }
@@ -147,7 +216,7 @@ export async function apiFetch<T>(
   if (!res.ok) {
     handleSessionExpiredFromApiResponse(url, res.status, Boolean(bearer));
     const msg = isPulseAuthTeardown() ? "" : `API ${res.status}`;
-    const err = new Error(msg) as Error & { status: number; body: unknown; requestUrl: string };
+    const err = new Error(msg) as ApiFetchError;
     err.status = res.status;
     err.body = data;
     err.requestUrl = url;
