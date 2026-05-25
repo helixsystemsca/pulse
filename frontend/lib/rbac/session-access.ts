@@ -19,7 +19,7 @@ import { isTenantFeatureOnContract, isUserFeatureEnabled } from "@/lib/features/
 import { readAccessSnapshot, snapshotHasCapability } from "@/lib/access-snapshot";
 import { groupModulesByCategory, type TenantSidebarNavGroup } from "@/lib/rbac/sidebar-groups";
 import { tenantSidebarNavItemsForSession } from "@/lib/rbac/tenant-nav";
-import { sessionHasAnyRole } from "@/lib/pulse-roles";
+import { sessionHasAnyRole, trainingSupervisionAccess } from "@/lib/pulse-roles";
 
 type NavGate =
   | { kind: "deny" }
@@ -188,7 +188,6 @@ function classicNavGate(href: string): NavGate {
       rbacAnyOf: ["drawings.view", "arena_advertising.view"],
     };
   }
-
   const master = getMasterFeatureForPath(href) ?? getMasterFeatureForPath(h);
   if (master) {
     if (master.key === "equipment") {
@@ -239,6 +238,19 @@ export function canAccessClassicNavHref(session: PulseAuthSession | null, href: 
   }
   if (isPermissionsHref(h)) {
     return canShowTeamManagementNavItem(session, false);
+  }
+  if (h === "/training/compliance" || h.startsWith("/training/compliance/")) {
+    if (!trainingSupervisionAccess(session)) return false;
+  }
+  if (
+    h === "/training/learning/archive" ||
+    h === "/training/learning/acknowledgments" ||
+    h.startsWith("/training/learning/archive/")
+  ) {
+    if (!trainingSupervisionAccess(session)) return false;
+  }
+  if (h === "/training/learning/my-learning" || h === "/training/learning/assignments") {
+    return Boolean(session.sub) && hasRbacPermission(session, "procedures.view");
   }
 
   const gate = classicNavGate(href);

@@ -59,6 +59,8 @@ export async function fetchProcedureAcknowledgmentArchive(params: {
   status_filter?: "all" | "current" | "outdated";
   date_from?: string;
   date_to?: string;
+  /** Matches worker name, procedure title, acknowledge timestamp, or status keywords. */
+  search?: string;
   limit?: number;
   offset?: number;
 }): Promise<ProcedureAcknowledgmentArchivePage> {
@@ -69,6 +71,7 @@ export async function fetchProcedureAcknowledgmentArchive(params: {
   if (params.status_filter) sp.set("status_filter", params.status_filter);
   if (params.date_from) sp.set("date_from", params.date_from);
   if (params.date_to) sp.set("date_to", params.date_to);
+  if (params.search?.trim()) sp.set("search", params.search.trim());
   if (params.limit != null) sp.set("limit", String(params.limit));
   if (params.offset != null) sp.set("offset", String(params.offset));
   const q = sp.toString();

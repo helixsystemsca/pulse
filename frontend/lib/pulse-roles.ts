@@ -102,6 +102,20 @@ export function trainingMatrixAdminOverrideAllowed(
 /** @deprecated Use {@link trainingTeamMatrixAccess} — kept for existing imports. */
 export const trainingStandardsLeadershipAccess = trainingTeamMatrixAccess;
 
+/**
+ * Training Compliance, acknowledgment archive, and org-wide qualification views:
+ * company admin, management (`manager`), and supervision (`supervisor`).
+ * Excludes `lead` and worker-tier roles unless they also hold one of the roles above.
+ */
+export function trainingSupervisionAccess(
+  session: Pick<PulseAuthSession, "role" | "roles" | "is_system_admin" | "facility_tenant_admin"> | null | undefined,
+): boolean {
+  if (!session) return false;
+  if (session.is_system_admin || sessionHasAnyRole(session, "system_admin")) return true;
+  if (session.facility_tenant_admin) return true;
+  return sessionHasAnyRole(session, "company_admin", "manager", "supervisor");
+}
+
 /** Managers and company admins only (excludes supervisor) — matches strict compliance-flag rules. */
 export function complianceManagerFlagAllowed(
   session: Pick<PulseAuthSession, "role" | "roles" | "is_system_admin" | "facility_tenant_admin"> | null | undefined,

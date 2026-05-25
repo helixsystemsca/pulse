@@ -18,7 +18,7 @@ type Options = {
 };
 
 /**
- * Live-demo pool chemistry: slow ±4 swings for Cl/pH/temp with feeder interlocks;
+ * Live-demo pool chemistry: Cl 1.8–2.2 and pH 7.0–7.4 (±0.4 sine); GPM random-walk; temp swings around base.
  * GPM random-walks on a faster cadence.
  */
 export function useSimulatedPoolControllers(options?: Options): PoolController[] {

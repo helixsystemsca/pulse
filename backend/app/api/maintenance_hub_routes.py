@@ -870,6 +870,7 @@ async def list_procedure_acknowledgment_archive_endpoint(
     status_filter: str = Query("all", description="all | current | outdated"),
     date_from: Optional[date] = Query(None),
     date_to: Optional[date] = Query(None),
+    search: Optional[str] = Query(None, description="Search worker name, procedure title, acknowledge date, or status (current/outdated)."),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0, le=50_000),
 ) -> ProcedureAcknowledgmentArchivePageOut:
@@ -885,6 +886,8 @@ async def list_procedure_acknowledgment_archive_endpoint(
     if sf not in ("all", "current", "outdated"):
         raise HTTPException(status_code=400, detail="status_filter must be all, current, or outdated")
 
+    search_q = (search or "").strip() or None
+
     total = await count_procedure_acknowledgment_archive(
         db,
         cid,
@@ -894,6 +897,7 @@ async def list_procedure_acknowledgment_archive_endpoint(
         status_filter=sf,  # type: ignore[arg-type]
         date_from=date_from,
         date_to=date_to,
+        search=search_q,
     )
     rows = await list_procedure_acknowledgment_archive(
         db,
@@ -904,6 +908,7 @@ async def list_procedure_acknowledgment_archive_endpoint(
         status_filter=sf,  # type: ignore[arg-type]
         date_from=date_from,
         date_to=date_to,
+        search=search_q,
         limit=limit,
         offset=offset,
     )

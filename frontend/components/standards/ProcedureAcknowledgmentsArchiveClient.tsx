@@ -2,15 +2,19 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { FileDown, FileText, Loader2, Printer } from "lucide-react";
+import { FileDown, FileText, Loader2, Printer, Search } from "lucide-react";
 import {
   fetchProcedureAcknowledgmentArchive,
   fetchProcedureAcknowledgmentPdfBlob,
   type ProcedureAcknowledgmentArchiveItem,
 } from "@/lib/procedureAcknowledgmentsArchiveApi";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
-import { dsInputClass, dsLabelClass } from "@/components/ui/ds-form-classes";
+import { cn } from "@/lib/cn";
+import { dsInputClass } from "@/components/ui/ds-form-classes";
 import { Button } from "@/components/ui/Button";
+
+const MIN_SEARCH_LEN = 2;
+const SEARCH_DEBOUNCE_MS = 350;
 
 function PdfActions({ row }: { row: ProcedureAcknowledgmentArchiveItem }) {
   const [busy, setBusy] = useState(false);
@@ -97,24 +101,36 @@ export function ProcedureAcknowledgmentsArchiveClient() {
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
   const [limit] = useState(25);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [workerId, setWorkerId] = useState("");
-  const [procedureId, setProcedureId] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "current" | "outdated">("all");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  useEffect(() => {
+    const id = window.setTimeout(() => setDebouncedSearch(searchInput.trim()), SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(id);
+  }, [searchInput]);
+
+  useEffect(() => {
+    setOffset(0);
+  }, [debouncedSearch]);
+
+  const canSearch = debouncedSearch.length >= MIN_SEARCH_LEN;
 
   const load = useCallback(async () => {
+    if (!canSearch) {
+      setItems([]);
+      setTotal(0);
+      setLoading(false);
+      setErr(null);
+      return;
+    }
     setLoading(true);
     setErr(null);
     try {
       const page = await fetchProcedureAcknowledgmentArchive({
-        worker_id: workerId.trim() || undefined,
-        procedure_id: procedureId.trim() || undefined,
-        status_filter: statusFilter,
-        date_from: dateFrom.trim() || undefined,
-        date_to: dateTo.trim() || undefined,
+        search: debouncedSearch,
+        status_filter: "all",
         limit,
         offset,
       });
@@ -127,7 +143,7 @@ export function ProcedureAcknowledgmentsArchiveClient() {
     } finally {
       setLoading(false);
     }
-  }, [workerId, procedureId, statusFilter, dateFrom, dateTo, limit, offset]);
+  }, [debouncedSearch, canSearch, limit, offset]);
 
   useEffect(() => {
     void load();
@@ -137,73 +153,26 @@ export function ProcedureAcknowledgmentsArchiveClient() {
     <div className="space-y-6">
       <div className="rounded-xl border border-ds-border/90 bg-ds-primary p-4 shadow-sm dark:border-ds-border dark:bg-ds-secondary/40">
         <p className="text-sm text-ds-muted">
-          Append-only acknowledgment ledger. Rows are never rewritten; &quot;Outdated&quot; means a newer procedure revision exists than
-          the revision acknowledged on that row.
+          Search the append-only acknowledgment ledger. Rows are never rewritten; &quot;Outdated&quot; means a newer
+          procedure revision exists than the revision acknowledged on that row.
         </p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div>
-            <label className={dsLabelClass} htmlFor="ack-filter-worker">
-              Worker ID
-            </label>
-            <input id="ack-filter-worker" className={dsInputClass} value={workerId} onChange={(e) => setWorkerId(e.target.value)} />
-          </div>
-          <div>
-            <label className={dsLabelClass} htmlFor="ack-filter-proc">
-              Procedure ID
-            </label>
-            <input id="ack-filter-proc" className={dsInputClass} value={procedureId} onChange={(e) => setProcedureId(e.target.value)} />
-          </div>
-          <div>
-            <label className={dsLabelClass} htmlFor="ack-filter-status">
-              Version status
-            </label>
-            <select
-              id="ack-filter-status"
-              className={dsInputClass}
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
-            >
-              <option value="all">All</option>
-              <option value="current">Current</option>
-              <option value="outdated">Outdated</option>
-            </select>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className={dsLabelClass} htmlFor="ack-from">
-                From
-              </label>
-              <input id="ack-from" type="date" className={dsInputClass} value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-            </div>
-            <div>
-              <label className={dsLabelClass} htmlFor="ack-to">
-                To
-              </label>
-              <input id="ack-to" type="date" className={dsInputClass} value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-            </div>
-          </div>
+        <div className="relative mt-4 max-w-xl">
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ds-muted"
+            aria-hidden
+          />
+          <input
+            type="search"
+            className={cn(dsInputClass, "pl-9")}
+            placeholder="Search by person, procedure, acknowledge date, or status (current / outdated)…"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            aria-label="Search acknowledgment archive"
+          />
         </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Button type="button" variant="secondary" onClick={() => void load()} disabled={loading}>
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
-            Apply filters
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            className="border-transparent bg-transparent font-normal text-ds-muted hover:bg-ds-secondary/60"
-            onClick={() => {
-              setWorkerId("");
-              setProcedureId("");
-              setStatusFilter("all");
-              setDateFrom("");
-              setDateTo("");
-              setOffset(0);
-            }}
-          >
-            Reset
-          </Button>
-        </div>
+        {!canSearch ? (
+          <p className="mt-2 text-xs text-ds-muted">Enter at least {MIN_SEARCH_LEN} characters to search.</p>
+        ) : null}
       </div>
 
       {err ? (
@@ -215,12 +184,14 @@ export function ProcedureAcknowledgmentsArchiveClient() {
       <div className="overflow-hidden rounded-xl border border-ds-border/90 bg-ds-primary shadow-sm dark:border-ds-border dark:bg-ds-secondary/30">
         <div className="flex items-center justify-between border-b border-ds-border/80 px-4 py-3 dark:border-ds-border">
           <p className="text-sm font-semibold text-ds-foreground">Records</p>
-          <p className="text-xs tabular-nums text-ds-muted">
-            {total} total · showing {items.length}
-          </p>
+          {canSearch ? (
+            <p className="text-xs tabular-nums text-ds-muted">
+              {total} match{total === 1 ? "" : "es"} · showing {items.length}
+            </p>
+          ) : null}
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1020px] border-collapse text-left text-sm">
+          <table className="w-full min-w-[960px] border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-ds-border/80 bg-ds-secondary/40 text-[11px] font-bold uppercase tracking-wide text-ds-muted dark:border-ds-border">
                 <th className="px-3 py-2">Worker</th>
@@ -233,17 +204,24 @@ export function ProcedureAcknowledgmentsArchiveClient() {
               </tr>
             </thead>
             <tbody>
-              {loading && items.length === 0 ? (
+              {!canSearch ? (
+                <tr>
+                  <td colSpan={7} className="px-4 py-10 text-center text-ds-muted">
+                    Use the search field above to find acknowledgments — the full archive is not listed by default.
+                  </td>
+                </tr>
+              ) : null}
+              {canSearch && loading && items.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-10 text-center text-ds-muted">
                     <Loader2 className="mx-auto h-6 w-6 animate-spin" aria-hidden />
                   </td>
                 </tr>
               ) : null}
-              {!loading && items.length === 0 ? (
+              {canSearch && !loading && items.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-10 text-center text-ds-muted">
-                    No rows match the current filters.
+                    No acknowledgments match &quot;{debouncedSearch}&quot;.
                   </td>
                 </tr>
               ) : null}
@@ -251,11 +229,9 @@ export function ProcedureAcknowledgmentsArchiveClient() {
                 <tr key={r.id} className="border-b border-ds-border/60 hover:bg-ds-secondary/30 dark:border-ds-border/60">
                   <td className="px-3 py-2 align-top">
                     <div className="font-medium text-ds-foreground">{r.employee_name}</div>
-                    <div className="text-[11px] text-ds-muted">{r.employee_user_id}</div>
                   </td>
                   <td className="px-3 py-2 align-top">
                     <div className="font-medium text-ds-foreground">{r.procedure_title}</div>
-                    <div className="text-[11px] text-ds-muted">{r.procedure_id}</div>
                   </td>
                   <td className="px-3 py-2 align-top tabular-nums">{r.acknowledged_revision}</td>
                   <td className="px-3 py-2 align-top tabular-nums">{r.procedure_current_revision}</td>
@@ -284,19 +260,21 @@ export function ProcedureAcknowledgmentsArchiveClient() {
             </tbody>
           </table>
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-ds-border/80 px-4 py-3 dark:border-ds-border">
-          <Button type="button" variant="secondary" disabled={offset === 0 || loading} onClick={() => setOffset((o) => Math.max(0, o - limit))}>
-            Previous
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={loading || offset + limit >= total}
-            onClick={() => setOffset((o) => o + limit)}
-          >
-            Next
-          </Button>
-        </div>
+        {canSearch && total > limit ? (
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-ds-border/80 px-4 py-3 dark:border-ds-border">
+            <Button type="button" variant="secondary" disabled={offset === 0 || loading} onClick={() => setOffset((o) => Math.max(0, o - limit))}>
+              Previous
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={loading || offset + limit >= total}
+              onClick={() => setOffset((o) => o + limit)}
+            >
+              Next
+            </Button>
+          </div>
+        ) : null}
       </div>
     </div>
   );

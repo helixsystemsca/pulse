@@ -113,7 +113,7 @@ export function TrainingOverviewDashboard() {
               Compliance matrix
             </Link>
             <Link
-              href={TRAINING_ROUTES.learningProcedures}
+              href={TRAINING_ROUTES.learningLibrary}
               className="inline-flex items-center gap-2 rounded-lg border border-ds-border bg-ds-muted/20 px-3 py-2 text-sm font-semibold text-ds-foreground hover:bg-ds-muted/40"
             >
               <BookOpen className="h-4 w-4" aria-hidden />

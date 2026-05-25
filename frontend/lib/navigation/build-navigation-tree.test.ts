@@ -49,6 +49,7 @@ describe("buildNavigationTree", () => {
         "standards.training.view",
         "standards.compliance.view",
       ],
+      roles: ["supervisor"],
     });
     const items = resolveAuthorizedNavItems(trainingSession);
     const tree = buildNavigationTree(trainingSession);

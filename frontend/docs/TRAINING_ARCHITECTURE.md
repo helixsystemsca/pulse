@@ -1,66 +1,90 @@
 # Training domain architecture
 
-Information architecture refactor: **Standards** presentation layer → **Training** domain with three operational surfaces.
+Information architecture: **Training** replaces fragmented **Standards** training surfaces with three operational areas — **Overview**, **Learning**, and **Compliance**.
 
 ## Navigation
 
 | Sidebar item | Route | Purpose |
 |--------------|-------|---------|
-| Overview | `/training/overview` | KPIs, alerts, expiring queue, coverage risks (aggregates Compliance data) |
-| Learning | `/training/learning/*` | Completion workflow — assignments, procedure library, acknowledgments |
-| Compliance | `/training/compliance/*` | Authoritative qualification state — matrix, workforce, registry, queues |
+| Overview | `/training/overview` | Readiness KPIs, expiring items, pending reviews, alerts (reads **Compliance** only) |
+| Learning | `/training/learning/*` | Worker completion workflow — My Learning, assign, bundles, library, archive |
+| Compliance | `/training/compliance/*` | Authoritative qualification state — matrix, workforce, registry, expiring & gaps |
 
 **Routines** remain under **Operations** at `/standards/routines` (execution domain, not Training IA).
 
-## What was merged
+## Learning vs Compliance
 
-| Former surface | New home |
-|----------------|----------|
-| `/standards/training` (overview tab) | `/training/overview` |
-| `/standards/training/workers` | Compliance → **Workforce** tab |
-| `/standards/training/certifications` | Compliance → **Certifications** tab |
-| `/standards/training/compliance` | Compliance → **Matrix** tab (primary) |
-| `/standards/training/expiring` | Compliance → **Expiring & gaps** tab |
-| `/standards/procedures` | Learning → **Procedure library** |
-| `/standards/my-procedures` | Learning → **My assignments** |
-| `/standards/acknowledgments` | Learning → **Acknowledgment archive** |
-| Sidebar: Procedures + Training + My procedures | **Overview / Learning / Compliance** only |
-
-## What stayed separate
-
-- **Procedure authoring runtime** (`ProceduresApp`) — same component, new route.
-- **Training matrix engine** (`TrainingComplianceDashboard`, selectors, APIs) — unchanged logic.
-- **Workforce qualifications** (`WorkforceQualificationsProvider`, certification registry, overrides) — unchanged; consumed by Compliance tabs.
-- **Routines** (`RoutinesApp`, `/standards/routines`) — Operations domain; consumes procedure/training signals but not owned by Training IA.
-- **Facility inspections** (`/dashboard/compliance`) — unrelated “compliance” product area.
-
-## Source of truth
+| Area | Owns | Does not own |
+|------|------|----------------|
+| **Learning** | Assigned items, read/acknowledge/upload/submit, supervisor assign & bundle config, procedure library UX | Qualification math, expiry rules, matrix truth, staffing eligibility |
+| **Compliance** | Matrix status, readiness, expirations, registry, deficiencies, admin overrides | Scheduling, notifications, routine execution |
 
 ```mermaid
 flowchart LR
   Learning[Learning workflow]
   Compliance[Compliance engine]
   Schedule[Schedule]
-  Dashboard[Dashboards]
+  OpsDash[Ops dashboards]
 
-  Learning -->|completions acks uploads| Compliance
+  Learning -->|completions acks uploads sign-off| Compliance
   Compliance -->|qualification state| Schedule
-  Compliance -->|readiness KPIs| Dashboard
+  Compliance -->|KPIs matrix| OpsDash
+  Compliance -->|widgets| Overview[Training Overview]
 ```
 
-- **Compliance** owns qualification calculations, expiry evaluation, registry coverage, matrix status, and session overrides used by schedule cert checks.
-- **Learning** owns user actions (assignments, acknowledgements, uploads, submissions); it does not duplicate qualification math.
-- **Schedule / notifications / routines / dashboards** read Compliance (and legacy worker cert codes + overrides); they do not own training state.
+## Learning structure
+
+| Tab | Slug | Audience | Content |
+|-----|------|----------|---------|
+| My Learning | `my-learning` | Signed-in account (`session.sub` only) | `TrainingEmployeeSelfView`, `MyProceduresAssignmentsView` |
+| Assign | `assign` | Team matrix roles (lead+) | `LearningAssignPanel` |
+| Bundles | `bundles` | Admins / team matrix | `LearningBundleManager` |
+| Procedure library | `library` | `procedures.view` | `ProceduresApp` (admin/authoring) |
+| Acknowledgment archive | `archive` | **Company admin, manager, supervisor** | `ProcedureAcknowledgmentsArchiveClient` |
+
+**Compliance** (`/training/compliance/*`) uses the same leadership gate as the archive — not visible to worker-tier accounts in nav or direct URL.
+
+**Legacy URLs** redirect: `assignments` → `my-learning`, `procedures` → `library`, `acknowledgments` → `archive`.
+
+### Learning Bundles
+
+- Model: `frontend/lib/training/learning-bundles.ts`
+- Items use `source: "procedure" | "external"` so CRD/integrated links can be added without restructuring.
+- MVP persistence: per-company `localStorage`; assign uses existing `POST /api/v1/training/assignments` per procedure in the bundle.
+
+### Core learning flow
+
+`assigned learning → read/complete → acknowledge/upload → submit → supervisor review → compliance updated`
+
+Workers should not need to browse the library for day-to-day work; library remains for admins and intentional lookup.
+
+## Compliance structure
+
+Single shell with tabs (not separate top-level pages):
+
+| Tab | Former surface |
+|-----|----------------|
+| Matrix | `/standards/training/compliance` |
+| Workforce | workers view |
+| Certifications | registry |
+| Expiring & gaps | expiring / deficiencies |
+
+Matrix is the primary visualization (green complete, red missing, amber expiring, pending/review). Overview widgets and schedule/routine eligibility **consume** Compliance APIs and selectors — they do not duplicate qualification logic.
 
 ## Legacy routes
 
-All former `/standards/training/*`, `/standards/procedures`, `/standards/my-procedures`, `/standards/compliance`, `/standards/certifications`, and `/standards/acknowledgments` paths **redirect** to the canonical `/training/*` routes.
+`/standards/training/*`, `/standards/procedures`, `/standards/my-procedures`, `/standards/acknowledgments` → canonical `/training/*`.
 
-Registry feature keys (`standards_training`, `procedures`, etc.) and RBAC permissions are **unchanged** for contract compatibility.
+Registry feature keys (`training_*`, `procedures`, `standards_training`, etc.) and RBAC permissions are unchanged for contract compatibility.
 
 ## Key files
 
-- Routes: `frontend/lib/training/routes.ts`
-- Shells: `frontend/components/training/domain/*`
-- App routes: `frontend/app/training/**`
-- Nav: `frontend/config/platform/master-feature-registry.ts`, `nav-domains.ts`
+| Concern | Path |
+|---------|------|
+| Routes | `frontend/lib/training/routes.ts` |
+| Access | `frontend/lib/training/training-domain-access.ts` |
+| Bundles | `frontend/lib/training/learning-bundles.ts` |
+| Shells | `frontend/components/training/domain/*` |
+| Matrix engine | `frontend/components/training/TrainingComplianceDashboard.tsx`, `frontend/lib/training/selectors.ts` |
+| APIs | `frontend/lib/trainingApi.ts` |
+| App routes | `frontend/app/training/**` |

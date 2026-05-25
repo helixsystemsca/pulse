@@ -3,7 +3,7 @@ import { TrainingLearningShell } from "@/components/training/domain/TrainingLear
 
 export const metadata: Metadata = {
   title: "Learning | Training | Panorama",
-  description: "Procedure assignments, acknowledgements, and completion workflows.",
+  description: "My Learning, assignments, bundles, acknowledgements, and completion workflows.",
 };
 
 type Props = { params: Promise<{ section: string }> };

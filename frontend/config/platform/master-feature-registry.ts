@@ -445,7 +445,6 @@ export const MASTER_FEATURES: readonly MasterFeatureDef[] = [
       "standards.training.workers.view",
       "standards.training.certifications.view",
       "standards.training.expiring.view",
-      "procedures.view",
     ],
     navVisible: true,
     sortOrder: 303,

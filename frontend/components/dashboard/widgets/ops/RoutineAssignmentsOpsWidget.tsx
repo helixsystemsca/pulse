@@ -10,8 +10,11 @@ import type { DashboardWidgetRenderContext } from "@/lib/dashboard/render-contex
 import { opsWidgetFillLayout } from "@/lib/dashboard/ops-widget-fill";
 import {
   buildDayRoutineWorkerRows,
+  groupDayRoutineWorkerRows,
   localCalendarDayBoundsMs,
+  routineShiftSectionLabel,
   type DayRoutineWorkerRow,
+  type RoutineShiftSectionId,
 } from "@/lib/dashboard/routine-assignments-day-board";
 import { routineAssignmentRowCap } from "@/lib/dashboard/widget-tier-disclosure";
 import { readSession } from "@/lib/pulse-session";
@@ -46,6 +49,7 @@ const DEMO_WORKFORCE_ROWS: DayRoutineWorkerRow[] = [
     workerId: "demo-1",
     workerName: "Alex Chen",
     shiftWindow: "06:00–14:00",
+    shiftBand: "day",
     routines: [{ assignmentId: "d1", name: "Arena A — Day" }],
     badges: ["GROUNDS"],
   },
@@ -53,8 +57,17 @@ const DEMO_WORKFORCE_ROWS: DayRoutineWorkerRow[] = [
     workerId: "demo-2",
     workerName: "Jordan Lee",
     shiftWindow: "14:00–22:00",
+    shiftBand: "afternoon",
     routines: [{ assignmentId: "d2", name: "Arena B — Afternoon" }],
     badges: ["EXTRA"],
+  },
+  {
+    workerId: "demo-3",
+    workerName: "Sam Rivera",
+    shiftWindow: "22:00–06:00",
+    shiftBand: "night",
+    routines: [],
+    badges: [],
   },
 ];
 
@@ -78,17 +91,6 @@ function routineAssignmentsLoadMessage(err: unknown): string {
     );
   }
   return message || "Could not load routine assignments for this day.";
-}
-
-function spreadListClass(fillShell: boolean, count: number, tight?: boolean) {
-  return cn(
-    "mt-1.5 min-h-0",
-    fillShell && count > 0
-      ? cn("flex flex-1 flex-col justify-between", tight ? "gap-1" : "gap-2")
-      : tight
-        ? "space-y-1"
-        : "space-y-1.5",
-  );
 }
 
 type LoadState =
@@ -227,14 +229,51 @@ export function useRoutineAssignmentsBoardState() {
   return state;
 }
 
+function ShiftSectionHeader({
+  section,
+  count,
+  fillShell,
+}: {
+  section: RoutineShiftSectionId;
+  count: number;
+  fillShell?: boolean;
+}) {
+  const isMissing = section === "missing";
+  return (
+    <div
+      className={cn(
+        "flex shrink-0 items-center justify-between gap-2 border-b border-[color-mix(in_srgb,var(--ds-text-primary)_10%,transparent)] pb-1",
+        fillShell ? "pt-0.5" : "pt-1",
+        isMissing && "border-amber-300/60 dark:border-amber-500/35",
+      )}
+    >
+      <p
+        className={cn(
+          "text-[10px] font-bold uppercase tracking-[0.1em]",
+          isMissing
+            ? "text-amber-800 dark:text-amber-200"
+            : "text-[color-mix(in_srgb,var(--ds-text-primary)_48%,transparent)]",
+        )}
+      >
+        {routineShiftSectionLabel(section)}
+      </p>
+      <span className="text-[10px] font-semibold tabular-nums text-[color-mix(in_srgb,var(--ds-text-primary)_45%,transparent)]">
+        {count}
+      </span>
+    </div>
+  );
+}
+
 function WorkforceRoutineRow({
   row,
   compact,
   fillShell,
+  emphasizeMissing,
 }: {
   row: DayRoutineWorkerRow;
   compact?: boolean;
   fillShell?: boolean;
+  emphasizeMissing?: boolean;
 }) {
   return (
     <li
@@ -285,7 +324,9 @@ function WorkforceRoutineRow({
           ))}
         </div>
       )}
-      {row.badges.length === 0 && row.routines.length === 0 ? (
+      {emphasizeMissing ? (
+        <p className="text-[10px] font-medium text-amber-800 dark:text-amber-200">On shift — no routine assigned</p>
+      ) : row.badges.length === 0 && row.routines.length === 0 ? (
         <p className="text-[10px] text-[color-mix(in_srgb,var(--ds-text-primary)_50%,transparent)]">
           On shift — no routines or badges yet
         </p>
@@ -294,25 +335,92 @@ function WorkforceRoutineRow({
   );
 }
 
+function WorkforceByShiftSections({
+  groups,
+  compact,
+  fillShell,
+  dateLabel,
+  loadErr,
+  demoHint,
+}: {
+  groups: ReturnType<typeof groupDayRoutineWorkerRows>;
+  compact?: boolean;
+  fillShell?: boolean;
+  dateLabel?: string;
+  loadErr?: string | null;
+  demoHint?: string;
+}) {
+  const totalWorkers = groups.reduce((n, g) => n + g.rows.length, 0);
+
+  return (
+    <div className={cn(fillShell && "flex min-h-0 flex-1 flex-col")}>
+      <p className="shrink-0 text-[10px] font-bold uppercase tracking-[0.1em] text-[color-mix(in_srgb,var(--ds-text-primary)_48%,transparent)]">
+        Workforce{dateLabel ? ` · ${dateLabel}` : ""}
+      </p>
+      {demoHint ? (
+        <p className="mt-1 shrink-0 text-[11px] text-[color-mix(in_srgb,var(--ds-text-primary)_58%,transparent)]">{demoHint}</p>
+      ) : null}
+      {loadErr ? (
+        <p className="mt-1 shrink-0 text-[11px] font-medium text-amber-700 dark:text-amber-300">{loadErr}</p>
+      ) : null}
+      {totalWorkers === 0 ? (
+        <p className="mt-1.5 text-xs text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]">
+          No scheduled workers for this day. Assign on Schedule → Daily assignments.
+        </p>
+      ) : (
+        <div
+          className={cn(
+            "mt-1.5 min-h-0",
+            fillShell && totalWorkers > 0
+              ? "flex flex-1 flex-col justify-between gap-2"
+              : "space-y-3",
+          )}
+        >
+          {groups.map(({ section, rows }) => (
+            <section
+              key={section}
+              className={cn(
+                fillShell && rows.length > 0 && "flex min-h-0 flex-1 flex-col",
+                section === "missing" && "rounded-lg border border-amber-200/70 bg-amber-50/40 px-2 py-1.5 dark:border-amber-500/25 dark:bg-amber-950/20",
+              )}
+            >
+              <ShiftSectionHeader section={section} count={rows.length} fillShell={fillShell} />
+              <ul
+                className={cn(
+                  "mt-1 min-h-0",
+                  fillShell && rows.length > 0 ? "flex flex-1 flex-col gap-1" : "space-y-1",
+                )}
+              >
+                {rows.map((row) => (
+                  <WorkforceRoutineRow
+                    key={row.workerId}
+                    row={row}
+                    compact={compact}
+                    fillShell={fillShell}
+                    emphasizeMissing={section === "missing"}
+                  />
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function RoutineAssignmentsInner({
   compact,
-  maxAssignments,
-  maxRoutines,
-  variant = "full",
+  maxWorkers,
   showFooterLinks = true,
   fillShell = false,
 }: {
   compact?: boolean;
-  maxAssignments?: number;
-  maxRoutines?: number;
-  /** `full` = built-in tile; peek slices pick `assignments` or `library` only. */
-  variant?: "full" | "assignments" | "library";
+  maxWorkers?: number;
   showFooterLinks?: boolean;
   fillShell?: boolean;
 }) {
   const state = useRoutineAssignmentsBoardState();
-  const showAssignments = variant !== "library";
-  const showLibrary = variant !== "assignments";
   const mutedText = "text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]";
   const fillCenter = fillShell ? "flex flex-1 items-center justify-center text-center px-2" : "";
 
@@ -321,30 +429,16 @@ function RoutineAssignmentsInner({
       return <p className={cn("text-xs", mutedText, fillCenter)}>Loading routines…</p>;
     }
     if (state.kind === "demo") {
-      if (!showAssignments) {
-        return (
-          <p className={cn("text-xs", mutedText, fillCenter)}>
-            Sign in to list published routines for this tenant.
-          </p>
-        );
-      }
-      const rows = DEMO_WORKFORCE_ROWS.slice(0, maxAssignments ?? (compact ? 2 : 4));
+      const limit = maxWorkers ?? (compact ? 4 : 8);
+      const rows = DEMO_WORKFORCE_ROWS.slice(0, limit);
+      const groups = groupDayRoutineWorkerRows(rows);
       return (
-        <div className={cn(fillShell && "flex min-h-0 flex-1 flex-col")}>
-          <p
-            className={cn(
-              "text-[11px] text-[color-mix(in_srgb,var(--ds-text-primary)_58%,transparent)]",
-              fillShell ? "shrink-0" : "",
-            )}
-          >
-            Demo workforce handoffs — sign in to sync with the schedule board.
-          </p>
-          <ul className={spreadListClass(fillShell, rows.length)}>
-            {rows.map((row) => (
-              <WorkforceRoutineRow key={row.workerId} row={row} compact={compact} fillShell={fillShell} />
-            ))}
-          </ul>
-        </div>
+        <WorkforceByShiftSections
+          groups={groups}
+          compact={compact}
+          fillShell={fillShell}
+          demoHint="Demo workforce handoffs — sign in to sync with the schedule board."
+        />
       );
     }
 
@@ -352,78 +446,20 @@ function RoutineAssignmentsInner({
       return null;
     }
 
-    const rLimit = maxRoutines ?? (compact ? 3 : 5);
-    const routines = state.routines.slice(0, rLimit);
-    const wLimit = maxAssignments ?? (compact ? 3 : 6);
+    const wLimit = maxWorkers ?? (compact ? 6 : 12);
     const workforce = state.workforce.slice(0, wLimit);
+    const groups = groupDayRoutineWorkerRows(workforce);
 
     return (
-      <div
-        className={cn(
-          fillShell ? "flex min-h-0 flex-1 flex-col gap-4" : "space-y-4",
-          fillShell && showAssignments && showLibrary && "justify-between",
-        )}
-      >
-        {showAssignments ? (
-          <div
-            className={cn(
-              fillShell && workforce.length > 0 && "flex min-h-0 min-w-0 flex-1 flex-col",
-            )}
-          >
-            <p className="shrink-0 text-[10px] font-bold uppercase tracking-[0.1em] text-[color-mix(in_srgb,var(--ds-text-primary)_48%,transparent)]">
-              Workforce · {state.dateLabel}
-            </p>
-            {state.loadErr ? (
-              <p className="mt-1 text-[11px] font-medium text-amber-700 dark:text-amber-300">{state.loadErr}</p>
-            ) : null}
-            {workforce.length === 0 ? (
-              <p className={cn("mt-1.5 text-xs", mutedText, !showLibrary && fillCenter)}>
-                No scheduled workers or routine assignments for this day. Assign on Schedule → Daily assignments.
-              </p>
-            ) : (
-              <ul className={spreadListClass(fillShell, workforce.length)}>
-                {workforce.map((row) => (
-                  <WorkforceRoutineRow
-                    key={row.workerId}
-                    row={row}
-                    compact={compact}
-                    fillShell={fillShell}
-                  />
-                ))}
-              </ul>
-            )}
-          </div>
-        ) : null}
-
-        {showLibrary ? (
-          <div className={cn(fillShell && routines.length > 0 && "flex min-h-0 min-w-0 flex-1 flex-col")}>
-            <p className="shrink-0 text-[10px] font-bold uppercase tracking-[0.1em] text-[color-mix(in_srgb,var(--ds-text-primary)_48%,transparent)]">
-              Routine library
-            </p>
-            {routines.length === 0 ? (
-              <p className={cn("mt-1.5 text-xs", mutedText, !showAssignments && fillCenter)}>No routines published yet.</p>
-            ) : (
-              <ul className={spreadListClass(fillShell, routines.length, true)}>
-                {routines.map((r) => (
-                  <li
-                    key={r.id}
-                    className={cn(
-                      "truncate text-[color-mix(in_srgb,var(--ds-text-primary)_78%,transparent)]",
-                      fillShell
-                        ? "ops-dash-row flex min-h-0 flex-1 items-center px-2 py-2.5 text-sm font-medium"
-                        : "text-xs",
-                    )}
-                  >
-                    · {r.name}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        ) : null}
-      </div>
+      <WorkforceByShiftSections
+        groups={groups}
+        compact={compact}
+        fillShell={fillShell}
+        dateLabel={state.dateLabel}
+        loadErr={state.loadErr}
+      />
     );
-  }, [state, compact, maxAssignments, maxRoutines, showAssignments, showLibrary, fillShell, fillCenter, mutedText]);
+  }, [state, compact, maxWorkers, fillShell, fillCenter, mutedText]);
 
   return (
     <div className={cn(fillShell ? "flex h-full min-h-0 flex-col" : "space-y-2")}>
@@ -452,15 +488,14 @@ function RoutineAssignmentsInner({
 export function RoutineAssignmentsOpsWidget({ layoutContext }: { layoutContext?: DashboardWidgetRenderContext }) {
   const fillShell = opsWidgetFillLayout(layoutContext?.heightTier);
   const tier = layoutContext?.heightTier ?? "expanded";
-  const { maxAssignments, maxRoutines } = routineAssignmentRowCap(tier);
+  const { maxAssignments } = routineAssignmentRowCap(tier);
 
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden">
       <div className="ops-dash-inner-card flex min-h-0 flex-1 flex-col overflow-hidden">
         <RoutineAssignmentsInner
           fillShell={fillShell}
-          maxAssignments={maxAssignments}
-          maxRoutines={maxRoutines}
+          maxWorkers={maxAssignments}
           showFooterLinks={false}
         />
       </div>
@@ -469,23 +504,18 @@ export function RoutineAssignmentsOpsWidget({ layoutContext }: { layoutContext?:
 }
 
 export function RoutineAssignmentsPeekSlice({
-  sliceId,
   compact,
   dense,
-  maxRoutines,
 }: {
   sliceId: string;
   compact: boolean;
   dense: boolean;
-  maxRoutines: number;
+  maxRoutines?: number;
 }) {
-  const variant = sliceId === "routine_library" ? "library" : "assignments";
   return (
     <RoutineAssignmentsInner
       compact={compact || dense}
-      maxAssignments={compact ? 2 : dense ? 5 : 6}
-      maxRoutines={maxRoutines}
-      variant={variant}
+      maxWorkers={compact ? 4 : dense ? 8 : 10}
       showFooterLinks
     />
   );

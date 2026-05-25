@@ -23,6 +23,7 @@ const TIER_SORT: TrainingProgram["tier"][] = ["mandatory", "high_risk", "general
 export function TrainingEmployeeSelfView() {
   const api = isApiMode();
   const session = readSession();
+  /** Personal matrix only — never another worker's id. */
   const workerId = session?.sub ?? "";
   const displayName = (session?.full_name ?? session?.email ?? "Your profile").trim();
 

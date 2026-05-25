@@ -19,7 +19,8 @@ export function TrainingOverviewShell() {
         <header className="space-y-1">
           <h2 className="text-lg font-bold tracking-tight text-ds-foreground">Training overview</h2>
           <p className="max-w-2xl text-sm text-ds-muted">
-            Your learning assignments and compliance status. Supervisors use Compliance for team qualification state.
+            Your personal learning and completion status. Team qualification views are for administrators, management, and
+            supervisors under Compliance.
           </p>
         </header>
         <TrainingEmployeeSelfView />

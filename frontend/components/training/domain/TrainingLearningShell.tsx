@@ -2,33 +2,39 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { BookOpen, ClipboardList, History } from "lucide-react";
+import { BookOpen, ClipboardList, History, Layers, Send, UserPlus } from "lucide-react";
 import { ProceduresApp } from "@/components/procedures/ProceduresApp";
 import { ProcedureAcknowledgmentsArchiveClient } from "@/components/standards/ProcedureAcknowledgmentsArchiveClient";
 import { MyProceduresAssignmentsView } from "@/components/training/domain/MyProceduresAssignmentsView";
+import { LearningAssignPanel } from "@/components/training/domain/LearningAssignPanel";
+import { LearningBundleManager } from "@/components/training/domain/LearningBundleManager";
 import { TrainingEmployeeSelfView } from "@/components/training/TrainingEmployeeSelfView";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { cn } from "@/lib/cn";
-import { trainingTeamMatrixAccess } from "@/lib/pulse-roles";
 import { TRAINING_ROUTES, trainingLearningHref } from "@/lib/training/routes";
 import {
+  canAssignLearning,
+  canManageLearningBundles,
   canViewTrainingLearningSection,
   firstAllowedTrainingLearningSection,
   isTrainingLearningSection,
+  normalizeLearningSection,
   type TrainingLearningSection,
 } from "@/lib/training/training-domain-access";
 
 const TABS: { id: TrainingLearningSection; label: string; icon: typeof ClipboardList }[] = [
-  { id: "assignments", label: "My assignments", icon: ClipboardList },
-  { id: "procedures", label: "Procedure library", icon: BookOpen },
-  { id: "acknowledgments", label: "Acknowledgment archive", icon: History },
+  { id: "my-learning", label: "My Learning", icon: ClipboardList },
+  { id: "assign", label: "Assign", icon: Send },
+  { id: "bundles", label: "Bundles", icon: Layers },
+  { id: "library", label: "Procedure library", icon: BookOpen },
+  { id: "archive", label: "Acknowledgment archive", icon: History },
 ];
 
 export function TrainingLearningShell({ section }: { section: string }) {
   const { session } = usePulseAuth();
-  const leadership = trainingTeamMatrixAccess(session);
-  const activeSection: TrainingLearningSection = isTrainingLearningSection(section)
-    ? section
+  const normalized = normalizeLearningSection(section);
+  const activeSection: TrainingLearningSection = isTrainingLearningSection(normalized)
+    ? (normalized as TrainingLearningSection)
     : firstAllowedTrainingLearningSection(session);
 
   const visibleTabs = useMemo(
@@ -38,14 +44,16 @@ export function TrainingLearningShell({ section }: { section: string }) {
 
   const canViewActive = canViewTrainingLearningSection(session, activeSection);
   const fallback = firstAllowedTrainingLearningSection(session);
+  const workerOnlyHub =
+    !canAssignLearning(session) && !canManageLearningBundles(session);
 
-  if (!leadership && activeSection === "assignments") {
+  if (workerOnlyHub && activeSection === "my-learning") {
     return (
       <div className="space-y-6">
         <header className="space-y-1">
           <h2 className="text-lg font-bold tracking-tight text-ds-foreground">Learning</h2>
           <p className="max-w-2xl text-sm text-ds-muted">
-            Complete required procedures — acknowledge, upload proof, and submit for review. Compliance updates when
+            Assigned learning — read, acknowledge, upload proof, and submit for review. Compliance updates when
             supervisors verify your work.
           </p>
         </header>
@@ -60,8 +68,8 @@ export function TrainingLearningShell({ section }: { section: string }) {
       <header className="space-y-1">
         <h2 className="text-lg font-bold tracking-tight text-ds-foreground">Learning</h2>
         <p className="max-w-3xl text-sm text-ds-muted">
-          Workflow layer for procedure completion — assignments, acknowledgements, uploads, and submissions. Procedure
-          content is managed in the library; Compliance reflects verified qualification state.
+          Worker completion workflow — My Learning, assignments, acknowledgements, and submissions. Procedure content
+          lives in the library; Compliance reflects verified qualification state.
         </p>
       </header>
 
@@ -91,37 +99,57 @@ export function TrainingLearningShell({ section }: { section: string }) {
       ) : null}
 
       {!canViewActive ? (
-        <p className="rounded-lg border border-amber-200/80 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-950/30 dark:text-amber-100">
-          You do not have access to this section.
-        </p>
-      ) : null}
-
-      {canViewActive && activeSection === "assignments" ? (
-        <div className="space-y-8">
-          <MyProceduresAssignmentsView embedded />
-          {leadership ? (
-            <section className="rounded-lg border border-dashed border-ds-border bg-ds-muted/10 p-4 text-sm text-ds-muted">
-              <p>
-                Team matrix previews live under{" "}
-                <Link href={TRAINING_ROUTES.complianceMatrix} className="font-semibold text-teal-700 hover:underline dark:text-teal-300">
-                  Compliance → Matrix
-                </Link>
-                .
-              </p>
-            </section>
+        <div className="space-y-3 rounded-lg border border-amber-200/80 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-950/30 dark:text-amber-100">
+          <p>
+            {activeSection === "archive"
+              ? "The acknowledgment archive is available to company administrators, management, and supervisors."
+              : "You do not have access to this section."}
+          </p>
+          {activeSection === "archive" ? (
+            <Link
+              href={TRAINING_ROUTES.learningMyLearning}
+              className="font-semibold text-teal-800 hover:underline dark:text-teal-200"
+            >
+              Go to My Learning →
+            </Link>
           ) : null}
         </div>
       ) : null}
-      {canViewActive && activeSection === "procedures" ? <ProceduresApp /> : null}
-      {canViewActive && activeSection === "acknowledgments" ? <ProcedureAcknowledgmentsArchiveClient /> : null}
+
+      {canViewActive && activeSection === "my-learning" ? (
+        <div className="space-y-8">
+          <TrainingEmployeeSelfView />
+          <MyProceduresAssignmentsView embedded />
+        </div>
+      ) : null}
+      {canViewActive && activeSection === "assign" ? <LearningAssignPanel /> : null}
+      {canViewActive && activeSection === "bundles" ? <LearningBundleManager /> : null}
+      {canViewActive && activeSection === "library" ? <ProceduresApp /> : null}
+      {canViewActive && activeSection === "archive" ? <ProcedureAcknowledgmentsArchiveClient /> : null}
 
       {!canViewActive && fallback !== activeSection ? (
         <Link
           href={trainingLearningHref(fallback)}
-          className="text-sm font-semibold text-teal-700 hover:underline dark:text-teal-300"
+          className="inline-flex items-center gap-2 text-sm font-semibold text-teal-700 hover:underline dark:text-teal-300"
         >
-          Go to {TABS.find((t) => t.id === fallback)?.label ?? "assignments"}
+          <UserPlus className="h-4 w-4" aria-hidden />
+          Go to {TABS.find((t) => t.id === fallback)?.label ?? "My Learning"}
         </Link>
+      ) : null}
+
+      {canViewActive && activeSection === "my-learning" ? (
+        <section className="rounded-lg border border-dashed border-ds-border bg-ds-muted/10 p-4 text-sm text-ds-muted">
+          <p>
+            Team qualification state lives under{" "}
+            <Link
+              href={TRAINING_ROUTES.complianceMatrix}
+              className="font-semibold text-teal-700 hover:underline dark:text-teal-300"
+            >
+              Compliance → Matrix
+            </Link>
+            .
+          </p>
+        </section>
       ) : null}
     </div>
   );

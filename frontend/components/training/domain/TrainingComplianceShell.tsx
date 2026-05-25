@@ -10,8 +10,9 @@ import { WorkforceComplianceView } from "@/components/standards/workforce-traini
 import { ExpiringQualificationsView } from "@/components/standards/workforce-training/ExpiringQualificationsView";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { cn } from "@/lib/cn";
-import { trainingComplianceHref } from "@/lib/training/routes";
+import { TRAINING_ROUTES, trainingComplianceHref } from "@/lib/training/routes";
 import {
+  canViewAnyTrainingCompliance,
   canViewTrainingComplianceSection,
   firstAllowedTrainingComplianceSection,
   isTrainingComplianceSection,
@@ -25,20 +26,46 @@ const TABS: { id: TrainingComplianceSection; label: string; icon: typeof Grid3X3
   { id: "queues", label: "Expiring & gaps", icon: Clock },
 ];
 
-/** Training → Compliance: unified qualification engine (matrix-first). */
+/** Training → Compliance: unified qualification engine (matrix-first). Leadership-only. */
 export function TrainingComplianceShell({ section }: { section: string }) {
   const { session } = usePulseAuth();
-  const activeSection: TrainingComplianceSection = isTrainingComplianceSection(section)
-    ? section
-    : firstAllowedTrainingComplianceSection(session);
+  const allowed = canViewAnyTrainingCompliance(session);
+  const fallback = firstAllowedTrainingComplianceSection(session);
+
+  const activeSection: TrainingComplianceSection | null = useMemo(() => {
+    if (!allowed) return null;
+    if (isTrainingComplianceSection(section) && canViewTrainingComplianceSection(session, section)) {
+      return section;
+    }
+    return fallback;
+  }, [allowed, section, session, fallback]);
 
   const visibleTabs = useMemo(
     () => TABS.filter((t) => canViewTrainingComplianceSection(session, t.id)),
     [session],
   );
 
-  const canViewActive = canViewTrainingComplianceSection(session, activeSection);
-  const fallback = firstAllowedTrainingComplianceSection(session);
+  if (!allowed) {
+    return (
+      <div className="space-y-4">
+        <header className="space-y-1">
+          <h2 className="text-lg font-bold tracking-tight text-ds-foreground">Compliance</h2>
+        </header>
+        <p className="rounded-lg border border-amber-200/80 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-950/30 dark:text-amber-100">
+          Compliance is available to company administrators, management, and supervisors. Your personal learning and
+          completion status are on My Learning.
+        </p>
+        <Link
+          href={TRAINING_ROUTES.learningMyLearning}
+          className="text-sm font-semibold text-teal-700 hover:underline dark:text-teal-300"
+        >
+          Go to My Learning →
+        </Link>
+      </div>
+    );
+  }
+
+  const canViewActive = activeSection != null && canViewTrainingComplianceSection(session, activeSection);
 
   return (
     <WorkforceQualificationsProvider>
@@ -85,7 +112,7 @@ export function TrainingComplianceShell({ section }: { section: string }) {
         {canViewActive && activeSection === "registry" ? <CertificationsRegistryView /> : null}
         {canViewActive && activeSection === "queues" ? <ExpiringQualificationsView /> : null}
 
-        {!canViewActive && fallback !== activeSection ? (
+        {!canViewActive && fallback && fallback !== activeSection ? (
           <Link
             href={trainingComplianceHref(fallback)}
             className="text-sm font-semibold text-teal-700 hover:underline dark:text-teal-300"

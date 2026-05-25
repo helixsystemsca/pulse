@@ -6,9 +6,17 @@ export const TRAINING_ROUTES = {
   root: "/training",
   overview: "/training/overview",
   learning: "/training/learning",
-  learningAssignments: "/training/learning/assignments",
-  learningProcedures: "/training/learning/procedures",
-  learningAcknowledgments: "/training/learning/acknowledgments",
+  learningMyLearning: "/training/learning/my-learning",
+  learningAssign: "/training/learning/assign",
+  learningBundles: "/training/learning/bundles",
+  learningLibrary: "/training/learning/library",
+  learningArchive: "/training/learning/archive",
+  /** @deprecated use learningMyLearning */
+  learningAssignments: "/training/learning/my-learning",
+  /** @deprecated use learningLibrary */
+  learningProcedures: "/training/learning/library",
+  /** @deprecated use learningArchive */
+  learningAcknowledgments: "/training/learning/archive",
   compliance: "/training/compliance",
   complianceMatrix: "/training/compliance/matrix",
   complianceWorkers: "/training/compliance/workers",
@@ -25,9 +33,28 @@ export const LEGACY_TRAINING_SECTION_REDIRECTS: Record<string, string> = {
   expiring: TRAINING_ROUTES.complianceQueues,
 };
 
-export function trainingLearningHref(section: "assignments" | "procedures" | "acknowledgments"): string {
-  if (section === "assignments") return TRAINING_ROUTES.learningAssignments;
-  return `/training/learning/${section}`;
+export type TrainingLearningSectionSlug =
+  | "my-learning"
+  | "assign"
+  | "bundles"
+  | "library"
+  | "archive"
+  | "assignments"
+  | "procedures"
+  | "acknowledgments";
+
+export function trainingLearningHref(section: TrainingLearningSectionSlug): string {
+  const map: Record<TrainingLearningSectionSlug, string> = {
+    "my-learning": TRAINING_ROUTES.learningMyLearning,
+    assignments: TRAINING_ROUTES.learningMyLearning,
+    assign: TRAINING_ROUTES.learningAssign,
+    bundles: TRAINING_ROUTES.learningBundles,
+    library: TRAINING_ROUTES.learningLibrary,
+    procedures: TRAINING_ROUTES.learningLibrary,
+    archive: TRAINING_ROUTES.learningArchive,
+    acknowledgments: TRAINING_ROUTES.learningArchive,
+  };
+  return map[section] ?? TRAINING_ROUTES.learningMyLearning;
 }
 
 export function trainingComplianceHref(

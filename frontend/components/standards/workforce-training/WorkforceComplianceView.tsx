@@ -18,7 +18,7 @@ export function WorkforceComplianceView() {
     <div className="space-y-4">
       <p className="text-sm text-ds-muted">
         Operational readiness from assigned procedure training. SOP sign-offs and quizzes remain under{" "}
-        <Link href={TRAINING_ROUTES.learningProcedures} className="font-semibold text-teal-700 hover:underline dark:text-teal-300">
+        <Link href={TRAINING_ROUTES.learningLibrary} className="font-semibold text-teal-700 hover:underline dark:text-teal-300">
           Learning → Procedure library
         </Link>
         .{" "}

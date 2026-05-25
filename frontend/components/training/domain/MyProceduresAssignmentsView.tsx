@@ -11,7 +11,7 @@ import { TRAINING_ROUTES } from "@/lib/training/routes";
 import type { TrainingAcknowledgement } from "@/lib/training/types";
 import { cn } from "@/lib/cn";
 
-/** Worker-facing assigned procedures and completion status (Learning workflow). */
+/** Worker-facing assigned procedures — always scoped to the signed-in account (`session.sub`). */
 export function MyProceduresAssignmentsView({ embedded = false }: { embedded?: boolean }) {
   const session = readSession();
   const userId = session?.sub ?? "";
@@ -64,7 +64,7 @@ export function MyProceduresAssignmentsView({ embedded = false }: { embedded?: b
     return (
       <div className="flex items-center gap-2 text-ds-muted">
         <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-        Loading your assignments…
+        Loading your learning…
       </div>
     );
   }
@@ -81,9 +81,9 @@ export function MyProceduresAssignmentsView({ embedded = false }: { embedded?: b
     <div className={embedded ? "space-y-4" : "space-y-6"}>
       {!embedded ? (
         <div>
-          <h2 className="text-lg font-semibold text-ds-foreground">My assignments</h2>
+          <h2 className="text-lg font-semibold text-ds-foreground">My Learning</h2>
           <p className="mt-1 max-w-2xl text-sm text-ds-muted">
-            Required procedures, acknowledgements, and completion status for your role.
+            Assigned learning — procedures, acknowledgements, uploads, and completion status for your role.
           </p>
         </div>
       ) : null}
@@ -121,7 +121,7 @@ export function MyProceduresAssignmentsView({ embedded = false }: { embedded?: b
                   <td className="px-3 py-2 tabular-nums text-ds-muted">{program.revision_number}</td>
                   <td className="px-3 py-2">
                     <Link
-                      href={TRAINING_ROUTES.learningProcedures}
+                      href={TRAINING_ROUTES.learningLibrary}
                       className="text-sm font-semibold text-teal-700 hover:underline dark:text-teal-300"
                     >
                       Open

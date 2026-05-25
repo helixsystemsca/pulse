@@ -38,6 +38,25 @@ describe("canAccessClassicNavHref", () => {
     expect(canAccessClassicNavHref(s, "/drawings?workspace=advertising")).toBe(true);
   });
 
+  it("denies training compliance and archive to workers; allows supervision roles", () => {
+    const worker = session({
+      contract_features: ["procedures", "standards_compliance"],
+      enabled_features: ["procedures", "standards_compliance", "standards_training"],
+      rbac_permissions: ["procedures.view", "standards.compliance.view", "standards.training.compliance.view"],
+      roles: ["worker"],
+    });
+    expect(canAccessClassicNavHref(worker, "/training/compliance/matrix")).toBe(false);
+    expect(canAccessClassicNavHref(worker, "/training/learning/archive")).toBe(false);
+    expect(canAccessClassicNavHref(worker, "/training/learning/my-learning")).toBe(true);
+
+    const supervisor = session({
+      ...worker,
+      roles: ["supervisor"],
+    });
+    expect(canAccessClassicNavHref(supervisor, "/training/compliance/matrix")).toBe(true);
+    expect(canAccessClassicNavHref(supervisor, "/training/learning/archive")).toBe(true);
+  });
+
   it("allows communications modules when contract uses legacy keys", () => {
     const s = session({
       contract_features: ["comms_advertising_mapper", "comms_indesign_pipeline"],

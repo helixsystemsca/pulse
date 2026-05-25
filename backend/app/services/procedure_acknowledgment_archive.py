@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime, time, timezone
 from typing import Literal, Optional
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import String, and_, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.domain import User
@@ -31,6 +31,7 @@ def _archive_where(
     status_filter: Literal["all", "current", "outdated"],
     date_from: Optional[date],
     date_to: Optional[date],
+    search: Optional[str] = None,
 ):
     conds = [
         PulseProcedureTrainingAcknowledgement.company_id == company_id,
@@ -53,6 +54,26 @@ def _archive_where(
         conds.append(PulseProcedureTrainingAcknowledgement.revision_number == PulseProcedure.content_revision)
     elif status_filter == "outdated":
         conds.append(PulseProcedureTrainingAcknowledgement.revision_number < PulseProcedure.content_revision)
+
+    q = (search or "").strip()
+    if q:
+        term = f"%{q}%"
+        search_conds = [
+            User.full_name.ilike(term),
+            PulseProcedure.title.ilike(term),
+            cast(PulseProcedureTrainingAcknowledgement.acknowledged_at, String).ilike(term),
+        ]
+        q_lower = q.lower()
+        if "outdated" in q_lower:
+            search_conds.append(
+                PulseProcedureTrainingAcknowledgement.revision_number < PulseProcedure.content_revision
+            )
+        if "current" in q_lower:
+            search_conds.append(
+                PulseProcedureTrainingAcknowledgement.revision_number == PulseProcedure.content_revision
+            )
+        conds.append(or_(*search_conds))
+
     return and_(*conds)
 
 
@@ -66,10 +87,12 @@ async def count_procedure_acknowledgment_archive(
     status_filter: Literal["all", "current", "outdated"] = "all",
     date_from: Optional[date] = None,
     date_to: Optional[date] = None,
+    search: Optional[str] = None,
 ) -> int:
     stmt = (
         select(func.count())
         .select_from(PulseProcedureTrainingAcknowledgement)
+        .join(User, User.id == PulseProcedureTrainingAcknowledgement.employee_user_id)
         .join(PulseProcedure, PulseProcedure.id == PulseProcedureTrainingAcknowledgement.procedure_id)
         .where(
             _archive_where(
@@ -80,6 +103,7 @@ async def count_procedure_acknowledgment_archive(
                 status_filter=status_filter,
                 date_from=date_from,
                 date_to=date_to,
+                search=search,
             )
         )
     )
@@ -97,6 +121,7 @@ async def list_procedure_acknowledgment_archive(
     status_filter: Literal["all", "current", "outdated"] = "all",
     date_from: Optional[date] = None,
     date_to: Optional[date] = None,
+    search: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
 ) -> list[dict]:
@@ -125,6 +150,7 @@ async def list_procedure_acknowledgment_archive(
                 status_filter=status_filter,
                 date_from=date_from,
                 date_to=date_to,
+                search=search,
             )
         )
         .order_by(PulseProcedureTrainingAcknowledgement.acknowledged_at.desc())
