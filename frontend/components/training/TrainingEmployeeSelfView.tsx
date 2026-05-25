@@ -1,14 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ClipboardCheck } from "lucide-react";
-import { TrainingMatrixTable } from "@/components/training/TrainingMatrixTable";
+import { MyLearningDashboard } from "@/components/training/my-learning/MyLearningDashboard";
 import { isApiMode } from "@/lib/api";
-import {
-  complianceAlertsForEmployee,
-  complianceAlertsGroupedByTier,
-} from "@/lib/training/complianceAlerts";
-import { TrainingTierBadge } from "@/components/training/TrainingTierBadge";
+import { complianceAlertsForEmployee } from "@/lib/training/complianceAlerts";
+import { buildMyLearningDashboard } from "@/lib/training/myLearningDashboard";
 import { MOCK_TRAINING_PROGRAMS } from "@/lib/training/mockData";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { readSession } from "@/lib/pulse-session";
@@ -20,16 +16,16 @@ import {
   type WorkerTrainingApiResponse,
 } from "@/lib/trainingApi";
 import { trainingAcknowledgementsForPersona, trainingAssignmentsForPersona } from "@/lib/training/selectors";
-import type { TrainingAcknowledgement, TrainingAssignment, TrainingEmployee, TrainingProgram } from "@/lib/training/types";
+import type { TrainingAcknowledgement, TrainingAssignment, TrainingProgram } from "@/lib/training/types";
 
 const TIER_SORT: TrainingProgram["tier"][] = ["mandatory", "high_risk", "general"];
 
 export function TrainingEmployeeSelfView() {
   const api = isApiMode();
   const session = readSession();
-  /** Personal matrix only — never another worker's id. */
   const workerId = session?.sub ?? "";
   const displayName = (session?.full_name ?? session?.email ?? "Your profile").trim();
+  const jobTitle = session?.job_title ?? null;
 
   const [bundle, setBundle] = useState<WorkerTrainingApiResponse | null>(null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
@@ -61,7 +57,9 @@ export function TrainingEmployeeSelfView() {
   const useLive = Boolean(api && bundle && !loadErr);
 
   const programs = useMemo(() => {
-    const raw = useLive ? mapApiPrograms(bundle!.programs).filter((p) => p.active) : MOCK_TRAINING_PROGRAMS.filter((p) => p.active);
+    const raw = useLive
+      ? mapApiPrograms(bundle!.programs).filter((p) => p.active)
+      : MOCK_TRAINING_PROGRAMS.filter((p) => p.active);
     return [...raw].sort((a, b) => {
       const ti = TIER_SORT.indexOf(a.tier);
       const tj = TIER_SORT.indexOf(b.tier);
@@ -80,15 +78,6 @@ export function TrainingEmployeeSelfView() {
 
   const trustServer = useLive;
 
-  const meRow: TrainingEmployee = useMemo(
-    () => ({
-      id: workerId,
-      display_name: displayName,
-      department: session?.job_title?.trim() || "—",
-    }),
-    [workerId, displayName, session?.job_title],
-  );
-
   const alerts = useMemo(
     () =>
       workerId
@@ -97,7 +86,20 @@ export function TrainingEmployeeSelfView() {
     [workerId, programs, assignments, acks, trustServer],
   );
 
-  const alertsByTier = useMemo(() => complianceAlertsGroupedByTier(alerts), [alerts]);
+  const dashboardModel = useMemo(
+    () =>
+      workerId
+        ? buildMyLearningDashboard({
+            employeeId: workerId,
+            programs,
+            assignments,
+            acknowledgements: acks,
+            alerts,
+            trustAssignmentStatus: trustServer,
+          })
+        : null,
+    [workerId, programs, assignments, acks, alerts, trustServer],
+  );
 
   if (!workerId) {
     return (
@@ -107,104 +109,15 @@ export function TrainingEmployeeSelfView() {
     );
   }
 
+  if (!dashboardModel) return null;
+
   return (
-    <div className="space-y-6">
-      <div className="ds-premium-panel p-4 sm:p-5">
-        <div className="flex flex-wrap items-start gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--ds-accent)_14%,transparent)] text-[var(--ds-accent)]">
-            <ClipboardCheck className="h-5 w-5" aria-hidden />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h2 className="text-base font-semibold text-ds-foreground">My training record</h2>
-            <p className="mt-1 max-w-3xl text-sm leading-relaxed text-ds-muted">
-              Your assigned procedures, completions, and acknowledgements — same matrix layout as the team board, scoped to
-              you. Leads, supervisors, managers, and tenant admins see everyone&apos;s rows on this page.
-            </p>
-            <p className="mt-2 text-xs font-medium text-ds-foreground">{displayName}</p>
-            {loading ? <p className="mt-2 text-xs text-ds-muted">Loading…</p> : null}
-            {loadErr ? (
-              <p className="mt-2 text-xs font-semibold text-ds-danger" role="alert">
-                Could not load training: {loadErr}
-              </p>
-            ) : null}
-          </div>
-        </div>
-      </div>
-
-      {alertsByTier.length > 0 ? (
-        <section className="rounded-xl border border-ds-border bg-ds-secondary/40 p-4">
-          <h3 className="text-[11px] font-bold uppercase tracking-wide text-ds-muted">Compliance attention</h3>
-          <p className="mt-1 text-xs text-ds-muted">Assigned training that needs action, grouped by risk level.</p>
-          <div className="mt-4 space-y-5">
-            {alertsByTier.map((group) => (
-              <div key={group.tier}>
-                <div className="mb-2 flex items-center gap-2">
-                  <TrainingTierBadge tier={group.tier} />
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-ds-muted">
-                    {group.alerts.length} item{group.alerts.length === 1 ? "" : "s"}
-                  </span>
-                </div>
-                <ol className="space-y-2 text-sm">
-                  {group.alerts.map((a) => (
-                    <li
-                      key={a.programId}
-                      className="flex flex-wrap items-baseline justify-between gap-2 rounded-lg border border-ds-border/70 bg-ds-primary/50 px-3 py-2"
-                    >
-                      <span className="font-medium text-ds-foreground">{a.title}</span>
-                      <span
-                        className={`text-xs font-semibold ${
-                          a.priority <= 2 ? "text-ds-danger" : a.priority === 3 ? "text-ds-warning" : "text-ds-muted"
-                        }`}
-                      >
-                        {a.label}
-                      </span>
-                    </li>
-                  ))}
-                </ol>
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      <section className="space-y-2">
-        <div>
-          <h3 className="text-[11px] font-bold uppercase tracking-wide text-ds-muted">Your training matrix</h3>
-          <p className="mt-1 text-xs text-ds-muted">
-            One row (you) × procedures. Teal = complete · Yellow = expiring soon · Pink = routines gap · Peach = optional /
-            general gap.
-          </p>
-        </div>
-        <TrainingMatrixTable
-          employees={[meRow]}
-          programs={programs}
-          assignments={assignments}
-          acknowledgements={acks}
-          trustAssignmentStatus={trustServer}
-          statusColumnFilter="all"
-        />
-      </section>
-
-      <section className="rounded-xl border border-ds-border bg-ds-secondary/30 p-4">
-        <h3 className="text-[11px] font-bold uppercase tracking-wide text-ds-muted">Acknowledgement history</h3>
-        <ul className="mt-3 space-y-2 text-sm">
-          {acks.length === 0 ? (
-            <li className="text-ds-muted">No acknowledgement records on file.</li>
-          ) : (
-            acks.map((k) => {
-              const p = programs.find((x) => x.id === k.training_program_id);
-              return (
-                <li key={k.id} className="flex flex-wrap items-baseline justify-between gap-2 border-b border-ds-border/60 pb-2">
-                  <span className="font-medium text-ds-foreground">{p?.title ?? k.training_program_id}</span>
-                  <span className="text-xs tabular-nums text-ds-muted">
-                    Rev {k.revision_number} · {k.acknowledged_at.slice(0, 10)}
-                  </span>
-                </li>
-              );
-            })
-          )}
-        </ul>
-      </section>
-    </div>
+    <MyLearningDashboard
+      displayName={displayName}
+      jobTitle={jobTitle}
+      loading={loading}
+      loadError={loadErr}
+      model={dashboardModel}
+    />
   );
 }
