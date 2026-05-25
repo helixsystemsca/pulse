@@ -94,15 +94,18 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   --ds-danger: var(--ds-palette-crimson-carrot);
 
   /**
-   * Organization brand slots (overridden by `OrganizationThemeSync` from Organization & Branding).
-   * Map into semantic `--ds-*` tokens — do not reference raw hex in feature code.
+   * Organization theme slots (overridden by `OrganizationThemeSync` from Organization & Branding).
+   * `brand.*` = identity chrome; `semantic.*` = KPI / status only — keep separate in feature code.
    */
   --ds-brand-primary: var(--ds-accent);
   --ds-brand-secondary: var(--ds-palette-iron-grey);
   --ds-brand-accent: var(--ds-palette-ice-active);
+  --ds-brand-hover: var(--ds-palette-ice-mid);
+  --ds-brand-surface: var(--ds-palette-platinum);
   --ds-brand-success: var(--ds-success);
   --ds-brand-warning: var(--ds-warning);
-  --ds-brand-danger: var(--ds-danger);
+  --ds-brand-critical: var(--ds-danger);
+  --ds-brand-danger: var(--ds-brand-critical);
 
   /** Text on solid success / warning / danger fills */
   --ds-on-accent: #ffffff;

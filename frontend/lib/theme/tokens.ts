@@ -1,6 +1,9 @@
 /**
  * Semantic design tokens — maps to CSS variables in `app/globals.css`.
  * Prefer these names in TS/TSX when referencing theme values programmatically.
+ *
+ * Brand identity (`brand.*`) and operational semantics (`semantic.*`) are configured
+ * separately in Organization & Branding — do not use semantic colors for chrome/buttons.
  */
 
 /** CSS custom property names (use as `var(--ds-accent)` or Tailwind `text-ds-accent`). */
@@ -9,8 +12,14 @@ export const CSS_VARS = {
     primary: "--ds-brand-primary",
     secondary: "--ds-brand-secondary",
     accent: "--ds-brand-accent",
+    hover: "--ds-brand-hover",
+    surface: "--ds-brand-surface",
+  },
+  semantic: {
     success: "--ds-brand-success",
     warning: "--ds-brand-warning",
+    critical: "--ds-brand-critical",
+    /** @deprecated Alias of critical — prefer `critical` in new code */
     danger: "--ds-brand-danger",
   },
   surface: {

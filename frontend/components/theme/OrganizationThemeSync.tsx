@@ -3,10 +3,10 @@
 import { useEffect } from "react";
 import { readSession } from "@/lib/pulse-session";
 import {
-  applyOrganizationBrandColors,
-  clearOrganizationBrandColorOverrides,
+  applyOrganizationTheme,
+  clearOrganizationThemeOverrides,
   PULSE_ORG_THEME_CHANGE_EVENT,
-  resolveOrganizationBrandColors,
+  resolveOrganizationTheme,
 } from "@/lib/theme/organization-branding";
 
 /** Applies tenant brand colors from session / local preview to CSS variables. */
@@ -16,10 +16,10 @@ export function OrganizationThemeSync() {
       const session = readSession();
       const company = session?.company ?? null;
       if (!company?.id) {
-        clearOrganizationBrandColorOverrides();
+        clearOrganizationThemeOverrides();
         return;
       }
-      applyOrganizationBrandColors(resolveOrganizationBrandColors(company));
+      applyOrganizationTheme(resolveOrganizationTheme(company));
     };
 
     sync();
