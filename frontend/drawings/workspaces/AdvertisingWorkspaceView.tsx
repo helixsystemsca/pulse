@@ -430,7 +430,7 @@ export function AdvertisingWorkspaceView({
       <AdvertisingEditorShell
         immersive={immersive}
         fullscreen={editorFullscreen}
-        className={editorFullscreen ? undefined : "min-h-0 flex-1"}
+        className="min-h-0 flex-1"
         header={
           <AdvertisingEditorHeaderBar
             workspaceSwitcher={workspaceSwitcher}

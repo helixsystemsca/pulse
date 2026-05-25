@@ -3,9 +3,13 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
+import { ADVERTISING_WORKSPACE } from "@/spatial-engine/workspace/definitions/advertising";
+
 export const AD_EDITOR_HEADER_PX = 52;
 export const AD_EDITOR_FOOTER_PX = 40;
-export const AD_EDITOR_INSPECTOR_RAIL = "clamp(268px, 17vw, 320px)";
+/** Fixed inspector width — matches `ADVERTISING_WORKSPACE.layout.rightPanelWidthPx`. */
+export const AD_EDITOR_INSPECTOR_RAIL_PX = ADVERTISING_WORKSPACE.layout?.rightPanelWidthPx ?? 380;
+export const AD_EDITOR_INSPECTOR_RAIL = `${AD_EDITOR_INSPECTOR_RAIL_PX}px`;
 
 export type AdvertisingEditorShellProps = {
   header: ReactNode;
@@ -38,7 +42,7 @@ export function AdvertisingEditorShell({
   return (
     <div
       className={cn(
-        "grid min-h-0 w-full overflow-hidden bg-[#e8ecf1] font-manrope",
+        "grid h-full min-h-0 w-full overflow-hidden bg-[#e8ecf1] font-manrope",
         immersive && !fullscreen && "min-h-0 flex-1",
         fullscreen && "h-[100dvh]",
         className,
@@ -75,7 +79,7 @@ export function AdvertisingEditorShell({
       </main>
 
       <aside
-        className="min-h-0 overflow-hidden border-l border-slate-200/80 bg-[#dce3eb]"
+        className="flex h-full min-h-0 flex-col overflow-hidden border-l border-slate-200/80 bg-[#dce3eb]"
         style={{ gridArea: "inspector" }}
       >
         {inspector}

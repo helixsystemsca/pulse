@@ -47,11 +47,13 @@ function SpatialAppPageInner({ fullscreen = false }: { fullscreen?: boolean }) {
 
   if (activeWorkspaceId === "advertising") {
     return (
-      <AdvertisingWorkspaceView
-        workspaceSwitcher={workspaceSwitcher}
-        immersive={!fullscreen}
-        editorFullscreen={fullscreen}
-      />
+      <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden">
+        <AdvertisingWorkspaceView
+          workspaceSwitcher={workspaceSwitcher}
+          immersive={!fullscreen}
+          editorFullscreen={fullscreen}
+        />
+      </div>
     );
   }
 
