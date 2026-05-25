@@ -653,8 +653,8 @@ export function ScheduleRoutinesBoard({
         }}
       />
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-pulseShell-border/80 bg-pulseShell-surface/60 px-3 py-2 dark:border-slate-700/80 dark:bg-slate-900/50">
-        <div className="flex items-center gap-2">
+      <div className="grid grid-cols-1 items-center gap-3 rounded-xl border border-pulseShell-border/80 bg-pulseShell-surface/60 px-3 py-2 sm:grid-cols-[auto_minmax(11rem,13.5rem)_1fr] dark:border-slate-700/80 dark:bg-slate-900/50">
+        <div className="flex items-center gap-2 justify-self-start">
           <button
             type="button"
             className="rounded-lg border border-ds-border p-1.5 text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
@@ -676,8 +676,23 @@ export function ScheduleRoutinesBoard({
             <ChevronRight className="h-4 w-4" />
           </button>
         </div>
-        <p className="min-h-[2.5rem] text-xs leading-snug text-ds-muted">
-          {draggingRoutineId ? (
+
+        <ScheduleAssignmentTrashDropZone
+          active={assignmentsEnabled && draggingAssignedChip}
+          onHoverChange={setAssignmentTrashHover}
+          onDropChip={(payload) => {
+            onAssignedChipDragEnd();
+            void removeAssignedChip(payload);
+          }}
+        />
+
+        <p className="min-h-[2.5rem] text-xs leading-snug text-ds-muted sm:justify-self-end sm:text-right">
+          {draggingAssignedChip ? (
+            <>
+              Dragging assigned chip — drop on{" "}
+              <span className="font-semibold text-ds-foreground">Remove here</span> to unassign.
+            </>
+          ) : draggingRoutineId ? (
             <>
               Dragging{" "}
               <span className="font-semibold text-ds-foreground">
@@ -692,7 +707,10 @@ export function ScheduleRoutinesBoard({
               worker row.
             </>
           ) : (
-            <>Drag routines or badges onto any part of a worker row.</>
+            <>
+              Drag routines or badges onto a worker row. Drag an assigned chip to{" "}
+              <span className="font-semibold text-ds-foreground">Remove here</span> to clear it.
+            </>
           )}
         </p>
       </div>
@@ -1026,14 +1044,6 @@ export function ScheduleRoutinesBoard({
       </div>
       </div>
 
-      <ScheduleAssignmentTrashDropZone
-        active={assignmentsEnabled && draggingAssignedChip}
-        onHoverChange={setAssignmentTrashHover}
-        onDropChip={(payload) => {
-          onAssignedChipDragEnd();
-          void removeAssignedChip(payload);
-        }}
-      />
       {assignmentTrashHover ? (
         <p className="sr-only" role="status">
           Release over trash to remove assignment

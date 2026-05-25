@@ -2,6 +2,7 @@
 
 import { Trash2 } from "lucide-react";
 import { useState } from "react";
+import { cn } from "@/lib/cn";
 import {
   assignedChipTrashAccepts,
   readAssignedChipDragPayload,
@@ -9,12 +10,13 @@ import {
 } from "@/lib/schedule/routine-assignment-chip-drag";
 
 type Props = {
+  /** Chip removal drag is in progress — accept drops and highlight the target. */
   active: boolean;
   onDropChip: (payload: AssignedChipDragPayload) => void;
   onHoverChange?: (hovering: boolean) => void;
 };
 
-/** Fixed target for dragging assigned routine / badge chips off a worker row. */
+/** Inline header target for dragging assigned routine / badge chips off a worker row. */
 export function ScheduleAssignmentTrashDropZone({ active, onDropChip, onHoverChange }: Props) {
   const [over, setOver] = useState(false);
 
@@ -23,24 +25,28 @@ export function ScheduleAssignmentTrashDropZone({ active, onDropChip, onHoverCha
     onHoverChange?.(v);
   };
 
-  if (!active) return null;
+  const emphasized = active && (over || active);
 
   return (
     <div
-      className="pointer-events-auto fixed bottom-4 left-4 z-[145] sm:bottom-8 sm:left-8"
-      style={{ padding: "24px" }}
+      className={cn(
+        "flex min-h-[2.5rem] w-full max-w-[13.5rem] justify-self-center select-none items-center justify-center gap-2 rounded-lg border-2 border-dashed px-3 py-2 transition-all duration-150",
+        emphasized || over
+          ? "scale-[1.02] border-red-500 bg-red-50 text-red-950 shadow-sm ring-2 ring-red-400/30 dark:bg-red-950/40 dark:text-red-100"
+          : active
+            ? "border-red-300/80 bg-red-50/50 text-red-800/90 dark:border-red-500/40 dark:bg-red-950/25"
+            : "border-ds-border/80 bg-ds-primary/30 text-ds-muted",
+      )}
       onDragEnter={(e) => {
-        if (assignedChipTrashAccepts(e)) {
-          e.preventDefault();
-          setHover(true);
-        }
+        if (!active || !assignedChipTrashAccepts(e)) return;
+        e.preventDefault();
+        setHover(true);
       }}
       onDragOver={(e) => {
-        if (assignedChipTrashAccepts(e)) {
-          e.preventDefault();
-          e.dataTransfer.dropEffect = "move";
-          setHover(true);
-        }
+        if (!active || !assignedChipTrashAccepts(e)) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        setHover(true);
       }}
       onDragLeave={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node)) {
@@ -48,32 +54,33 @@ export function ScheduleAssignmentTrashDropZone({ active, onDropChip, onHoverCha
         }
       }}
       onDrop={(e) => {
+        if (!active) return;
         e.preventDefault();
         setHover(false);
         const payload = readAssignedChipDragPayload(e.dataTransfer);
         if (payload) onDropChip(payload);
       }}
     >
-      <div
-        className={`flex min-h-[4.25rem] min-w-[12.5rem] select-none items-center justify-center gap-3 rounded-md border-2 px-5 py-3.5 shadow-lg transition-all duration-150 ${
-          over
-            ? "scale-105 border-red-500 bg-red-50 text-red-950 shadow-red-200/50 ring-4 ring-red-400/35"
-            : "border-pulseShell-border bg-pulseShell-surface/95 text-gray-500 backdrop-blur-sm dark:text-slate-400"
-        }`}
-      >
-        <Trash2
-          className={`h-6 w-6 shrink-0 transition-transform ${over ? "scale-110 text-red-600" : "text-gray-400 dark:text-gray-500"}`}
-          strokeWidth={2}
-          aria-hidden
-        />
-        <div className="min-w-0 text-left">
-          <p
-            className={`text-sm font-bold ${over ? "text-red-800 dark:text-red-300" : "text-gray-900 dark:text-gray-100"}`}
-          >
-            Drop to remove
-          </p>
-          <p className="mt-0.5 text-[11px] text-gray-500 dark:text-gray-400">Unassign routine or badge</p>
-        </div>
+      <Trash2
+        className={cn(
+          "h-5 w-5 shrink-0",
+          emphasized || over ? "text-red-600" : active ? "text-red-500/80" : "text-ds-muted",
+        )}
+        strokeWidth={2}
+        aria-hidden
+      />
+      <div className="min-w-0 text-left">
+        <p
+          className={cn(
+            "text-xs font-bold leading-tight",
+            emphasized || over ? "text-red-800 dark:text-red-200" : "text-ds-foreground",
+          )}
+        >
+          {active ? (over ? "Release to remove" : "Drop to remove") : "Remove here"}
+        </p>
+        <p className="text-[10px] leading-tight text-ds-muted">
+          {active ? "Unassign chip" : "Drag assigned chip"}
+        </p>
       </div>
     </div>
   );
