@@ -1,4 +1,5 @@
 import { deploymentOverlayKey, mergeDeploymentBadgeOverlays } from "@/lib/schedule/deployment-overlay";
+import { isRoutineAssignmentWorkforceWorker } from "@/lib/schedule/routine-workforce-roles";
 import type { RoutineAssignmentDetail } from "@/lib/routinesService";
 import type { Shift, Worker } from "@/lib/schedule/types";
 
@@ -27,8 +28,11 @@ export function buildDayRoutineWorkerRows(params: {
   assignments: RoutineAssignmentDetail[];
   deploymentBadgeOverlays: Record<string, string[]>;
 }): DayRoutineWorkerRow[] {
-  const workerById = new Map(params.workers.map((w) => [w.id, w]));
-  const dayShifts = params.shifts.filter((s) => s.date === params.dateStr && isWorkforceShift(s));
+  const workforceWorkers = params.workers.filter(isRoutineAssignmentWorkforceWorker);
+  const workerById = new Map(workforceWorkers.map((w) => [w.id, w]));
+  const dayShifts = params.shifts.filter(
+    (s) => s.date === params.dateStr && isWorkforceShift(s) && s.workerId && workerById.has(s.workerId),
+  );
   const withBadges = mergeDeploymentBadgeOverlays(dayShifts, params.deploymentBadgeOverlays);
 
   const badgesByWorker = new Map<string, Set<string>>();

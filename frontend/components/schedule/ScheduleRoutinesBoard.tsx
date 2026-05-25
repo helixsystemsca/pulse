@@ -65,6 +65,7 @@ import {
 import { deploymentOverlayKey } from "@/lib/schedule/deployment-overlay";
 import { parseLocalDate, formatLocalDate } from "@/lib/schedule/calendar";
 import { isPulseApiShiftId } from "@/lib/schedule/pulse-bridge";
+import { isRoutineAssignmentWorkforceShift } from "@/lib/schedule/routine-workforce-roles";
 import type { EnsureShiftOnServerResult } from "@/lib/schedule/persist-shift";
 import { ScheduleRoutineExtraModal } from "@/components/schedule/ScheduleRoutineExtraModal";
 import { AssignmentsLockedNotice } from "@/components/schedule/AssignmentsLockedNotice";
@@ -204,14 +205,13 @@ export function ScheduleRoutinesBoard({
 
   const scheduledRows = useMemo((): ScheduledRow[] => {
     const dayShifts = shifts
-      .filter(
-        (s) =>
-          s.date === focusDate &&
-          s.shiftKind !== "project_task" &&
-          s.eventType === "work" &&
-          s.workerId &&
-          workerById.has(s.workerId),
-      )
+      .filter((s) => {
+        if (s.date !== focusDate) return false;
+        if (s.shiftKind === "project_task" || s.eventType !== "work" || !s.workerId) return false;
+        const worker = workerById.get(s.workerId);
+        if (!worker) return false;
+        return isRoutineAssignmentWorkforceShift(s, worker);
+      })
       .slice()
       .sort((a, b) => a.startTime.localeCompare(b.startTime) || a.workerId!.localeCompare(b.workerId!));
 
