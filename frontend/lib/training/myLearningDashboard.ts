@@ -1,6 +1,8 @@
 import type { EmployeeComplianceAlert } from "@/lib/training/complianceAlerts";
+import type { LearningBundle } from "@/lib/training/learning-bundles";
+import { buildMyLearningBundleTrack, type MyLearningBundleTrack } from "@/lib/training/myLearningBundleTrack";
 import { myProcedureRowsForWorker } from "@/lib/training/selectors";
-import { deriveTrainingFlowState, type TrainingFlowStepId } from "@/lib/training/trainingFlow";
+import { deriveTrainingFlowState, type TrainingFlowState, type TrainingFlowStepId } from "@/lib/training/trainingFlow";
 import type {
   TrainingAcknowledgement,
   TrainingAssignment,
@@ -18,7 +20,7 @@ function latestAcknowledgementForWorker(
     .sort((a, b) => b.revision_number - a.revision_number)[0];
 }
 
-export type MyLearningCategoryId = "arena_ops" | "pool_aquatics" | "emergency" | "maintenance";
+export type MyLearningCategoryId = "arena_ops" | "pool_aquatics" | "maintenance";
 
 export type MyLearningItemStatus = "certified" | "part1_done" | "in_progress" | "action_needed";
 
@@ -52,8 +54,10 @@ export type MyLearningChecklistItem = {
   meta: string;
   flowTag: string;
   tier: TrainingTier;
+  /** Part 1 complete for this procedure (read → ack → quiz). */
   done: boolean;
   needsAction: boolean;
+  external?: boolean;
 };
 
 export type MyLearningStats = {
@@ -80,8 +84,7 @@ export type MyLearningActivityItem = {
 export type MyLearningDashboardModel = {
   stats: MyLearningStats;
   categories: MyLearningCategory[];
-  checklist: MyLearningChecklistItem[];
-  incompleteChecklistCount: number;
+  bundleTrack: MyLearningBundleTrack;
   recentActivity: MyLearningActivityItem[];
 };
 
@@ -90,33 +93,23 @@ const CATEGORY_META: Record<
   { title: string; ringColor: string; gradient: string }
 > = {
   arena_ops: {
-    title: "Arena Operations",
+    title: "Arena routines",
     ringColor: "#10b981",
     gradient: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
   },
   pool_aquatics: {
-    title: "Pool & Aquatics",
+    title: "Pool routines",
     ringColor: "#3b82f6",
     gradient: "linear-gradient(135deg, #56c9d9 0%, #4db8c4 100%)",
   },
-  emergency: {
-    title: "Emergency Response",
-    ringColor: "#f59e0b",
-    gradient: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
-  },
   maintenance: {
-    title: "Maintenance & Facilities",
+    title: "Facility & maintenance",
     ringColor: "#8b5cf6",
     gradient: "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)",
   },
 };
 
-const CATEGORY_ORDER: MyLearningCategoryId[] = [
-  "arena_ops",
-  "pool_aquatics",
-  "emergency",
-  "maintenance",
-];
+const CATEGORY_ORDER: MyLearningCategoryId[] = ["arena_ops", "pool_aquatics", "maintenance"];
 
 function norm(s: string): string {
   return s.trim().toLowerCase();
@@ -127,18 +120,30 @@ export function classifyMyLearningCategory(program: TrainingProgram): MyLearning
   const dept = norm(program.department_category);
   const tags = program.tracking_tags ?? [];
 
-  if (program.tier === "high_risk" || tags.includes("emergency")) return "emergency";
-  if (dept === "aquatics" || /\b(pool|aquatic|ice|changeroom|swim|weight)\b/.test(title)) {
+  if (
+    dept === "aquatics" ||
+    /\b(pool|aquatic|ice|changeroom|swim|weightroom|weight room|pool deck|backwash)\b/.test(title)
+  ) {
     return "pool_aquatics";
   }
-  if (/\b(arena|rink)\b/.test(title) || /\bshift\b/.test(title)) return "arena_ops";
+  if (/\b(arena|rink)\b/.test(title)) {
+    return "arena_ops";
+  }
   if (
     dept === "maintenance" ||
-    /\b(mower|scrubber|blade|glade|field house|backwash|snow|maintenance|facility)\b/.test(title)
+    program.tier === "high_risk" ||
+    tags.includes("emergency") ||
+    /\b(mower|scrubber|blade|glade|field house|inflatable|tile|shade|movie|snow|maintenance|facility|patron|extinguisher)\b/.test(
+      title,
+    )
   ) {
     return "maintenance";
   }
-  if (program.tier === "mandatory" || tags.includes("routine")) return "arena_ops";
+  if (program.tier === "mandatory" || tags.includes("routine")) {
+    if (/\b(pool|aquatic|ice)\b/.test(title)) return "pool_aquatics";
+    if (/\b(arena|rink)\b/.test(title)) return "arena_ops";
+    return "maintenance";
+  }
   if (program.tier === "general") return "maintenance";
   return "maintenance";
 }
@@ -219,9 +224,10 @@ export function buildMyLearningDashboard(input: {
   assignments: TrainingAssignment[];
   acknowledgements: TrainingAcknowledgement[];
   alerts: EmployeeComplianceAlert[];
+  bundles: LearningBundle[];
   trustAssignmentStatus?: boolean;
 }): MyLearningDashboardModel {
-  const { employeeId, programs, assignments, acknowledgements, alerts, trustAssignmentStatus } =
+  const { employeeId, programs, assignments, acknowledgements, alerts, bundles, trustAssignmentStatus } =
     input;
 
   const rows = myProcedureRowsForWorker(
@@ -242,8 +248,9 @@ export function buildMyLearningDashboard(input: {
   const itemsByCategory = new Map<MyLearningCategoryId, MyLearningTrainingItem[]>();
   for (const id of CATEGORY_ORDER) itemsByCategory.set(id, []);
 
-  const checklist: MyLearningChecklistItem[] = [];
+  const flowByProgramId = new Map<string, TrainingFlowState>();
   const alertByProgram = new Map(alerts.map((a) => [a.programId, a]));
+  const programsById = new Map(programs.map((p) => [p.id, p]));
 
   for (const row of rows) {
     const latestAck = latestAcknowledgementForWorker(
@@ -283,17 +290,14 @@ export function buildMyLearningDashboard(input: {
       quizAttempts: attempts,
     });
 
-    const alert = alertByProgram.get(row.program.id);
-    checklist.push({
-      programId: row.program.id,
-      title: row.program.title,
-      meta: alert?.label ?? flow.detail,
-      flowTag: flow.tag,
-      tier: row.program.tier,
-      done: flow.fullyCertified,
-      needsAction: flow.needsWorkerAction,
-    });
+    flowByProgramId.set(row.program.id, flow);
   }
+
+  const bundleTrack = buildMyLearningBundleTrack(bundles, {
+    programsById,
+    flowByProgramId,
+    alertByProgramId: alertByProgram,
+  });
 
   const total = rows.length;
   const part1Percent = total > 0 ? Math.round((part1CompleteCount / total) * 100) : 0;
@@ -329,17 +333,6 @@ export function buildMyLearningDashboard(input: {
     };
   }).filter((c) => c.total > 0);
 
-  checklist.sort((a, b) => {
-    if (a.done !== b.done) return a.done ? 1 : -1;
-    if (a.needsAction !== b.needsAction) return a.needsAction ? -1 : 1;
-    const tierOrder: TrainingTier[] = ["high_risk", "mandatory", "general"];
-    const ta = tierOrder.indexOf(a.tier);
-    const tb = tierOrder.indexOf(b.tier);
-    if (ta !== tb) return ta - tb;
-    return a.title.localeCompare(b.title);
-  });
-
-  const incompleteChecklistCount = checklist.filter((c) => !c.done).length;
   const avgQuizAttempts =
     quizAttemptRows > 0 ? Math.round((quizAttemptSum / quizAttemptRows) * 10) / 10 : null;
 
@@ -365,8 +358,7 @@ export function buildMyLearningDashboard(input: {
       avgQuizAttempts,
     },
     categories,
-    checklist,
-    incompleteChecklistCount,
+    bundleTrack,
     recentActivity: buildActivity(programs, assignments, acknowledgements),
   };
 }

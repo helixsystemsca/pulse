@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { MyLearningDashboard } from "@/components/training/my-learning/MyLearningDashboard";
 import { isApiMode } from "@/lib/api";
 import { complianceAlertsForEmployee } from "@/lib/training/complianceAlerts";
+import { readLearningBundlesForSession } from "@/lib/training/learning-bundles";
 import { buildMyLearningDashboard } from "@/lib/training/myLearningDashboard";
 import { MOCK_TRAINING_PROGRAMS } from "@/lib/training/mockData";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
@@ -86,6 +87,8 @@ export function TrainingEmployeeSelfView() {
     [workerId, programs, assignments, acks, trustServer],
   );
 
+  const learningBundles = useMemo(() => readLearningBundlesForSession(), []);
+
   const dashboardModel = useMemo(
     () =>
       workerId
@@ -95,10 +98,11 @@ export function TrainingEmployeeSelfView() {
             assignments,
             acknowledgements: acks,
             alerts,
+            bundles: learningBundles,
             trustAssignmentStatus: trustServer,
           })
         : null,
-    [workerId, programs, assignments, acks, alerts, trustServer],
+    [workerId, programs, assignments, acks, alerts, learningBundles, trustServer],
   );
 
   if (!workerId) {

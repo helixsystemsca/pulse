@@ -3,7 +3,6 @@
 import {
   AlertTriangle,
   BadgeCheck,
-  Bell,
   BookOpen,
   Check,
   ClipboardCheck,
@@ -18,10 +17,12 @@ import {
 import { TrainingTierBadge } from "@/components/training/TrainingTierBadge";
 import type {
   MyLearningActivityItem,
+  MyLearningChecklistItem,
   MyLearningDashboardModel,
   MyLearningCategory,
   MyLearningItemStatus,
 } from "@/lib/training/myLearningDashboard";
+import type { MyLearningBundleTrack } from "@/lib/training/myLearningBundleTrack";
 import { cn } from "@/lib/cn";
 import "./my-learning-dashboard.css";
 
@@ -140,7 +141,6 @@ function ProgressRing({ category }: { category: MyLearningCategory }) {
 const CATEGORY_ICONS: Record<MyLearningCategory["id"], LucideIcon> = {
   arena_ops: Grid3x3,
   pool_aquatics: Waves,
-  emergency: Bell,
   maintenance: Wrench,
 };
 
@@ -149,31 +149,6 @@ function statusDotClass(status: MyLearningItemStatus): string {
   if (status === "part1_done") return "bg-[var(--ml-blue)]";
   if (status === "in_progress") return "bg-[var(--ml-warning)]";
   return "bg-[var(--ml-danger)]";
-}
-
-function FlowLegend() {
-  const steps = [
-    { label: "Read", color: "bg-sky-500" },
-    { label: "Acknowledged", color: "bg-amber-400" },
-    { label: "Quiz (100%)", color: "bg-violet-500" },
-    { label: "Part 1 complete", color: "bg-[var(--ml-blue)]" },
-    { label: "Shadow + sign-off", color: "bg-[var(--ml-success)]" },
-  ];
-  return (
-    <div
-      className="ml-fade-in flex flex-wrap items-center gap-2 rounded-xl border border-ds-border/80 bg-ds-secondary/30 px-3 py-2.5 text-xs"
-      aria-label="Training completion flow"
-    >
-      <span className="font-bold uppercase tracking-wide text-ds-muted">Flow</span>
-      {steps.map((s, i) => (
-        <span key={s.label} className="inline-flex items-center gap-1.5 font-medium text-ds-foreground">
-          {i > 0 ? <span className="text-ds-muted" aria-hidden>→</span> : null}
-          <span className={cn("h-2 w-2 shrink-0 rounded-full", s.color)} aria-hidden />
-          {s.label}
-        </span>
-      ))}
-    </div>
-  );
 }
 
 function activityIcon(kind: MyLearningActivityItem["kind"]) {
@@ -237,8 +212,129 @@ function CategoryCard({ category }: { category: MyLearningCategory }) {
   );
 }
 
+function ChecklistItemCard({ item }: { item: MyLearningChecklistItem }) {
+  const incomplete = !item.done;
+
+  return (
+    <div
+      className={cn(
+        "ml-checklist-item flex gap-3 rounded-xl border px-4 py-3",
+        incomplete
+          ? "border-[color-mix(in_srgb,var(--ml-danger)_25%,var(--ds-border))] bg-ds-primary/80"
+          : "border-ds-border bg-ds-secondary/30 opacity-90",
+      )}
+    >
+      <div
+        className={cn(
+          "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-bold",
+          incomplete
+            ? "bg-[color-mix(in_srgb,var(--ml-danger)_14%,transparent)] text-[var(--ml-danger)]"
+            : "bg-[color-mix(in_srgb,var(--ml-success)_14%,transparent)] text-[var(--ml-success)]",
+        )}
+        aria-hidden
+      >
+        {incomplete ? "!" : <Check className="h-4 w-4" strokeWidth={2.5} />}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="font-semibold text-ds-foreground">{item.title}</p>
+          {!item.external ? <TrainingTierBadge tier={item.tier} /> : null}
+        </div>
+        <p className="mt-0.5 text-xs text-ds-muted">{item.meta}</p>
+        <span
+          className={cn(
+            "mt-1 inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+            incomplete
+              ? "bg-ds-secondary/80 text-ds-muted"
+              : "bg-[color-mix(in_srgb,var(--ml-success)_12%,transparent)] text-[var(--ml-success)]",
+          )}
+        >
+          {item.flowTag}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function BundleChecklistSection({ track }: { track: MyLearningBundleTrack }) {
+  const { completedBadges, active } = track;
+  if (!active && completedBadges.length === 0) return null;
+
+  const heading =
+    active?.category === "onboarding"
+      ? "Onboarding checklist"
+      : active
+        ? `${active.title} checklist`
+        : "Training bundles";
+
+  const incompleteCount = active?.incompleteCount ?? 0;
+
+  return (
+    <section aria-labelledby="ml-checklist-heading" className="space-y-4">
+      {completedBadges.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-2" role="list" aria-label="Completed training bundles">
+          {completedBadges.map((badge) => (
+            <span
+              key={badge.bundleId}
+              role="listitem"
+              title={badge.title}
+              className="ml-bundle-badge inline-flex items-center gap-1.5 rounded-full border border-[color-mix(in_srgb,var(--ml-success)_35%,var(--ds-border))] bg-[color-mix(in_srgb,var(--ml-success)_10%,transparent)] px-3 py-1.5 text-xs font-bold text-[var(--ml-success)]"
+            >
+              <Check className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} aria-hidden />
+              {badge.label}
+            </span>
+          ))}
+        </div>
+      ) : null}
+
+      {active ? (
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 id="ml-checklist-heading" className="text-sm font-bold uppercase tracking-wide text-ds-muted">
+                {heading}
+              </h2>
+              {active.category !== "onboarding" ? (
+                <p className="mt-0.5 text-xs text-ds-muted">{active.categoryLabel} bundle</p>
+              ) : null}
+            </div>
+            {active.items.length > 0 ? (
+              incompleteCount > 0 ? (
+                <span className="rounded-full bg-[color-mix(in_srgb,var(--ml-danger)_12%,transparent)] px-3 py-1 text-xs font-bold text-[var(--ml-danger)]">
+                  {incompleteCount} incomplete
+                </span>
+              ) : (
+                <span className="rounded-full bg-[color-mix(in_srgb,var(--ml-success)_12%,transparent)] px-3 py-1 text-xs font-bold text-[var(--ml-success)]">
+                  Complete
+                </span>
+              )
+            ) : null}
+          </div>
+
+          {active.items.length > 0 ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {active.items.map((item) => (
+                <ChecklistItemCard key={item.programId} item={item} />
+              ))}
+            </div>
+          ) : (
+            <p className="rounded-xl border border-dashed border-ds-border bg-ds-secondary/20 px-4 py-6 text-sm text-ds-muted">
+              No procedures in <span className="font-semibold text-ds-foreground">{active.title}</span> yet. Your
+              administrator can add items in Learning → Bundles.
+            </p>
+          )}
+        </>
+      ) : (
+        <p className="rounded-xl border border-ds-border bg-ds-secondary/20 px-4 py-5 text-sm text-ds-muted">
+          You have completed all assigned training bundles.
+        </p>
+      )}
+    </section>
+  );
+}
+
 export function MyLearningDashboard({ displayName, jobTitle, loading, loadError, model }: Props) {
-  const { stats, categories, checklist, incompleteChecklistCount, recentActivity } = model;
+  const { stats, categories, bundleTrack, recentActivity } = model;
 
   const statsCards = [
     {
@@ -287,9 +383,6 @@ export function MyLearningDashboard({ displayName, jobTitle, loading, loadError,
     },
   ] as const;
 
-  const checklistIncomplete = checklist.filter((c) => !c.done);
-  const checklistComplete = checklist.filter((c) => c.done);
-
   return (
     <div className="my-learning-dash space-y-10 pb-8">
       <header className="ml-fade-in">
@@ -305,13 +398,11 @@ export function MyLearningDashboard({ displayName, jobTitle, loading, loadError,
               My Learning
             </h1>
             <p className="mt-1 max-w-2xl text-sm leading-relaxed text-ds-muted">
-              Two-part training: Part 1 is read, acknowledge, and pass the knowledge check (100%). Part 2 is a
-              shadow shift with supervisor sign-off and development scoring.
+              Your assigned procedures and certifications in one place. Work through the onboarding checklist first,
+              then each training bundle in sequence; completed bundles collapse into a green badge and the next bundle
+              opens automatically. Summary cards and the matrix show progress by area.
             </p>
-            <div className="mt-3 max-w-3xl">
-              <FlowLegend />
-            </div>
-            <p className="mt-2 text-sm font-semibold text-ds-foreground">
+            <p className="mt-3 text-sm font-semibold text-ds-foreground">
               {displayName}
               {jobTitle?.trim() ? (
                 <span className="font-normal text-ds-muted"> · {jobTitle.trim()}</span>
@@ -351,72 +442,7 @@ export function MyLearningDashboard({ displayName, jobTitle, loading, loadError,
         </section>
       ) : null}
 
-      {checklist.length > 0 ? (
-        <section aria-labelledby="ml-checklist-heading" className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 id="ml-checklist-heading" className="text-sm font-bold uppercase tracking-wide text-ds-muted">
-              Compliance checklist
-            </h2>
-            {incompleteChecklistCount > 0 ? (
-              <span className="rounded-full bg-[color-mix(in_srgb,var(--ml-danger)_12%,transparent)] px-3 py-1 text-xs font-bold text-[var(--ml-danger)]">
-                {incompleteChecklistCount} incomplete
-              </span>
-            ) : (
-              <span className="rounded-full bg-[color-mix(in_srgb,var(--ml-success)_12%,transparent)] px-3 py-1 text-xs font-bold text-[var(--ml-success)]">
-                All clear
-              </span>
-            )}
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {checklistIncomplete.map((item) => (
-              <div
-                key={item.programId}
-                className="ml-checklist-item flex gap-3 rounded-xl border border-[color-mix(in_srgb,var(--ml-danger)_25%,var(--ds-border))] bg-ds-primary/80 px-4 py-3"
-              >
-                <div
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--ml-danger)_14%,transparent)] text-sm font-bold text-[var(--ml-danger)]"
-                  aria-hidden
-                >
-                  !
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-semibold text-ds-foreground">{item.title}</p>
-                    <TrainingTierBadge tier={item.tier} />
-                  </div>
-                  <p className="mt-0.5 text-xs text-ds-muted">{item.meta}</p>
-                  <span className="mt-1 inline-flex rounded-md bg-ds-secondary/80 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ds-muted">
-                    {item.flowTag}
-                  </span>
-                </div>
-              </div>
-            ))}
-            {checklistComplete.map((item) => (
-              <div
-                key={item.programId}
-                className="ml-checklist-item flex gap-3 rounded-xl border border-ds-border bg-ds-secondary/30 px-4 py-3 opacity-90"
-              >
-                <div
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--ml-success)_14%,transparent)] text-[var(--ml-success)]"
-                  aria-hidden
-                >
-                  <Check className="h-4 w-4" strokeWidth={2.5} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-semibold text-ds-foreground">{item.title}</p>
-                    <TrainingTierBadge tier={item.tier} />
-                  </div>
-                  <p className="mt-0.5 text-xs text-ds-muted">{item.meta}</p>
-                  <span className="mt-1 inline-flex rounded-md bg-[color-mix(in_srgb,var(--ml-success)_12%,transparent)] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[var(--ml-success)]">
-                    {item.flowTag}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : null}
+      <BundleChecklistSection track={bundleTrack} />
 
       {categories.length > 0 ? (
         <section aria-labelledby="ml-matrix-heading" className="space-y-4">

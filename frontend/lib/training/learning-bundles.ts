@@ -55,13 +55,38 @@ export const LEARNING_BUNDLE_CATEGORY_LABELS: Record<LearningBundleCategory, str
   other: "Other",
 };
 
+/** Demo / seed procedures for the onboarding bundle until admins configure bundles. */
+export const ONBOARDING_BUNDLE_SEED_ITEMS: LearningBundleItem[] = [
+  {
+    id: "bundle-item-orientation",
+    source: "procedure",
+    ref_id: "tp-orientation",
+    label: "New Employee Orientation",
+    sort_order: 0,
+  },
+  {
+    id: "bundle-item-whmis",
+    source: "procedure",
+    ref_id: "tp-whmis",
+    label: "WHMIS",
+    sort_order: 1,
+  },
+];
+
+function mergeOnboardingSeedItems(bundles: LearningBundle[]): LearningBundle[] {
+  return bundles.map((b) => {
+    if (b.id !== "bundle-new-hire" || b.items.length > 0) return b;
+    return { ...b, items: ONBOARDING_BUNDLE_SEED_ITEMS, updated_at: nowIso() };
+  });
+}
+
 const DEFAULT_BUNDLES: Omit<LearningBundle, "created_at" | "updated_at">[] = [
   {
     id: "bundle-new-hire",
     title: "New Hire Onboarding",
     description: "Core orientation and safety baseline for new workers.",
     category: "onboarding",
-    items: [],
+    items: ONBOARDING_BUNDLE_SEED_ITEMS,
     due_within_days: 14,
     renewal_months: null,
     requires_acknowledgement: true,
@@ -124,7 +149,9 @@ function nowIso(): string {
 
 function seedBundles(): LearningBundle[] {
   const t = nowIso();
-  return DEFAULT_BUNDLES.map((b) => ({ ...b, created_at: t, updated_at: t }));
+  return mergeOnboardingSeedItems(
+    DEFAULT_BUNDLES.map((b) => ({ ...b, created_at: t, updated_at: t })),
+  );
 }
 
 export function readLearningBundles(companyId: string | null): LearningBundle[] {
@@ -137,7 +164,8 @@ export function readLearningBundles(companyId: string | null): LearningBundle[] 
       return seeded;
     }
     const parsed = JSON.parse(raw) as LearningBundle[];
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : seedBundles();
+    const list = Array.isArray(parsed) && parsed.length > 0 ? parsed : seedBundles();
+    return mergeOnboardingSeedItems(list);
   } catch {
     return seedBundles();
   }

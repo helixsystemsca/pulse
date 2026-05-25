@@ -70,3 +70,14 @@
 .my-learning-dash .ml-checklist-item:hover {
   border-color: color-mix(in srgb, var(--ds-accent) 35%, var(--ds-border));
 }
+
+.my-learning-dash .ml-bundle-badge {
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.my-learning-dash .ml-bundle-badge:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--ml-success) 18%, transparent);
+}

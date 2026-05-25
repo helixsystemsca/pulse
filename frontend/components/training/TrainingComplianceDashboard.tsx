@@ -613,37 +613,23 @@ export function TrainingComplianceDashboard() {
       </div>
 
       {tab === "overview" ? (
-        <div className="flex min-w-0 flex-col gap-6 lg:flex-row lg:items-start">
-          <TrainingComplianceFilterSidebar
-            filters={dashboardFilters}
-            onChange={setDashboardFilters}
-            departments={departments}
-            roles={roles}
-            shifts={shifts}
-            categories={categories}
-          />
-          <div className="min-w-0 flex-1 space-y-6">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-              <KPIStatCard label="Total employees" value={kpis.totalEmployees} icon={Users} accent="neutral" />
-              <KPIStatCard label="Fully compliant" value={kpis.fullyCompliant} icon={ShieldCheck} accent="success" />
-              <KPIStatCard
-                label="Missing Routines"
-                value={kpis.missingMandatoryEmployees}
-                icon={AlertTriangle}
-                accent="danger"
-              />
-              <KPIStatCard label="Expiring soon" value={kpis.expiringSoonEmployees} icon={Clock} accent="warning" />
-              <KPIStatCard label="High risk gaps" value={kpis.highRiskGaps} icon={ShieldAlert} accent="warning" />
-            </div>
-            <EmployeeComplianceOverviewTable
-              rows={filteredRows}
-              dense
-              onRowOpen={(r) => {
-                setDrawerRow(r);
-              }}
+        <section className="min-w-0 space-y-4" aria-labelledby="compliance-overview-kpis">
+          <h3 id="compliance-overview-kpis" className="sr-only">
+            Compliance summary
+          </h3>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            <KPIStatCard label="Total employees" value={kpis.totalEmployees} icon={Users} accent="neutral" />
+            <KPIStatCard label="Fully compliant" value={kpis.fullyCompliant} icon={ShieldCheck} accent="success" />
+            <KPIStatCard
+              label="Missing Routines"
+              value={kpis.missingMandatoryEmployees}
+              icon={AlertTriangle}
+              accent="danger"
             />
+            <KPIStatCard label="Expiring soon" value={kpis.expiringSoonEmployees} icon={Clock} accent="warning" />
+            <KPIStatCard label="High risk gaps" value={kpis.highRiskGaps} icon={ShieldAlert} accent="warning" />
           </div>
-        </div>
+        </section>
       ) : null}
 
       {tab === "employees" ? (
