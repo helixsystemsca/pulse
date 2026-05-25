@@ -358,7 +358,7 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
   return (
     <OnboardingTourContext.Provider value={contextValue}>
       {children}
-      {portal && typeof document !== "undefined" ? createPortal(portal, document.body) : null}
+      {mounted && portal ? createPortal(portal, document.body) : null}
     </OnboardingTourContext.Provider>
   );
 }

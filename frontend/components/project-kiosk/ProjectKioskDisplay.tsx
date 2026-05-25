@@ -16,6 +16,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { KioskRotateFooter } from "@/components/dashboard/DashboardChrome";
+import { useHydratedClock } from "@/hooks/useHydratedClock";
 import { HandoverNotesKioskPage } from "@/components/project-kiosk/HandoverNotesKioskPage";
 import { SafetyRemindersKioskPage } from "@/components/project-kiosk/SafetyRemindersKioskPage";
 import { UserProfileAvatarPreview } from "@/components/profile/UserProfileAvatarPreview";
@@ -44,13 +45,15 @@ function formatTargetDate(iso: string | null): string {
 }
 
 function KioskHeaderClock() {
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const tick = () => setNow(new Date());
-    tick();
-    const t = window.setInterval(tick, 1000);
-    return () => window.clearInterval(t);
-  }, []);
+  const now = useHydratedClock();
+  if (!now) {
+    return (
+      <div className="shrink-0 text-right tabular-nums" suppressHydrationWarning aria-hidden>
+        <p className="font-headline text-lg font-bold tracking-tight text-ds-foreground sm:text-xl">&nbsp;</p>
+        <p className="mt-0.5 text-[11px] font-bold leading-tight text-ds-muted sm:text-xs">&nbsp;</p>
+      </div>
+    );
+  }
   const h = now.getHours();
   const m = now.getMinutes();
   const timeStr = `${h}:${String(m).padStart(2, "0")}`;
@@ -60,7 +63,7 @@ function KioskHeaderClock() {
     day: "numeric",
   });
   return (
-    <div className="shrink-0 text-right tabular-nums">
+    <div className="shrink-0 text-right tabular-nums" suppressHydrationWarning>
       <p className="font-headline text-lg font-bold tracking-tight text-ds-foreground sm:text-xl">{timeStr}</p>
       <p className="mt-0.5 text-[11px] font-bold leading-tight text-ds-muted sm:text-xs">{dateStr}</p>
     </div>

@@ -31,6 +31,7 @@ import { cn } from "@/lib/cn";
 import { isApiMode } from "@/lib/api";
 import { fetchFeedbackUnreadCount } from "@/lib/feedbackApi";
 import { OnboardingTourRestartButton } from "@/lib/onboarding/onboarding-tour-context";
+import "@/components/onboarding/onboarding-tour.css";
 
 const FEEDBACK_HEADER_TIP_DISMISSED_KEY = "pulse_feedback_header_tip_dismissed_v1";
 function IconBadgeCount({ count }: { count: number }) {
@@ -60,6 +61,7 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [feedbackInboxCount, setFeedbackInboxCount] = useState(0);
+  const [clientReady, setClientReady] = useState(false);
   const [feedbackHeaderTipOpen, setFeedbackHeaderTipOpen] = useState(false);
   const [feedbackTipCoords, setFeedbackTipCoords] = useState<{ top: number; left: number } | null>(null);
   const feedbackMegaphoneRef = useRef<HTMLButtonElement>(null);
@@ -92,6 +94,10 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
     } catch {
       /* ignore quota / private mode */
     }
+  }, []);
+
+  useEffect(() => {
+    setClientReady(true);
   }, []);
 
   useEffect(() => {
@@ -280,7 +286,7 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
                 <button
                   ref={feedbackMegaphoneRef}
                   type="button"
-                  className={chromeIconBtn}
+                  className="feedback-header-btn"
                   data-tour="feedback"
                   aria-label="Send product feedback"
                   title="Feedback"
@@ -408,7 +414,7 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
       <div className="h-px w-full shrink-0 bg-gradient-to-r from-transparent via-white/12 to-transparent" aria-hidden />
       <OperationalNotificationsModal open={notificationsOpen} onClose={() => setNotificationsOpen(false)} />
       <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
-      {typeof document !== "undefined" && feedbackHeaderTipOpen && feedbackTipCoords
+      {clientReady && feedbackHeaderTipOpen && feedbackTipCoords
         ? createPortal(
             <div
               className="pointer-events-auto fixed z-[100] w-[min(17.5rem,calc(100vw-1.5rem))] -translate-x-1/2 rounded-lg border border-[var(--ds-accent)]/45 bg-ds-primary px-3 py-2.5 text-left shadow-[0_10px_36px_rgba(0,0,0,0.38)] ring-1 ring-white/10"

@@ -12,6 +12,7 @@ import { DashboardCustomPeekWidget } from "@/components/dashboard/DashboardCusto
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { apiFetch, isApiMode } from "@/lib/api";
+import { useHydratedClock } from "@/hooks/useHydratedClock";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { pulseApp, pulseAppHref, pulseTenantNav } from "@/lib/pulse-app";
 import { catalogPage } from "@/lib/dashboardPageWidgetCatalog";
@@ -1120,12 +1121,7 @@ function DashboardBody({
     if (typeof window === "undefined") return;
     window.open(`${window.location.origin}/kiosk/overview`, "_blank", "noopener,noreferrer");
   }, []);
-  const [now, setNow] = useState(() => new Date());
-
-  useEffect(() => {
-    const t = window.setInterval(() => setNow(new Date()), 1000);
-    return () => window.clearInterval(t);
-  }, []);
+  const now = useHydratedClock();
   const isDeptDashboard = dashboardContext.startsWith("dept_");
   const canEditLayout = useMemo(() => {
     if (readOnly || isKiosk) return false;
@@ -1583,8 +1579,11 @@ function DashboardBody({
             {dashboardTitle}
           </p>
           <div className="mt-0.5 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 pr-1">
-            <p className="text-sm font-semibold tabular-nums text-[color-mix(in_srgb,var(--ds-text-primary)_88%,transparent)]">
-              {dateInBc(now)} · {timeInBc(now)}
+            <p
+              className="text-sm font-semibold tabular-nums text-[color-mix(in_srgb,var(--ds-text-primary)_88%,transparent)]"
+              suppressHydrationWarning
+            >
+              {now ? `${dateInBc(now)} · ${timeInBc(now)}` : "\u00a0"}
             </p>
             <OpsHeaderWeather className="shrink-0" />
           </div>

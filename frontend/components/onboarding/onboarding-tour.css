@@ -247,17 +247,9 @@
   box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
 }
 
-.restart-tour-header-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
+.restart-tour-header-btn,
+.feedback-header-btn {
   border: none;
-  border-radius: 10px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
   color: white;
   cursor: pointer;
   background: linear-gradient(
@@ -279,14 +271,39 @@
   animation: restartTourGradientShift 4s ease infinite;
 }
 
-.restart-tour-header-btn:hover {
+.restart-tour-header-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.feedback-header-btn {
+  position: relative;
+  display: flex;
+  height: 2.25rem;
+  width: 2.25rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+}
+
+.restart-tour-header-btn:hover,
+.feedback-header-btn:hover {
   transform: translateY(-1px) scale(1.02);
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.5) inset,
     0 6px 24px rgba(244, 114, 182, 0.5);
 }
 
-.restart-tour-header-btn:focus-visible {
+.restart-tour-header-btn:focus-visible,
+.feedback-header-btn:focus-visible {
   outline: 2px solid #fde68a;
   outline-offset: 2px;
 }

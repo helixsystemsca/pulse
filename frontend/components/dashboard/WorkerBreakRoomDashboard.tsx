@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
 import { DASH } from "@/styles/dashboardTheme";
+import { useHydratedClock } from "@/hooks/useHydratedClock";
 import { isApiMode } from "@/lib/api";
 import { readSession } from "@/lib/pulse-session";
 import { canAccessCompanyConfiguration, sessionHasAnyRole, sessionPrimaryRole } from "@/lib/pulse-roles";
@@ -159,7 +160,7 @@ function KioskCriticalModal({ alert, onAcknowledge }: { alert: CriticalAlert | n
 }
 
 export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
-  const [now, setNow] = useState(() => new Date());
+  const now = useHydratedClock();
   const [loading, setLoading] = useState(false);
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [shifts, setShifts] = useState<Shift[]>([]);
@@ -176,11 +177,6 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
     ],
     [],
   );
-
-  useEffect(() => {
-    const t = window.setInterval(() => setNow(new Date()), 1000);
-    return () => window.clearInterval(t);
-  }, []);
 
   useEffect(() => {
     let cancel = false;
@@ -453,10 +449,10 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="min-w-0">
             <p className={DASH.sectionLabel}>Operations dashboard</p>
-            <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-semibold text-ds-foreground">
-              <span>{dateInBc(now)}</span>
+            <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-semibold text-ds-foreground" suppressHydrationWarning>
+              <span>{now ? dateInBc(now) : "\u00a0"}</span>
               <span className="text-ds-muted">•</span>
-              <span className="tabular-nums">{timeInBc(now)}</span>
+              <span className="tabular-nums">{now ? timeInBc(now) : "\u00a0"}</span>
               <span className="text-ds-muted">•</span>
               <span className="inline-flex items-center gap-1.5 text-ds-muted">
                 <Cloud className="h-4 w-4" aria-hidden />
@@ -723,7 +719,9 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
                   <div className="flex items-center justify-between gap-3">
                     <p className={UI.header}>Facility schedule</p>
                     <div className="flex items-center gap-2">
-                      <span className={`text-xs font-semibold tabular-nums ${UI.subheader}`}>{timeInBc(now)}</span>
+                      <span className={`text-xs font-semibold tabular-nums ${UI.subheader}`} suppressHydrationWarning>
+                        {now ? timeInBc(now) : "\u00a0"}
+                      </span>
                       {canEdit && editMode ? (
                         <Button
                           type="button"
