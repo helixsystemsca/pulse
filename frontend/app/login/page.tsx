@@ -4,6 +4,7 @@ import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail } from "lucide-react";
 import Image from "next/image";
 import { FormEvent, useEffect, useId, useRef, useState } from "react";
 import { AuthScreenShell } from "@/components/auth/AuthScreenShell";
+import { LoginComingSoonFeaturesCard } from "@/components/auth/LoginComingSoonFeaturesCard";
 import { AuroraBackground } from "@/components/ui/AuroraBackground";
 import { LoginTessellationBackground } from "@/components/ui/LoginTessellationBackground";
 import { isApiMode } from "@/lib/api";
@@ -185,7 +186,8 @@ export default function LoginPage() {
         </header>
 
         <main className="relative z-10 flex min-h-0 flex-1 flex-col justify-center px-4 pb-4 pt-1 sm:px-6 sm:pb-5 md:px-8">
-          <div className="mx-auto w-full max-w-[440px]">
+          <div className="login-content">
+            <div className="login-content__form">
             <div className="flex w-full justify-center">
               <div className="relative mx-auto h-[9.25rem] w-[min(22rem,calc(100vw-2rem))] shrink-0 sm:h-[11rem] sm:w-[min(26rem,calc(100vw-2rem))] md:h-[12.5rem] md:w-[min(30rem,calc(100vw-2.5rem))]">
                 <Image
@@ -351,6 +353,9 @@ export default function LoginPage() {
                 Secure link
               </p>
             </div>
+            </div>
+
+            <LoginComingSoonFeaturesCard />
           </div>
         </main>
 
