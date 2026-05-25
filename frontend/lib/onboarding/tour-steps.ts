@@ -30,13 +30,6 @@ export const DASHBOARD_TOUR_STEPS: TourStep[] = [
     placement: "bottom",
   },
   {
-    target: '[data-tour="co2-monitoring"]',
-    title: "CO₂ Monitoring",
-    description:
-      "Real-time chemical monitoring for all your pools and systems. Visual indicators show you what's operating within range and what needs attention.",
-    placement: "left",
-  },
-  {
     target: '[data-tour="low-inventory"]',
     title: "Low Inventory Alerts",
     description:
@@ -58,11 +51,32 @@ export const DASHBOARD_TOUR_STEPS: TourStep[] = [
     placement: "left",
   },
   {
+    target: '[data-tour="training-compliance"]',
+    title: "Training Compliance",
+    description:
+      "See certification and training status at a glance—who's current, what's expiring, and where gaps need attention before they become schedule issues.",
+    placement: "left",
+  },
+  {
+    target: '[data-tour="monitoring"]',
+    title: "Monitoring",
+    description:
+      "CO₂ tanks and live pool chemistry in one place. Visual indicators show what's in range and what needs attention—open Monitoring for the full view.",
+    placement: "left",
+  },
+  {
     target: '[data-tour="sidebar-navigation"]',
     title: "Quick Navigation",
     description:
       "Access all major sections from the sidebar. Operations, scheduling, inventory, maintenance, analytics, and team management—everything is just one click away.",
     placement: "right",
+  },
+  {
+    target: '[data-tour="feedback"]',
+    title: "Questions or feedback?",
+    description:
+      "Tap the megaphone anytime to send product feedback or ask a question. Your note goes to administrators under Messages → Product feedback.",
+    placement: "bottom",
   },
 ];
 
@@ -70,7 +84,9 @@ export const DASHBOARD_TOUR_STEPS: TourStep[] = [
 export const DASHBOARD_TOUR_TARGET_BY_WIDGET: Partial<Record<string, string>> = {
   important_dates: "leadership-dashboard",
   low_inventory: "low-inventory",
-  co2_monitoring: "co2-monitoring",
+  co2_monitoring: "monitoring",
+  pool_readings: "monitoring",
   routine_assignments: "routine-assignments",
   notifications_work_orders: "work-requests",
+  training_compliance: "training-compliance",
 };

@@ -236,33 +236,56 @@
   box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
 }
 
-.restart-btn {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  background: white;
-  color: #64748b;
-  padding: 14px 24px;
-  border: 2px solid #e2e8f0;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  z-index: 10002;
-  transition: all 0.2s ease;
-  display: flex;
+.restart-tour-header-btn {
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
+  gap: 6px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: white;
+  cursor: pointer;
+  background: linear-gradient(
+    120deg,
+    #f472b6 0%,
+    #c084fc 22%,
+    #60a5fa 45%,
+    #22d3ee 68%,
+    #4ade80 100%
+  );
+  background-size: 200% 200%;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.35) inset,
+    0 4px 18px rgba(96, 165, 250, 0.45);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background-position 0.35s ease;
+  animation: restartTourGradientShift 4s ease infinite;
 }
 
-.restart-btn:hover {
-  border-color: #3b82f6;
-  color: #3b82f6;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+.restart-tour-header-btn:hover {
+  transform: translateY(-1px) scale(1.02);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.5) inset,
+    0 6px 24px rgba(244, 114, 182, 0.5);
 }
 
-.restart-icon {
-  font-size: 16px;
+.restart-tour-header-btn:focus-visible {
+  outline: 2px solid #fde68a;
+  outline-offset: 2px;
+}
+
+@keyframes restartTourGradientShift {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
 }

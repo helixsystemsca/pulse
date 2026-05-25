@@ -14,7 +14,7 @@ export type PlatformIconKey =
   | "building"
   | "clipboard"
   | "scroll-text"
-  | "tennis-ball"
+  | "tennis-racket"
   | "package"
   | "book-open"
   | "bar-chart-2"

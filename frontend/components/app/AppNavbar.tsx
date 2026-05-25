@@ -30,6 +30,7 @@ import { firstAccessibleClassicTenantHref } from "@/lib/rbac/session-access";
 import { cn } from "@/lib/cn";
 import { isApiMode } from "@/lib/api";
 import { fetchFeedbackUnreadCount } from "@/lib/feedbackApi";
+import { OnboardingTourRestartButton } from "@/lib/onboarding/onboarding-tour-context";
 
 const FEEDBACK_HEADER_TIP_DISMISSED_KEY = "pulse_feedback_header_tip_dismissed_v1";
 function IconBadgeCount({ count }: { count: number }) {
@@ -262,6 +263,8 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
                 </Link>
               ) : null}
 
+              <OnboardingTourRestartButton />
+
               <button
                 type="button"
                 className={chromeIconBtn}
@@ -278,6 +281,7 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
                   ref={feedbackMegaphoneRef}
                   type="button"
                   className={chromeIconBtn}
+                  data-tour="feedback"
                   aria-label="Send product feedback"
                   title="Feedback"
                   onClick={() => {

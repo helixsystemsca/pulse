@@ -1,17 +1,24 @@
 /**
- * Tennis ball icon (Lucide Lab paths, ISC).
- * @see https://lucide.dev/icons/lab/tennis-ball
+ * Tennis racket icon (Lucide Lab paths, ISC).
+ * @see https://lucide.dev/icons/lab/tennis-racket
  */
 import { forwardRef, createElement } from "react";
 import type { LucideIcon } from "lucide-react";
 
-const TENNIS_BALL_NODE = [
-  ["path", { d: "M2 12c5.5 0 10-4.5 10-10", key: "179xs2" }],
-  ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
-  ["path", { d: "M22 12c-5.5 0-10 4.5-10 10", key: "gdzvca" }],
+const TENNIS_RACKET_NODE = [
+  [
+    "path",
+    {
+      d: "M10.7 4.7c3-3 7.4-3.6 9.8-1.2s1.8 6.8-1.2 9.8a9.5 9.5 0 0 1-4.3 2.5c-2.1.5-4.1.1-5.5-1.3S7.7 11.1 8.2 9a9.5 9.5 0 0 1 2.5-4.3",
+      key: "zxj3xr",
+    },
+  ],
+  ["path", { d: "M8.2 9 6 18l9-2.2", key: "1ivsmd" }],
+  ["path", { d: "m2 22 4-4", key: "vwo6p4" }],
+  ["circle", { cx: "20", cy: "20", r: "2", key: "a056ao" }],
 ] as const;
 
-export const TennisBall: LucideIcon = forwardRef(
+export const TennisRacket: LucideIcon = forwardRef(
   (
     {
       color = "currentColor",
@@ -37,14 +44,14 @@ export const TennisBall: LucideIcon = forwardRef(
         strokeWidth: absoluteStrokeWidth ? (Number(strokeWidth) * 24) / Number(size) : strokeWidth,
         strokeLinecap: "round",
         strokeLinejoin: "round",
-        className: ["lucide", "lucide-tennis-ball", className].filter(Boolean).join(" "),
+        className: ["lucide", "lucide-tennis-racket", className].filter(Boolean).join(" "),
         ...rest,
       },
       [
-        ...TENNIS_BALL_NODE.map(([tag, attrs]) => createElement(tag, { ...attrs, key: attrs.key })),
+        ...TENNIS_RACKET_NODE.map(([tag, attrs]) => createElement(tag, { ...attrs, key: attrs.key })),
         ...(Array.isArray(children) ? children : children ? [children] : []),
       ],
     ),
 );
 
-TennisBall.displayName = "TennisBall";
+TennisRacket.displayName = "TennisRacket";

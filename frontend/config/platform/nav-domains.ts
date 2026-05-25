@@ -44,7 +44,7 @@ export const NAV_DOMAIN_META: Record<NavDomain, NavDomainMeta> = {
   Aquatics: { domain: "Aquatics", label: "Aquatics", icon: "waves" },
   Reception: { domain: "Reception", label: "Reception", icon: "building" },
   Fitness: { domain: "Fitness", label: "Fitness", icon: "dumbbell" },
-  Racquets: { domain: "Racquets", label: "Racquets", icon: "tennis-ball" },
+  Racquets: { domain: "Racquets", label: "Racquets", icon: "tennis-racket" },
   Training: { domain: "Training", label: "Training", icon: "book-open" },
   "Team Management": { domain: "Team Management", label: "Team Management", icon: "users" },
   Assets: { domain: "Assets", label: "Assets", icon: "package" },
