@@ -20,12 +20,9 @@ export function WorkforceSiteCertifications({
   heightTier?: string;
 }) {
   return (
-    <div className="shrink-0 border-t border-[color-mix(in_srgb,var(--ds-text-primary)_10%,transparent)] pt-2">
-      <p className="shrink-0 text-[10px] font-bold uppercase tracking-[0.1em] text-[color-mix(in_srgb,var(--ds-text-primary)_48%,transparent)]">
-        Certifications on site
-      </p>
+    <div className="shrink-0 border-t border-[color-mix(in_srgb,var(--ds-text-primary)_10%,transparent)] pt-1.5">
       <div
-        className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 rounded-md bg-[color-mix(in_srgb,var(--ds-text-primary)_4%,transparent)] px-2 py-1.5"
+        className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 rounded-md bg-[color-mix(in_srgb,var(--ds-text-primary)_4%,transparent)] px-2 py-1.5"
         role="list"
         aria-label="Certifications on site"
       >

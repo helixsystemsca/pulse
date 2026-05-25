@@ -1732,6 +1732,22 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
       0 0 0 1px rgb(255 255 255 / 0.1), 0 0 0 3px var(--ops-dash-widget-bg, #0f172a), 0 2px 8px rgb(0 0 0 / 0.35),
       0 1px 0 rgb(255 255 255 / 0.08) inset;
   }
+  .ops-workforce-avatar--time-off {
+    background: linear-gradient(145deg, #fffbeb 0%, #fde68a 48%, #fef3c7 100%);
+    box-shadow:
+      0 0 0 1px rgb(253 230 138 / 0.9),
+      0 0 0 3px var(--ops-dash-widget-bg, #fff),
+      0 2px 6px -1px rgb(180 130 20 / 0.18),
+      inset 0 1px 0 rgb(255 255 255 / 0.95);
+  }
+  .dark .ops-workforce-avatar--time-off {
+    background: linear-gradient(145deg, color-mix(in srgb, #854d0e 35%, #1e293b), #0f172a);
+    box-shadow:
+      0 0 0 1px rgb(253 224 71 / 0.35),
+      0 0 0 3px var(--ops-dash-widget-bg, #0f172a),
+      0 2px 8px rgb(0 0 0 / 0.35),
+      inset 0 1px 0 rgb(255 255 255 / 0.06);
+  }
 
   .ops-widget-shell-title {
     font-size: 0.625rem;

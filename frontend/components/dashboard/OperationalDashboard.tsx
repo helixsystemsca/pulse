@@ -44,6 +44,8 @@ import {
   type WorkforceSiteCertCoverage,
 } from "@/lib/dashboard/workforce-site-certs";
 import { WorkforceSiteCertifications } from "@/components/dashboard/widgets/ops/WorkforceSiteCertifications";
+import { WorkforceTimeOffMonth } from "@/components/dashboard/widgets/ops/WorkforceTimeOffMonth";
+import { WORKFORCE_TIME_OFF_DEMO, type WorkforceTimeOffEntry } from "@/lib/dashboard/workforce-time-off";
 import {
   addWorkspaceWidget,
   allWorkspaceWidgetIds,
@@ -164,6 +166,8 @@ export type DashboardViewModel = {
     counts: { onSite: number; onShiftNow: number; upcomingToday: number; onScheduleToday: number; offSite: number };
     /** Required facility certs — covered when held by someone on site (else scheduled staff). */
     siteCertifications: WorkforceSiteCertCoverage[];
+    /** Month time-off rows (schedule feed when wired; demo in mock). */
+    timeOffThisMonth: WorkforceTimeOffEntry[];
   };
   workRequests: {
     awaitingCount: number;
@@ -611,6 +615,7 @@ function demoModel(): DashboardViewModel {
         { id: "fa", label: "First Aid", status: "covered", holderNames: ["Avery Rowe"] },
         { id: "whmis", label: "WHMIS", status: "covered", holderNames: ["Taylor Cruz", "Avery Rowe"] },
       ],
+      timeOffThisMonth: WORKFORCE_TIME_OFF_DEMO,
     },
     workRequests: {
       kpi: { pendingApproval: 2, inProgress: 4, overdueAny: 1, total: 12 },
@@ -1060,6 +1065,7 @@ function buildLiveModel(
         [...onSite, ...onShiftNow].map((b) => b.id),
         scheduledIdsOnCalendar,
       ),
+      timeOffThisMonth: WORKFORCE_TIME_OFF_DEMO,
     },
     workRequests: {
       awaitingCount: unassigned || openItems.filter((i) => i.status === "open").length,
@@ -1195,7 +1201,6 @@ function DashboardBody({
         accent: "none" as const,
         render: (ctx?: DashboardWidgetRenderContext) => {
           const tier = ctx?.heightTier ?? "expanded";
-          const showCertCoverage = tier === "expanded" || tier === "tall";
           const showSecondary = tier === "tall";
 
           return (
@@ -1213,8 +1218,8 @@ function DashboardBody({
                   {model.workforce.summaryLine}
                 </p>
               </div>
-              <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1.5">
-                <div className="flex min-h-[7.25rem] flex-1 min-w-0 flex-col py-0.5">
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1.5 overflow-hidden">
+                <div className="flex min-h-0 flex-1 min-w-0 flex-col overflow-hidden py-0.5">
                   <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--ds-accent)]">
                     Scheduled today
                   </p>
@@ -1299,12 +1304,8 @@ function DashboardBody({
                     })()
                   )}
                 </div>
-                {showCertCoverage ? (
-                  <WorkforceSiteCertifications
-                    items={model.workforce.siteCertifications}
-                    heightTier={tier}
-                  />
-                ) : null}
+                <WorkforceSiteCertifications items={model.workforce.siteCertifications} />
+                <WorkforceTimeOffMonth entries={model.workforce.timeOffThisMonth} />
                 {showSecondary ? (
                   <div className="mt-3 grid shrink-0 gap-3 border-t border-[color-mix(in_srgb,var(--ds-text-primary)_10%,transparent)] pt-3 sm:grid-cols-2">
                     <div>
