@@ -1,20 +1,17 @@
-import type { NavDomain } from "@/config/platform/nav-domains";
 import type { NavigationTreeDomain } from "@/lib/navigation/build-navigation-tree";
-import { buildDomainProductTour, findNavDomainForPathname } from "@/lib/onboarding/build-domain-tour";
+import { findNavItemForPathname, buildFeaturePageTour } from "@/lib/onboarding/build-feature-page-tour";
 import type { TourStep } from "@/lib/onboarding/tour-steps/types";
 import { DASHBOARD_TOUR_STEPS } from "@/lib/onboarding/tour-steps/dashboard";
 
 export type ProductTourDef = {
   id: string;
-  /** Exact paths when set; domain tours match via {@link ProductTourDef.domain}. */
+  /** Route prefix or exact path; feature tours set {@link buildFeaturePageTour} href + pathPrefix. */
   paths: readonly string[];
   pathPrefix?: boolean;
   welcomeTitle: string;
   welcomeSubtitle: string;
   welcomeEmoji?: string;
   steps: TourStep[];
-  /** When set, tour is offered on any authorized route in this sidebar domain. */
-  domain?: NavDomain;
 };
 
 function normalizePath(path: string): string {
@@ -65,13 +62,10 @@ export function resolveProductTour(
     if (pathMatchesStaticTour(normalized, tour)) return tour;
   }
 
-  const navDomain = findNavDomainForPathname(navigationTree, normalized);
-  if (!navDomain) return null;
+  const navItem = findNavItemForPathname(navigationTree, normalized);
+  if (!navItem) return null;
 
-  const domainNode = navigationTree.find((d) => d.domain === navDomain);
-  if (!domainNode) return null;
-
-  return buildDomainProductTour(domainNode);
+  return buildFeaturePageTour(navItem);
 }
 
 export function hasProductTour(

@@ -105,7 +105,6 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
   );
   const tourEnabled = hasProductTour(pathname, navigationTree);
   const tourId = activeTour?.id ?? null;
-  const tourDomain = activeTour?.domain ?? null;
   const steps = activeTour?.steps ?? [];
 
   const [mounted, setMounted] = useState(false);
@@ -135,8 +134,8 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const active = isActive || showStart;
     flyoutBridge?.setTourActive(active);
-    flyoutBridge?.setTourFlyoutDomain(active && tourDomain ? tourDomain : null);
-  }, [isActive, showStart, tourDomain, flyoutBridge]);
+    flyoutBridge?.setTourFlyoutDomain(null);
+  }, [isActive, showStart, flyoutBridge]);
 
   const updatePositions = useCallback(() => {
     const step = steps[currentStep];

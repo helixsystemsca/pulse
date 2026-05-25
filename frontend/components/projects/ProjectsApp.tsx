@@ -15,6 +15,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/pulse/Card";
 import { HintCallout } from "@/components/ui/HintCallout";
+import { FeatureTourToolbar } from "@/components/onboarding/FeatureTourRegions";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageBody } from "@/components/ui/PageBody";
 import { SegmentedControl } from "@/components/schedule/SegmentedControl";
@@ -691,7 +692,7 @@ export function ProjectsApp() {
       />
 
       <PageBody>
-        <div className="max-w-xl space-y-2">
+        <FeatureTourToolbar className="max-w-xl space-y-2">
           <SegmentedControl
             value={filter}
             onChange={setFilter}
@@ -705,7 +706,7 @@ export function ProjectsApp() {
           <p className="text-xs text-pulse-muted dark:text-ds-muted">
             Starts within two weeks (or earlier) appear under Active; farther out under Future.
           </p>
-        </div>
+        </FeatureTourToolbar>
 
       {toast ? (
         <div

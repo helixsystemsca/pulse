@@ -66,15 +66,25 @@ import { TenantRolesPanel } from "@/components/workers/TenantRolesPanel";
 import { fetchTenantRoles, type TenantRoleRow } from "@/lib/tenantRolesService";
 import { parseTimeToMinutes } from "@/lib/schedule/calendar";
 import {
+  WorkerHybridRotationFields,
+  emptyHybridRotationDraft,
+  HYBRID_ROSTER_SHIFT_KEY,
+} from "@/components/workers/WorkerHybridRotationFields";
+import {
   buildRecurringRowsForDays,
+  buildRecurringRowsFromHybrid,
   canonicalRecurringJson,
   editableShiftWindowFromProfile,
+  formatHybridRotationSummary,
+  hybridDraftFromRecurringRows,
+  hybridRotationDayOverlapError,
   padHm,
   recurringRowsFromApi,
   rotationDaysFromRecurring,
   ROTATION_WEEKDAY_SHORT,
   shiftWindowFromRosterKey,
 } from "@/lib/workerRotation";
+import type { HybridRotationBand } from "@/lib/workerRotation";
 import type {
   LoginEventRow,
   WorkerDetail,
@@ -240,6 +250,8 @@ function splitOperationsRowsByEmployment(items: WorkerRow[]): { key: EmploymentB
 function formatRotationReadOnly(profile: WorkerDetail): string {
   const rows = recurringRowsFromApi(profile.recurring_shifts ?? []);
   if (!rows.length) return "-";
+  const hybrid = hybridDraftFromRecurringRows(rows);
+  if (hybrid) return formatHybridRotationSummary(hybrid);
   const days = rotationDaysFromRecurring(rows);
   const bits = ROTATION_WEEKDAY_SHORT.filter((_, i) => days[i]).join(", ");
   const w = rows[0];
@@ -355,6 +367,7 @@ function shiftRosterBadgeClass(shiftKey: string | null | undefined): string {
   if (k.startsWith("gg_")) return "app-badge-slate";
   if (k === "day") return "app-badge-sky";
   if (k === "afternoon") return "app-badge-amber-soft";
+  if (k === "hybrid") return "app-badge-violet";
   if (k === "night" || /^n\d+$/.test(k)) return "app-badge-night";
   if (k === "auxiliary") return "app-badge-lavender";
   return "app-badge-slate";
@@ -586,6 +599,7 @@ export function WorkersApp() {
   });
   const [rotationDaysDraft, setRotationDaysDraft] = useState<boolean[]>(() => [...EMPTY_ROTATION_DAYS]);
   const [shiftTimeDraft, setShiftTimeDraft] = useState({ start: "07:00", end: "15:00" });
+  const [hybridRotationDraft, setHybridRotationDraft] = useState(() => emptyHybridRotationDraft("afternoon"));
 
   const [inviteNotice, setInviteNotice] = useState<InviteLinkBanner | null>(null);
   const [inviteLinkCopied, setInviteLinkCopied] = useState(false);
@@ -825,16 +839,32 @@ export function WorkersApp() {
       start_date: profile.start_date ? profile.start_date.slice(0, 10) : "",
       employment_type: normalizeEmploymentDraft(profile.employment_type),
     });
+    const recurring = recurringRowsFromApi(profile.recurring_shifts ?? []);
+    const hybridParsed = hybridDraftFromRecurringRows(recurring);
+    const useHybridShift =
+      normalizeEmploymentDraft(profile.employment_type) !== "part_time" &&
+      ((profile.shift ?? "").trim().toLowerCase() === HYBRID_ROSTER_SHIFT_KEY || Boolean(hybridParsed));
     setPositionDraft({
       job_title: profile.job_title ?? "",
       matrix_slot: profile.matrix_slot ?? "",
       department: profile.department ?? "",
       shift:
-        normalizeEmploymentDraft(profile.employment_type) === "part_time" ? "" : (profile.shift ?? ""),
+        normalizeEmploymentDraft(profile.employment_type) === "part_time"
+          ? ""
+          : useHybridShift
+            ? HYBRID_ROSTER_SHIFT_KEY
+            : (profile.shift ?? ""),
       supervisor_id: profile.supervisor_id ?? "",
     });
-    setRotationDaysDraft(rotationDaysFromRecurring(recurringRowsFromApi(profile.recurring_shifts ?? [])));
-    setShiftTimeDraft(editableShiftWindowFromProfile(profile, fullSettings.shifts ?? []));
+    if (useHybridShift) {
+      setHybridRotationDraft(hybridParsed ?? emptyHybridRotationDraft("afternoon"));
+      setRotationDaysDraft([...EMPTY_ROTATION_DAYS]);
+      setShiftTimeDraft(editableShiftWindowFromProfile(profile, fullSettings.shifts ?? []));
+    } else {
+      setRotationDaysDraft(rotationDaysFromRecurring(recurring));
+      setShiftTimeDraft(editableShiftWindowFromProfile(profile, fullSettings.shifts ?? []));
+      setHybridRotationDraft(emptyHybridRotationDraft("afternoon"));
+    }
   }, [profile, fullSettings.shifts]);
 
   /** HR fields (not roles/modules): company admin, or manager/supervisor for non-admin profiles, or lead for workers. */
@@ -1311,18 +1341,62 @@ export function WorkersApp() {
         payload.shift = trim(positionDraft.shift) || null;
       }
       if (rotationScheduling) {
-        const rotationSelected = rotationDaysDraft.some(Boolean);
-        const win = { start: padHm(shiftTimeDraft.start), end: padHm(shiftTimeDraft.end) };
-        if (rotationSelected && parseTimeToMinutes(win.start) === parseTimeToMinutes(win.end)) {
-          window.alert(
-            "Shift start and end cannot be the same. For overnight shifts use a later start and earlier end (e.g. 22:00-06:00).",
-          );
-          return;
-        }
-        const nextRotation = buildRecurringRowsForDays(rotationDaysDraft, win);
-        const prevRotation = recurringRowsFromApi(profile.recurring_shifts ?? []);
-        if (canonicalRecurringJson(prevRotation) !== canonicalRecurringJson(nextRotation)) {
-          payload.recurring_shifts = nextRotation;
+        const isHybrid = trim(positionDraft.shift) === HYBRID_ROSTER_SHIFT_KEY;
+        if (isHybrid) {
+          const overlapErr = hybridRotationDayOverlapError(hybridRotationDraft);
+          if (overlapErr) {
+            window.alert(overlapErr);
+            return;
+          }
+          const mainSelected = hybridRotationDraft.mainDays.some(Boolean);
+          const secondarySelected = hybridRotationDraft.secondaryDays.some(Boolean);
+          if (!mainSelected && !secondarySelected) {
+            window.alert("Select at least one weekday in the primary or secondary hybrid rotation block.");
+            return;
+          }
+          for (const [label, win, active] of [
+            ["Primary", hybridRotationDraft.mainWindow, mainSelected],
+            ["Secondary", hybridRotationDraft.secondaryWindow, secondarySelected],
+          ] as const) {
+            if (
+              active &&
+              parseTimeToMinutes(padHm(win.start)) === parseTimeToMinutes(padHm(win.end))
+            ) {
+              window.alert(
+                `${label} shift start and end cannot be the same. For overnight shifts use a later start and earlier end (e.g. 22:00-06:00).`,
+              );
+              return;
+            }
+          }
+          const nextRotation = buildRecurringRowsFromHybrid({
+            ...hybridRotationDraft,
+            mainWindow: {
+              start: padHm(hybridRotationDraft.mainWindow.start),
+              end: padHm(hybridRotationDraft.mainWindow.end),
+            },
+            secondaryWindow: {
+              start: padHm(hybridRotationDraft.secondaryWindow.start),
+              end: padHm(hybridRotationDraft.secondaryWindow.end),
+            },
+          });
+          const prevRotation = recurringRowsFromApi(profile.recurring_shifts ?? []);
+          if (canonicalRecurringJson(prevRotation) !== canonicalRecurringJson(nextRotation)) {
+            payload.recurring_shifts = nextRotation;
+          }
+        } else {
+          const rotationSelected = rotationDaysDraft.some(Boolean);
+          const win = { start: padHm(shiftTimeDraft.start), end: padHm(shiftTimeDraft.end) };
+          if (rotationSelected && parseTimeToMinutes(win.start) === parseTimeToMinutes(win.end)) {
+            window.alert(
+              "Shift start and end cannot be the same. For overnight shifts use a later start and earlier end (e.g. 22:00-06:00).",
+            );
+            return;
+          }
+          const nextRotation = buildRecurringRowsForDays(rotationDaysDraft, win);
+          const prevRotation = recurringRowsFromApi(profile.recurring_shifts ?? []);
+          if (canonicalRecurringJson(prevRotation) !== canonicalRecurringJson(nextRotation)) {
+            payload.recurring_shifts = nextRotation;
+          }
         }
       }
     }
@@ -3187,8 +3261,18 @@ export function WorkersApp() {
                         onChange={(e) => {
                           const v = e.target.value;
                           setPositionDraft((d) => ({ ...d, shift: v }));
-                          const preset = shiftWindowFromRosterKey(v, fullSettings.shifts ?? []);
-                          setShiftTimeDraft({ start: padHm(preset.start), end: padHm(preset.end) });
+                          if (v === HYBRID_ROSTER_SHIFT_KEY) {
+                            const band: HybridRotationBand =
+                              positionDraft.shift === "day" ||
+                              positionDraft.shift === "afternoon" ||
+                              positionDraft.shift === "night"
+                                ? positionDraft.shift
+                                : "afternoon";
+                            setHybridRotationDraft(emptyHybridRotationDraft(band));
+                          } else {
+                            const preset = shiftWindowFromRosterKey(v, fullSettings.shifts ?? []);
+                            setShiftTimeDraft({ start: padHm(preset.start), end: padHm(preset.end) });
+                          }
                         }}
                       >
                         <option value="">-</option>
@@ -3199,7 +3283,9 @@ export function WorkersApp() {
                         ))}
                       </select>
                       <p className="mt-1 text-[11px] text-pulse-muted">
-                        Choosing a shift preset fills typical start/end below; adjust the times for an exact window.
+                        {positionDraft.shift === HYBRID_ROSTER_SHIFT_KEY
+                          ? "Hybrid uses two weekly blocks (primary + secondary). Set weekdays and times for each below."
+                          : "Choosing a shift preset fills typical start/end below; adjust the times for an exact window."}
                       </p>
                     </div>
                   )}
@@ -3231,86 +3317,93 @@ export function WorkersApp() {
                     </select>
                   </div>
                   {employmentShowsRotationScheduling(basicDraft.employment_type) ? (
-                    <>
-                  <div className="grid gap-3 sm:col-span-2 sm:grid-cols-2">
-                    <div>
-                      <label className={LABEL} htmlFor="worker-profile-shift-start">
-                        Shift start
-                      </label>
-                      <input
-                        id="worker-profile-shift-start"
-                        type="time"
-                        className={FIELD}
-                        value={shiftTimeDraft.start}
-                        onChange={(e) => setShiftTimeDraft((t) => ({ ...t, start: e.target.value }))}
+                    positionDraft.shift === HYBRID_ROSTER_SHIFT_KEY ? (
+                      <WorkerHybridRotationFields
+                        draft={hybridRotationDraft}
+                        onChange={setHybridRotationDraft}
                       />
-                    </div>
-                    <div>
-                      <label className={LABEL} htmlFor="worker-profile-shift-end">
-                        Shift end
-                      </label>
-                      <input
-                        id="worker-profile-shift-end"
-                        type="time"
-                        className={FIELD}
-                        value={shiftTimeDraft.end}
-                        onChange={(e) => setShiftTimeDraft((t) => ({ ...t, end: e.target.value }))}
-                      />
-                    </div>
-                    <p className="text-xs text-pulse-muted sm:col-span-2">
-                      Used for weekly rotation blocks and schedule labels (same clock times group as D1, D2, A1... on
-                      each day). Overnight: end earlier on the clock than start (e.g. 22:00–06:00).
-                    </p>
-                  </div>
-                  <div className="sm:col-span-2">
-                    <span className={LABEL}>Weekly rotation (schedule)</span>
-                    <p className="mt-1 text-xs text-pulse-muted">
-                      Choose weekdays for this worker&apos;s repeating pattern. Hours use the shift start/end above.
-                      Fills the schedule when they have no other assignment that day.
-                    </p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {ROTATION_PRESET_BUTTONS.map((p) => (
-                        <button
-                          key={p.label}
-                          type="button"
-                          className="rounded-md border border-ds-border bg-ds-card px-2.5 py-1 text-xs font-medium text-ds-foreground hover:bg-ds-muted/30"
-                          onClick={() => setRotationDaysDraft([...p.days])}
-                        >
-                          {p.label}
-                        </button>
-                      ))}
-                      <button
-                        type="button"
-                        className="rounded-md border border-ds-border px-2.5 py-1 text-xs font-medium text-pulse-muted hover:bg-ds-muted/30"
-                        onClick={() => setRotationDaysDraft([...EMPTY_ROTATION_DAYS])}
-                      >
-                        Clear
-                      </button>
-                    </div>
-                    <div className="mt-3 flex flex-wrap gap-3">
-                      {ROTATION_WEEKDAY_SHORT.map((label, i) => (
-                        <label
-                          key={label}
-                          className="flex cursor-pointer items-center gap-1.5 text-sm text-ds-foreground"
-                        >
-                          <input
-                            type="checkbox"
-                            className={dsCheckboxClass}
-                            checked={rotationDaysDraft[i] ?? false}
-                            onChange={() =>
-                              setRotationDaysDraft((prev) => {
-                                const next = [...prev];
-                                next[i] = !next[i];
-                                return next;
-                              })
-                            }
-                          />
-                          {label}
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                    </>
+                    ) : (
+                      <>
+                        <div className="grid gap-3 sm:col-span-2 sm:grid-cols-2">
+                          <div>
+                            <label className={LABEL} htmlFor="worker-profile-shift-start">
+                              Shift start
+                            </label>
+                            <input
+                              id="worker-profile-shift-start"
+                              type="time"
+                              className={FIELD}
+                              value={shiftTimeDraft.start}
+                              onChange={(e) => setShiftTimeDraft((t) => ({ ...t, start: e.target.value }))}
+                            />
+                          </div>
+                          <div>
+                            <label className={LABEL} htmlFor="worker-profile-shift-end">
+                              Shift end
+                            </label>
+                            <input
+                              id="worker-profile-shift-end"
+                              type="time"
+                              className={FIELD}
+                              value={shiftTimeDraft.end}
+                              onChange={(e) => setShiftTimeDraft((t) => ({ ...t, end: e.target.value }))}
+                            />
+                          </div>
+                          <p className="text-xs text-pulse-muted sm:col-span-2">
+                            Used for weekly rotation blocks and schedule labels (same clock times group as D1, D2, A1...
+                            on each day). Overnight: end earlier on the clock than start (e.g. 22:00–06:00).
+                          </p>
+                        </div>
+                        <div className="sm:col-span-2">
+                          <span className={LABEL}>Weekly rotation (schedule)</span>
+                          <p className="mt-1 text-xs text-pulse-muted">
+                            Choose weekdays for this worker&apos;s repeating pattern. Hours use the shift start/end
+                            above. Fills the schedule when they have no other assignment that day.
+                          </p>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {ROTATION_PRESET_BUTTONS.map((p) => (
+                              <button
+                                key={p.label}
+                                type="button"
+                                className="rounded-md border border-ds-border bg-ds-card px-2.5 py-1 text-xs font-medium text-ds-foreground hover:bg-ds-muted/30"
+                                onClick={() => setRotationDaysDraft([...p.days])}
+                              >
+                                {p.label}
+                              </button>
+                            ))}
+                            <button
+                              type="button"
+                              className="rounded-md border border-ds-border px-2.5 py-1 text-xs font-medium text-pulse-muted hover:bg-ds-muted/30"
+                              onClick={() => setRotationDaysDraft([...EMPTY_ROTATION_DAYS])}
+                            >
+                              Clear
+                            </button>
+                          </div>
+                          <div className="mt-3 flex flex-wrap gap-3">
+                            {ROTATION_WEEKDAY_SHORT.map((label, i) => (
+                              <label
+                                key={label}
+                                className="flex cursor-pointer items-center gap-1.5 text-sm text-ds-foreground"
+                              >
+                                <input
+                                  type="checkbox"
+                                  className={dsCheckboxClass}
+                                  checked={rotationDaysDraft[i] ?? false}
+                                  onChange={() =>
+                                    setRotationDaysDraft((prev) => {
+                                      const next = [...prev];
+                                      next[i] = !next[i];
+                                      return next;
+                                    })
+                                  }
+                                />
+                                {label}
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )
                   ) : basicDraft.employment_type === "part_time" ? (
                     <p className="text-xs text-pulse-muted sm:col-span-2">
                       Auxiliary workers are scheduled per shift in the scheduler. Weekly rotation and default shift
@@ -3385,6 +3478,8 @@ export function WorkersApp() {
                           const sk = rosterShiftKeyForDisplay(profile);
                           if (!sk) return "-";
                           const rows = recurringRowsFromApi(profile.recurring_shifts ?? []);
+                          const hybrid = hybridDraftFromRecurringRows(rows);
+                          if (hybrid) return formatHybridRotationSummary(hybrid);
                           if (
                             rows.length &&
                             rows.every((r) => r.start === rows[0]!.start && r.end === rows[0]!.end)

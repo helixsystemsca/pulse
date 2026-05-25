@@ -30,7 +30,14 @@ export const STANDARD_SHIFT_CATALOG: StandardShiftDefinition[] = [
   { code: "A2", label: "Afternoon", band: "afternoon", start: "15:00", end: "23:00", description: "Late swing" },
   { code: "N1", label: "Night", band: "night", start: "22:00", end: "06:00", description: "Overnight" },
   { code: "N2", label: "Night", band: "night", start: "23:00", end: "07:00", description: "Late overnight" },
-  { code: "GG", label: "Greenglade", band: "day", start: "09:00", end: "17:00", description: "GG-style day assignment" },
+  {
+    code: "GG",
+    label: "Greenglade",
+    band: "afternoon",
+    start: "16:00",
+    end: "00:00",
+    description: "Greenglade 4PM–12AM",
+  },
   { code: "OC", label: "On-call", band: "night", start: "00:00", end: "23:59", description: "On-call availability" },
 ];
 
@@ -61,7 +68,14 @@ export const OPERATIONAL_BADGE_REGISTRY: Record<string, OperationalBadgeDefiniti
   SHADOW: { code: "SHADOW", label: "Shadow", group: "training", detail: "Shadow / observation" },
   EVT: { code: "EVT", label: "Special event", group: "special", detail: "Special event coverage" },
   EVENT: { code: "EVENT", label: "Event", group: "special", detail: "Planned event or surge" },
-  GG: { code: "GG", label: "Greenglade", group: "assignment", detail: "Greenglade facility assignment" },
+  GG: { code: "GG", label: "Greenglade", group: "assignment", detail: "Greenglade 4PM–12AM shift window" },
+  GG3: {
+    code: "GG3",
+    label: "Greenglade (3–11)",
+    group: "assignment",
+    detail: "Greenglade 3PM–11PM overlay (use with shift code GG or custom window)",
+    chipLabel: "GG3",
+  },
   PMR: { code: "PMR", label: "Peer review", group: "workflow", detail: "Peer review pending" },
   OT: { code: "OT", label: "Overtime", group: "workflow", detail: "Overtime extension" },
   LEAD: { code: "LEAD", label: "Lead", group: "workflow", detail: "Lead responsibility" },
