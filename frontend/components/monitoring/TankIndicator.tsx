@@ -59,7 +59,7 @@ export function TankIndicator({
   const capsuleClass = cn(
     "relative overflow-hidden rounded-full bg-ds-secondary/60",
     fillHeight && compact
-      ? cn("h-full min-h-[4.75rem] w-10 flex-1 sm:min-h-[5.5rem] sm:w-11", compactTankShell)
+      ? cn("h-full min-h-[4rem] w-8 shrink-0 sm:min-h-[4.75rem] sm:w-9", compactTankShell)
       : compact && !tankHeight
         ? cn(
             "h-[5.5rem] w-9 shrink-0 sm:h-24 sm:w-10",
@@ -84,7 +84,7 @@ export function TankIndicator({
       <div
         className={cn(
           "flex flex-col justify-end",
-          compact ? "w-full min-w-0 max-w-[4.5rem] sm:max-w-[5rem]" : "w-9 sm:w-10",
+          compact ? "w-full min-w-0 max-w-[3.75rem] sm:max-w-[4rem]" : "w-9 sm:w-10",
           fillHeight && compact ? "min-h-0 flex-1" : "shrink-0",
         )}
       >
@@ -132,7 +132,7 @@ export function TankIndicator({
       <p
         className={cn(
           "w-full text-center font-semibold leading-tight text-ds-foreground",
-          compact ? "mt-1 line-clamp-2 text-[10px] leading-snug sm:text-[11px]" : "mt-2 text-sm",
+          compact ? "mt-0.5 line-clamp-2 text-[9px] leading-snug sm:text-[10px]" : "mt-2 text-sm",
         )}
         title={label}
       >

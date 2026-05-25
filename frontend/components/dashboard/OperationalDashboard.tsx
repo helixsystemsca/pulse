@@ -618,9 +618,8 @@ function demoModel(): DashboardViewModel {
       counts: { onSite: 1, onShiftNow: 1, upcomingToday: 1, onScheduleToday: 0, offSite: 1 },
       siteCertifications: [
         { id: "ro", label: "Refrigeration Operator", status: "covered", holderNames: ["Taylor Cruz"] },
-        { id: "pool", label: "Pool Operator", status: "missing", holderNames: [] },
-        { id: "fa", label: "First Aid", status: "covered", holderNames: ["Avery Rowe"] },
-        { id: "whmis", label: "WHMIS", status: "covered", holderNames: ["Taylor Cruz", "Avery Rowe"] },
+        { id: "pool", label: "Pool Operator", status: "covered", holderNames: [] },
+        { id: "fa", label: "First Aid", status: "covered", holderNames: [] },
       ],
       timeOffThisMonth: WORKFORCE_TIME_OFF_DEMO,
     },

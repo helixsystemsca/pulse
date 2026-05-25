@@ -89,9 +89,23 @@ export function ComplianceRadial({
   const innerRadiusPx = radius - stroke / 2;
   const labelMaxPx = Math.max(48, Math.floor(innerRadiusPx * 2 * 0.92));
 
-  const titleSize = size === "sm" ? "text-[7px] tracking-[0.12em]" : size === "lg" ? "text-[11px]" : "text-[10px]";
+  const titleSize =
+    size === "sm"
+      ? "text-[7px] tracking-[0.12em]"
+      : size === "lg"
+        ? "text-[9px] tracking-[0.1em]"
+        : size === "xl"
+          ? "text-[11px]"
+          : "text-[10px]";
   const pctSize =
-    size === "sm" ? "text-xl leading-none" : size === "lg" ? "text-4xl leading-none" : "text-3xl leading-none";
+    size === "sm"
+      ? "text-lg leading-none"
+      : size === "lg"
+        ? "text-[1.35rem] leading-none"
+        : size === "xl"
+          ? "text-3xl leading-none"
+          : "text-xl leading-none";
+  const twoLineTitle = size === "sm" || size === "lg";
   const completionGlow =
     mode === "overall"
       ? overallCompliancePercent >= 80 && segCompleted > 0 && total > 0
@@ -184,13 +198,13 @@ export function ComplianceRadial({
         <ShieldCheck
           className={cn(
             "absolute text-[color-mix(in_srgb,var(--ds-text-primary)_8%,transparent)] dark:text-white/[0.07]",
-            size === "lg" ? "h-14 w-14" : size === "sm" ? "h-7 w-7" : "h-12 w-12",
+            size === "lg" ? "h-10 w-10" : size === "sm" ? "h-7 w-7" : "h-12 w-12",
           )}
           aria-hidden
           strokeWidth={1}
         />
         <div
-          className="relative px-0.5 text-center leading-none"
+          className="relative flex flex-col items-center justify-center px-0.5 text-center leading-none"
           style={{ maxWidth: labelMaxPx }}
         >
           <motion.p
@@ -202,7 +216,7 @@ export function ComplianceRadial({
           >
             {pctLabel}
           </motion.p>
-          {size === "sm" ? (
+          {twoLineTitle ? (
             <div
               className={cn(
                 "mx-auto mt-0.5 flex flex-col gap-0 font-semibold uppercase text-ds-muted",

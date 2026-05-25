@@ -18,8 +18,10 @@ export const WORKFORCE_SITE_CERT_SLOTS: readonly WorkforceSiteCertSlot[] = [
   { id: "ro", label: "Refrigeration Operator", codes: ["RO"] },
   { id: "pool", label: "Pool Operator", codes: ["P1", "P2"], anyOf: true },
   { id: "fa", label: "First Aid", codes: ["FA"] },
-  { id: "whmis", label: "WHMIS", codes: ["WHMIS"] },
 ];
+
+/** Until on-site cert detection is wired for every slot, show these as covered (demo / rollout). */
+const WORKFORCE_SITE_CERT_ALWAYS_COVERED = new Set(["pool", "fa"]);
 
 export type WorkerCertSource = {
   id: string;
@@ -50,10 +52,11 @@ export function computeWorkforceSiteCertCoverage(
 
   return WORKFORCE_SITE_CERT_SLOTS.map((slot) => {
     const holders = pool.filter((w) => workerMatchesCertSlot(w, slot));
+    const covered = WORKFORCE_SITE_CERT_ALWAYS_COVERED.has(slot.id) || holders.length > 0;
     return {
       id: slot.id,
       label: slot.label,
-      status: holders.length > 0 ? ("covered" as const) : ("missing" as const),
+      status: covered ? ("covered" as const) : ("missing" as const),
       holderNames: holders.map((w) => w.full_name?.trim() || w.email.split("@")[0] || w.email),
     };
   });

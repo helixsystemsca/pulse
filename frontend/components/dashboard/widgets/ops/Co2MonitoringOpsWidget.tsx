@@ -10,12 +10,14 @@ export function Co2MonitoringOpsWidget() {
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-col">
       <div className="ops-dash-inner-card flex min-h-0 flex-1 flex-col px-1 py-1.5">
-        <div className="flex min-h-0 flex-1 w-full min-w-0 items-stretch justify-center gap-1 sm:gap-1.5">
-          {co2Tanks.map((t) => (
-            <div key={t.id} className="flex h-full min-h-0 min-w-0 flex-1 flex-col justify-end">
-              <TankIndicator label={t.name} value={t.level} max={CO2_LEVEL_MAX} compact fillHeight />
-            </div>
-          ))}
+        <div className="flex min-h-0 flex-1 w-full items-center justify-center">
+          <div className="flex h-full max-w-full items-end justify-center gap-1.5 sm:gap-2">
+            {co2Tanks.map((t) => (
+              <div key={t.id} className="flex h-full shrink-0 flex-col justify-end">
+                <TankIndicator label={t.name} value={t.level} max={CO2_LEVEL_MAX} compact fillHeight />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

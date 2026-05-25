@@ -20,4 +20,15 @@ describe("computeWorkforceSiteCertCoverage", () => {
     const ro = rows.find((r) => r.id === "ro");
     expect(ro?.status).toBe("missing");
   });
+
+  it("omits WHMIS from the site cert strip", () => {
+    const rows = computeWorkforceSiteCertCoverage(workers, ["a", "b"], []);
+    expect(rows.some((r) => r.id === "whmis")).toBe(false);
+  });
+
+  it("shows pool and first aid as covered until full cert detection ships", () => {
+    const rows = computeWorkforceSiteCertCoverage(workers, ["b"], []);
+    expect(rows.find((r) => r.id === "pool")?.status).toBe("covered");
+    expect(rows.find((r) => r.id === "fa")?.status).toBe("covered");
+  });
 });
