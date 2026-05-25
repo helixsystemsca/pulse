@@ -1395,12 +1395,27 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
    * Operations dashboard: widget bodies and inner cards stretch to slot height.
    * Pair with {@link OPS_WIDGET_BODY_CLASS} on OpsWidgetShell bodies.
    */
+  .pulse-operations-dashboard .dash-workspace {
+    min-height: min(72vh, 920px);
+  }
+
   .pulse-operations-dashboard .dash-workspace-slot {
     background: transparent;
     border: none;
   }
   .pulse-operations-dashboard .dash-workspace-slot::before {
     box-shadow: none;
+  }
+
+  .pulse-operations-dashboard .dash-workspace-slot > .flex.min-h-0.flex-1.flex-col {
+    min-height: 0;
+    height: 100%;
+  }
+
+  .pulse-operations-dashboard .dash-workspace-slot .ops-dash-widget,
+  .pulse-operations-dashboard .dash-workspace-slot .dash-base-widget {
+    height: 100%;
+    min-height: 0;
   }
 
   .pulse-operations-dashboard .ops-dash-widget-body--fill {
@@ -1834,8 +1849,16 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   }
 
   /** Extra lift on grid widgets over the atmospheric canvas (operations / leadership). */
+  .pulse-operations-dashboard .pulse-dashboard-grid:not(.pulse-dashboard-edit) .react-grid-item {
+    display: flex;
+    flex-direction: column;
+  }
   .pulse-operations-dashboard .pulse-dashboard-grid:not(.pulse-dashboard-edit) .react-grid-item > * {
     border-radius: 1.25rem;
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
+    width: 100%;
   }
 
   /* Dashboard grid UX (edit mode): darker grab cursor + clearer drop placeholder */

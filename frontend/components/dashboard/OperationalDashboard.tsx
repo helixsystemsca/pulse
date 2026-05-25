@@ -1261,7 +1261,7 @@ function DashboardBody({
                           </div>
                         );
                       return (
-                        <div className="mt-1.5 flex min-h-0 w-full min-w-0 flex-col gap-y-3 overflow-x-auto overflow-y-visible sm:flex-row sm:flex-nowrap sm:items-start sm:gap-x-0 sm:gap-y-0">
+                        <div className="mt-1.5 flex min-h-0 flex-1 w-full min-w-0 flex-col gap-y-3 overflow-x-auto overflow-y-visible sm:flex-row sm:flex-nowrap sm:items-start sm:gap-x-0 sm:gap-y-0">
                           {nowR.length > 0 ? (
                             <div className="flex min-h-0 w-max min-w-0 shrink-0 flex-col">{bandGrid(nowR)}</div>
                           ) : null}
@@ -1689,7 +1689,7 @@ function DashboardBody({
       <div
         ref={containerRef as any}
         className={cn(
-          "pulse-dashboard-grid min-w-0",
+          "pulse-dashboard-grid flex min-h-0 min-w-0 flex-col",
           isKiosk && "min-h-0 flex-1 overflow-y-auto overscroll-contain",
           editMode && "pulse-dashboard-edit",
           isDeptDashboard && workspaceLayoutIsEmpty(layout) && !editMode && "hidden",

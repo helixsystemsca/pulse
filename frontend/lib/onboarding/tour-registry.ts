@@ -11,6 +11,8 @@ export type ProductTourDef = {
   welcomeTitle: string;
   welcomeSubtitle: string;
   welcomeEmoji?: string;
+  /** Centered checkmark + “You're all set!” after Finish (dashboard tours only). */
+  showCompletionScreen?: boolean;
   steps: TourStep[];
 };
 
@@ -25,6 +27,7 @@ const DASHBOARD_OVERVIEW_TOUR: ProductTourDef = {
   paths: ["/overview"],
   welcomeTitle: "Welcome to Panorama",
   welcomeSubtitle: "Let's tour your facility platform.",
+  showCompletionScreen: true,
   steps: DASHBOARD_TOUR_STEPS,
 };
 
@@ -34,6 +37,7 @@ const DASHBOARD_WORKER_TOUR: ProductTourDef = {
   welcomeTitle: "Operations dashboard",
   welcomeSubtitle:
     "Your personal operations view uses the same widgets—here's how to read the floor at a glance.",
+  showCompletionScreen: true,
   steps: DASHBOARD_TOUR_STEPS,
 };
 

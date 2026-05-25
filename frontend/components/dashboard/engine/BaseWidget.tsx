@@ -67,7 +67,8 @@ export function BaseWidget({
       )}
       <div
         className={cn(
-          "ops-dash-widget-body dash-base-widget-body min-h-0 flex-1 overflow-auto ds-scroll",
+          "ops-dash-widget-body dash-base-widget-body min-h-0 flex-1 ds-scroll",
+          bodyClassName?.includes("ops-dash-widget-body--fill") ? "overflow-hidden" : "overflow-auto",
           bodyClassName,
         )}
       >

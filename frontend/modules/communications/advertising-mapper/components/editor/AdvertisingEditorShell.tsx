@@ -39,7 +39,7 @@ export function AdvertisingEditorShell({
     <div
       className={cn(
         "grid min-h-0 w-full overflow-hidden bg-[#e8ecf1] font-manrope",
-        immersive && !fullscreen && "h-[calc(100dvh-3.5rem)]",
+        immersive && !fullscreen && "min-h-0 flex-1",
         fullscreen && "h-[100dvh]",
         className,
       )}

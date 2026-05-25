@@ -32,6 +32,8 @@ import "@/components/onboarding/onboarding-tour.css";
 const CARD_WIDTH = 420;
 const CARD_HEIGHT = 300;
 const CARD_OFFSET = 20;
+/** Keep step cards off the viewport bottom (feature tours often anchor near the page footer). */
+const CARD_VIEWPORT_INSET_BOTTOM = 48;
 
 type SpotlightStyle = {
   top: number;
@@ -105,7 +107,7 @@ function calculateCardPosition(rect: DOMRect, placement: TourPlacement): CardSty
   }
 
   left = Math.max(8, Math.min(left, window.innerWidth - CARD_WIDTH - 8));
-  top = Math.max(8, Math.min(top, window.innerHeight - CARD_HEIGHT - 8));
+  top = Math.max(8, Math.min(top, window.innerHeight - CARD_HEIGHT - CARD_VIEWPORT_INSET_BOTTOM));
 
   return { top, left };
 }
@@ -121,6 +123,7 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
   );
   const tourEnabled = hasProductTour(pathname, navigationTree);
   const tourId = activeTour?.id ?? null;
+  const showsCompletionScreen = Boolean(activeTour?.showCompletionScreen);
   const steps = useMemo(
     () => (activeTour?.steps ?? []).filter((s) => s.target !== '[data-tour="feature-header"]'),
     [activeTour?.steps],
@@ -289,7 +292,8 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
 
   const nextStep = useCallback(() => {
     if (currentStep >= steps.length - 1) {
-      finishTour();
+      if (showsCompletionScreen) finishTour();
+      else endTour();
       return;
     }
     const next = currentStep + 1;
@@ -298,7 +302,7 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
       return;
     }
     setCurrentStep(next);
-  }, [advanceFromMissing, currentStep, finishTour, steps]);
+  }, [advanceFromMissing, currentStep, endTour, finishTour, showsCompletionScreen, steps]);
 
   const previousStep = useCallback(() => {
     if (currentStep <= 0) return;
@@ -393,7 +397,7 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
           />
         ) : null}
 
-        {showComplete ? (
+        {showComplete && showsCompletionScreen ? (
           <div
             className={cn("tour-end-screen active", completeFading && "tour-end-screen--fading")}
             role="dialog"
@@ -439,9 +443,6 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
               {currentStep === 0 ? (
                 <p className="tour-welcome-line">{welcomeLine}</p>
               ) : null}
-              <div className="tour-step-counter">
-                Step {currentStep + 1} of {steps.length}
-              </div>
               <h2 id="tour-step-title" className="tour-title">
                 {step.title}
               </h2>
@@ -457,11 +458,13 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
                 {currentStep === steps.length - 1 ? "Finish" : "Next"}
               </button>
             </div>
-            <div className="progress-dots" aria-hidden>
-              {steps.map((_, index) => (
-                <div key={index} className={`progress-dot ${index === currentStep ? "active" : ""}`} />
-              ))}
-            </div>
+            {steps.length > 1 ? (
+              <div className="progress-dots" aria-hidden>
+                {steps.map((_, index) => (
+                  <div key={index} className={`progress-dot ${index === currentStep ? "active" : ""}`} />
+                ))}
+              </div>
+            ) : null}
           </div>
         ) : null}
       </>

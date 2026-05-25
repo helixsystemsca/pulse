@@ -46,7 +46,7 @@ export function WorkspaceDashboard({
 }: WorkspaceDashboardProps) {
   return (
     <div
-      className="dash-workspace grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)] items-start"
+      className="dash-workspace grid min-h-0 min-w-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)] items-stretch"
       style={{ gap: DASHBOARD_GRID_GAP_PX, transitionDuration: `${DASHBOARD_LAYOUT_TRANSITION_MS}ms` }}
       data-dashboard-layout="workspace-3col"
     >
@@ -88,7 +88,7 @@ function WorkspaceColumn({
   return (
     <section
       className={cn(
-        "dash-workspace-column flex min-w-0 flex-col",
+        "dash-workspace-column flex min-h-0 min-w-0 flex-1 flex-col",
         column === "hero" && "dash-workspace-column--hero",
         column !== "hero" && "dash-workspace-column--edge",
       )}
@@ -96,11 +96,11 @@ function WorkspaceColumn({
       aria-label={COLUMN_LABEL[column]}
     >
       {editMode ? (
-        <p className="mb-1 px-0.5 text-[10px] font-bold uppercase tracking-wider text-pulse-muted">
+        <p className="mb-1 shrink-0 px-0.5 text-[10px] font-bold uppercase tracking-wider text-pulse-muted">
           {COLUMN_LABEL[column]}
         </p>
       ) : null}
-      <div className="flex flex-col" style={{ gap: DASHBOARD_GRID_GAP_PX }}>
+      <div className="flex min-h-0 flex-1 flex-col" style={{ gap: DASHBOARD_GRID_GAP_PX }}>
         {slots.map((slot, index) => {
           const ctx = buildWorkspaceRenderContext(slot, column, containerWidth);
           return (
@@ -151,7 +151,7 @@ function WorkspaceSlotShell({
   return (
     <div
       className={cn(
-        "dash-workspace-slot flex min-h-0 flex-col overflow-hidden rounded-[var(--dash-widget-radius,12px)]",
+        "dash-workspace-slot flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--dash-widget-radius,12px)]",
         editMode && "ring-1 ring-ds-border/60",
       )}
       data-widget-id={slot.id}
