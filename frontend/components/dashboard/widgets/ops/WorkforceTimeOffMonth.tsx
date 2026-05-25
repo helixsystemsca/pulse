@@ -10,11 +10,10 @@ function TimeOffAvatar({ entry }: { entry: WorkforceTimeOffEntry }) {
   return (
     <span
       className={cn(
-        "relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold leading-none",
+        "relative mx-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold leading-none",
         "ops-workforce-avatar ops-workforce-avatar--time-off",
         !resolvedSrc && "text-[color-mix(in_srgb,var(--ds-text-primary)_82%,transparent)]",
       )}
-      aria-hidden
     >
       {resolvedSrc ? (
         // eslint-disable-next-line @next/next/no-img-element
@@ -30,18 +29,22 @@ function TimeOffAvatar({ entry }: { entry: WorkforceTimeOffEntry }) {
   );
 }
 
-function TimeOffRow({ entry }: { entry: WorkforceTimeOffEntry }) {
+function TimeOffBubble({ entry }: { entry: WorkforceTimeOffEntry }) {
+  const label = `${entry.displayName} — ${entry.dateLabel}`;
+
   return (
-    <li className="flex min-w-0 items-center gap-2 rounded-md py-0.5">
+    <li
+      className="flex w-auto max-w-[6.75rem] min-w-[4.5rem] shrink-0 flex-col items-center gap-0.5 py-0.5"
+      title={label}
+      aria-label={label}
+    >
       <TimeOffAvatar entry={entry} />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[10px] font-semibold leading-tight text-[color-mix(in_srgb,var(--ds-text-primary)_92%,transparent)]">
-          {entry.displayName}
-        </p>
-        <p className="text-[9px] leading-snug text-[color-mix(in_srgb,var(--ds-text-primary)_58%,transparent)]">
-          {entry.dateLabel}
-        </p>
-      </div>
+      <span className="w-full max-w-full truncate px-0.5 text-center text-[10px] font-semibold leading-tight text-[color-mix(in_srgb,var(--ds-text-primary)_92%,transparent)]">
+        {entry.displayName}
+      </span>
+      <span className="line-clamp-2 w-full max-w-full px-0.5 text-center text-[9px] leading-snug text-[color-mix(in_srgb,var(--ds-text-primary)_58%,transparent)]">
+        {entry.dateLabel}
+      </span>
     </li>
   );
 }
@@ -55,11 +58,11 @@ export function WorkforceTimeOffMonth({ entries }: { entries: WorkforceTimeOffEn
         Time-off this Month
       </p>
       <ul
-        className="mt-1 flex min-h-0 max-h-[8.5rem] flex-col gap-0.5 overflow-y-auto pr-0.5"
+        className="mt-1 flex min-h-0 w-full max-w-full flex-nowrap items-start justify-start gap-x-1 overflow-x-auto overflow-y-visible pb-0.5 pt-0.5"
         aria-label="Time-off this month"
       >
         {entries.map((entry) => (
-          <TimeOffRow key={entry.id} entry={entry} />
+          <TimeOffBubble key={entry.id} entry={entry} />
         ))}
       </ul>
     </div>
