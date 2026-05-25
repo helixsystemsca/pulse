@@ -12,7 +12,7 @@ import {
   demoResolveHandover,
   listAssignmentHandovers,
   resolveAssignmentHandover,
-  useHandoverApi,
+  handoverUsesLiveApi,
   type AssignmentHandoverContext,
   type AssignmentHandoverSummary,
   type HandoverNoteType,
@@ -66,7 +66,7 @@ export function RoutineAssignmentHandoverChip({
   async function submitHandover(body: { content: string; note_type: HandoverNoteType }) {
     setSaving(true);
     try {
-      if (useHandoverApi() && !assignment.assignmentId.startsWith("demo-")) {
+      if (handoverUsesLiveApi() && !assignment.assignmentId.startsWith("demo-")) {
         await createAssignmentHandover(assignment.assignmentId, {
           ...body,
           employee_name: workerName,
@@ -83,14 +83,14 @@ export function RoutineAssignmentHandoverChip({
   }
 
   async function loadHandovers() {
-    if (useHandoverApi() && !assignment.assignmentId.startsWith("demo-")) {
+    if (handoverUsesLiveApi() && !assignment.assignmentId.startsWith("demo-")) {
       return listAssignmentHandovers(assignment.assignmentId);
     }
     return demoListHandovers(assignment.assignmentId);
   }
 
   async function resolveHandover(handoverId: string) {
-    if (useHandoverApi() && !assignment.assignmentId.startsWith("demo-")) {
+    if (handoverUsesLiveApi() && !assignment.assignmentId.startsWith("demo-")) {
       await resolveAssignmentHandover(assignment.assignmentId, handoverId);
     } else {
       demoResolveHandover(assignment.assignmentId, handoverId);

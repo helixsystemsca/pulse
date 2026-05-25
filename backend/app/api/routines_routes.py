@@ -7,7 +7,7 @@ from typing import Annotated, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import and_, delete, func, select
+from sqlalchemy import and_, case, delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_tenant_user
@@ -787,16 +787,21 @@ async def list_assignment_handover_summaries(
     if not assignment_ids:
         return []
 
-    total_expr = func.count(PulseRoutineAssignmentHandover.id)
-    open_cond = and_(
-        PulseRoutineAssignmentHandover.is_resolved.is_(False),
-        PulseRoutineAssignmentHandover.note_type.in_(tuple(OPEN_HANDOVER_NOTE_TYPES)),
+    open_flag = case(
+        (
+            and_(
+                PulseRoutineAssignmentHandover.is_resolved.is_(False),
+                PulseRoutineAssignmentHandover.note_type.in_(tuple(OPEN_HANDOVER_NOTE_TYPES)),
+            ),
+            1,
+        ),
+        else_=0,
     )
     q = await db.execute(
         select(
             PulseRoutineAssignmentHandover.routine_assignment_id,
-            total_expr.label("total_count"),
-            func.count(PulseRoutineAssignmentHandover.id).filter(open_cond).label("open_count"),
+            func.count(PulseRoutineAssignmentHandover.id).label("total_count"),
+            func.sum(open_flag).label("open_count"),
         )
         .where(
             PulseRoutineAssignmentHandover.company_id == cid,

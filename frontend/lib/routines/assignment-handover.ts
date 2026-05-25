@@ -189,6 +189,7 @@ export function demoHandoverSummaries(assignmentIds: string[]): AssignmentHandov
   });
 }
 
-export function useHandoverApi(): boolean {
+/** True when handover notes should call the routines API (not demo localStorage). */
+export function handoverUsesLiveApi(): boolean {
   return isApiMode();
 }
