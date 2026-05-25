@@ -79,7 +79,7 @@ export function InspectionsLogsHero({
               onClick={onNewInspectionTemplate}
             >
               <Plus className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
-              New inspection template
+              New inspection sheet
             </button>
             <button
               type="button"
@@ -157,7 +157,7 @@ export function InspectionsLogsMetricsInspections({
 }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      <MetricCard label="Checklist templates" value={templateCount} borderAccent="neutral" hint="Defined in this workspace" />
+      <MetricCard label="Inspection sheets" value={templateCount} borderAccent="neutral" hint="Custom sheets in this workspace" />
       <MetricCard
         label="Completed runs"
         value={completedTotal}
@@ -169,7 +169,7 @@ export function InspectionsLogsMetricsInspections({
         label="Needs attention"
         value={needsAttentionCount}
         borderAccent={needsAttentionCount > 0 ? "warning" : "neutral"}
-        hint="Templates with no recorded run yet"
+        hint="Sheets with no recorded run yet"
       />
     </div>
   );
@@ -198,7 +198,9 @@ export function InspectionQuickInspectionCard({
   title,
   description,
   meta,
+  secondaryActions,
   actionLabel,
+  actionDisabled,
   expanded,
   onToggle,
   children,
@@ -207,7 +209,10 @@ export function InspectionQuickInspectionCard({
   title: string;
   description: string;
   meta: ReactNode;
+  /** Edit / delete — shown inline with meta badges */
+  secondaryActions?: ReactNode;
   actionLabel: string;
+  actionDisabled?: boolean;
   expanded: boolean;
   onToggle: () => void;
   children?: ReactNode;
@@ -226,7 +231,14 @@ export function InspectionQuickInspectionCard({
           <div className="min-w-0 space-y-1">
             <h2 className="text-base font-semibold text-ds-foreground">{title}</h2>
             <p className="text-sm leading-snug text-ds-muted">{description}</p>
-            <div className="flex flex-wrap gap-2 pt-1 text-xs font-medium text-ds-muted">{meta}</div>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 pt-1 text-xs font-medium text-ds-muted">
+              {meta}
+              {secondaryActions ? (
+                <span className="inline-flex flex-wrap items-center gap-2 border-l border-ds-border/80 pl-2">
+                  {secondaryActions}
+                </span>
+              ) : null}
+            </div>
           </div>
         </div>
         <div className="flex shrink-0 sm:pt-0.5">
@@ -237,6 +249,7 @@ export function InspectionQuickInspectionCard({
               "min-h-[44px] w-full px-4 py-2.5 text-sm font-semibold shadow-sm transition-transform duration-200 active:scale-[0.99] sm:w-auto",
             )}
             onClick={onToggle}
+            disabled={actionDisabled}
             aria-expanded={expanded}
           >
             {actionLabel}

@@ -5,6 +5,7 @@ import { useCallback, useMemo, useState } from "react";
 import { newId } from "@/lib/inspectionsLogsStorage";
 import type {
   InspectionChecklistItem,
+  InspectionEquipmentOption,
   InspectionItemResponseType,
   InspectionTemplate,
 } from "@/lib/inspectionsLogsTypes";
@@ -44,9 +45,26 @@ export function InspectionBuilder({
   const [items, setItems] = useState<InspectionChecklistItem[]>(() =>
     sortItems(initial?.checklist_items?.length ? initial.checklist_items : []),
   );
-  const [linkedEquipmentId, setLinkedEquipmentId] = useState(initial?.linked_equipment_id ?? "");
+  const [equipmentOptions, setEquipmentOptions] = useState<InspectionEquipmentOption[]>(() => {
+    if (initial?.equipment_options?.length) return initial.equipment_options;
+    const legacy = initial?.linked_equipment_id?.trim();
+    if (legacy) return [{ id: legacy, label: legacy }];
+    return [];
+  });
   const [linkedZoneId, setLinkedZoneId] = useState(initial?.linked_zone_id ?? "");
   const [frequency, setFrequency] = useState(initial?.frequency ?? "");
+
+  const addEquipmentOption = useCallback(() => {
+    setEquipmentOptions((prev) => [...prev, { id: newId(), label: "" }]);
+  }, []);
+
+  const updateEquipmentOption = useCallback((id: string, patch: Partial<InspectionEquipmentOption>) => {
+    setEquipmentOptions((prev) => prev.map((o) => (o.id === id ? { ...o, ...patch } : o)));
+  }, []);
+
+  const removeEquipmentOption = useCallback((id: string) => {
+    setEquipmentOptions((prev) => prev.filter((o) => o.id !== id));
+  }, []);
 
   const addItem = useCallback((response_type: InspectionItemResponseType = "checkbox") => {
     setItems((prev) => {
@@ -86,6 +104,9 @@ export function InspectionBuilder({
         order: idx,
         response_type: i.response_type ?? "checkbox",
       }));
+    const normalizedEquipment = equipmentOptions
+      .map((o) => ({ id: o.id.trim() || newId(), label: o.label.trim() }))
+      .filter((o) => o.label);
     const base = initial;
     const t: InspectionTemplate = {
       id: base?.id ?? newId(),
@@ -93,7 +114,9 @@ export function InspectionBuilder({
       name: trimmed,
       description: description.trim() || undefined,
       checklist_items,
-      linked_equipment_id: linkedEquipmentId.trim() || null,
+      equipment_options: normalizedEquipment.length > 0 ? normalizedEquipment : undefined,
+      linked_equipment_id:
+        normalizedEquipment.length === 1 ? normalizedEquipment[0]!.id : null,
       linked_zone_id: linkedZoneId.trim() || null,
       frequency: frequency.trim() || null,
       created_at: base?.created_at ?? now,
@@ -105,10 +128,12 @@ export function InspectionBuilder({
   return (
     <div className="rounded-md border border-ds-border bg-ds-primary p-6 shadow-sm">
       <h2 className="text-lg font-semibold text-ds-foreground">
-        {initial ? "Edit inspection template" : "New inspection template"}
+        {initial ? "Edit inspection sheet" : "New inspection sheet"}
       </h2>
       <p className="mt-1 text-sm text-ds-muted">
         Add any mix of checkboxes, short or long text, numbers, and yes/no lines. Each line is one question or check.
+        Inspector name and submission time are captured automatically when someone submits a run (from their
+        signed-in account and server time) — you do not add separate name or date fields.
       </p>
 
       <div className="mt-6 grid gap-5 sm:grid-cols-2">
@@ -197,17 +222,50 @@ export function InspectionBuilder({
       </div>
 
       <div className="mt-8 border-t border-ds-border pt-6">
-        <p className={LABEL}>Future automation (optional)</p>
-        <div className="mt-3 grid gap-4 sm:grid-cols-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <label className="text-xs text-ds-muted">Linked equipment ID</label>
-            <input
-              className={FIELD}
-              value={linkedEquipmentId}
-              onChange={(e) => setLinkedEquipmentId(e.target.value)}
-              placeholder="—"
-            />
+            <p className={LABEL}>Equipment (optional)</p>
+            <p className="mt-1 max-w-xl text-xs text-ds-muted">
+              Add one row per machine or asset. A single row locks the asset on the run sheet; two or more rows show a
+              dropdown when the crew submits the inspection (e.g. John Deere vs Ventrac).
+            </p>
           </div>
+          <button type="button" className={BTN_SECONDARY} onClick={addEquipmentOption}>
+            <Plus className="mr-1 inline h-3.5 w-3.5" aria-hidden />
+            Add equipment
+          </button>
+        </div>
+        <ul className="mt-3 space-y-2">
+          {equipmentOptions.map((opt) => (
+            <li
+              key={opt.id}
+              className="flex flex-wrap items-center gap-2 rounded-md border border-ds-border bg-ds-secondary px-3 py-2"
+            >
+              <input
+                className="min-w-0 flex-1 rounded-lg border border-ds-border bg-ds-primary px-2 py-1.5 text-sm text-ds-foreground placeholder:text-ds-muted focus:outline-none focus:ring-2 focus:ring-[var(--ds-focus-ring)]"
+                value={opt.label}
+                onChange={(e) => updateEquipmentOption(opt.id, { label: e.target.value })}
+                placeholder="e.g. John Deere 3420"
+              />
+              <button
+                type="button"
+                className="rounded-lg p-1.5 text-red-600 hover:bg-red-100/80 dark:text-red-400 dark:hover:bg-red-500/15"
+                aria-label="Remove equipment"
+                onClick={() => removeEquipmentOption(opt.id)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </li>
+          ))}
+        </ul>
+        {equipmentOptions.length === 0 ? (
+          <p className="mt-2 text-xs text-ds-muted">Leave empty for a generic sheet with no equipment selector.</p>
+        ) : null}
+      </div>
+
+      <div className="mt-8 border-t border-ds-border pt-6">
+        <p className={LABEL}>Future automation (optional)</p>
+        <div className="mt-3 grid gap-4 sm:grid-cols-2">
           <div>
             <label className="text-xs text-ds-muted">Linked zone ID</label>
             <input
@@ -231,7 +289,7 @@ export function InspectionBuilder({
 
       <div className="mt-6 flex flex-wrap gap-2">
         <button type="button" className={BTN_PRIMARY} onClick={handleSave} disabled={!name.trim()}>
-          Save template
+          Save sheet
         </button>
         <button type="button" className={BTN_SECONDARY} onClick={onCancel}>
           Cancel

@@ -22,6 +22,11 @@ import type {
   LogFieldType,
   LogTemplate,
 } from "@/lib/inspectionsLogsTypes";
+import {
+  INSPECTION_ENTRY_EQUIPMENT_ID,
+  equipmentLabelForEntry,
+  resolveInspectionEquipmentOptions,
+} from "@/lib/inspectionEntryMeta";
 import { readSession } from "@/lib/pulse-session";
 import { ScrollReveal } from "@/components/motion/ScrollReveal";
 import { InspectionBuilder } from "./InspectionBuilder";
@@ -110,6 +115,7 @@ export function InspectionsLogsApp() {
   const store = useInspectionsLogsStore();
   const session = readSession();
   const userId = session?.email ?? session?.sub ?? null;
+  const inspectorLabel = (session?.full_name ?? session?.email ?? userId ?? "Signed-in user").trim();
 
   const [tab, setTab] = useState<"inspections" | "logs" | "archive">("inspections");
   const [showVehicleInspection, setShowVehicleInspection] = useState(false);
@@ -134,16 +140,35 @@ export function InspectionsLogsApp() {
   const [inspectTemplateQuery, setInspectTemplateQuery] = useState("");
   const [logTemplateQuery, setLogTemplateQuery] = useState("");
 
+  const inspectSheetQuery = inspectTemplateQuery.trim().toLowerCase();
+
   const filteredInspectionTemplates = useMemo(() => {
-    const q = inspectTemplateQuery.trim().toLowerCase();
-    if (!q) return store.inspectionTemplates;
+    if (!inspectSheetQuery) return store.inspectionTemplates;
     return store.inspectionTemplates.filter(
       (t) =>
-        t.name.toLowerCase().includes(q) ||
-        (t.description ?? "").toLowerCase().includes(q) ||
-        (t.frequency ?? "").toLowerCase().includes(q),
+        t.name.toLowerCase().includes(inspectSheetQuery) ||
+        (t.description ?? "").toLowerCase().includes(inspectSheetQuery) ||
+        (t.frequency ?? "").toLowerCase().includes(inspectSheetQuery),
     );
-  }, [store.inspectionTemplates, inspectTemplateQuery]);
+  }, [store.inspectionTemplates, inspectSheetQuery]);
+
+  const sheetMatchesQuery = useCallback(
+    (title: string, description: string) => {
+      if (!inspectSheetQuery) return true;
+      const hay = `${title} ${description}`.toLowerCase();
+      return hay.includes(inspectSheetQuery);
+    },
+    [inspectSheetQuery],
+  );
+
+  const showVehicleSheet = sheetMatchesQuery(
+    "Digital vehicle inspection",
+    "Tablet-first DVIR-style sheet with distance, time-out, and sign-off",
+  );
+  const showHarnessSheet = sheetMatchesQuery(
+    "Harness inspection",
+    "pass fail checklist photos sign-off fall-protection harnesses safety",
+  );
 
   const filteredLogTemplates = useMemo(() => {
     const q = logTemplateQuery.trim().toLowerCase();
@@ -260,7 +285,7 @@ export function InspectionsLogsApp() {
               <span className="hidden text-ds-border sm:inline" aria-hidden>
                 ·
               </span>
-              <span>{store.inspectionTemplates.length} templates</span>
+              <span>{store.inspectionTemplates.length + 2} inspection sheets</span>
               <span className="hidden text-ds-border sm:inline" aria-hidden>
                 ·
               </span>
@@ -348,7 +373,28 @@ export function InspectionsLogsApp() {
 
       {!builder && tab === "inspections" ? (
         <div className="space-y-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <p className="text-sm text-ds-muted">
+              All inspection sheets in one place — built-in or custom. Open a sheet to run it on shift.
+            </p>
+            <div className="relative w-full sm:max-w-xs">
+              <Search
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ds-muted"
+                aria-hidden
+              />
+              <input
+                type="search"
+                value={inspectTemplateQuery}
+                onChange={(e) => setInspectTemplateQuery(e.target.value)}
+                placeholder="Search inspection sheets…"
+                className={cn(dsInputClass, "pl-9")}
+                aria-label="Search inspection sheets"
+              />
+            </div>
+          </div>
+
           <ScrollReveal className="grid gap-4 md:grid-cols-1 lg:grid-cols-2" y={8}>
+            {showVehicleSheet ? (
             <InspectionQuickInspectionCard
               icon={Truck}
               title="Digital vehicle inspection"
@@ -365,7 +411,9 @@ export function InspectionsLogsApp() {
             >
               <VehicleInspectionSheet key={vehicleSheetKey} onArchived={onVehicleInspectionArchived} />
             </InspectionQuickInspectionCard>
+            ) : null}
 
+            {showHarnessSheet ? (
             <InspectionQuickInspectionCard
               icon={Shield}
               title="Harness inspection"
@@ -388,133 +436,97 @@ export function InspectionsLogsApp() {
                 }}
               />
             </InspectionQuickInspectionCard>
+            ) : null}
+
+            {filteredInspectionTemplates.map((tpl) => {
+              const equipmentCount = resolveInspectionEquipmentOptions(tpl).length;
+              const lastAt = store.lastAt(tpl.id);
+              return (
+                <InspectionQuickInspectionCard
+                  key={tpl.id}
+                  icon={ClipboardList}
+                  title={tpl.name}
+                  description={
+                    tpl.description?.trim() ||
+                    `Custom checklist — ${tpl.checklist_items.length} line item${tpl.checklist_items.length === 1 ? "" : "s"} for field completion.`
+                  }
+                  meta={
+                    <>
+                      <StatusBadge variant="neutral">Custom</StatusBadge>
+                      <span>
+                        {tpl.checklist_items.length} line item{tpl.checklist_items.length === 1 ? "" : "s"}
+                      </span>
+                      {equipmentCount > 0 ? (
+                        <span>
+                          {equipmentCount} equipment option{equipmentCount === 1 ? "" : "s"}
+                        </span>
+                      ) : null}
+                      {lastAt ? <span>Last run {formatRelativeWhen(lastAt)}</span> : <span>No runs yet</span>}
+                      {tpl.frequency?.trim() ? (
+                        <StatusBadge variant="neutral">{tpl.frequency.trim()}</StatusBadge>
+                      ) : null}
+                    </>
+                  }
+                  secondaryActions={
+                    <>
+                      <button
+                        type="button"
+                        className={LINKISH}
+                        onClick={() => setBuilder({ kind: "inspection", editId: tpl.id })}
+                      >
+                        <Pencil className="mr-0.5 inline h-3.5 w-3.5" aria-hidden />
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="text-xs font-semibold text-red-700 hover:underline dark:text-red-400"
+                        onClick={() => {
+                          if (confirm(`Delete inspection sheet “${tpl.name}”?`)) store.removeTemplate(tpl.id);
+                        }}
+                      >
+                        <Trash2 className="mr-0.5 inline h-3.5 w-3.5" aria-hidden />
+                        Delete
+                      </button>
+                    </>
+                  }
+                  expanded={false}
+                  onToggle={() => setInspectFill(tpl)}
+                  actionDisabled={tpl.checklist_items.length === 0}
+                  actionLabel="Open inspection sheet"
+                />
+              );
+            })}
           </ScrollReveal>
 
-          <motion.section
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-            className="space-y-3"
-          >
-            <div className="flex flex-col gap-3 border-b border-ds-border/80 pb-3 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <h2 className="text-base font-semibold text-ds-foreground">Inspection templates</h2>
-                <p className="mt-0.5 text-sm text-ds-muted">Reusable checklists your crew can run on shift.</p>
+          {store.inspectionTemplates.length === 0 ? (
+            <Card variant="secondary" padding="lg" className="border-dashed border-ds-border/80 text-center">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-ds-border bg-ds-primary text-ds-muted">
+                <Inbox className="h-6 w-6" aria-hidden />
               </div>
-              <div className="relative w-full sm:max-w-xs">
-                <Search
-                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ds-muted"
-                  aria-hidden
-                />
-                <input
-                  type="search"
-                  value={inspectTemplateQuery}
-                  onChange={(e) => setInspectTemplateQuery(e.target.value)}
-                  placeholder="Search templates…"
-                  className={cn(dsInputClass, "pl-9")}
-                  aria-label="Search inspection templates"
-                />
-              </div>
-            </div>
-
-            <DataTableCard>
-              <table className="w-full border-collapse text-left">
-                <thead>
-                  <tr className={dataTableHeadRowClass}>
-                    <th className={TH}>Name</th>
-                    <th className={TH}>Last completed</th>
-                    <th className={TH}>Frequency</th>
-                    <th className={`${TH} text-right`}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {store.inspectionTemplates.length === 0 ? (
-                    <tr>
-                      <td className={cn(TD, "bg-ds-secondary/40")} colSpan={4}>
-                        <Card variant="secondary" padding="lg" className="border-dashed border-ds-border/80 text-center">
-                          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-ds-border bg-ds-primary text-ds-muted">
-                            <Inbox className="h-6 w-6" aria-hidden />
-                          </div>
-                          <p className="mt-3 text-sm font-semibold text-ds-foreground">No inspection templates yet</p>
-                          <p className="mt-1 text-sm text-ds-muted">
-                            Start from a proven checklist, then tune line items for your facility.
-                          </p>
-                          <button
-                            type="button"
-                            className={cn(
-                              buttonVariants({ surface: "light", intent: "accent" }),
-                              "mt-5 inline-flex min-h-[44px] items-center justify-center px-5 py-2.5 text-sm font-semibold shadow-sm",
-                            )}
-                            onClick={openNewInspection}
-                          >
-                            Create first template
-                          </button>
-                        </Card>
-                      </td>
-                    </tr>
-                  ) : filteredInspectionTemplates.length === 0 ? (
-                    <tr>
-                      <td className={cn(TD, "text-ds-muted")} colSpan={4}>
-                        {`No templates match "${inspectTemplateQuery.trim()}".`}
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredInspectionTemplates.map((tpl) => (
-                      <tr key={tpl.id} className={dataTableBodyRow()}>
-                        <td className={cn(TD, "align-top")}>
-                          <span className="font-semibold text-ds-foreground">{tpl.name}</span>
-                          {tpl.description ? (
-                            <p className="mt-1 text-xs leading-snug text-ds-muted">{tpl.description}</p>
-                          ) : null}
-                          <p className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-ds-muted">
-                            {tpl.checklist_items.length} line item{tpl.checklist_items.length === 1 ? "" : "s"}
-                          </p>
-                        </td>
-                        <td className={cn(TD, "align-top text-ds-muted")}>{formatWhen(store.lastAt(tpl.id))}</td>
-                        <td className={cn(TD, "align-top")}>
-                          {tpl.frequency?.trim() ? (
-                            <StatusBadge variant="neutral">{tpl.frequency.trim()}</StatusBadge>
-                          ) : (
-                            <span className="text-ds-muted">—</span>
-                          )}
-                        </td>
-                        <td className={cn(TD, "align-top text-right")}>
-                          <div className="flex flex-wrap items-center justify-end gap-2">
-                            <button
-                              type="button"
-                              className={LINKISH}
-                              onClick={() => setInspectFill(tpl)}
-                              disabled={tpl.checklist_items.length === 0}
-                            >
-                              Submit run
-                            </button>
-                            <button
-                              type="button"
-                              className={LINKISH}
-                              onClick={() => setBuilder({ kind: "inspection", editId: tpl.id })}
-                            >
-                              <Pencil className="mr-0.5 inline h-3.5 w-3.5" aria-hidden />
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              className="text-xs font-semibold text-red-700 hover:underline dark:text-red-400"
-                              onClick={() => {
-                                if (confirm(`Delete template “${tpl.name}”?`)) store.removeTemplate(tpl.id);
-                              }}
-                            >
-                              <Trash2 className="mr-0.5 inline h-3.5 w-3.5" aria-hidden />
-                              Delete
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </DataTableCard>
-          </motion.section>
+              <p className="mt-3 text-sm font-semibold text-ds-foreground">Add your own inspection sheets</p>
+              <p className="mt-1 text-sm text-ds-muted">
+                Use <span className="font-semibold">New inspection sheet</span> to build checklists like Ride-on Mowers — they
+                appear here alongside the built-in sheets.
+              </p>
+              <button
+                type="button"
+                className={cn(
+                  buttonVariants({ surface: "light", intent: "accent" }),
+                  "mt-5 inline-flex min-h-[44px] items-center justify-center px-5 py-2.5 text-sm font-semibold shadow-sm",
+                )}
+                onClick={openNewInspection}
+              >
+                New inspection sheet
+              </button>
+            </Card>
+          ) : filteredInspectionTemplates.length === 0 &&
+            inspectTemplateQuery.trim() &&
+            !showVehicleSheet &&
+            !showHarnessSheet ? (
+            <p className="text-center text-sm text-ds-muted">
+              {`No inspection sheets match "${inspectTemplateQuery.trim()}".`}
+            </p>
+          ) : null}
 
           <motion.section
             initial={{ opacity: 0, y: 8 }}
@@ -896,6 +908,7 @@ export function InspectionsLogsApp() {
         <InspectionFillModal
           key={inspectFill.id}
           template={inspectFill}
+          inspectorLabel={inspectorLabel}
           onClose={() => setInspectFill(null)}
           onSubmit={(values) => {
             store.addEntry({
@@ -944,13 +957,20 @@ function defaultInspectionValue(responseType: InspectionItemResponseType | undef
 
 function InspectionFillModal({
   template,
+  inspectorLabel,
   onClose,
   onSubmit,
 }: {
   template: InspectionTemplate;
+  inspectorLabel: string;
   onClose: () => void;
   onSubmit: (values: Record<string, unknown>) => void;
 }) {
+  const equipmentOptions = useMemo(() => resolveInspectionEquipmentOptions(template), [template]);
+  const [equipmentId, setEquipmentId] = useState(() =>
+    equipmentOptions.length === 1 ? equipmentOptions[0]!.id : "",
+  );
+
   const [values, setValues] = useState<Record<string, unknown>>(() => {
     const o: Record<string, unknown> = {};
     template.checklist_items.forEach((i) => {
@@ -959,8 +979,20 @@ function InspectionFillModal({
     return o;
   });
 
+  const equipmentRequired = equipmentOptions.length > 1;
+  const canSubmit = !equipmentRequired || Boolean(equipmentId.trim());
+
   const inputCls =
     "mt-1.5 w-full rounded-md border border-ds-border bg-ds-primary px-3 py-2 text-sm text-ds-foreground focus:border-ds-success/40 focus:outline-none focus:ring-2 focus:ring-[var(--ds-focus-ring)]";
+
+  const handleSubmit = () => {
+    const out: Record<string, unknown> = { ...values };
+    if (equipmentOptions.length >= 1) {
+      const id = equipmentOptions.length === 1 ? equipmentOptions[0]!.id : equipmentId;
+      if (id) out[INSPECTION_ENTRY_EQUIPMENT_ID] = id;
+    }
+    onSubmit(out);
+  };
 
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
@@ -973,6 +1005,47 @@ function InspectionFillModal({
       <div className="app-glass-elevated relative max-h-[90vh] w-full max-w-lg overflow-auto rounded-md p-6">
         <h3 className="text-lg font-semibold text-ds-foreground">Submit inspection — {template.name}</h3>
         <p className="mt-1 text-xs text-ds-muted">Complete each line according to its type.</p>
+
+        <dl className="mt-4 grid gap-2 rounded-md border border-ds-border/80 bg-ds-secondary/40 px-3 py-3 text-sm sm:grid-cols-2">
+          <div>
+            <dt className="text-[10px] font-bold uppercase tracking-wide text-ds-muted">Inspector</dt>
+            <dd className="font-medium text-ds-foreground">{inspectorLabel}</dd>
+          </div>
+          <div>
+            <dt className="text-[10px] font-bold uppercase tracking-wide text-ds-muted">Submitted at</dt>
+            <dd className="font-medium text-ds-foreground">Recorded when you save</dd>
+          </div>
+        </dl>
+
+        {equipmentOptions.length === 0 ? null : equipmentOptions.length === 1 ? (
+          <p className="mt-4 rounded-md border border-ds-border/80 bg-ds-secondary/30 px-3 py-2 text-sm text-ds-foreground">
+            <span className="font-semibold text-ds-muted">Equipment: </span>
+            {equipmentOptions[0]!.label}
+          </p>
+        ) : (
+          <div className="mt-4">
+            <label
+              htmlFor="inspection-equipment-select"
+              className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted"
+            >
+              Equipment <span className="text-ds-danger">*</span>
+            </label>
+            <select
+              id="inspection-equipment-select"
+              className={inputCls}
+              value={equipmentId}
+              onChange={(e) => setEquipmentId(e.target.value)}
+            >
+              <option value="">— Select equipment —</option>
+              {equipmentOptions.map((opt) => (
+                <option key={opt.id} value={opt.id}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <ul className="mt-4 space-y-4">
           {template.checklist_items
             .slice()
@@ -1079,7 +1152,8 @@ function InspectionFillModal({
           <button
             type="button"
             className={cn(buttonVariants({ surface: "light", intent: "accent" }), "px-4 py-2 text-sm font-semibold")}
-            onClick={() => onSubmit(values)}
+            disabled={!canSubmit}
+            onClick={handleSubmit}
           >
             Save completion
           </button>
@@ -1279,6 +1353,24 @@ function EntryViewModal({
         <p className="mt-1 text-xs text-ds-muted">
           {tpl?.name ?? "Template"} · {formatWhen(entry.created_at)}
         </p>
+        <dl className="mt-4 space-y-2 rounded-md border border-ds-border/80 bg-ds-secondary/30 px-3 py-3 text-sm">
+          <div className="flex justify-between gap-4 border-b border-ds-border/60 pb-2">
+            <dt className="text-ds-muted">Inspector</dt>
+            <dd className="max-w-[55%] text-right font-medium text-ds-foreground">{entry.user_id ?? "—"}</dd>
+          </div>
+          <div className="flex justify-between gap-4 border-b border-ds-border/60 pb-2">
+            <dt className="text-ds-muted">Submitted</dt>
+            <dd className="max-w-[55%] text-right font-medium text-ds-foreground">{formatWhen(entry.created_at)}</dd>
+          </div>
+          {entry.template_type === "inspection" && tpl && tpl.type === "inspection" ? (
+            <div className="flex justify-between gap-4">
+              <dt className="text-ds-muted">Equipment</dt>
+              <dd className="max-w-[55%] text-right font-medium text-ds-foreground">
+                {equipmentLabelForEntry(tpl, entry.values) ?? "—"}
+              </dd>
+            </div>
+          ) : null}
+        </dl>
         <dl className="mt-4 space-y-3 text-sm">
           {entry.template_type === "inspection" && tpl && tpl.type === "inspection"
             ? tpl.checklist_items

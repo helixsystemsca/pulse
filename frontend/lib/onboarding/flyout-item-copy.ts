@@ -20,7 +20,7 @@ const FLYOUT_ITEM_DESCRIPTIONS: Partial<Record<string, string>> = {
   inventory: "Stock levels, locations, and low-inventory reorder signals.",
   equipment: "Asset registry, maintenance history, and assignments.",
   zones_devices: "Zones, devices, and how they tie into maps and monitoring.",
-  drawings: "Spatial editor for facility maps and operational layers.",
+  spatial_infrastructure: "Infrastructure maps and operational layers on facility drawings.",
   live_map: "Real-time presence and activity across the facility.",
   workforce_hub: "Hiring, development, recognition, and planning entry points.",
   workforce_insights: "Team analytics and operational insights for supervisors.",

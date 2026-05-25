@@ -98,7 +98,11 @@ const FEATURE_PAGE_TOUR_COPY: Partial<Record<string, FeaturePageTourCopy>> = {
     workspaceDescription: "Manage zone hierarchy, device assignments, and linkage to spatial views.",
   },
   drawings: {
-    welcomeSubtitle: "Spatial editor for facility maps and operational layers.",
+    welcomeSubtitle: "Infrastructure maps and operational layers on facility drawings.",
+    workspaceDescription: "Draw zones, place devices, and publish layers used across monitoring and scheduling.",
+  },
+  spatial_infrastructure: {
+    welcomeSubtitle: "Infrastructure maps and operational layers on facility drawings.",
     workspaceDescription: "Draw zones, place devices, and publish layers used across monitoring and scheduling.",
   },
   live_map: {

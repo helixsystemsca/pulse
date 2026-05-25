@@ -1,10 +1,13 @@
 "use client";
 
 import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail } from "lucide-react";
-import Image from "next/image";
-import { FormEvent, useEffect, useId, useRef, useState } from "react";
+import { motion } from "framer-motion";
+import { FormEvent, useEffect, useId, useState } from "react";
 import { AuthScreenShell } from "@/components/auth/AuthScreenShell";
+import { LoginCinematicLogo } from "@/components/auth/LoginCinematicLogo";
 import { LoginComingSoonFeaturesCard } from "@/components/auth/LoginComingSoonFeaturesCard";
+import { LoginIntroAtmosphere } from "@/components/auth/LoginIntroAtmosphere";
+import { useLoginIntroSequence } from "@/components/auth/useLoginIntroSequence";
 import { AuroraBackground } from "@/components/ui/AuroraBackground";
 import { LoginTessellationBackground } from "@/components/ui/LoginTessellationBackground";
 import { isApiMode } from "@/lib/api";
@@ -25,6 +28,11 @@ import { PULSE_BUILD_VERSION } from "@/lib/pulse-build-version";
 import { mailtoInfo, mailtoSupport } from "@/lib/helix-emails";
 import { isMicrosoftSsoConfigured, startMicrosoftSignIn } from "@/lib/microsoft-auth";
 import { cn } from "@/lib/cn";
+import {
+  loginFormRevealTransition,
+  loginFormRevealVariants,
+  loginTaglineVariants,
+} from "@/lib/auth/login-intro-motion";
 import { buttonVariants } from "@/styles/button-variants";
 
 function MicrosoftLogo({ className = "" }: { className?: string }) {
@@ -39,9 +47,7 @@ function MicrosoftLogo({ className = "" }: { className?: string }) {
 }
 
 export default function LoginPage() {
-  const [hydrated, setHydrated] = useState(false);
-  const [logoVisible, setLogoVisible] = useState(false);
-  const logoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const intro = useLoginIntroSequence();
   const emailFieldId = useId();
   const passwordFieldId = useId();
 
@@ -55,7 +61,6 @@ export default function LoginPage() {
   const microsoftConfigured = isMicrosoftSsoConfigured();
 
   useEffect(() => {
-    setHydrated(true);
     const params = new URLSearchParams(window.location.search);
     const authError = params.get("auth_error");
     if (authError) {
@@ -65,12 +70,6 @@ export default function LoginPage() {
     if (!isLoggedIn()) return;
     const s = readSession();
     if (s) navigateAfterPulseLogin(s);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (logoTimer.current) clearTimeout(logoTimer.current);
-    };
   }, []);
 
   async function onSubmit(e: FormEvent) {
@@ -171,10 +170,13 @@ export default function LoginPage() {
   const inputInner =
     "min-w-0 flex-1 border-0 bg-transparent p-0 text-sm font-medium text-[color-mix(in_srgb,var(--ds-text-primary)_92%,transparent)] outline-none ring-0 placeholder:text-[color-mix(in_srgb,var(--ds-text-primary)_45%,transparent)] dark:text-ds-foreground dark:placeholder:text-ds-muted";
 
+  const formInteractive = intro.showForm;
+
   return (
     <AuthScreenShell className="login-web-canvas login-web-canvas--aurora login-web-canvas--tessellation relative flex min-h-0 flex-1 flex-col">
       <AuroraBackground />
       <LoginTessellationBackground />
+      <LoginIntroAtmosphere active={intro.scrimActive} />
       <div className="relative z-10 flex min-h-0 flex-1 flex-col">
         <header className="relative z-10 flex w-full items-center justify-end gap-4 px-5 py-2.5 sm:px-8 sm:py-3 lg:px-12">
           <nav className="flex items-center gap-1 sm:gap-2" aria-label="Login header">
@@ -189,35 +191,38 @@ export default function LoginPage() {
         </header>
 
         <main className="relative z-10 flex min-h-0 flex-1 flex-col justify-center px-4 pb-4 pt-1 sm:px-6 sm:pb-5 md:px-8">
-          <LoginComingSoonFeaturesCard />
+          {intro.showComingSoon ? (
+            <LoginComingSoonFeaturesCard playAnimation />
+          ) : null}
           <div className="login-content">
             <div className="login-content__form">
-            <div className="flex w-full justify-center">
-              <div className="relative mx-auto h-[9.25rem] w-[min(22rem,calc(100vw-2rem))] shrink-0 sm:h-[11rem] sm:w-[min(26rem,calc(100vw-2rem))] md:h-[12.5rem] md:w-[min(30rem,calc(100vw-2.5rem))]">
-                <Image
-                  src="/images/panoramalogo2.png"
-                  alt="Panorama"
-                  fill
-                  priority
-                  sizes="(max-width: 640px) 90vw, (max-width: 768px) 26rem, 30rem"
-                  className={cn(
-                    "object-contain object-center transition-opacity duration-500 ease-out will-change-[opacity]",
-                    hydrated && logoVisible ? "opacity-100" : "opacity-0",
-                  )}
-                  onLoadingComplete={() => {
-                    if (logoVisible) return;
-                    if (logoTimer.current) clearTimeout(logoTimer.current);
-                    logoTimer.current = setTimeout(() => setLogoVisible(true), 140);
-                  }}
-                />
-              </div>
-            </div>
+            <LoginCinematicLogo showHero={intro.showHeroLogo} showLayout={intro.showLayoutLogo} />
+            {!intro.showLayoutLogo ? (
+              <div
+                className="h-[9.25rem] w-[min(22rem,calc(100vw-2rem))] sm:h-[11rem] sm:w-[min(26rem,calc(100vw-2rem))] md:h-[12.5rem] md:w-[min(30rem,calc(100vw-2.5rem))]"
+                aria-hidden
+              />
+            ) : null}
 
-            <p className="mt-3 text-center text-sm font-medium text-[#5a6d82] dark:text-ds-muted sm:mt-3.5">
+            <motion.p
+              className="mt-3 text-center text-sm font-medium text-[#5a6d82] dark:text-ds-muted sm:mt-3.5"
+              initial={false}
+              animate={intro.showTagline ? "visible" : "hidden"}
+              variants={loginTaglineVariants}
+              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            >
               Access only for verified users.
-            </p>
+            </motion.p>
 
-            <div className="mt-3 rounded-[1.15rem] bg-[linear-gradient(145deg,rgba(255,255,255,0.55)_0%,rgba(255,255,255,0.18)_45%,rgba(186,230,255,0.22)_100%)] p-px shadow-[0_28px_64px_rgba(46,90,120,0.16)] ring-1 ring-white/50 backdrop-blur-md dark:bg-[linear-gradient(145deg,rgba(255,255,255,0.14)_0%,rgba(255,255,255,0.05)_100%)] dark:ring-white/15 dark:shadow-[0_24px_52px_rgba(0,0,0,0.4)] sm:mt-4">
+            <motion.div
+              className="mt-3 rounded-[1.15rem] bg-[linear-gradient(145deg,rgba(255,255,255,0.55)_0%,rgba(255,255,255,0.18)_45%,rgba(186,230,255,0.22)_100%)] p-px shadow-[0_28px_64px_rgba(46,90,120,0.16)] ring-1 ring-white/50 backdrop-blur-md dark:bg-[linear-gradient(145deg,rgba(255,255,255,0.14)_0%,rgba(255,255,255,0.05)_100%)] dark:ring-white/15 dark:shadow-[0_24px_52px_rgba(0,0,0,0.4)] sm:mt-4"
+              initial={intro.reducedMotion ? false : "hidden"}
+              animate={intro.showForm ? "visible" : "hidden"}
+              variants={loginFormRevealVariants}
+              transition={loginFormRevealTransition}
+              style={{ pointerEvents: formInteractive ? "auto" : "none" }}
+              aria-hidden={!formInteractive}
+            >
               <div className="relative overflow-hidden rounded-[1.1rem] border border-white/45 bg-white/[0.62] px-4 py-4 shadow-[inset_0_1px_1px_rgba(255,255,255,0.9),inset_0_-1px_0_rgba(255,255,255,0.15),0_8px_32px_rgba(255,255,255,0.12)] backdrop-blur-[28px] backdrop-saturate-[1.35] dark:border-white/18 dark:bg-[color-mix(in_srgb,var(--ds-surface-primary)_58%,transparent)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] sm:px-5 sm:py-5">
                 <div
                   className="pointer-events-none absolute inset-0 bg-[linear-gradient(128deg,rgba(255,255,255,0.72)_0%,rgba(255,255,255,0.08)_38%,transparent_55%,rgba(200,235,255,0.12)_100%)]"
@@ -251,7 +256,7 @@ export default function LoginPage() {
                         placeholder="operator@company.com"
                         value={identifier}
                         onChange={(e) => setIdentifier(e.target.value)}
-                        disabled={submitting || microsoftSubmitting}
+                        disabled={!formInteractive || submitting || microsoftSubmitting}
                         aria-invalid={Boolean(fieldErrors.identifier)}
                         className={`${inputInner} ${fieldErrors.identifier ? "text-ds-danger placeholder:text-ds-danger/70" : ""}`}
                       />
@@ -275,7 +280,7 @@ export default function LoginPage() {
                         placeholder="••••••••"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        disabled={submitting || microsoftSubmitting}
+                        disabled={!formInteractive || submitting || microsoftSubmitting}
                         aria-invalid={Boolean(fieldErrors.password)}
                         className={`${inputInner} pr-1 ${fieldErrors.password ? "text-ds-danger" : ""}`}
                       />
@@ -284,7 +289,7 @@ export default function LoginPage() {
                         onClick={() => setShowPassword((s) => !s)}
                         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[#4c6085]/70 transition-colors hover:bg-[color-mix(in_srgb,#4c6085_12%,transparent)] hover:text-[#3f5274] dark:text-ds-muted dark:hover:bg-ds-interactive-hover dark:hover:text-ds-foreground"
                         aria-label={showPassword ? "Hide password" : "Show password"}
-                        disabled={submitting || microsoftSubmitting}
+                        disabled={!formInteractive || submitting || microsoftSubmitting}
                       >
                         {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
@@ -297,7 +302,7 @@ export default function LoginPage() {
 
                   <button
                     type="submit"
-                    disabled={submitting || microsoftSubmitting}
+                    disabled={!formInteractive || submitting || microsoftSubmitting}
                     className={cn(
                       buttonVariants({ surface: "light", intent: "accent" }),
                       "w-full gap-2 py-2.5 text-sm font-semibold tracking-normal disabled:opacity-60",
@@ -325,7 +330,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => void onMicrosoftSignIn()}
-                  disabled={submitting || microsoftSubmitting || !microsoftConfigured}
+                  disabled={!formInteractive || submitting || microsoftSubmitting || !microsoftConfigured}
                   title={microsoftConfigured ? "Sign in with Microsoft" : "Microsoft sign-in is not configured"}
                   className="flex w-full items-center justify-center gap-3 rounded-xl border border-[color-mix(in_srgb,#4c6085_18%,transparent)] bg-white px-4 py-2.5 text-sm font-extrabold text-[#2f3d52] shadow-sm transition-colors hover:border-[color-mix(in_srgb,#4c6085_30%,transparent)] hover:bg-[color-mix(in_srgb,#cfe8ff_36%,#ffffff)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4c6085] disabled:cursor-not-allowed disabled:opacity-60 dark:border-ds-border dark:bg-ds-secondary dark:text-ds-foreground dark:hover:bg-ds-interactive-hover"
                 >
@@ -349,7 +354,7 @@ export default function LoginPage() {
                   </span>
                 </div>
               </div>
-            </div>
+            </motion.div>
             </div>
           </div>
         </main>

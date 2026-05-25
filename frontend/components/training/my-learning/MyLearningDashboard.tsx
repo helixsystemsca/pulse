@@ -2,19 +2,26 @@
 
 import {
   AlertTriangle,
+  BadgeCheck,
   Bell,
   BookOpen,
   Check,
-  CheckCircle2,
-  Clock,
+  ClipboardCheck,
   Grid3x3,
-  TrendingUp,
+  ListTodo,
+  MonitorPlay,
+  Users,
   Waves,
   Wrench,
   type LucideIcon,
 } from "lucide-react";
 import { TrainingTierBadge } from "@/components/training/TrainingTierBadge";
-import type { MyLearningDashboardModel, MyLearningCategory, MyLearningItemStatus } from "@/lib/training/myLearningDashboard";
+import type {
+  MyLearningActivityItem,
+  MyLearningDashboardModel,
+  MyLearningCategory,
+  MyLearningItemStatus,
+} from "@/lib/training/myLearningDashboard";
 import { cn } from "@/lib/cn";
 import "./my-learning-dashboard.css";
 
@@ -117,12 +124,14 @@ function ProgressRing({ category }: { category: MyLearningCategory }) {
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
           <span className="text-2xl font-extrabold tabular-nums text-ds-foreground">{category.percent}%</span>
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-ds-muted">complete</span>
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-ds-muted">
+            certified
+          </span>
         </div>
       </div>
       <h4 className="mt-4 text-center text-sm font-bold text-ds-foreground">{category.title}</h4>
       <p className="mt-0.5 text-center text-xs text-ds-muted">
-        {category.completed} of {category.total} procedures
+        {category.certified} certified · {category.part1Complete} Part 1 done / {category.total}
       </p>
     </div>
   );
@@ -136,9 +145,42 @@ const CATEGORY_ICONS: Record<MyLearningCategory["id"], LucideIcon> = {
 };
 
 function statusDotClass(status: MyLearningItemStatus): string {
-  if (status === "complete") return "bg-[var(--ml-success)]";
-  if (status === "partial") return "bg-[var(--ml-warning)]";
+  if (status === "certified") return "bg-[var(--ml-success)]";
+  if (status === "part1_done") return "bg-[var(--ml-blue)]";
+  if (status === "in_progress") return "bg-[var(--ml-warning)]";
   return "bg-[var(--ml-danger)]";
+}
+
+function FlowLegend() {
+  const steps = [
+    { label: "Read", color: "bg-sky-500" },
+    { label: "Acknowledged", color: "bg-amber-400" },
+    { label: "Quiz (100%)", color: "bg-violet-500" },
+    { label: "Part 1 complete", color: "bg-[var(--ml-blue)]" },
+    { label: "Shadow + sign-off", color: "bg-[var(--ml-success)]" },
+  ];
+  return (
+    <div
+      className="ml-fade-in flex flex-wrap items-center gap-2 rounded-xl border border-ds-border/80 bg-ds-secondary/30 px-3 py-2.5 text-xs"
+      aria-label="Training completion flow"
+    >
+      <span className="font-bold uppercase tracking-wide text-ds-muted">Flow</span>
+      {steps.map((s, i) => (
+        <span key={s.label} className="inline-flex items-center gap-1.5 font-medium text-ds-foreground">
+          {i > 0 ? <span className="text-ds-muted" aria-hidden>→</span> : null}
+          <span className={cn("h-2 w-2 shrink-0 rounded-full", s.color)} aria-hidden />
+          {s.label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function activityIcon(kind: MyLearningActivityItem["kind"]) {
+  if (kind === "read") return BookOpen;
+  if (kind === "acknowledged") return ClipboardCheck;
+  if (kind === "quiz") return MonitorPlay;
+  return BadgeCheck;
 }
 
 function CategoryCard({ category }: { category: MyLearningCategory }) {
@@ -159,7 +201,7 @@ function CategoryCard({ category }: { category: MyLearningCategory }) {
           <h4 className="truncate text-sm font-bold text-ds-foreground">{category.title}</h4>
         </div>
         <span className="shrink-0 text-sm font-bold tabular-nums text-ds-muted">
-          {category.completed}/{category.total}
+          {category.certified}/{category.total}
         </span>
       </div>
       <ul className="space-y-2">
@@ -172,19 +214,18 @@ function CategoryCard({ category }: { category: MyLearningCategory }) {
             <span className="min-w-0 flex-1 truncate font-medium text-ds-foreground">{item.name}</span>
             <span
               className={cn(
-                "shrink-0 text-[11px] font-semibold tabular-nums",
-                item.status === "complete"
-                  ? "text-[var(--ml-success)]"
-                  : item.status === "partial"
-                    ? "text-[var(--ml-warning)]"
-                    : "text-[var(--ml-danger)]",
+                "shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+                item.status === "certified"
+                  ? "bg-[color-mix(in_srgb,var(--ml-success)_14%,transparent)] text-[var(--ml-success)]"
+                  : item.status === "part1_done"
+                    ? "bg-[color-mix(in_srgb,var(--ml-blue)_14%,transparent)] text-[var(--ml-blue)]"
+                    : item.status === "in_progress"
+                      ? "bg-[color-mix(in_srgb,var(--ml-warning)_14%,transparent)] text-[var(--ml-warning)]"
+                      : "bg-[color-mix(in_srgb,var(--ml-danger)_12%,transparent)] text-[var(--ml-danger)]",
               )}
+              title={item.flowDetail}
             >
-              {item.status === "complete" ? (
-                <Check className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
-              ) : (
-                item.progressLabel
-              )}
+              {item.progressLabel}
             </span>
           </li>
         ))}
@@ -197,44 +238,51 @@ function CategoryCard({ category }: { category: MyLearningCategory }) {
 }
 
 export function MyLearningDashboard({ displayName, jobTitle, loading, loadError, model }: Props) {
-  const { stats, categories, checklist, incompleteChecklistCount, recentAcknowledgements } = model;
+  const { stats, categories, checklist, incompleteChecklistCount, recentActivity } = model;
 
   const statsCards = [
     {
-      label: "Overall progress",
-      value: `${stats.overallPercent}%`,
-      description: stats.overallDescription,
+      label: "Part 1 — Online",
+      value: `${stats.part1Percent}%`,
+      description: stats.part1Description,
       trend:
-        stats.overallPercent >= 50
-          ? { text: "↗ Keep going", positive: true }
-          : { text: "Focus on certifications", positive: false },
-      icon: Clock,
+        stats.part1Percent >= 50
+          ? { text: "↗ Read → Ack → Quiz", positive: true }
+          : { text: "Start with open procedures", positive: false },
+      icon: MonitorPlay,
       gradient: STAT_GRADIENTS[0],
     },
     {
-      label: "High risk",
-      value: stats.highRiskCount,
-      description: stats.highRiskDescription,
+      label: "Part 1 — Action",
+      value: stats.part1ActionCount,
+      description: stats.part1ActionDescription,
       trend:
-        stats.highRiskCount === 0
-          ? { text: "↗ All clear", positive: true }
-          : { text: "Needs attention", positive: false },
-      icon: AlertTriangle,
+        stats.part1ActionCount === 0
+          ? { text: "↗ Nothing pending", positive: true }
+          : { text: "Needs your attention", positive: false },
+      icon: ListTodo,
       gradient: STAT_GRADIENTS[1],
     },
     {
-      label: "Routines",
-      value: stats.routinesCount,
-      description: stats.routinesDescription,
-      icon: TrendingUp,
+      label: "Part 2 — Field",
+      value: stats.fieldTrainingCount,
+      description: stats.fieldTrainingDescription,
+      trend:
+        stats.fieldTrainingCount === 0
+          ? undefined
+          : { text: "Supervisor will schedule shadow", positive: true },
+      icon: Users,
       gradient: STAT_GRADIENTS[2],
     },
     {
-      label: "Completed",
-      value: stats.completedAckCount,
-      description: stats.completedDescription,
-      trend: { text: "↗ Great work", positive: true },
-      icon: CheckCircle2,
+      label: "Fully certified",
+      value: stats.certifiedCount,
+      description: stats.certifiedDescription,
+      trend:
+        stats.avgQuizAttempts != null
+          ? { text: `↗ Avg ${stats.avgQuizAttempts} quiz attempts`, positive: true }
+          : { text: "↗ Both parts complete", positive: true },
+      icon: BadgeCheck,
       gradient: STAT_GRADIENTS[3],
     },
   ] as const;
@@ -257,8 +305,12 @@ export function MyLearningDashboard({ displayName, jobTitle, loading, loadError,
               My Learning
             </h1>
             <p className="mt-1 max-w-2xl text-sm leading-relaxed text-ds-muted">
-              Your personal training dashboard — progress, compliance gaps, and acknowledgements in one place.
+              Two-part training: Part 1 is read, acknowledge, and pass the knowledge check (100%). Part 2 is a
+              shadow shift with supervisor sign-off and development scoring.
             </p>
+            <div className="mt-3 max-w-3xl">
+              <FlowLegend />
+            </div>
             <p className="mt-2 text-sm font-semibold text-ds-foreground">
               {displayName}
               {jobTitle?.trim() ? (
@@ -333,6 +385,9 @@ export function MyLearningDashboard({ displayName, jobTitle, loading, loadError,
                     <TrainingTierBadge tier={item.tier} />
                   </div>
                   <p className="mt-0.5 text-xs text-ds-muted">{item.meta}</p>
+                  <span className="mt-1 inline-flex rounded-md bg-ds-secondary/80 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ds-muted">
+                    {item.flowTag}
+                  </span>
                 </div>
               </div>
             ))}
@@ -353,6 +408,9 @@ export function MyLearningDashboard({ displayName, jobTitle, loading, loadError,
                     <TrainingTierBadge tier={item.tier} />
                   </div>
                   <p className="mt-0.5 text-xs text-ds-muted">{item.meta}</p>
+                  <span className="mt-1 inline-flex rounded-md bg-[color-mix(in_srgb,var(--ml-success)_12%,transparent)] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[var(--ml-success)]">
+                    {item.flowTag}
+                  </span>
                 </div>
               </div>
             ))}
@@ -374,39 +432,66 @@ export function MyLearningDashboard({ displayName, jobTitle, loading, loadError,
       ) : null}
 
       <section
-        aria-labelledby="ml-ack-heading"
+        aria-labelledby="ml-activity-heading"
         className="rounded-2xl border border-ds-border bg-ds-secondary/25 p-5"
       >
-        <h2 id="ml-ack-heading" className="text-sm font-bold uppercase tracking-wide text-ds-muted">
-          Acknowledgement history
+        <h2 id="ml-activity-heading" className="text-sm font-bold uppercase tracking-wide text-ds-muted">
+          Training activity
         </h2>
+        <p className="mt-1 text-xs text-ds-muted">
+          Reads, acknowledgements, quiz completions, and supervisor sign-offs — not the same as fully certified.
+        </p>
         <ul className="mt-4 space-y-3">
-          {recentAcknowledgements.length === 0 ? (
-            <li className="text-sm text-ds-muted">No acknowledgement records on file.</li>
+          {recentActivity.length === 0 ? (
+            <li className="text-sm text-ds-muted">No training activity recorded yet.</li>
           ) : (
-            recentAcknowledgements.map((ack) => (
-              <li
-                key={ack.id}
-                className="flex flex-wrap items-center gap-3 rounded-xl border border-ds-border/70 bg-ds-primary/60 px-4 py-3"
-              >
-                <div
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white"
-                  style={{ background: "linear-gradient(135deg, var(--ml-primary) 0%, #4db8c4 100%)" }}
+            recentActivity.map((entry) => {
+              const Icon = activityIcon(entry.kind);
+              const badge =
+                entry.kind === "read"
+                  ? "Read"
+                  : entry.kind === "acknowledged"
+                    ? "Acknowledged"
+                    : entry.kind === "quiz"
+                      ? "Part 1 complete"
+                      : "Certified";
+              const badgeClass =
+                entry.kind === "certified"
+                  ? "text-[var(--ml-success)] bg-[color-mix(in_srgb,var(--ml-success)_10%,transparent)]"
+                  : entry.kind === "quiz"
+                    ? "text-[var(--ml-blue)] bg-[color-mix(in_srgb,var(--ml-blue)_10%,transparent)]"
+                    : entry.kind === "acknowledged"
+                      ? "text-amber-700 bg-amber-100/80 dark:text-amber-200 dark:bg-amber-950/40"
+                      : "text-sky-800 bg-sky-100/80 dark:text-sky-100 dark:bg-sky-950/40";
+              return (
+                <li
+                  key={entry.id}
+                  className="flex flex-wrap items-center gap-3 rounded-xl border border-ds-border/70 bg-ds-primary/60 px-4 py-3"
                 >
-                  <Check className="h-4 w-4" strokeWidth={2.5} aria-hidden />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-ds-foreground">{ack.title}</p>
-                  <p className="text-xs text-ds-muted">Revision {ack.revision}</p>
-                </div>
-                <span className="shrink-0 rounded-md border border-ds-border bg-ds-secondary/80 px-2 py-1 text-xs font-semibold tabular-nums text-ds-muted">
-                  {ack.dateLabel}
-                </span>
-                <span className="w-full shrink-0 rounded-md bg-[color-mix(in_srgb,var(--ml-success)_10%,transparent)] px-2 py-0.5 text-center text-[10px] font-bold uppercase tracking-wide text-[var(--ml-success)] sm:w-auto">
-                  Acknowledged
-                </span>
-              </li>
-            ))
+                  <div
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white"
+                    style={{ background: "linear-gradient(135deg, var(--ml-primary) 0%, #4db8c4 100%)" }}
+                  >
+                    <Icon className="h-4 w-4" strokeWidth={2.5} aria-hidden />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-ds-foreground">{entry.title}</p>
+                    <p className="text-xs text-ds-muted">{entry.detail}</p>
+                  </div>
+                  <span className="shrink-0 rounded-md border border-ds-border bg-ds-secondary/80 px-2 py-1 text-xs font-semibold tabular-nums text-ds-muted">
+                    {entry.dateLabel}
+                  </span>
+                  <span
+                    className={cn(
+                      "w-full shrink-0 rounded-md px-2 py-0.5 text-center text-[10px] font-bold uppercase tracking-wide sm:w-auto",
+                      badgeClass,
+                    )}
+                  >
+                    {badge}
+                  </span>
+                </li>
+              );
+            })
           )}
         </ul>
       </section>

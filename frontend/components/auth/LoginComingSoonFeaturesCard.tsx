@@ -15,7 +15,7 @@ const DEFAULT_FEATURES: UpcomingFeature[] = [
   {
     Icon: Smartphone,
     title: "Mobile App",
-    description: "iOS & Android for on-the-go management",
+    description: "iOS & Android for on the go access to operational tools",
   },
   {
     Icon: Shield,
@@ -25,7 +25,7 @@ const DEFAULT_FEATURES: UpcomingFeature[] = [
   {
     Icon: Link2,
     title: "Xplor Integration",
-    description: "Sync with Xplor for unified ops",
+    description: "Sync with Xplor for integrated facilityschedules",
   },
   {
     Icon: Zap,
@@ -42,15 +42,22 @@ function FeatureIcon({ icon: Icon }: { icon: LucideIcon }) {
 type LoginComingSoonFeaturesCardProps = {
   features?: UpcomingFeature[];
   className?: string;
+  /** When true, runs dock + feature stagger CSS animations (after login intro sequence). */
+  playAnimation?: boolean;
 };
 
 export function LoginComingSoonFeaturesCard({
   features = DEFAULT_FEATURES,
   className,
+  playAnimation = false,
 }: LoginComingSoonFeaturesCardProps) {
   return (
     <div
-      className={cn("coming-soon-card coming-soon-card--dock-left", className)}
+      className={cn(
+        "coming-soon-card coming-soon-card--dock-left",
+        playAnimation && "coming-soon-card--play",
+        className,
+      )}
       role="region"
       aria-label="Upcoming features"
     >

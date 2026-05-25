@@ -15,6 +15,12 @@ export type InspectionChecklistItem = {
   response_type?: InspectionItemResponseType;
 };
 
+/** Equipment choices for multi-asset templates (e.g. John Deere vs Ventrac). */
+export type InspectionEquipmentOption = {
+  id: string;
+  label: string;
+};
+
 /** Log template field kinds — add several of each type as needed. */
 export type LogFieldType = "text" | "number" | "notes" | "checkbox" | "yes_no";
 
@@ -26,6 +32,7 @@ export type LogFieldDef = {
 };
 
 export type AutomationHints = {
+  /** @deprecated Prefer `equipment_options`. Kept for older saved templates. */
   linked_equipment_id?: string | null;
   linked_zone_id?: string | null;
   /** e.g. "daily" — reserved for future scheduling */
@@ -38,6 +45,8 @@ export type InspectionTemplate = AutomationHints & {
   name: string;
   description?: string;
   checklist_items: InspectionChecklistItem[];
+  /** When 2+ options, run sheet shows a required equipment dropdown. */
+  equipment_options?: InspectionEquipmentOption[];
   created_at: string;
   updated_at: string;
 };

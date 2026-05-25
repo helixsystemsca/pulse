@@ -37,7 +37,28 @@
   border-left: none;
   transform: translateY(-50%) perspective(800px) rotateY(-2deg);
   transform-origin: left center;
-  animation: comingSoonDockIn 0.65s ease-out 0.15s both;
+  background: linear-gradient(
+    102deg,
+    color-mix(in srgb, #ffffff 55%, transparent) 0%,
+    color-mix(in srgb, #ffffff 88%, #e8f7fb) 14%,
+    #ffffff 28%,
+    #ffffff 100%
+  );
+  box-shadow:
+    16px 0 48px rgba(46, 90, 120, 0.12),
+    4px 0 24px rgba(86, 201, 217, 0.14),
+    inset 1px 0 0 rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px) saturate(1.2);
+  animation: none;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.coming-soon-card--dock-left.coming-soon-card--play {
+  visibility: visible;
+  pointer-events: auto;
+  animation: comingSoonDockIn 0.65s ease-out both;
   background: linear-gradient(
     102deg,
     color-mix(in srgb, #ffffff 55%, transparent) 0%,
@@ -109,6 +130,10 @@
   position: relative;
   overflow: hidden;
   opacity: 0;
+  animation: none;
+}
+
+.coming-soon-card--play .feature-item {
   animation: comingSoonFadeInUp 0.4s ease-out forwards;
 }
 
@@ -282,9 +307,12 @@
     opacity: 1;
   }
 
-  .coming-soon-card--dock-left {
+  .coming-soon-card--dock-left,
+  .coming-soon-card--dock-left.coming-soon-card--play {
     animation: none;
     opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
     transform: translateY(-50%) perspective(800px) rotateY(-2deg);
   }
 

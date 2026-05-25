@@ -607,15 +607,16 @@ export const MASTER_FEATURES: readonly MasterFeatureDef[] = [
   // —— Visuals ——
   {
     key: "drawings",
-    label: "Spatial",
+    label: "Drawings",
     icon: "layers",
     route: "/drawings",
     feature: "drawings",
     rbacAnyOf: ["drawings.view"],
-    navVisible: true,
+    /** Engine shell route — use Infrastructure maps in nav instead of duplicate “Spatial” entry. */
+    navVisible: false,
     sortOrder: 500,
     navDomain: "Visuals",
-    navGroup: "Spatial",
+    navGroup: "Infrastructure",
     navOrder: 10,
   },
   {
@@ -629,7 +630,7 @@ export const MASTER_FEATURES: readonly MasterFeatureDef[] = [
     sortOrder: 501,
     navDomain: "Visuals",
     navGroup: "Infrastructure",
-    navOrder: 20,
+    navOrder: 10,
     navAlias: true,
   },
   {

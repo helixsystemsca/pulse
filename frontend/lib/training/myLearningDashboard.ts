@@ -1,5 +1,6 @@
 import type { EmployeeComplianceAlert } from "@/lib/training/complianceAlerts";
 import { myProcedureRowsForWorker } from "@/lib/training/selectors";
+import { deriveTrainingFlowState, type TrainingFlowStepId } from "@/lib/training/trainingFlow";
 import type {
   TrainingAcknowledgement,
   TrainingAssignment,
@@ -7,24 +8,37 @@ import type {
   TrainingProgram,
   TrainingTier,
 } from "@/lib/training/types";
+function latestAcknowledgementForWorker(
+  employeeId: string,
+  programId: string,
+  acks: TrainingAcknowledgement[],
+): TrainingAcknowledgement | undefined {
+  return acks
+    .filter((a) => a.employee_id === employeeId && a.training_program_id === programId)
+    .sort((a, b) => b.revision_number - a.revision_number)[0];
+}
 
 export type MyLearningCategoryId = "arena_ops" | "pool_aquatics" | "emergency" | "maintenance";
 
-export type MyLearningItemStatus = "complete" | "partial" | "incomplete";
+export type MyLearningItemStatus = "certified" | "part1_done" | "in_progress" | "action_needed";
 
 export type MyLearningTrainingItem = {
   programId: string;
   name: string;
   status: MyLearningItemStatus;
+  flowStep: TrainingFlowStepId;
   progressLabel: string;
+  flowDetail: string;
   tier: TrainingTier;
   assignmentStatus: TrainingAssignmentStatus;
+  quizAttempts: number;
 };
 
 export type MyLearningCategory = {
   id: MyLearningCategoryId;
   title: string;
-  completed: number;
+  certified: number;
+  part1Complete: number;
   total: number;
   percent: number;
   ringColor: string;
@@ -36,19 +50,31 @@ export type MyLearningChecklistItem = {
   programId: string;
   title: string;
   meta: string;
+  flowTag: string;
   tier: TrainingTier;
   done: boolean;
+  needsAction: boolean;
 };
 
 export type MyLearningStats = {
-  overallPercent: number;
-  overallDescription: string;
-  highRiskCount: number;
-  highRiskDescription: string;
-  routinesCount: number;
-  routinesDescription: string;
-  completedAckCount: number;
-  completedDescription: string;
+  part1Percent: number;
+  part1Description: string;
+  part1ActionCount: number;
+  part1ActionDescription: string;
+  fieldTrainingCount: number;
+  fieldTrainingDescription: string;
+  certifiedCount: number;
+  certifiedDescription: string;
+  avgQuizAttempts: number | null;
+};
+
+export type MyLearningActivityItem = {
+  id: string;
+  title: string;
+  kind: "read" | "acknowledged" | "quiz" | "certified";
+  detail: string;
+  dateLabel: string;
+  at: string;
 };
 
 export type MyLearningDashboardModel = {
@@ -56,13 +82,7 @@ export type MyLearningDashboardModel = {
   categories: MyLearningCategory[];
   checklist: MyLearningChecklistItem[];
   incompleteChecklistCount: number;
-  recentAcknowledgements: {
-    id: string;
-    title: string;
-    revision: number;
-    dateLabel: string;
-    at: string;
-  }[];
+  recentActivity: MyLearningActivityItem[];
 };
 
 const CATEGORY_META: Record<
@@ -104,7 +124,6 @@ function norm(s: string): string {
 
 export function classifyMyLearningCategory(program: TrainingProgram): MyLearningCategoryId {
   const title = norm(program.title);
-  const cat = norm(program.category);
   const dept = norm(program.department_category);
   const tags = program.tracking_tags ?? [];
 
@@ -124,28 +143,74 @@ export function classifyMyLearningCategory(program: TrainingProgram): MyLearning
   return "maintenance";
 }
 
-export function myLearningItemStatus(status: TrainingAssignmentStatus): MyLearningItemStatus {
-  if (status === "completed") return "complete";
-  if (status === "expiring_soon") return "partial";
-  return "incomplete";
+function itemStatusFromFlow(flow: ReturnType<typeof deriveTrainingFlowState>): MyLearningItemStatus {
+  if (flow.fullyCertified) return "certified";
+  if (flow.part1Complete) return "part1_done";
+  if (flow.needsWorkerAction) return "action_needed";
+  return "in_progress";
 }
 
-function progressLabelFor(status: TrainingAssignmentStatus): string {
-  if (status === "completed") return "Done";
-  if (status === "expiring_soon") return "Expiring";
-  if (status === "revision_pending") return "Rev due";
-  if (status === "quiz_failed") return "Retry quiz";
-  if (status === "expired") return "Expired";
-  if (status === "pending") return "In progress";
-  return "Action needed";
-}
+function buildActivity(
+  programs: TrainingProgram[],
+  assignments: TrainingAssignment[],
+  acknowledgements: TrainingAcknowledgement[],
+): MyLearningActivityItem[] {
+  const byProgram = new Map(programs.map((p) => [p.id, p]));
+  const items: MyLearningActivityItem[] = [];
 
-function countsAsComplete(status: TrainingAssignmentStatus): boolean {
-  return status === "completed" || status === "expiring_soon";
-}
+  for (const a of assignments) {
+    const p = byProgram.get(a.training_program_id);
+    if (!p) continue;
+    const title = p.title;
 
-function isCertificationTier(tier: TrainingTier): boolean {
-  return tier === "mandatory" || tier === "high_risk";
+    if (a.quiz_passed_at) {
+      const attempts = a.quiz_attempt_count ?? 0;
+      items.push({
+        id: `quiz-${a.id}`,
+        title,
+        kind: "quiz",
+        detail: `Part 1 complete · ${attempts} quiz attempt${attempts === 1 ? "" : "s"}`,
+        dateLabel: a.quiz_passed_at.slice(0, 10),
+        at: a.quiz_passed_at,
+      });
+    }
+    if (a.supervisor_signoff && a.completed_date) {
+      items.push({
+        id: `cert-${a.id}`,
+        title,
+        kind: "certified",
+        detail: "Part 2 — supervisor signed off",
+        dateLabel: a.completed_date.slice(0, 10),
+        at: a.completed_date,
+      });
+    }
+    if (a.verification_first_viewed_at) {
+      items.push({
+        id: `read-${a.id}`,
+        title,
+        kind: "read",
+        detail: "Procedure read",
+        dateLabel: a.verification_first_viewed_at.slice(0, 10),
+        at: a.verification_first_viewed_at,
+      });
+    }
+  }
+
+  for (const k of acknowledgements) {
+    const p = byProgram.get(k.training_program_id);
+    items.push({
+      id: `ack-${k.id}`,
+      title: p?.title ?? k.training_program_id,
+      kind: "acknowledged",
+      detail: `Revision ${k.revision_number} acknowledged`,
+      dateLabel: k.acknowledged_at.slice(0, 10),
+      at: k.acknowledged_at,
+    });
+  }
+
+  return items
+    .sort((x, y) => y.at.localeCompare(x.at))
+    .slice(0, 14);
 }
 
 export function buildMyLearningDashboard(input: {
@@ -156,7 +221,8 @@ export function buildMyLearningDashboard(input: {
   alerts: EmployeeComplianceAlert[];
   trustAssignmentStatus?: boolean;
 }): MyLearningDashboardModel {
-  const { employeeId, programs, assignments, acknowledgements, alerts, trustAssignmentStatus } = input;
+  const { employeeId, programs, assignments, acknowledgements, alerts, trustAssignmentStatus } =
+    input;
 
   const rows = myProcedureRowsForWorker(
     employeeId,
@@ -166,55 +232,76 @@ export function buildMyLearningDashboard(input: {
     { trustAssignmentStatus },
   );
 
-  const certRows = rows.filter((r) => isCertificationTier(r.program.tier));
-  const completedCert = certRows.filter((r) => r.status === "completed").length;
-  const overallPercent =
-    certRows.length > 0 ? Math.round((completedCert / certRows.length) * 100) : 0;
-
-  const highRiskIncomplete = rows.filter(
-    (r) => r.program.tier === "high_risk" && !countsAsComplete(r.status),
-  ).length;
-  const highRiskAlerts = alerts.filter((a) => a.tier === "high_risk").length;
-  const highRiskCount = Math.max(highRiskIncomplete, highRiskAlerts);
-
-  const routinesPending = rows.filter(
-    (r) => r.program.tier === "mandatory" && !countsAsComplete(r.status),
-  ).length;
-
-  const recentAcknowledgements = [...acknowledgements]
-    .sort((a, b) => b.acknowledged_at.localeCompare(a.acknowledged_at))
-    .slice(0, 12)
-    .map((k) => {
-      const p = programs.find((x) => x.id === k.training_program_id);
-      return {
-        id: k.id,
-        title: p?.title ?? k.training_program_id,
-        revision: k.revision_number,
-        dateLabel: k.acknowledged_at.slice(0, 10),
-        at: k.acknowledged_at,
-      };
-    });
+  let part1CompleteCount = 0;
+  let certifiedCount = 0;
+  let part1ActionCount = 0;
+  let fieldTrainingCount = 0;
+  let quizAttemptSum = 0;
+  let quizAttemptRows = 0;
 
   const itemsByCategory = new Map<MyLearningCategoryId, MyLearningTrainingItem[]>();
   for (const id of CATEGORY_ORDER) itemsByCategory.set(id, []);
 
+  const checklist: MyLearningChecklistItem[] = [];
+  const alertByProgram = new Map(alerts.map((a) => [a.programId, a]));
+
   for (const row of rows) {
+    const latestAck = latestAcknowledgementForWorker(
+      employeeId,
+      row.program.id,
+      acknowledgements,
+    );
+    const flow = deriveTrainingFlowState({
+      program: row.program,
+      assignment: row.assignment,
+      latestAck,
+      effectiveStatus: row.status,
+    });
+
+    if (flow.fullyCertified) certifiedCount += 1;
+    if (flow.part1Complete) part1CompleteCount += 1;
+    if (flow.needsWorkerAction) part1ActionCount += 1;
+    if (flow.step === "shadow_pending") fieldTrainingCount += 1;
+
+    const attempts = row.assignment?.quiz_attempt_count ?? 0;
+    if (attempts > 0) {
+      quizAttemptSum += attempts;
+      quizAttemptRows += 1;
+    }
+
+    const itemStatus = itemStatusFromFlow(flow);
     const cat = classifyMyLearningCategory(row.program);
-    const itemStatus = myLearningItemStatus(row.status);
     itemsByCategory.get(cat)!.push({
       programId: row.program.id,
       name: row.program.title,
       status: itemStatus,
-      progressLabel: progressLabelFor(row.status),
+      flowStep: flow.step,
+      progressLabel: flow.tag,
+      flowDetail: flow.detail,
       tier: row.program.tier,
       assignmentStatus: row.status,
+      quizAttempts: attempts,
+    });
+
+    const alert = alertByProgram.get(row.program.id);
+    checklist.push({
+      programId: row.program.id,
+      title: row.program.title,
+      meta: alert?.label ?? flow.detail,
+      flowTag: flow.tag,
+      tier: row.program.tier,
+      done: flow.fullyCertified,
+      needsAction: flow.needsWorkerAction,
     });
   }
+
+  const total = rows.length;
+  const part1Percent = total > 0 ? Math.round((part1CompleteCount / total) * 100) : 0;
 
   for (const [, items] of itemsByCategory) {
     items.sort((a, b) => {
       const rank = (s: MyLearningItemStatus) =>
-        s === "incomplete" ? 0 : s === "partial" ? 1 : 2;
+        s === "action_needed" ? 0 : s === "in_progress" ? 1 : s === "part1_done" ? 2 : 3;
       if (rank(a.status) !== rank(b.status)) return rank(a.status) - rank(b.status);
       return a.name.localeCompare(b.name);
     });
@@ -222,15 +309,19 @@ export function buildMyLearningDashboard(input: {
 
   const categories: MyLearningCategory[] = CATEGORY_ORDER.map((id) => {
     const items = itemsByCategory.get(id) ?? [];
-    const total = items.length;
-    const completed = items.filter((i) => i.status === "complete").length;
-    const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+    const totalCat = items.length;
+    const certified = items.filter((i) => i.status === "certified").length;
+    const part1Complete = items.filter(
+      (i) => i.status === "certified" || i.status === "part1_done",
+    ).length;
+    const percent = totalCat > 0 ? Math.round((certified / totalCat) * 100) : 0;
     const meta = CATEGORY_META[id];
     return {
       id,
       title: meta.title,
-      completed,
-      total,
+      certified,
+      part1Complete,
+      total: totalCat,
       percent,
       ringColor: meta.ringColor,
       gradient: meta.gradient,
@@ -238,54 +329,49 @@ export function buildMyLearningDashboard(input: {
     };
   }).filter((c) => c.total > 0);
 
-  const alertByProgram = new Map(alerts.map((a) => [a.programId, a]));
-  const checklist: MyLearningChecklistItem[] = rows
-    .map((row) => {
-      const alert = alertByProgram.get(row.program.id);
-      const done = countsAsComplete(row.status);
-      return {
-        programId: row.program.id,
-        title: row.program.title,
-        meta: alert?.label ?? (done ? "Up to date" : progressLabelFor(row.status)),
-        tier: row.program.tier,
-        done,
-      };
-    })
-    .sort((a, b) => {
-      if (a.done !== b.done) return a.done ? 1 : -1;
-      const tierOrder: TrainingTier[] = ["high_risk", "mandatory", "general"];
-      const ta = tierOrder.indexOf(a.tier);
-      const tb = tierOrder.indexOf(b.tier);
-      if (ta !== tb) return ta - tb;
-      return a.title.localeCompare(b.title);
-    });
+  checklist.sort((a, b) => {
+    if (a.done !== b.done) return a.done ? 1 : -1;
+    if (a.needsAction !== b.needsAction) return a.needsAction ? -1 : 1;
+    const tierOrder: TrainingTier[] = ["high_risk", "mandatory", "general"];
+    const ta = tierOrder.indexOf(a.tier);
+    const tb = tierOrder.indexOf(b.tier);
+    if (ta !== tb) return ta - tb;
+    return a.title.localeCompare(b.title);
+  });
 
   const incompleteChecklistCount = checklist.filter((c) => !c.done).length;
+  const avgQuizAttempts =
+    quizAttemptRows > 0 ? Math.round((quizAttemptSum / quizAttemptRows) * 10) / 10 : null;
 
   return {
     stats: {
-      overallPercent,
-      overallDescription: `${completedCert} of ${certRows.length} certification${certRows.length === 1 ? "" : "s"} complete`,
-      highRiskCount,
-      highRiskDescription:
-        highRiskCount === 1 ? "Urgent training item" : "Urgent training items",
-      routinesCount: routinesPending,
-      routinesDescription:
-        routinesPending === 1 ? "Standard procedure pending" : "Standard procedures pending",
-      completedAckCount: acknowledgements.length,
-      completedDescription:
-        acknowledgements.length === 1
-          ? "Acknowledgement on file"
-          : "Acknowledgements on file",
+      part1Percent,
+      part1Description: `${part1CompleteCount} of ${total} — online training complete (read, ack, 100% quiz)`,
+      part1ActionCount,
+      part1ActionDescription:
+        part1ActionCount === 1
+          ? "Procedure needs your action in Part 1"
+          : "Procedures need your action in Part 1",
+      fieldTrainingCount,
+      fieldTrainingDescription:
+        fieldTrainingCount === 1
+          ? "Awaiting shadow shift & supervisor sign-off"
+          : "Awaiting shadow shifts & supervisor sign-off",
+      certifiedCount,
+      certifiedDescription:
+        certifiedCount === 1
+          ? "Fully certified (Part 1 + Part 2)"
+          : "Fully certified (Part 1 + Part 2)",
+      avgQuizAttempts,
     },
     categories,
     checklist,
     incompleteChecklistCount,
-    recentAcknowledgements,
+    recentActivity: buildActivity(programs, assignments, acknowledgements),
   };
 }
 
-/** Rows for category progress rings — include empty categories only when we have any assigned training. */
+/** Rows for category progress rings — certified = both parts complete. */
 export function myLearningProgressCategories(model: MyLearningDashboardModel): MyLearningCategory[] {
   return model.categories;
 }
