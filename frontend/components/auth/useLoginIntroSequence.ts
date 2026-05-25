@@ -2,18 +2,7 @@
 
 import { useReducedMotion } from "framer-motion";
 import { useEffect, useState } from "react";
-import {
-  LOGIN_INTRO_MS,
-  type LoginIntroStage,
-} from "@/lib/auth/login-intro-motion";
-
-function introDelayMs(): number {
-  return (
-    LOGIN_INTRO_MS.heroEmergence +
-    LOGIN_INTRO_MS.logoSettle +
-    LOGIN_INTRO_MS.formPause
-  );
-}
+import { LOGIN_STEP_MS, type LoginIntroStage } from "@/lib/auth/login-intro-motion";
 
 export function useLoginIntroSequence() {
   const reducedMotion = useReducedMotion();
@@ -25,22 +14,11 @@ export function useLoginIntroSequence() {
       return;
     }
 
-    const t1 = window.setTimeout(() => setStage("logo-settle"), LOGIN_INTRO_MS.heroEmergence);
-    const t2 = window.setTimeout(
-      () => setStage("reveal-form"),
-      LOGIN_INTRO_MS.heroEmergence + LOGIN_INTRO_MS.logoSettle + LOGIN_INTRO_MS.formPause,
-    );
-    const t3 = window.setTimeout(
-      () => setStage("reveal-card"),
-      introDelayMs() + LOGIN_INTRO_MS.formReveal + LOGIN_INTRO_MS.comingSoonDelay,
-    );
-    const t4 = window.setTimeout(
-      () => setStage("complete"),
-      introDelayMs() +
-        LOGIN_INTRO_MS.formReveal +
-        LOGIN_INTRO_MS.comingSoonDelay +
-        720,
-    );
+    const step = LOGIN_STEP_MS;
+    const t1 = window.setTimeout(() => setStage("logo-settle"), step);
+    const t2 = window.setTimeout(() => setStage("reveal-form"), step * 2);
+    const t3 = window.setTimeout(() => setStage("reveal-card"), step * 3);
+    const t4 = window.setTimeout(() => setStage("complete"), step * 4);
 
     return () => {
       window.clearTimeout(t1);

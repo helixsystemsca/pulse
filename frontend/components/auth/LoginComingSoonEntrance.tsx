@@ -22,7 +22,7 @@ export function LoginComingSoonEntrance({ visible }: Props) {
 
   if (reducedMotion) {
     return (
-      <div className="fixed left-0 top-1/2 z-[15] -translate-y-1/2">
+      <div className="flex items-center justify-center">
         <LoginComingSoonFeaturesCard playAnimation className="coming-soon-card--embedded" />
       </div>
     );
@@ -30,7 +30,7 @@ export function LoginComingSoonEntrance({ visible }: Props) {
 
   return (
     <motion.div
-      className="fixed left-0 top-1/2 z-[15] -translate-y-1/2 max-md:relative max-md:top-auto max-md:left-auto max-md:z-10 max-md:mx-auto max-md:mb-5 max-md:translate-y-0"
+      className="flex items-center justify-center"
       initial="hidden"
       animate="visible"
       variants={loginComingSoonSlideVariants}

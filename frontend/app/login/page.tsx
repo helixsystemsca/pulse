@@ -29,9 +29,9 @@ import { mailtoInfo, mailtoSupport } from "@/lib/helix-emails";
 import { isMicrosoftSsoConfigured, startMicrosoftSignIn } from "@/lib/microsoft-auth";
 import { cn } from "@/lib/cn";
 import {
-  LOGIN_EASE,
   loginFormRevealTransition,
   loginFormRevealVariants,
+  loginTaglineTransition,
   loginTaglineVariants,
 } from "@/lib/auth/login-intro-motion";
 import { buttonVariants } from "@/styles/button-variants";
@@ -192,7 +192,17 @@ export default function LoginPage() {
         </header>
 
         <main className="relative z-10 flex min-h-0 flex-1 flex-col justify-center px-4 pb-4 pt-1 sm:px-6 sm:pb-5 md:px-8">
-          <LoginComingSoonEntrance visible={intro.showComingSoon} />
+          <div
+            className={cn(
+              "z-[15] w-full shrink-0 justify-center pb-5 md:pointer-events-none md:absolute md:inset-y-0 md:left-0 md:w-auto md:items-center md:pb-0",
+              intro.showComingSoon ? "flex" : "hidden",
+            )}
+            aria-hidden={!intro.showComingSoon}
+          >
+            <div className="pointer-events-auto md:pl-4 lg:pl-6">
+              <LoginComingSoonEntrance visible={intro.showComingSoon} />
+            </div>
+          </div>
           <div className="login-content">
             <div className="login-content__form">
             <LoginCinematicLogo stage={intro.stage} />
@@ -202,7 +212,7 @@ export default function LoginPage() {
               initial={intro.reducedMotion ? false : "hidden"}
               animate={intro.showTagline ? "visible" : "hidden"}
               variants={loginTaglineVariants}
-              transition={{ duration: 0.45, ease: LOGIN_EASE }}
+              transition={loginTaglineTransition}
             >
               Access only for verified users.
             </motion.p>
