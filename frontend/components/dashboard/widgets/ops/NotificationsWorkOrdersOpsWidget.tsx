@@ -91,10 +91,10 @@ export function NotificationsWorkOrdersOpsWidget({
   const kpi = model.workRequests.kpi;
 
   return (
-    <div className="flex h-full min-h-0 w-full min-w-0 flex-col justify-end">
-      <div className="ops-dash-inner-card mt-auto flex min-h-0 flex-col">
+    <div className="flex h-full min-h-0 w-full min-w-0 flex-col">
+      <div className="ops-dash-inner-card flex min-h-0 flex-1 flex-col">
         <div
-          className={cn("ops-work-requests-kpi-grid min-h-0", GRID_MODE_CLASS[layoutMode])}
+          className={cn("ops-work-requests-kpi-grid mt-auto min-h-0", GRID_MODE_CLASS[layoutMode])}
           style={
             {
               gap: WORK_REQUESTS_KPI_GAP_PX,

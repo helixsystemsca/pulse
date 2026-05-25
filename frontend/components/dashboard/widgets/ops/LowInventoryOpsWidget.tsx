@@ -18,8 +18,8 @@ export function LowInventoryOpsWidget({
   const items = model.inventory.shoppingList;
 
   return (
-    <div className="flex h-full min-h-0 w-full min-w-0 flex-col justify-end overflow-hidden">
-      <div className="ops-dash-inner-card mt-auto flex min-h-0 flex-col gap-[3px]">
+    <div className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden">
+      <div className="ops-dash-inner-card flex min-h-0 flex-1 flex-col gap-[3px]">
         <div
           className={cn(
             "flex shrink-0 items-start justify-between gap-2 rounded-lg px-2.5",
@@ -78,7 +78,7 @@ export function LowInventoryOpsWidget({
         </div>
       ) : null}
 
-      <div className="flex min-h-0 flex-1 flex-col">
+      <div className="mt-auto flex min-h-0 flex-1 flex-col">
         <p className="shrink-0 text-[10px] font-bold uppercase tracking-[0.1em] text-[color-mix(in_srgb,var(--ds-text-primary)_48%,transparent)]">
           Low stock list
         </p>

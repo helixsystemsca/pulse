@@ -1154,7 +1154,7 @@ function DashboardBody({
   const { width, containerRef, mounted } = useContainerWidth({ initialWidth: 1200 });
 
   const widgetRegistry = useMemo(() => {
-    const workforceCardShell = "ops-dash-inner-card mt-auto flex min-h-0 flex-col gap-2 px-[3px] py-1.5";
+    const workforceCardShell = "ops-dash-inner-card flex min-h-0 flex-1 flex-col gap-2 px-[3px] py-1.5";
 
     return {
       important_dates: {
@@ -1201,7 +1201,7 @@ function DashboardBody({
           const showSecondary = tier === "tall";
 
           return (
-            <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col justify-end overflow-hidden">
+            <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
               <div className={cn(workforceCardShell, "min-w-0 overflow-hidden")}>
               <div className="shrink-0">
                 <p className="text-xs font-semibold text-[color-mix(in_srgb,var(--ds-text-primary)_92%,transparent)]">
@@ -1211,7 +1211,7 @@ function DashboardBody({
                   {model.workforce.summaryLine}
                 </p>
               </div>
-                <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1.5 overflow-hidden">
+                <div className="mt-auto flex min-h-0 min-w-0 flex-1 flex-col gap-1.5 overflow-hidden">
                 <div
                   data-tour="workforce-today"
                   className="flex min-h-0 flex-1 min-w-0 flex-col overflow-hidden py-0.5"
