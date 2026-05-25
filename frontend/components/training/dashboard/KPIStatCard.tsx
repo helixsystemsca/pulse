@@ -2,10 +2,10 @@
 
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { KPI_ACCENT_BAR_CLASS } from "@/lib/theme/status-variants";
+import { KPI_ACCENT_BAR_CLASS, type KPIStatAccent } from "@/lib/theme/status-variants";
 import { uiDashCardWidget, uiIconSm, uiKpiLabel, uiKpiValue } from "@/styles/ui-classes";
 
-export type KPIStatAccent = keyof typeof KPI_ACCENT_BAR_CLASS;
+export type { KPIStatAccent };
 
 export function KPIStatCard({
   label,

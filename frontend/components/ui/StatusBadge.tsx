@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
-import { STATUS_BADGE_CLASS } from "@/lib/theme/status-variants";
+import { STATUS_BADGE_CLASS, type StatusBadgeVariant } from "@/lib/theme/status-variants";
 
-export type StatusBadgeVariant = keyof typeof STATUS_BADGE_CLASS;
+export type { StatusBadgeVariant };
 
 export function StatusBadge({
   variant,

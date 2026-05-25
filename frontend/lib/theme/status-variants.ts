@@ -1,7 +1,8 @@
 /**
  * Status / badge class maps — align feature badges to globals `.app-badge-*`.
  */
-import type { StatusBadgeVariant } from "@/components/ui/StatusBadge";
+
+export type StatusBadgeVariant = "success" | "warning" | "danger" | "neutral" | "info";
 
 export const STATUS_BADGE_CLASS: Record<StatusBadgeVariant, string> = {
   success: "app-badge-emerald",
@@ -27,3 +28,5 @@ export const KPI_ACCENT_BAR_CLASS = {
   warning: "bg-ds-warning",
   danger: "bg-ds-danger",
 } as const;
+
+export type KPIStatAccent = keyof typeof KPI_ACCENT_BAR_CLASS;
