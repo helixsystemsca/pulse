@@ -40,7 +40,11 @@ export function AppMainChromeColumn({
             .join(" ")}
         >
           <Suspense fallback={children}>
-            <TenantRbacRouteGuard>{children}</TenantRbacRouteGuard>
+            <TenantRbacRouteGuard>
+              <div data-tour="feature-workspace" className="min-h-full min-w-0">
+                {children}
+              </div>
+            </TenantRbacRouteGuard>
           </Suspense>
         </div>
       </main>

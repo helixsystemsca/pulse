@@ -93,6 +93,7 @@ import type { SchedulePeriodHeaderState } from "./ScheduleBuilderHeader";
 import { ScheduleWorkflowBar } from "./ScheduleWorkflowBar";
 import { AssignmentsLockedNotice } from "./AssignmentsLockedNotice";
 import { deriveScheduleWorkflow, pickPeriodForVisibleRange } from "@/lib/schedule/schedule-workflow";
+import { FeatureTourToolbar } from "@/components/onboarding/FeatureTourRegions";
 import { SchedulePageHeader } from "./SchedulePageHeader";
 import { ScheduleUnifiedControlCard } from "./ScheduleUnifiedControlCard";
 import { ScheduleOperationalStatusStrip } from "./ScheduleOperationalStatusStrip";
@@ -1481,6 +1482,7 @@ export function ScheduleApp() {
         <SchedulePageHeader actions={builderActions} />
 
         {workspaceView === "calendar" ? (
+          <FeatureTourToolbar>
           <ScheduleUnifiedControlCard
             operationsRow={
               <ScheduleOperationalSidebar
@@ -1565,6 +1567,7 @@ export function ScheduleApp() {
               />
             }
           />
+          </FeatureTourToolbar>
         ) : (
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-pulseShell-border/80 bg-pulseShell-surface/60 px-3 py-2 dark:border-slate-700/80 dark:bg-slate-900/50">
             <ScheduleOperationalSidebar

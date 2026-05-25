@@ -13,17 +13,15 @@ import {
 import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { RotateCcw } from "lucide-react";
-import { DASHBOARD_TOUR_STEPS } from "@/lib/onboarding/tour-steps";
-import type { TourPlacement, TourStep } from "@/lib/onboarding/tour-steps";
+import type { TourPlacement, TourStep } from "@/lib/onboarding/tour-steps/types";
 import { clearTourCompleted, isTourCompleted, markTourCompleted } from "@/lib/onboarding/tour-storage";
 import { getTourTargetElements, getTourTargetUnionRect, hasTourTarget } from "@/lib/onboarding/tour-target";
+import { hasProductTour, resolveProductTour } from "@/lib/onboarding/tour-registry";
 import "@/components/onboarding/onboarding-tour.css";
 
 const CARD_WIDTH = 420;
 const CARD_HEIGHT = 300;
 const CARD_OFFSET = 20;
-
-const TOUR_PATH_PREFIXES = ["/overview", "/worker"];
 
 type SpotlightStyle = {
   top: number;
@@ -40,6 +38,7 @@ type CardStyle = {
 type OnboardingTourContextValue = {
   restartTour: () => void;
   showRestartInHeader: boolean;
+  tourId: string | null;
 };
 
 const OnboardingTourContext = createContext<OnboardingTourContextValue | null>(null);
@@ -91,9 +90,12 @@ function calculateCardPosition(rect: DOMRect, placement: TourPlacement): CardSty
   return { top, left };
 }
 
-export function OnboardingTourProvider({ children, steps = DASHBOARD_TOUR_STEPS }: { children: ReactNode; steps?: TourStep[] }) {
-  const pathname = usePathname();
-  const tourEnabled = TOUR_PATH_PREFIXES.some((p) => pathname === p || pathname?.startsWith(`${p}/`));
+export function OnboardingTourProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname() ?? "";
+  const activeTour = useMemo(() => resolveProductTour(pathname), [pathname]);
+  const tourEnabled = hasProductTour(pathname);
+  const tourId = activeTour?.id ?? null;
+  const steps = activeTour?.steps ?? [];
 
   const [mounted, setMounted] = useState(false);
   const [isActive, setIsActive] = useState(false);
@@ -107,18 +109,17 @@ export function OnboardingTourProvider({ children, steps = DASHBOARD_TOUR_STEPS 
   }, []);
 
   useEffect(() => {
-    if (!mounted || !tourEnabled) return;
-    if (!isTourCompleted()) {
-      setShowStart(true);
-    }
-  }, [mounted, tourEnabled]);
+    setIsActive(false);
+    setShowStart(false);
+    setCurrentStep(0);
+  }, [tourId]);
 
   useEffect(() => {
-    if (!tourEnabled) {
-      setIsActive(false);
-      setShowStart(false);
+    if (!mounted || !tourEnabled || !tourId) return;
+    if (!isTourCompleted(tourId)) {
+      setShowStart(true);
     }
-  }, [tourEnabled]);
+  }, [mounted, tourEnabled, tourId]);
 
   const updatePositions = useCallback(() => {
     const step = steps[currentStep];
@@ -175,15 +176,16 @@ export function OnboardingTourProvider({ children, steps = DASHBOARD_TOUR_STEPS 
 
   const endTour = useCallback(() => {
     setIsActive(false);
-    markTourCompleted();
-  }, []);
+    if (tourId) markTourCompleted(tourId);
+  }, [tourId]);
 
   const restartTour = useCallback(() => {
+    if (!tourId) return;
     setIsActive(false);
     setCurrentStep(0);
-    clearTourCompleted();
+    clearTourCompleted(tourId);
     window.setTimeout(() => setShowStart(true), 300);
-  }, []);
+  }, [tourId]);
 
   const advanceFromMissing = useCallback(
     (fromIndex: number) => {
@@ -251,14 +253,18 @@ export function OnboardingTourProvider({ children, steps = DASHBOARD_TOUR_STEPS 
     () => ({
       restartTour,
       showRestartInHeader: tourEnabled,
+      tourId,
     }),
-    [restartTour, tourEnabled],
+    [restartTour, tourEnabled, tourId],
   );
 
   const step = steps[currentStep];
+  const welcomeTitle = activeTour?.welcomeTitle ?? "Welcome";
+  const welcomeSubtitle = activeTour?.welcomeSubtitle ?? "";
+  const welcomeEmoji = activeTour?.welcomeEmoji ?? "✨";
 
   const portal =
-    mounted && tourEnabled ? (
+    mounted && tourEnabled && activeTour ? (
       <>
         {isActive ? <div className="tour-overlay active" aria-hidden /> : null}
 
@@ -277,15 +283,12 @@ export function OnboardingTourProvider({ children, steps = DASHBOARD_TOUR_STEPS 
         {showStart ? (
           <div className="tour-start-screen active" role="dialog" aria-modal="true" aria-labelledby="tour-start-title">
             <div className="start-icon" aria-hidden>
-              🏊
+              {welcomeEmoji}
             </div>
             <h1 id="tour-start-title" className="start-title">
-              Welcome to Panorama REC
+              {welcomeTitle}
             </h1>
-            <p className="start-subtitle">
-              Let&apos;s take a quick tour of your new management platform. We&apos;ll walk through the key features
-              that help you streamline operations and reduce friction.
-            </p>
+            <p className="start-subtitle">{welcomeSubtitle}</p>
             <button type="button" className="btn-start" onClick={startTour}>
               Start Tour
             </button>
@@ -326,7 +329,6 @@ export function OnboardingTourProvider({ children, steps = DASHBOARD_TOUR_STEPS 
             </div>
           </div>
         ) : null}
-
       </>
     ) : null;
 
@@ -347,8 +349,8 @@ export function OnboardingTourRestartButton() {
       type="button"
       className="restart-tour-header-btn"
       onClick={ctx.restartTour}
-      aria-label="Restart product tour"
-      title="Restart tour"
+      aria-label="Restart product tour for this page"
+      title="Restart tour for this page"
     >
       <RotateCcw className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2} aria-hidden />
       <span className="hidden sm:inline">Restart tour</span>

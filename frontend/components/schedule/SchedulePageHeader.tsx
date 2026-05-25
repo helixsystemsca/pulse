@@ -9,7 +9,10 @@ import type { ReactNode } from "react";
  */
 export function SchedulePageHeader({ actions }: { actions: ReactNode }) {
   return (
-    <header className="flex min-h-[4.25rem] max-h-[5.5rem] flex-col justify-center gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+    <header
+      data-tour="feature-header"
+      className="flex min-h-[4.25rem] max-h-[5.5rem] flex-col justify-center gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+    >
       <div className="flex min-w-0 items-center gap-3">
         <span
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--ds-accent)_12%,transparent)] text-[var(--ds-accent)] dark:bg-sky-500/15 dark:text-sky-300"

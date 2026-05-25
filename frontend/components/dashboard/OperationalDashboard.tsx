@@ -1572,6 +1572,7 @@ function DashboardBody({
       )}
     >
       <div
+        data-tour={isDeptDashboard ? "feature-header" : undefined}
         className={cn(
           "ops-dash-header-bar flex flex-wrap items-center justify-between gap-3 px-3 py-2.5",
           isKiosk && "shrink-0",
