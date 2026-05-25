@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import type { DashboardViewModel } from "@/components/dashboard/OperationalDashboard";
 import type { DashboardWidgetRenderContext } from "@/lib/dashboard/render-context";
+import type { WidgetHeightTier } from "@/lib/dashboard/workspace-layout";
 import { cn } from "@/lib/cn";
 
 import { ComplianceRadial } from "./ComplianceRadial";
@@ -12,21 +13,43 @@ import { TrainingMatrixButton } from "./TrainingMatrixButton";
 const premiumShell =
   "rounded-xl border border-black/[0.06] bg-gradient-to-b from-white via-white to-[rgb(248,250,252)] shadow-[0_12px_36px_-24px_rgba(15,23,42,0.35)] ring-1 ring-black/[0.04] dark:border-white/10 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900/90 dark:shadow-[0_18px_44px_-26px_rgba(0,0,0,0.55)] dark:ring-white/[0.06]";
 
+function opsLayoutForTier(tier?: WidgetHeightTier): {
+  radialSize: "sm" | "md" | "lg";
+  dualWheels: boolean;
+  badgeGap: string;
+  outerGap: string;
+} {
+  switch (tier) {
+    case "compact":
+      return { radialSize: "sm", dualWheels: false, badgeGap: "gap-1", outerGap: "gap-1.5" };
+    case "medium":
+      return { radialSize: "sm", dualWheels: true, badgeGap: "gap-1", outerGap: "gap-2" };
+    case "expanded":
+    case "tall":
+      return { radialSize: "lg", dualWheels: true, badgeGap: "gap-0.5", outerGap: "gap-2" };
+    default:
+      return { radialSize: "md", dualWheels: true, badgeGap: "gap-1", outerGap: "gap-2" };
+  }
+}
+
 function TrainingComplianceOpsFill({
   training,
   matrixHref,
   opsEmbedded,
-  density,
+  heightTier,
 }: {
   training: DashboardViewModel["training"];
   matrixHref: string;
   opsEmbedded: boolean;
-  density: "medium" | "compact";
+  heightTier?: WidgetHeightTier;
 }) {
+  const layout = opsLayoutForTier(heightTier);
   const completed = Math.max(0, training.completed);
   const expiring = Math.max(0, training.expiringSoon);
   const missing = Math.max(0, training.missing);
   const total = Math.max(0, training.totalSlots);
+  const tightBadges = heightTier === "expanded" || heightTier === "tall";
+  const badgeTightClass = tightBadges ? "!gap-1.5 !px-2 !py-1.5" : undefined;
 
   const metricCards = (
     <>
@@ -38,6 +61,7 @@ function TrainingComplianceOpsFill({
         count={completed}
         variant="completed"
         compact
+        className={badgeTightClass}
       />
       <StatusMetricCard
         href={matrixHref}
@@ -47,6 +71,7 @@ function TrainingComplianceOpsFill({
         count={expiring}
         variant="expiring"
         compact
+        className={badgeTightClass}
       />
       <StatusMetricCard
         href={matrixHref}
@@ -57,21 +82,17 @@ function TrainingComplianceOpsFill({
         variant="missing"
         emphasize={missing > 0}
         compact
+        className={badgeTightClass}
       />
     </>
   );
 
   return (
-    <div
-      className={cn(
-        "flex h-full min-h-0 w-full min-w-0 flex-col",
-        density === "medium" ? "gap-2" : "gap-1.5",
-      )}
-    >
+    <div className={cn("flex h-full min-h-0 w-full min-w-0 flex-col", layout.outerGap)}>
       <div
         className={cn(
-          "flex shrink-0 items-center justify-center",
-          density === "medium" ? "gap-2" : "gap-0",
+          "flex min-h-0 flex-1 items-center justify-center",
+          layout.dualWheels ? "gap-2 px-0.5 sm:gap-3" : "gap-0",
         )}
       >
         <ComplianceRadial
@@ -81,9 +102,9 @@ function TrainingComplianceOpsFill({
           expiringSoon={expiring}
           missing={missing}
           totalSlots={total}
-          size="sm"
+          size={layout.radialSize}
         />
-        {density === "medium" ? (
+        {layout.dualWheels ? (
           <ComplianceRadial
             mode="strict_mandatory"
             overallCompliancePercent={training.overallCompliancePercent}
@@ -91,12 +112,12 @@ function TrainingComplianceOpsFill({
             expiringSoon={expiring}
             missing={missing}
             totalSlots={total}
-            size="sm"
+            size={layout.radialSize}
           />
         ) : null}
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col justify-between gap-1.5">{metricCards}</div>
+      <div className={cn("flex shrink-0 flex-col", layout.badgeGap)}>{metricCards}</div>
 
       {!opsEmbedded ? <TrainingMatrixButton href={matrixHref} compact fullWidth /> : null}
     </div>
@@ -119,7 +140,6 @@ export function TrainingComplianceWidget({
   layoutContext?: DashboardWidgetRenderContext | null;
   opsEmbedded?: boolean;
 }) {
-  const opsDensity = layoutContext?.heightTier === "compact" ? "compact" : "medium";
   const compact = mode === "xs" || mode === "sm";
   const radialSizePeek = compact ? "sm" : mode === "lg" || mode === "xl" ? "lg" : "md";
 
@@ -231,7 +251,7 @@ export function TrainingComplianceWidget({
           training={training}
           matrixHref={matrixHref}
           opsEmbedded={opsEmbedded}
-          density={opsDensity}
+          heightTier={layoutContext?.heightTier}
         />
       </div>
     );

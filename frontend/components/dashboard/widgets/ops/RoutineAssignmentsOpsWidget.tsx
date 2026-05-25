@@ -305,61 +305,60 @@ function WorkforceRoutineRow({
   handoverSummaryByAssignment?: Map<string, AssignmentHandoverSummary>;
   onHandoverChange?: () => void;
 }) {
+  const hasChips = row.badges.length > 0 || row.routines.length > 0;
+
   return (
-    <li
-      className={cn(
-        "ops-dash-row flex flex-col gap-1 px-2",
-        fillShell ? "min-h-0 flex-1 justify-center py-2.5" : "py-1.5",
-      )}
-    >
-      <div className="flex items-start justify-between gap-2">
+    <li className={cn("ops-dash-row shrink-0 px-2 py-1", fillShell && "min-h-0")}>
+      <div className="flex min-w-0 items-center gap-1.5">
         <p
           className={cn(
-            "min-w-0 truncate font-semibold text-[color-mix(in_srgb,var(--ds-text-primary)_92%,transparent)]",
+            "min-w-0 max-w-[9rem] shrink truncate font-semibold text-[color-mix(in_srgb,var(--ds-text-primary)_92%,transparent)]",
             fillShell ? "text-sm" : "text-xs",
           )}
+          title={row.workerName}
         >
           {row.workerName}
         </p>
+        {hasChips ? (
+          <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-0.5">
+            {row.badges.map((code) => {
+              const def = OPERATIONAL_BADGE_REGISTRY[code];
+              return (
+                <span
+                  key={code}
+                  className={cn(
+                    "rounded border px-1 py-px text-[8px] font-bold uppercase leading-none",
+                    operationalBadgeClasses(def?.group ?? "special"),
+                  )}
+                  title={def?.detail}
+                >
+                  {operationalBadgeChipLabel(code)}
+                </span>
+              );
+            })}
+            {row.routines.map((r) => (
+              <RoutineAssignmentHandoverChip
+                key={r.assignmentId}
+                layout="inline"
+                assignment={r}
+                workerName={row.workerName}
+                shiftWindow={row.shiftWindow}
+                summary={handoverSummaryByAssignment?.get(r.assignmentId)}
+                onHandoverChange={onHandoverChange}
+              />
+            ))}
+          </div>
+        ) : null}
         {row.shiftWindow ? (
           <span className="shrink-0 text-[10px] font-bold tabular-nums text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]">
             {row.shiftWindow}
           </span>
         ) : null}
       </div>
-      {(row.badges.length > 0 || row.routines.length > 0) && (
-        <div className="flex flex-wrap items-center gap-1">
-          {row.badges.map((code) => {
-            const def = OPERATIONAL_BADGE_REGISTRY[code];
-            return (
-              <span
-                key={code}
-                className={cn(
-                  "rounded-md border px-1.5 py-0.5 text-[9px] font-bold uppercase",
-                  operationalBadgeClasses(def?.group ?? "special"),
-                )}
-                title={def?.detail}
-              >
-                {operationalBadgeChipLabel(code)}
-              </span>
-            );
-          })}
-          {row.routines.map((r) => (
-            <RoutineAssignmentHandoverChip
-              key={r.assignmentId}
-              assignment={r}
-              workerName={row.workerName}
-              shiftWindow={row.shiftWindow}
-              summary={handoverSummaryByAssignment?.get(r.assignmentId)}
-              onHandoverChange={onHandoverChange}
-            />
-          ))}
-        </div>
-      )}
       {emphasizeMissing ? (
-        <p className="text-[10px] font-medium text-amber-800 dark:text-amber-200">On shift — no routine assigned</p>
-      ) : row.badges.length === 0 && row.routines.length === 0 ? (
-        <p className="text-[10px] text-[color-mix(in_srgb,var(--ds-text-primary)_50%,transparent)]">
+        <p className="mt-0.5 text-[10px] font-medium text-amber-800 dark:text-amber-200">On shift — no routine assigned</p>
+      ) : !hasChips ? (
+        <p className="mt-0.5 text-[10px] text-[color-mix(in_srgb,var(--ds-text-primary)_50%,transparent)]">
           On shift — no routines or badges yet
         </p>
       ) : null}
@@ -407,26 +406,18 @@ function WorkforceByShiftSections({
         <div
           className={cn(
             "mt-1.5 min-h-0",
-            fillShell && totalWorkers > 0
-              ? "flex flex-1 flex-col justify-between gap-2"
-              : "space-y-3",
+            fillShell && totalWorkers > 0 ? "flex flex-1 flex-col gap-1.5 overflow-y-auto" : "space-y-2",
           )}
         >
           {groups.map(({ section, rows }) => (
             <section
               key={section}
               className={cn(
-                fillShell && rows.length > 0 && "flex min-h-0 flex-1 flex-col",
                 section === "missing" && "rounded-lg border border-amber-200/70 bg-amber-50/40 px-2 py-1.5 dark:border-amber-500/25 dark:bg-amber-950/20",
               )}
             >
               <ShiftSectionHeader section={section} count={rows.length} fillShell={fillShell} />
-              <ul
-                className={cn(
-                  "mt-1 min-h-0",
-                  fillShell && rows.length > 0 ? "flex flex-1 flex-col gap-1" : "space-y-1",
-                )}
-              >
+              <ul className="mt-0.5 min-h-0 space-y-0">
                 {rows.map((row) => (
                   <WorkforceRoutineRow
                     key={row.workerId}

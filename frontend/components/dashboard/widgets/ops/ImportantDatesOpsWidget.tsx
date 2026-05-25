@@ -40,37 +40,21 @@ export function ImportantDatesOpsWidget({
           <span>Synced to manager calendar</span>
         </div>
 
-        <ul
-          className={cn(
-            "flex min-h-0 flex-1 flex-col",
-            fillRows ? "justify-evenly gap-1.5" : "gap-1.5 overflow-y-auto pr-0.5",
-          )}
-        >
+        <ul className="mt-0.5 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain pr-0.5">
           {IMPORTANT_DATES_DEMO.map((row) => (
             <li
               key={row.label}
               className={cn(
-                "flex min-h-0 items-center justify-between gap-3 rounded-lg px-2.5",
-                fillRows ? "shrink-0 py-2" : "shrink-0 py-2",
+                "flex shrink-0 items-center justify-between gap-3 rounded-lg px-2.5 py-1.5",
                 row.tone === "accent"
                   ? "bg-[color-mix(in_srgb,var(--ds-accent)_14%,transparent)] ring-1 ring-[color-mix(in_srgb,var(--ds-accent)_28%,transparent)]"
                   : "bg-[color-mix(in_srgb,var(--ds-text-primary)_4%,transparent)]",
               )}
             >
-              <span
-                className={cn(
-                  "min-w-0 flex-1 font-semibold leading-snug text-[color-mix(in_srgb,var(--ds-text-primary)_92%,transparent)]",
-                  fillRows ? "text-sm" : "text-xs",
-                )}
-              >
+              <span className="min-w-0 flex-1 text-xs font-semibold leading-snug text-[color-mix(in_srgb,var(--ds-text-primary)_92%,transparent)]">
                 {row.label}
               </span>
-              <span
-                className={cn(
-                  "shrink-0 font-bold text-[color-mix(in_srgb,var(--ds-text-primary)_58%,transparent)]",
-                  fillRows ? "text-xs" : "text-[11px]",
-                )}
-              >
+              <span className="shrink-0 text-[11px] font-bold text-[color-mix(in_srgb,var(--ds-text-primary)_58%,transparent)]">
                 {row.dateLabel}
               </span>
             </li>

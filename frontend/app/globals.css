@@ -1442,6 +1442,11 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
     padding: 0;
   }
 
+  /** Hero column: inset content from inner-card rounded corners (avoids top-edge clip). */
+  .pulse-operations-dashboard .dash-workspace-column--hero .ops-dash-inner-card {
+    padding: 6px 8px;
+  }
+
   /** Work requests KPI grid — min row height; grows to fill widget body. */
   .ops-work-requests-kpi-grid {
     display: grid;
@@ -1509,10 +1514,14 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
     flex: 1;
     min-width: 0;
     min-height: 0;
-    padding: 0.4rem 0.45rem 0.45rem;
+    padding: 0.45rem 0.5rem 0.5rem;
+  }
+  .ops-kpi-tile--centered {
+    align-items: center;
+    justify-content: space-between;
   }
   .ops-kpi-tile__value {
-    font-size: clamp(1rem, 42cqi, 1.65rem);
+    font-size: clamp(1.35rem, 52cqi, 2.35rem);
   }
 
   .ops-kpi-pill {

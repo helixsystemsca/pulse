@@ -1159,7 +1159,7 @@ function DashboardBody({
   const { width, containerRef, mounted } = useContainerWidth({ initialWidth: 1200 });
 
   const widgetRegistry = useMemo(() => {
-    const workforceCardShell = "ops-dash-inner-card flex min-h-0 flex-1 flex-col gap-2 px-[3px] py-1.5";
+    const workforceCardShell = "ops-dash-inner-card flex min-h-0 flex-1 flex-col gap-2";
 
     return {
       important_dates: {

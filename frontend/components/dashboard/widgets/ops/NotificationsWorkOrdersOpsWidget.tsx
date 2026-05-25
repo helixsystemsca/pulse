@@ -53,25 +53,25 @@ function KpiCell({
 
   return (
     <div className="ops-work-requests-kpi-cell">
-      <div className={cn("ops-kpi-tile ops-kpi-tile--grid", KPI_TILE_CLASS[tone])}>
-        <div className="flex w-full items-start gap-1">
+      <div className={cn("ops-kpi-tile ops-kpi-tile--grid ops-kpi-tile--centered", KPI_TILE_CLASS[tone])}>
+        <div className="flex w-full shrink-0 items-center justify-center gap-1.5">
           <span
-            className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full"
+            className="h-2 w-2 shrink-0 rounded-full"
             style={{ backgroundColor: indicator }}
             aria-hidden
           />
-          <span className="min-w-0 flex-1 text-left text-[9px] font-bold uppercase leading-snug tracking-[0.06em] text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]">
+          <span className="min-w-0 text-center text-[10px] font-bold uppercase leading-snug tracking-[0.06em] text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)] sm:text-[11px]">
             {label}
           </span>
         </div>
         <div
           className={cn(
-            "ops-kpi-tile__value mt-auto w-full text-left font-bold leading-none tabular-nums tracking-tight",
+            "ops-kpi-tile__value flex min-h-0 flex-1 w-full items-center justify-center font-extrabold leading-none tabular-nums tracking-tight",
             !loading && KPI_TONE_CLASS[tone],
             loading && "text-[color-mix(in_srgb,var(--ds-text-primary)_40%,transparent)]",
           )}
         >
-          {loading ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden /> : (value ?? "—")}
+          {loading ? <Loader2 className="h-7 w-7 animate-spin" aria-hidden /> : (value ?? "—")}
         </div>
       </div>
     </div>

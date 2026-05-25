@@ -34,12 +34,15 @@ export function RoutineAssignmentHandoverChip({
   shiftWindow,
   summary,
   onHandoverChange,
+  layout = "card",
 }: {
   assignment: RoutineAssignmentChipModel;
   workerName: string;
   shiftWindow: string | null;
   summary?: AssignmentHandoverSummary;
   onHandoverChange?: () => void;
+  /** `inline` — compact pill beside worker name (ops dashboard). */
+  layout?: "card" | "inline";
 }) {
   const session = readSession();
   const userId = session?.sub ?? "demo-user";
@@ -105,36 +108,68 @@ export function RoutineAssignmentHandoverChip({
         ? "View handover"
         : `View ${total} handovers`;
 
+  const inline = layout === "inline";
+
   return (
     <>
       <div
         className={cn(
-          "group/chip relative flex w-full min-w-[8.5rem] max-w-full flex-col gap-0.5 rounded-lg border border-violet-200/80",
-          "bg-violet-50/90 px-2 py-1.5 dark:border-violet-500/30 dark:bg-violet-950/50",
+          "group/chip relative border border-violet-200/80 bg-violet-50/90 dark:border-violet-500/30 dark:bg-violet-950/50",
+          inline
+            ? "inline-flex max-w-[11.5rem] min-w-0 items-center gap-0.5 rounded-md px-1.5 py-0.5"
+            : "flex w-full min-w-[8.5rem] max-w-full flex-col gap-0.5 rounded-lg px-2 py-1.5",
         )}
       >
-        <div className="flex items-start justify-between gap-1">
-          <span className="min-w-0 flex-1 text-[10px] font-medium leading-snug text-violet-900 dark:text-violet-100">
+        {total > 0 && inline ? (
+          <button
+            type="button"
+            className="absolute inset-0 z-0 rounded-md"
+            aria-label={viewLabel ?? "View handovers"}
+            onClick={() => setHistoryOpen(true)}
+          />
+        ) : null}
+        <div
+          className={cn(
+            "relative z-[1] flex min-w-0 items-center gap-0.5",
+            inline ? "flex-1" : "w-full items-start justify-between gap-1",
+          )}
+        >
+          <span
+            className={cn(
+              "min-w-0 font-medium leading-snug text-violet-900 dark:text-violet-100",
+              inline ? "flex-1 truncate text-[9px]" : "flex-1 text-[10px]",
+            )}
+            title={assignment.name}
+          >
             {assignment.name}
           </span>
+          {inline && open > 0 ? (
+            <span
+              className="shrink-0 rounded bg-amber-100 px-1 text-[8px] font-bold tabular-nums text-amber-900 dark:bg-amber-950/60 dark:text-amber-200"
+              title={open === 1 ? "1 open handover item" : `${open} open handover items`}
+            >
+              {open}
+            </span>
+          ) : null}
           {canWrite ? (
             <button
               type="button"
               className={cn(
-                "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md",
+                "relative z-[2] inline-flex shrink-0 items-center justify-center rounded",
                 "text-violet-700/70 transition-colors hover:bg-violet-200/60 hover:text-violet-900",
                 "dark:text-violet-200/70 dark:hover:bg-violet-800/50 dark:hover:text-violet-50",
+                inline ? "h-4 w-4" : "h-6 w-6 rounded-md",
               )}
               aria-label="Add handover note"
               title="Add handover note"
               onClick={() => setAddOpen(true)}
             >
-              <StickyNote className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+              <StickyNote className={cn(inline ? "h-2.5 w-2.5" : "h-3.5 w-3.5")} strokeWidth={2} aria-hidden />
             </button>
           ) : null}
         </div>
 
-        {total > 0 ? (
+        {total > 0 && !inline ? (
           <div className="flex flex-col items-center gap-0.5 pt-0.5">
             <button
               type="button"

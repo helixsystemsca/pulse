@@ -50,15 +50,24 @@ export function TankIndicator({
   }, [max, value]);
   const percentLabel = useMemo(() => `${Math.round(percent)}%`, [percent]);
 
+  const compactTankShell = cn(
+    "border-[1.5px] border-[color-mix(in_srgb,var(--ds-text-primary)_22%,transparent)]",
+    "bg-[linear-gradient(180deg,rgb(248_250_252/0.98),rgb(241_245_249/0.9))]",
+    "shadow-[0_0_0_1px_rgb(255_255_255/0.65)_inset,0_1px_0_rgb(255_255_255/0.85)_inset,0_6px_14px_-6px_rgb(15,23,42,0.14)]",
+  );
+
   const capsuleClass = cn(
-    "relative overflow-hidden rounded-full border border-ds-border bg-ds-secondary/60",
+    "relative overflow-hidden rounded-full bg-ds-secondary/60",
     fillHeight && compact
-      ? "h-full min-h-[3.25rem] w-9 border-[color-mix(in_srgb,var(--ds-text-primary)_8%,transparent)] bg-[linear-gradient(180deg,rgb(248_250_252/0.95),rgb(241_245_249/0.88))] shadow-[0_1px_0_rgb(255_255_255/0.8)_inset,0_6px_16px_-8px_rgb(15,23,42,0.12)] sm:w-10"
+      ? cn("h-full min-h-[4.75rem] w-10 flex-1 sm:min-h-[5.5rem] sm:w-11", compactTankShell)
       : compact && !tankHeight
-        ? "h-[5.5rem] w-9 shrink-0 border-[color-mix(in_srgb,var(--ds-text-primary)_8%,transparent)] bg-[linear-gradient(180deg,rgb(248_250_252/0.95),rgb(241_245_249/0.88))] shadow-[0_1px_0_rgb(255_255_255/0.8)_inset,0_6px_16px_-8px_rgb(15,23,42,0.12)] sm:h-24 sm:w-10"
+        ? cn(
+            "h-[5.5rem] w-9 shrink-0 sm:h-24 sm:w-10",
+            compactTankShell,
+          )
         : fillHeight
-          ? "min-h-[5.5rem] w-10 flex-1 sm:w-11"
-          : "h-40 w-16 shrink-0 shadow-[0_10px_24px_rgba(15,23,42,0.10)]",
+          ? cn("min-h-[5.5rem] w-10 flex-1 sm:w-11", compactTankShell)
+          : "h-40 w-16 shrink-0 border border-ds-border shadow-[0_10px_24px_rgba(15,23,42,0.10)]",
   );
 
   return (
@@ -69,10 +78,13 @@ export function TankIndicator({
         fillHeight && "h-full min-h-0",
       )}
     >
-      <div className={cn("shrink-0 rounded bg-ds-muted/30", compact ? "mb-0.5 h-1 w-4" : "mb-1 h-2 w-6")} aria-hidden />
+      {compact && fillHeight ? null : (
+        <div className={cn("shrink-0 rounded bg-ds-muted/30", compact ? "mb-0.5 h-1 w-4" : "mb-1 h-2 w-6")} aria-hidden />
+      )}
       <div
         className={cn(
-          "flex w-9 flex-col justify-end sm:w-10",
+          "flex flex-col justify-end",
+          compact ? "w-full min-w-0 max-w-[4.5rem] sm:max-w-[5rem]" : "w-9 sm:w-10",
           fillHeight && compact ? "min-h-0 flex-1" : "shrink-0",
         )}
       >
@@ -120,7 +132,7 @@ export function TankIndicator({
       <p
         className={cn(
           "w-full text-center font-semibold leading-tight text-ds-foreground",
-          compact ? "mt-0.5 line-clamp-2 text-[10px] leading-snug" : "mt-2 text-sm",
+          compact ? "mt-1 line-clamp-2 text-[10px] leading-snug sm:text-[11px]" : "mt-2 text-sm",
         )}
         title={label}
       >

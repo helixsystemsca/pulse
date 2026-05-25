@@ -22,55 +22,55 @@ function PoolCard({
   return (
     <article className="flex h-full min-h-0 min-w-0 flex-col rounded-md border border-[color-mix(in_srgb,var(--ds-text-primary)_10%,transparent)] bg-white/95 px-2 py-1.5 dark:bg-slate-900/70">
       <h3
-        className="shrink-0 text-[10px] font-bold leading-tight text-[color-mix(in_srgb,var(--ds-text-primary)_92%,transparent)]"
+        className="shrink-0 text-xs font-bold leading-tight text-[color-mix(in_srgb,var(--ds-text-primary)_92%,transparent)] sm:text-[13px]"
         title={poolDisplayName(name)}
       >
         {poolDisplayName(name)}
       </h3>
 
-      <dl className="mt-1.5 grid min-h-0 flex-1 grid-cols-2 gap-x-2 gap-y-1.5 text-[10px]">
-        <div className="flex items-center gap-1 text-[color-mix(in_srgb,var(--ds-text-primary)_58%,transparent)]">
-          <Droplets className="h-3 w-3 shrink-0 text-sky-600 dark:text-sky-400" aria-hidden />
+      <dl className="mt-2 grid min-h-0 flex-1 grid-cols-2 gap-x-2 gap-y-2 text-xs sm:text-[13px]">
+        <div className="flex items-center gap-1.5 text-[color-mix(in_srgb,var(--ds-text-primary)_58%,transparent)]">
+          <Droplets className="h-4 w-4 shrink-0 text-sky-600 dark:text-sky-400" aria-hidden />
           <dd className="min-w-0">
-            <span className="font-bold tabular-nums text-[color-mix(in_srgb,var(--ds-text-primary)_90%,transparent)]">
+            <span className="text-sm font-extrabold tabular-nums text-[color-mix(in_srgb,var(--ds-text-primary)_92%,transparent)] sm:text-base">
               {chlorine}
             </span>{" "}
-            <span className="text-[9px]">ppm</span>
+            <span className="text-[10px] font-semibold sm:text-[11px]">ppm</span>
           </dd>
         </div>
-        <div className="flex items-center gap-1 text-[color-mix(in_srgb,var(--ds-text-primary)_58%,transparent)]">
-          <Gauge className="h-3 w-3 shrink-0 text-violet-600 dark:text-violet-400" aria-hidden />
+        <div className="flex items-center gap-1.5 text-[color-mix(in_srgb,var(--ds-text-primary)_58%,transparent)]">
+          <Gauge className="h-4 w-4 shrink-0 text-violet-600 dark:text-violet-400" aria-hidden />
           <dd className="min-w-0">
-            <span className="font-bold tabular-nums text-[color-mix(in_srgb,var(--ds-text-primary)_90%,transparent)]">
+            <span className="text-sm font-extrabold tabular-nums text-[color-mix(in_srgb,var(--ds-text-primary)_92%,transparent)] sm:text-base">
               {ph}
             </span>{" "}
-            <span className="text-[9px]">pH</span>
+            <span className="text-[10px] font-semibold sm:text-[11px]">pH</span>
           </dd>
         </div>
-        <div className="flex items-center gap-1 text-[color-mix(in_srgb,var(--ds-text-primary)_58%,transparent)]">
-          <Wind className="h-3 w-3 shrink-0 text-teal-600 dark:text-teal-400" aria-hidden />
+        <div className="flex items-center gap-1.5 text-[color-mix(in_srgb,var(--ds-text-primary)_58%,transparent)]">
+          <Wind className="h-4 w-4 shrink-0 text-teal-600 dark:text-teal-400" aria-hidden />
           <dd className="min-w-0">
-            <span className="font-bold tabular-nums text-[color-mix(in_srgb,var(--ds-text-primary)_90%,transparent)]">
+            <span className="text-sm font-extrabold tabular-nums text-[color-mix(in_srgb,var(--ds-text-primary)_92%,transparent)] sm:text-base">
               {flow}
             </span>{" "}
-            <span className="text-[9px]">GPM</span>
+            <span className="text-[10px] font-semibold sm:text-[11px]">GPM</span>
           </dd>
         </div>
-        <div className="flex items-center gap-1 text-[color-mix(in_srgb,var(--ds-text-primary)_58%,transparent)]">
-          <Thermometer className="h-3 w-3 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
+        <div className="flex items-center gap-1.5 text-[color-mix(in_srgb,var(--ds-text-primary)_58%,transparent)]">
+          <Thermometer className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
           <dd className="min-w-0">
-            <span className="font-bold tabular-nums text-[color-mix(in_srgb,var(--ds-text-primary)_90%,transparent)]">
+            <span className="text-sm font-extrabold tabular-nums text-[color-mix(in_srgb,var(--ds-text-primary)_92%,transparent)] sm:text-base">
               {temp}
             </span>
-            <span className="text-[9px]">°C</span>
+            <span className="text-[10px] font-semibold sm:text-[11px]">°C</span>
           </dd>
         </div>
       </dl>
 
-      <div className="mt-1.5 flex shrink-0 gap-1">
+      <div className="mt-2 flex shrink-0 gap-1">
         <span
           className={cn(
-            "min-w-0 flex-1 truncate rounded px-1 py-0.5 text-center text-[7px] font-bold uppercase tracking-wide",
+            "min-w-0 flex-1 truncate rounded px-1.5 py-0.5 text-center text-[9px] font-bold uppercase tracking-wide sm:text-[10px]",
             co2FeederActive
               ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950/55 dark:text-emerald-100"
               : "bg-[color-mix(in_srgb,var(--ds-text-primary)_8%,transparent)] text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]",
@@ -80,7 +80,7 @@ function PoolCard({
         </span>
         <span
           className={cn(
-            "min-w-0 flex-1 truncate rounded px-1 py-0.5 text-center text-[7px] font-bold uppercase tracking-wide",
+            "min-w-0 flex-1 truncate rounded px-1.5 py-0.5 text-center text-[9px] font-bold uppercase tracking-wide sm:text-[10px]",
             chlorineFeederActive
               ? "bg-sky-100 text-sky-950 dark:bg-sky-950/45 dark:text-sky-100"
               : "bg-[color-mix(in_srgb,var(--ds-text-primary)_8%,transparent)] text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]",

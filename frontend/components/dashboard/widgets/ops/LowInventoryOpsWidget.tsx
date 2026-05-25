@@ -78,34 +78,21 @@ export function LowInventoryOpsWidget({
         </div>
       ) : null}
 
-      <div className="mt-auto flex min-h-0 flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden pt-1">
         <p className="shrink-0 text-[10px] font-bold uppercase tracking-[0.1em] text-[color-mix(in_srgb,var(--ds-text-primary)_48%,transparent)]">
           Low stock list
         </p>
 
         {items.length === 0 ? (
-          <p
-            className={cn(
-              "mt-1.5 flex flex-1 items-center justify-center text-center text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]",
-              fillRows ? "text-sm" : "text-xs",
-            )}
-          >
+          <p className="mt-1.5 shrink-0 text-center text-xs text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]">
             Nothing flagged.
           </p>
         ) : (
-          <ul
-            className={cn(
-              "mt-1.5 flex min-h-0 flex-1 flex-col",
-              fillRows ? "justify-between gap-2" : "gap-1.5 overflow-y-auto pr-0.5",
-            )}
-          >
+          <ul className="mt-1.5 flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto overscroll-contain pr-0.5">
             {items.map((item) => (
               <li
                 key={item}
-                className={cn(
-                  "flex min-h-0 items-center gap-2 rounded-full border border-[rgb(226_232_240/0.8)] bg-[linear-gradient(90deg,#ffffff,#f8fafc)] px-2.5 font-medium text-[color-mix(in_srgb,var(--ds-text-primary)_88%,transparent)] shadow-[0_1px_0_rgb(255_255_255)_inset,0_3px_10px_-6px_rgb(15_23_42/0.08)]",
-                  fillRows ? "flex-1 py-2.5 text-sm" : "shrink-0 py-1.5 text-xs",
-                )}
+                className="flex shrink-0 items-center gap-2 rounded-full border border-[rgb(226_232_240/0.8)] bg-[linear-gradient(90deg,#ffffff,#f8fafc)] px-2.5 py-1.5 text-xs font-medium text-[color-mix(in_srgb,var(--ds-text-primary)_88%,transparent)] shadow-[0_1px_0_rgb(255_255_255)_inset,0_3px_10px_-6px_rgb(15_23_42/0.08)]"
               >
                 <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--ds-warning)]" aria-hidden />
                 <span className="min-w-0 truncate">{item}</span>
