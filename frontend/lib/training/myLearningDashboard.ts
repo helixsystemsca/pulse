@@ -148,6 +148,27 @@ export function classifyMyLearningCategory(program: TrainingProgram): MyLearning
   return "maintenance";
 }
 
+/** Extra category cards for procedures that belong in more than one area (e.g. Ice Maintenance). */
+export function additionalMyLearningCategories(program: TrainingProgram): MyLearningCategoryId[] {
+  const title = norm(program.title);
+  const primary = classifyMyLearningCategory(program);
+  const extra: MyLearningCategoryId[] = [];
+  if (/\bice\s+maintenance\b/.test(title) && primary !== "maintenance") {
+    extra.push("maintenance");
+  }
+  return extra;
+}
+
+const ARENA_SHIFT_BAND_ORDER: Record<string, number> = { day: 0, afternoon: 1, night: 2 };
+
+function arenaItemSortKey(name: string): string {
+  const side = /\barena\s*([ab])\b/i.exec(name)?.[1]?.toLowerCase() ?? "z";
+  const band =
+    Object.keys(ARENA_SHIFT_BAND_ORDER).find((b) => new RegExp(`\\b${b}\\b`, "i").test(name)) ?? "zzz";
+  const bandIdx = ARENA_SHIFT_BAND_ORDER[band] ?? 9;
+  return `${side}:${bandIdx}:${name.toLowerCase()}`;
+}
+
 function itemStatusFromFlow(flow: ReturnType<typeof deriveTrainingFlowState>): MyLearningItemStatus {
   if (flow.fullyCertified) return "certified";
   if (flow.part1Complete) return "part1_done";
@@ -277,8 +298,7 @@ export function buildMyLearningDashboard(input: {
     }
 
     const itemStatus = itemStatusFromFlow(flow);
-    const cat = classifyMyLearningCategory(row.program);
-    itemsByCategory.get(cat)!.push({
+    const trainingItem: MyLearningTrainingItem = {
       programId: row.program.id,
       name: row.program.title,
       status: itemStatus,
@@ -288,7 +308,14 @@ export function buildMyLearningDashboard(input: {
       tier: row.program.tier,
       assignmentStatus: row.status,
       quizAttempts: attempts,
-    });
+    };
+    const categoriesForItem = [
+      classifyMyLearningCategory(row.program),
+      ...additionalMyLearningCategories(row.program),
+    ];
+    for (const cat of new Set(categoriesForItem)) {
+      itemsByCategory.get(cat)!.push(trainingItem);
+    }
 
     flowByProgramId.set(row.program.id, flow);
   }
@@ -302,11 +329,12 @@ export function buildMyLearningDashboard(input: {
   const total = rows.length;
   const part1Percent = total > 0 ? Math.round((part1CompleteCount / total) * 100) : 0;
 
-  for (const [, items] of itemsByCategory) {
+  for (const [catId, items] of itemsByCategory) {
     items.sort((a, b) => {
       const rank = (s: MyLearningItemStatus) =>
         s === "action_needed" ? 0 : s === "in_progress" ? 1 : s === "part1_done" ? 2 : 3;
       if (rank(a.status) !== rank(b.status)) return rank(a.status) - rank(b.status);
+      if (catId === "arena_ops") return arenaItemSortKey(a.name).localeCompare(arenaItemSortKey(b.name));
       return a.name.localeCompare(b.name);
     });
   }

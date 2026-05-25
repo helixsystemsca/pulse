@@ -2,9 +2,21 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any, Literal, Optional
 
 MatrixShiftBand = Literal["day", "afternoon", "night"]
+
+# Arena A/B day · afternoon · night routines — always visible in My Learning / worker matrix
+# (shift tags still drive assignment; workers see the full arena grid by category).
+_ARENA_SHIFT_ROUTINE_TITLE = re.compile(
+    r"^arena\s*[ab]\s*(?:—|-|/|:)\s*(day|afternoon|night)\b",
+    re.IGNORECASE,
+)
+_ARENA_SHIFT_ROUTINE_TITLE_LOOSE = re.compile(
+    r"^arena\s*[ab]\b.*\b(day|afternoon|night)\b",
+    re.IGNORECASE,
+)
 
 MATRIX_SHIFT_KW_PREFIX = "matrix_shift:"
 
@@ -58,12 +70,23 @@ def matrix_shift_band_from_procedure_keywords(search_keywords: Any) -> Optional[
     return None
 
 
+def is_arena_shift_routine_title(title: Optional[str]) -> bool:
+    """True for published arena shift SOP titles (Arena A — Day, Arena B — Afternoon, …)."""
+    t = (title or "").strip()
+    if not t:
+        return False
+    return bool(_ARENA_SHIFT_ROUTINE_TITLE.match(t) or _ARENA_SHIFT_ROUTINE_TITLE_LOOSE.match(t))
+
+
 def worker_should_see_procedure_for_shift_scoping(
     employment_type: Optional[str],
     worker_band: Optional[MatrixShiftBand],
     procedure_search_keywords: Any,
+    procedure_title: Optional[str] = None,
 ) -> bool:
     """Part-time and unknown roster band keep full catalog; tagged procedures match worker band only."""
+    if is_arena_shift_routine_title(procedure_title):
+        return True
     if employment_type == "part_time":
         return True
     if employment_type not in ("full_time", "regular_part_time"):

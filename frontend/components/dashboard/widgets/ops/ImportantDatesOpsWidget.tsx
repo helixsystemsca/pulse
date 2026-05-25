@@ -42,8 +42,8 @@ export function ImportantDatesOpsWidget({
 
         <ul
           className={cn(
-            "mt-auto flex min-h-0 flex-1 flex-col",
-            fillRows ? "justify-between gap-2" : "gap-1.5 overflow-y-auto pr-0.5",
+            "flex min-h-0 flex-1 flex-col",
+            fillRows ? "justify-evenly gap-1.5" : "gap-1.5 overflow-y-auto pr-0.5",
           )}
         >
           {IMPORTANT_DATES_DEMO.map((row) => (
@@ -51,7 +51,7 @@ export function ImportantDatesOpsWidget({
               key={row.label}
               className={cn(
                 "flex min-h-0 items-center justify-between gap-3 rounded-lg px-2.5",
-                fillRows ? "flex-1 py-2.5" : "shrink-0 py-2",
+                fillRows ? "shrink-0 py-2" : "shrink-0 py-2",
                 row.tone === "accent"
                   ? "bg-[color-mix(in_srgb,var(--ds-accent)_14%,transparent)] ring-1 ring-[color-mix(in_srgb,var(--ds-accent)_28%,transparent)]"
                   : "bg-[color-mix(in_srgb,var(--ds-text-primary)_4%,transparent)]",

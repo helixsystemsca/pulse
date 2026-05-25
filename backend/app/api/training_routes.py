@@ -460,7 +460,12 @@ async def build_worker_training_bundle(db: AsyncSession, cid: str, user_id: str)
     procedures = [
         p
         for p in procedures
-        if worker_should_see_procedure_for_shift_scoping(emp, worker_band, getattr(p, "search_keywords", None))
+        if worker_should_see_procedure_for_shift_scoping(
+            emp,
+            worker_band,
+            getattr(p, "search_keywords", None),
+            getattr(p, "title", None),
+        )
     ]
     proc_ids = [str(p.id) for p in procedures]
 

@@ -32,6 +32,14 @@ export const WIDGET_HEIGHT_TIER_MIN_PX: Record<WidgetHeightTier, number> = {
   tall: 520,
 };
 
+/** Edit-mode slot chrome above the widget (move / tier / column controls). */
+export const WORKSPACE_SLOT_EDIT_TOOLBAR_PX = 28;
+
+/** Fixed slot height for a tier — widgets do not grow past this. */
+export function workspaceSlotHeightPx(slot: WorkspaceWidgetSlot, editMode = false): number {
+  return WIDGET_HEIGHT_TIER_MIN_PX[slot.heightTier] + (editMode ? WORKSPACE_SLOT_EDIT_TOOLBAR_PX : 0);
+}
+
 export const WORKSPACE_COLUMN_FRACTION: Record<WorkspaceColumnId, number> = {
   left: 0.25,
   hero: 0.5,

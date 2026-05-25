@@ -1216,10 +1216,10 @@ function DashboardBody({
                   {model.workforce.summaryLine}
                 </p>
               </div>
-                <div className="mt-auto flex min-h-0 min-w-0 flex-1 flex-col gap-1.5 overflow-hidden">
+                <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1.5 overflow-hidden">
                 <div
                   data-tour="workforce-today"
-                  className="flex min-h-0 flex-1 min-w-0 flex-col overflow-hidden py-0.5"
+                  className="flex min-h-0 shrink-0 min-w-0 flex-col overflow-hidden py-0.5"
                 >
                   <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--ds-accent)]">
                     Scheduled today
@@ -1266,7 +1266,7 @@ function DashboardBody({
                           </div>
                         );
                       return (
-                        <div className="mt-1.5 flex min-h-0 flex-1 w-full min-w-0 flex-col gap-y-3 overflow-x-auto overflow-y-visible sm:flex-row sm:flex-nowrap sm:items-start sm:gap-x-0 sm:gap-y-0">
+                        <div className="mt-1.5 flex min-h-0 w-full min-w-0 shrink-0 flex-col gap-y-3 overflow-x-auto overflow-y-visible sm:flex-row sm:flex-nowrap sm:items-start sm:gap-x-0 sm:gap-y-0">
                           {nowR.length > 0 ? (
                             <div className="flex min-h-0 w-max min-w-0 shrink-0 flex-col">{bandGrid(nowR)}</div>
                           ) : null}
@@ -1306,7 +1306,9 @@ function DashboardBody({
                   )}
                 </div>
                 <WorkforceSiteCertifications items={model.workforce.siteCertifications} />
-                <WorkforceTimeOffMonth entries={model.workforce.timeOffThisMonth} />
+                <div className="mt-auto shrink-0">
+                  <WorkforceTimeOffMonth entries={model.workforce.timeOffThisMonth} />
+                </div>
                 {showSecondary ? (
                   <div className="mt-3 grid shrink-0 gap-3 border-t border-[color-mix(in_srgb,var(--ds-text-primary)_10%,transparent)] pt-3 sm:grid-cols-2">
                     <div>

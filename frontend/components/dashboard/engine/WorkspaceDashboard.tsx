@@ -12,7 +12,7 @@ import {
   type WorkspaceColumnId,
   type WorkspaceLayout,
   type WorkspaceWidgetSlot,
-  WIDGET_HEIGHT_TIER_MIN_PX,
+  workspaceSlotHeightPx,
   widgetZoneClass,
 } from "@/lib/dashboard/workspace-layout";
 import { DASHBOARD_GRID_GAP_PX, DASHBOARD_LAYOUT_TRANSITION_MS } from "@/lib/dashboard/tokens";
@@ -46,7 +46,7 @@ export function WorkspaceDashboard({
 }: WorkspaceDashboardProps) {
   return (
     <div
-      className="dash-workspace grid min-h-0 min-w-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)] items-stretch"
+      className="dash-workspace grid min-h-0 min-w-0 w-full grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)] items-start"
       style={{ gap: DASHBOARD_GRID_GAP_PX, transitionDuration: `${DASHBOARD_LAYOUT_TRANSITION_MS}ms` }}
       data-dashboard-layout="workspace-3col"
     >
@@ -88,7 +88,7 @@ function WorkspaceColumn({
   return (
     <section
       className={cn(
-        "dash-workspace-column flex min-h-0 min-w-0 flex-1 flex-col",
+        "dash-workspace-column flex min-h-0 min-w-0 flex-col",
         column === "hero" && "dash-workspace-column--hero",
         column !== "hero" && "dash-workspace-column--edge",
       )}
@@ -100,7 +100,7 @@ function WorkspaceColumn({
           {COLUMN_LABEL[column]}
         </p>
       ) : null}
-      <div className="flex min-h-0 flex-1 flex-col" style={{ gap: DASHBOARD_GRID_GAP_PX }}>
+      <div className="flex flex-col" style={{ gap: DASHBOARD_GRID_GAP_PX }}>
         {slots.map((slot, index) => {
           const ctx = buildWorkspaceRenderContext(slot, column, containerWidth);
           return (
@@ -111,6 +111,7 @@ function WorkspaceColumn({
               index={index}
               zone={zone}
               editMode={editMode}
+              slotHeightPx={workspaceSlotHeightPx(slot, editMode)}
               toolbar={
                 editMode ? (
                   <SlotEditToolbar
@@ -137,6 +138,7 @@ function WorkspaceSlotShell({
   column,
   zone,
   editMode,
+  slotHeightPx,
   toolbar,
   children,
 }: {
@@ -145,13 +147,14 @@ function WorkspaceSlotShell({
   index: number;
   zone: "hero" | "edge";
   editMode: boolean;
+  slotHeightPx: number;
   toolbar: ReactNode;
   children: ReactNode;
 }) {
   return (
     <div
       className={cn(
-        "dash-workspace-slot flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--dash-widget-radius,12px)]",
+        "dash-workspace-slot flex shrink-0 flex-col overflow-hidden rounded-[var(--dash-widget-radius,12px)]",
         editMode && "ring-1 ring-ds-border/60",
       )}
       data-widget-id={slot.id}
@@ -159,8 +162,10 @@ function WorkspaceSlotShell({
       data-widget-column={column}
       data-height-tier={slot.heightTier}
       style={{
-        minHeight: WIDGET_HEIGHT_TIER_MIN_PX[slot.heightTier],
-        transition: `min-height ${DASHBOARD_LAYOUT_TRANSITION_MS}ms ease`,
+        height: slotHeightPx,
+        minHeight: slotHeightPx,
+        maxHeight: slotHeightPx,
+        transition: `height ${DASHBOARD_LAYOUT_TRANSITION_MS}ms ease, min-height ${DASHBOARD_LAYOUT_TRANSITION_MS}ms ease`,
       }}
     >
       {editMode ? (

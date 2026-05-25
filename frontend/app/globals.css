@@ -1392,11 +1392,12 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   }
 
   /**
-   * Operations dashboard: widget bodies and inner cards stretch to slot height.
-   * Pair with {@link OPS_WIDGET_BODY_CLASS} on OpsWidgetShell bodies.
+   * Operations dashboard: slot height is fixed per tier (compact / medium / expanded / tall).
+   * Inner widget bodies fill that footprint only — columns do not stretch slots to viewport height.
    */
   .pulse-operations-dashboard .dash-workspace {
-    min-height: min(72vh, 920px);
+    min-height: 0;
+    align-items: start;
   }
 
   .pulse-operations-dashboard .dash-workspace-slot {

@@ -5,6 +5,9 @@ import {
   migrateGridLayoutToWorkspace,
   sanitizeWorkspaceLayout,
   widgetZoneClass,
+  workspaceSlotHeightPx,
+  WORKSPACE_SLOT_EDIT_TOOLBAR_PX,
+  WIDGET_HEIGHT_TIER_MIN_PX,
 } from "@/lib/dashboard/workspace-layout";
 
 describe("workspace-layout", () => {
@@ -55,5 +58,13 @@ describe("workspace-layout", () => {
   it("adds widgets to correct column", () => {
     const next = addWorkspaceWidget(defaultWorkspaceLayout(), "pool_readings");
     expect(next.right.some((s) => s.id === "pool_readings")).toBe(true);
+  });
+
+  it("locks slot height to tier px (optional edit toolbar)", () => {
+    const slot = { id: "workforce", heightTier: "expanded" as const };
+    expect(workspaceSlotHeightPx(slot, false)).toBe(WIDGET_HEIGHT_TIER_MIN_PX.expanded);
+    expect(workspaceSlotHeightPx(slot, true)).toBe(
+      WIDGET_HEIGHT_TIER_MIN_PX.expanded + WORKSPACE_SLOT_EDIT_TOOLBAR_PX,
+    );
   });
 });
