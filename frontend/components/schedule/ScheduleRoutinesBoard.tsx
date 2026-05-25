@@ -96,10 +96,12 @@ function shiftTypeLabel(shiftTypes: ShiftTypeConfig[], key: string): string {
 const SHIFT_BANDS: RoutineShiftBand[] = ["day", "afternoon", "night"];
 
 /** `dragLeave` on `<tr>` fires when moving between cells — only clear hover when pointer leaves the row. */
-function isDragLeavingElement(e: React.DragEvent<HTMLElement>): boolean {
+function isDragLeavingElement(e: React.DragEvent<Element>): boolean {
   const related = e.relatedTarget as Node | null;
+  const current = e.currentTarget;
   if (!related) return true;
-  return !e.currentTarget.contains(related);
+  if (!(current instanceof Element)) return true;
+  return !current.contains(related);
 }
 
 function routineChipClass(band: RoutineShiftBand | null): string {
