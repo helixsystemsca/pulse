@@ -12,6 +12,7 @@ import {
   expandLoginEmail,
   isEmailShape,
   isLoggedIn,
+  isPulseAuthTeardown,
   loginWithBackend,
   readSession,
   validateIdentifier,
@@ -59,6 +60,7 @@ export default function LoginPage() {
     if (authError) {
       setFormError(authError);
     }
+    if (isPulseAuthTeardown()) return;
     if (!isLoggedIn()) return;
     const s = readSession();
     if (s) navigateAfterPulseLogin(s);
@@ -119,7 +121,7 @@ export default function LoginPage() {
           }
           return;
         }
-        writeApiSession(result.token, result.user, false);
+        writeApiSession(result.token, result.user, false, { allowDuringTeardown: true });
         navigateAfterPulseLogin(result.user);
         return;
       }
@@ -137,7 +139,7 @@ export default function LoginPage() {
         return;
       }
 
-      writeSession(identifier.trim(), false);
+      writeSession(identifier.trim(), false, { allowDuringTeardown: true });
       navigateAfterPulseLogin(readSession()!);
     } finally {
       setSubmitting(false);

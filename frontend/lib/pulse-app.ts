@@ -9,6 +9,7 @@
 import { NAV_VISIBLE_MASTER_FEATURES } from "@/config/platform/master-feature-registry";
 import { resolvePostLoginLandingPath } from "@/lib/dashboards/homepage";
 import { isPulseAppHost } from "@/lib/pulse-host";
+import { logRedirectAfterLogin, logRedirectLogin } from "@/lib/pulse-auth-lifecycle";
 import { readSession } from "@/lib/pulse-session";
 import { isProductPath } from "@/lib/route-split-buckets";
 
@@ -118,6 +119,7 @@ export function pulseLoginHref(): string {
  */
 export function navigateToPulseLogin(): void {
   if (typeof window === "undefined") return;
+  logRedirectLogin(typeof window !== "undefined" ? window.location.pathname : "ssr");
   window.location.replace(pulseLoginHref());
 }
 
@@ -186,6 +188,7 @@ export function navigateAfterPulseLogin(user: PulsePostLoginIdentity): void {
   if (typeof window === "undefined") return;
   const session = readSession();
   const path = session ? resolvePostLoginLandingPath(session) : pulsePostLoginPath(user);
+  logRedirectAfterLogin(path);
   window.location.assign(pulseAppHref(path));
 }
 

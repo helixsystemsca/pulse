@@ -14,6 +14,7 @@ import {
   writeApiSession,
   type UserOut,
 } from "@/lib/pulse-session";
+import { logPulseAuth } from "@/lib/pulse-auth-lifecycle";
 import { applyServerTimeFromUserOut } from "@/lib/serverTime";
 
 export { setImpersonationOverlayAccessToken };
@@ -220,6 +221,7 @@ export async function apiPostFormData<T>(path: string, formData: FormData): Prom
 }
 
 export async function refreshSessionWithToken(token: string, remember: boolean): Promise<void> {
+  logPulseAuth("token-refresh-start", { kind: "with-token" });
   const base = getApiBaseUrl();
   if (!base) throw new Error("NEXT_PUBLIC_API_URL is not configured");
   const meUrl = `${base}/api/v1/auth/me`;
@@ -231,16 +233,22 @@ export async function refreshSessionWithToken(token: string, remember: boolean):
   const meText = await meRes.text();
   const user = parseApiResponseJson(meText, { ok: true, status: meRes.status, url: meUrl }) as UserOut;
   applyServerTimeFromUserOut(user);
-  writeApiSession(token, user, remember);
+  writeApiSession(token, user, remember, { allowDuringTeardown: true });
+  logPulseAuth("token-refresh-done", { kind: "with-token", email: user.email });
 }
 
 /** Re-fetch `/auth/me` and update stored session. */
 export async function refreshPulseUserFromServer(): Promise<void> {
   if (getImpersonationOverlayAccessToken()) return;
+  if (isPulseAuthTeardown()) {
+    logPulseAuth("token-refresh-skipped", { kind: "me", reason: "teardown-active" });
+    return;
+  }
   const base = getApiBaseUrl();
   if (!base) return;
   const s = readSession();
   if (!s?.access_token) return;
+  logPulseAuth("token-refresh-start", { kind: "me" });
   const meUrl = `${base}/api/v1/auth/me`;
   const meRes = await fetch(meUrl, {
     headers: { Authorization: `Bearer ${s.access_token}` },
@@ -252,8 +260,13 @@ export async function refreshPulseUserFromServer(): Promise<void> {
     }
     return;
   }
+  if (isPulseAuthTeardown()) {
+    logPulseAuth("token-refresh-skipped", { kind: "me", reason: "teardown-after-fetch" });
+    return;
+  }
   const meText = await meRes.text();
   const user = parseApiResponseJson(meText, { ok: true, status: meRes.status, url: meUrl }) as UserOut;
   applyServerTimeFromUserOut(user);
   writeApiSession(s.access_token, user, s.remember);
+  logPulseAuth("token-refresh-done", { kind: "me", email: user.email });
 }

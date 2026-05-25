@@ -15,10 +15,10 @@ import { notificationBadgeCount } from "@/lib/dashboard/operational-notification
 import { useOperationalNotificationsStore } from "@/lib/dashboard/operational-notifications-store";
 import { fetchOperationalNotificationsForHeader } from "@/lib/dashboard/fetch-operational-notifications";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
-import { navigateToPulseLogin, pulseApp, pulseRoutes } from "@/lib/pulse-app";
+import { pulseApp, pulseRoutes } from "@/lib/pulse-app";
+import { performPulseLogout } from "@/lib/pulse-auth-lifecycle";
 import { dispatchPulseLogoutSuccessUi, pulseLogoutNavigationDelayMs } from "@/lib/pulse-logout-ui";
-import { clearSession, canAccessPulseTenantApis } from "@/lib/pulse-session";
-import { signOutSupabaseIdentity } from "@/lib/microsoft-auth";
+import { canAccessPulseTenantApis } from "@/lib/pulse-session";
 import { UserProfileAvatarPreview } from "@/components/profile/UserProfileAvatarPreview";
 import {
   canAccessCompanyConfiguration,
@@ -185,9 +185,7 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
     setUserOpen(false);
     dispatchPulseLogoutSuccessUi();
     window.setTimeout(() => {
-      signOutSupabaseIdentity();
-      clearSession();
-      navigateToPulseLogin();
+      void performPulseLogout("user");
     }, pulseLogoutNavigationDelayMs());
   }, []);
 

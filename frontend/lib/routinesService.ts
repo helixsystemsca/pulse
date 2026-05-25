@@ -184,6 +184,12 @@ export async function listRoutineAssignmentsForDate(date: string): Promise<Routi
   return apiFetch<RoutineAssignmentDetail[]>(`/api/v1/routines/assignments/day?${sp}`);
 }
 
+export async function deleteRoutineAssignment(assignmentId: string): Promise<void> {
+  await apiFetch<void>(`/api/v1/routines/assignments/${encodeURIComponent(assignmentId)}`, {
+    method: "DELETE",
+  });
+}
+
 export async function getRoutineRun(runId: string): Promise<RoutineRunDetail> {
   return apiFetch<RoutineRunDetail>(`/api/v1/routines/runs/${runId}`);
 }

@@ -29,6 +29,13 @@ import {
   setRoutineBadgeDragData,
   type RoutineBadgeKind,
 } from "@/lib/schedule/routine-badge-drag";
+import {
+  assignedChipTrashAccepts,
+  readAssignedChipDragPayload,
+  setAssignedChipDragData,
+  type AssignedChipDragPayload,
+} from "@/lib/schedule/routine-assignment-chip-drag";
+import { ScheduleAssignmentTrashDropZone } from "@/components/schedule/ScheduleAssignmentTrashDropZone";
 import { operationalBadgeClasses } from "@/lib/schedule/schedule-semantic-styles";
 import {
   buildRoutineEligibilityByRowKey,
@@ -39,6 +46,7 @@ import type { RoutineShiftBand } from "@/lib/routinesService";
 import type { Shift, ShiftTypeConfig, Worker, Zone } from "@/lib/schedule/types";
 import {
   createRoutineAssignment,
+  deleteRoutineAssignment,
   getRoutine,
   listRoutineAssignmentsForDate,
   listRoutines,
@@ -83,6 +91,7 @@ type Props = {
   zones: Zone[];
   shiftTypes: ShiftTypeConfig[];
   onAddOperationalBadge?: (workerId: string, date: string, code: string) => void;
+  onRemoveOperationalBadge?: (workerId: string, date: string, code: string) => void;
   /** Materialize shift on server when published (recurring rows included). */
   ensureShiftOnServer?: (shift: Shift) => Promise<EnsureShiftOnServerResult>;
   /** Requires a published schedule. */
@@ -125,6 +134,7 @@ export function ScheduleRoutinesBoard({
   zones,
   shiftTypes,
   onAddOperationalBadge,
+  onRemoveOperationalBadge,
   ensureShiftOnServer,
   assignmentsEnabled = true,
 }: Props) {
@@ -135,6 +145,8 @@ export function ScheduleRoutinesBoard({
 
   const [draggingRoutineId, setDraggingRoutineId] = useState<string | null>(null);
   const [draggingBadge, setDraggingBadge] = useState<RoutineBadgeKind | null>(null);
+  const [draggingAssignedChip, setDraggingAssignedChip] = useState(false);
+  const [assignmentTrashHover, setAssignmentTrashHover] = useState(false);
   const [hoverRowKey, setHoverRowKey] = useState<string | null>(null);
   const [savingRowKey, setSavingRowKey] = useState<string | null>(null);
   const [syncingArena, setSyncingArena] = useState(false);
@@ -157,6 +169,26 @@ export function ScheduleRoutinesBoard({
       onAddOperationalBadge?.(workerId, focusDate, u);
     },
     [focusDate, onAddOperationalBadge],
+  );
+
+  const removeOperationalBadgeForWorker = useCallback(
+    (workerId: string, code: string) => {
+      const u = code.trim().toUpperCase();
+      if (!u) return;
+      const k = deploymentOverlayKey(workerId, focusDate);
+      setLocalOpBadgesByWorkerDate((prev) => {
+        const cur = prev[k] ?? [];
+        if (!cur.includes(u)) return prev;
+        const next = cur.filter((c) => c !== u);
+        if (next.length === 0) {
+          const { [k]: _, ...rest } = prev;
+          return rest;
+        }
+        return { ...prev, [k]: next };
+      });
+      onRemoveOperationalBadge?.(workerId, focusDate, u);
+    },
+    [focusDate, onRemoveOperationalBadge],
   );
 
   const zoneLabel = useMemo(() => {
@@ -331,6 +363,62 @@ export function ScheduleRoutinesBoard({
     setDraggingBadge(null);
     setHoverRowKey(null);
   }
+
+  function onAssignedChipDragStart(
+    e: React.DragEvent,
+    payload: AssignedChipDragPayload,
+  ) {
+    setDraggingRoutineId(null);
+    setDraggingBadge(null);
+    setAssignedChipDragData(e.dataTransfer, payload);
+    e.dataTransfer.setData("text/plain", payload.label);
+    flushSync(() => setDraggingAssignedChip(true));
+  }
+
+  function onAssignedChipDragEnd() {
+    setDraggingAssignedChip(false);
+    setAssignmentTrashHover(false);
+    setHoverRowKey(null);
+  }
+
+  const removeAssignedChip = useCallback(
+    async (payload: AssignedChipDragPayload) => {
+      if (payload.source === "assigned-operational") {
+        removeOperationalBadgeForWorker(payload.workerId, payload.code);
+        setToast(`Removed ${payload.label} from worker.`);
+        return;
+      }
+
+      const rowKey = payload.rowKey;
+      const label = payload.label;
+      setAssignedByRow((prev) => {
+        const list = [...(prev[rowKey] ?? [])];
+        const idx =
+          payload.assignmentId != null
+            ? list.findIndex((a) => a.assignmentId === payload.assignmentId)
+            : payload.listIndex;
+        if (idx < 0 || idx >= list.length) return prev;
+        list.splice(idx, 1);
+        if (list.length === 0) {
+          const { [rowKey]: _, ...rest } = prev;
+          return rest;
+        }
+        return { ...prev, [rowKey]: list };
+      });
+
+      if (payload.assignmentId && isApiMode()) {
+        try {
+          await deleteRoutineAssignment(payload.assignmentId);
+        } catch (err) {
+          const { message } = parseClientApiError(err);
+          setLoadErr(message || "Could not remove assignment from server.");
+          return;
+        }
+      }
+      setToast(`Removed “${label}”.`);
+    },
+    [removeOperationalBadgeForWorker],
+  );
 
   async function assignRoutineToRow(
     row: ScheduledRow,
@@ -735,12 +823,14 @@ export function ScheduleRoutinesBoard({
                   const assigned = assignedByRow[row.rowKey] ?? [];
                   const opBadges = rowOperationalBadges(row);
                   const isSaving = savingRowKey === row.rowKey;
-                  const dropActive = Boolean(draggingRoutineId || draggingBadge);
+                  const dropActive =
+                    Boolean(draggingRoutineId || draggingBadge) && !draggingAssignedChip;
                   const showEmptyPlaceholder = assigned.length === 0 && opBadges.length === 0 && !isSaving;
                   const rowDropHighlight =
                     hoverRowKey === row.rowKey && dropActive && (draggingBadge || ev?.eligible);
 
                   const acceptRowDrag = (e: React.DragEvent) => {
+                    if (assignedChipTrashAccepts(e) || draggingAssignedChip) return false;
                     const routineOk = routineDropZoneAccepts(e, draggingRoutineId);
                     const badgeOk = routineBadgeDropZoneAccepts(e, draggingBadge);
                     return routineOk || badgeOk;
@@ -825,36 +915,78 @@ export function ScheduleRoutinesBoard({
                             ) : null}
                             {opBadges.map((code) => {
                               const def = OPERATIONAL_BADGE_REGISTRY[code];
+                              const chipLabel = operationalBadgeChipLabel(code);
                               return (
                                 <span
-                                  key={code}
+                                  key={`op-${row.rowKey}-${code}`}
+                                  draggable={assignmentsEnabled}
+                                  onDragStart={(e) =>
+                                    onAssignedChipDragStart(e, {
+                                      source: "assigned-operational",
+                                      rowKey: row.rowKey,
+                                      workerId: row.worker.id,
+                                      code,
+                                      label: chipLabel,
+                                    })
+                                  }
+                                  onDragEnd={onAssignedChipDragEnd}
                                   className={cn(
                                     "rounded-md border px-2 py-0.5 text-[10px] font-bold uppercase",
                                     operationalBadgeClasses(def?.group ?? "special"),
+                                    assignmentsEnabled &&
+                                      "cursor-grab active:cursor-grabbing active:opacity-60",
+                                    draggingAssignedChip && "opacity-70",
                                   )}
-                                  title={def?.detail}
+                                  title={
+                                    assignmentsEnabled
+                                      ? `${def?.detail ?? code} — drag to trash to remove`
+                                      : def?.detail
+                                  }
                                 >
-                                  {operationalBadgeChipLabel(code)}
+                                  {chipLabel}
                                 </span>
                               );
                             })}
-                            {assigned
-                              .filter((a) => a.kind !== "grounds")
-                              .map((a) => (
+                            {assigned.map((a, listIndex) => {
+                              if (a.kind === "grounds") return null;
+                              const chipLabel = a.extraNote
+                                ? `${a.routineName} — ${a.extraNote}`
+                                : a.routineName;
+                              return (
                                 <span
-                                  key={`${a.routineId}-${a.assignmentId ?? "local"}`}
+                                  key={`${row.rowKey}-${a.assignmentId ?? `local-${a.routineId}-${listIndex}`}`}
+                                  draggable={assignmentsEnabled}
+                                  onDragStart={(e) =>
+                                    onAssignedChipDragStart(e, {
+                                      source: "assigned-routine",
+                                      rowKey: row.rowKey,
+                                      workerId: row.worker.id,
+                                      listIndex,
+                                      routineId: a.routineId,
+                                      assignmentId: a.assignmentId,
+                                      label: chipLabel,
+                                    })
+                                  }
+                                  onDragEnd={onAssignedChipDragEnd}
                                   className={cn(
                                     "rounded-md border px-2 py-0.5 text-xs font-medium",
                                     a.kind === "extra"
                                       ? "border-amber-300/80 bg-amber-50/90 text-amber-950 dark:border-amber-500/30 dark:bg-amber-950/60 dark:text-amber-100"
                                       : "border-violet-200/80 bg-violet-50/90 text-violet-900 dark:border-violet-500/30 dark:bg-violet-950/60 dark:text-violet-100",
+                                    assignmentsEnabled &&
+                                      "cursor-grab active:cursor-grabbing active:opacity-60",
+                                    draggingAssignedChip && "opacity-70",
                                   )}
-                                  title={a.extraNote}
+                                  title={
+                                    assignmentsEnabled
+                                      ? `${chipLabel} — drag to trash to remove`
+                                      : a.extraNote
+                                  }
                                 >
-                                  {a.routineName}
-                                  {a.extraNote ? ` — ${a.extraNote}` : ""}
+                                  {chipLabel}
                                 </span>
-                              ))}
+                              );
+                            })}
                             {showEmptyPlaceholder ? (
                               <span
                                 className={cn(
@@ -893,6 +1025,20 @@ export function ScheduleRoutinesBoard({
         </div>
       </div>
       </div>
+
+      <ScheduleAssignmentTrashDropZone
+        active={assignmentsEnabled && draggingAssignedChip}
+        onHoverChange={setAssignmentTrashHover}
+        onDropChip={(payload) => {
+          onAssignedChipDragEnd();
+          void removeAssignedChip(payload);
+        }}
+      />
+      {assignmentTrashHover ? (
+        <p className="sr-only" role="status">
+          Release over trash to remove assignment
+        </p>
+      ) : null}
     </div>
   );
 }

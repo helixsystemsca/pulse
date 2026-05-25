@@ -1872,6 +1872,7 @@ export function ScheduleApp() {
               shiftTypes={shiftTypes}
               assignmentsEnabled={scheduleWorkflow.assignmentsEnabled}
               onAddOperationalBadge={addWorkerOperationalBadge}
+              onRemoveOperationalBadge={handleRemoveOperationalBadge}
               ensureShiftOnServer={ensureShiftOnServer}
             />
           ) : null}

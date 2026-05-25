@@ -8,6 +8,11 @@ import {
   getImpersonationOverlayAccessToken,
   setImpersonationOverlayAccessToken,
 } from "@/lib/impersonation-overlay-token";
+import {
+  logPulseAuth,
+  logRedirectLogin,
+  logSessionRead,
+} from "@/lib/pulse-auth-lifecycle";
 import { navigateToPulseLogin } from "@/lib/pulse-app";
 import { applyServerTimeFromUserOut } from "@/lib/serverTime";
 import type { AccessSnapshot } from "@/lib/access-snapshot";
@@ -174,10 +179,12 @@ export function isPulseAuthTeardown(): boolean {
 
 export function endPulseAuthTeardown(): void {
   pulseAuthTeardown = false;
+  logPulseAuth("teardown-end");
 }
 
 function beginPulseAuthTeardown(): void {
   pulseAuthTeardown = true;
+  logPulseAuth("teardown-begin");
 }
 
 function decodeJwtImpersonating(token: string | undefined): boolean | undefined {
@@ -208,21 +215,33 @@ function decodeJwtExp(token: string): number | null {
 
 export function readSession(): PulseAuthSession | null {
   if (typeof window === "undefined") return null;
+  if (pulseAuthTeardown) {
+    logSessionRead("missing");
+    return null;
+  }
   try {
     const raw = localStorage.getItem(PULSE_AUTH_STORAGE_KEY);
-    if (!raw) return null;
+    if (!raw) {
+      logSessionRead("missing");
+      return null;
+    }
     const data = JSON.parse(raw) as PulseAuthSession;
     if (typeof data.exp !== "number" || data.exp * 1000 <= Date.now()) {
+      logSessionRead("expired");
       clearSession();
       if (!isPulsePublicPath(window.location.pathname)) {
+        logRedirectLogin("readSession:expired");
         navigateToPulseLogin();
       }
       return null;
     }
+    logSessionRead("ok");
     return data;
   } catch {
+    logSessionRead("missing");
     clearSession();
     if (!isPulsePublicPath(window.location.pathname)) {
+      logRedirectLogin("readSession:parse-error");
       navigateToPulseLogin();
     }
     return null;
@@ -249,6 +268,7 @@ function clearSessionQuiet() {
 export function clearSession() {
   beginPulseAuthTeardown();
   clearSessionQuiet();
+  logPulseAuth("session-cleared");
   emitAuthChange();
 }
 
@@ -265,8 +285,17 @@ export function canAccessPulseTenantApis(session: PulseAuthSession | null): bool
   return cid != null && String(cid).length > 0;
 }
 
-export function writeSession(email: string, remember: boolean) {
+export type WriteSessionOptions = {
+  /** Allow persisting during post-logout teardown (explicit sign-in only). */
+  allowDuringTeardown?: boolean;
+};
+
+export function writeSession(email: string, remember: boolean, options?: WriteSessionOptions) {
   if (typeof window === "undefined") return;
+  if (pulseAuthTeardown && !options?.allowDuringTeardown) {
+    logPulseAuth("session-write-skipped", { kind: "mock" });
+    return;
+  }
   endPulseAuthTeardown();
   const now = Math.floor(Date.now() / 1000);
   const ttlSec = SESSION_FALLBACK_TTL_SEC;
@@ -280,6 +309,7 @@ export function writeSession(email: string, remember: boolean) {
   localStorage.setItem(PULSE_AUTH_STORAGE_KEY, JSON.stringify(payload));
   document.cookie = `pulse_session=1; path=/; max-age=${ttlSec}; SameSite=Lax`;
   resetWelcomeOverlayForNewLogin();
+  logPulseAuth("session-write", { kind: "mock", email });
   emitAuthChange();
 }
 
@@ -297,8 +327,17 @@ export function writeApiSession(
   accessToken: string,
   user: UserOut,
   remember: boolean,
+  options?: WriteSessionOptions,
 ) {
   if (typeof window === "undefined") return;
+  if (pulseAuthTeardown && !options?.allowDuringTeardown) {
+    logPulseAuth("session-write-skipped", {
+      kind: "api",
+      reason: "teardown-active",
+      email: user.email,
+    });
+    return;
+  }
   endPulseAuthTeardown();
   const jwtExp = decodeJwtExp(accessToken);
   const now = Math.floor(Date.now() / 1000);
@@ -349,6 +388,7 @@ export function writeApiSession(
   localStorage.setItem(PULSE_AUTH_STORAGE_KEY, JSON.stringify(payload));
   document.cookie = `pulse_session=1; path=/; max-age=${ttlSec}; SameSite=Lax`;
   resetWelcomeOverlayForNewLogin();
+  logPulseAuth("session-write", { kind: "api", email: user.email, provider: user.auth_provider });
   emitAuthChange();
 }
 

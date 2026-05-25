@@ -51,7 +51,7 @@ function ResetForm() {
       }
       const user = parseApiResponseJson(meText, { ok: true, status: meRes.status, url: meUrl }) as UserOut;
       applyServerTimeFromUserOut(user);
-      writeApiSession(access_token, user, false);
+      writeApiSession(access_token, user, false, { allowDuringTeardown: true });
       navigateAfterPulseLogin(user);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Something went wrong.");

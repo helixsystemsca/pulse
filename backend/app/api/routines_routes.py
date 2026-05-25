@@ -519,6 +519,28 @@ async def _routine_assignment_detail_out(
     )
 
 
+@router.delete("/assignments/{assignment_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_routine_assignment(
+    assignment_id: str,
+    db: Db,
+    cid: CompanyId,
+    user: Annotated[User, Depends(require_tenant_user)],
+) -> None:
+    """Remove a saved routine assignment (checklist lines and extras cascade)."""
+    del user  # tenant gate only
+    try:
+        aid = str(UUID(str(assignment_id).strip()))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid assignment_id") from None
+
+    a = await db.get(PulseRoutineAssignment, aid)
+    if not a or str(a.company_id) != cid:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found")
+
+    await db.delete(a)
+    await db.commit()
+
+
 @router.get("/assignments/day", response_model=list[RoutineAssignmentDetailOut])
 async def list_routine_assignments_for_day(
     db: Db,

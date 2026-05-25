@@ -3,6 +3,7 @@
 import type { AuthError } from "@supabase/supabase-js";
 
 import { getApiBaseUrl, refreshSessionWithToken } from "@/lib/api";
+import { logPulseAuth } from "@/lib/pulse-auth-lifecycle";
 import { navigateAfterPulseLogin, pulseAppHref } from "@/lib/pulse-app";
 import { isSupabaseBrowserConfigured, getSupabaseBrowserClient } from "@/lib/supabaseClient";
 import type { PulseAuthSession } from "@/lib/pulse-session";
@@ -128,12 +129,18 @@ export async function startMicrosoftSignIn(): Promise<{ ok: true } | { ok: false
   return { ok: true };
 }
 
-export function signOutSupabaseIdentity(): void {
+/** Clear Supabase OAuth session from this browser (does not revoke Pulse JWT server-side). */
+export async function signOutSupabaseIdentity(): Promise<void> {
   if (!isSupabaseBrowserConfigured()) return;
   try {
-    void getSupabaseBrowserClient().auth.signOut();
-  } catch {
-    /* Pulse logout must still complete if Supabase is unavailable or unconfigured. */
+    const { error } = await getSupabaseBrowserClient().auth.signOut({ scope: "local" });
+    if (error) {
+      logPulseAuth("supabase-signout-error", { message: error.message });
+    }
+  } catch (err) {
+    logPulseAuth("supabase-signout-error", {
+      message: err instanceof Error ? err.message : String(err),
+    });
   }
 }
 
