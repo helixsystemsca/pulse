@@ -17,8 +17,8 @@ export function TrainingOverviewShell() {
     return (
       <div className="space-y-4">
         <header className="space-y-1">
-          <h2 className="text-lg font-bold tracking-tight text-ds-foreground">Training overview</h2>
-          <p className="max-w-2xl text-sm text-ds-muted">
+          <h2 className="text-lg font-bold tracking-tight text-ds-foreground md:text-xl">Training overview</h2>
+          <p className="max-w-2xl text-sm leading-relaxed text-ds-muted">
             Your personal learning and completion status. Team qualification views are for administrators, management, and
             supervisors under Compliance.
           </p>

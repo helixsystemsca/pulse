@@ -57,9 +57,13 @@ export function markWelcomeOverlayDismissed(
 }
 
 /** Populated from `/api/v1/auth/me` for tenant users. */
+import type { OrganizationBrandColors } from "@/lib/theme/organization-branding"; // type-only
+
 export type CompanySummary = {
   id: string;
   name: string;
+  /** Optional API-provided theme colors; local preview used until backend persists. */
+  brand_colors?: OrganizationBrandColors | null;
   logo_url?: string | null;
   /** Operations dashboard banner only; not shown in global nav. */
   header_image_url?: string | null;

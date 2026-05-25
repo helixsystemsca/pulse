@@ -14,6 +14,7 @@ import { uploadTenantCompanyBackgroundFile, uploadTenantCompanyLogoFile } from "
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import type { CompanySummary } from "@/lib/pulse-session";
 import { cn } from "@/lib/cn";
+import { OrganizationBrandingThemeSection } from "@/components/organization/OrganizationBrandingThemeSection";
 import { buttonVariants } from "@/styles/button-variants";
 
 type Props = {
@@ -311,6 +312,8 @@ export function OrganizationBrandingPanel({ initialCompany, onCompanyUpdated }: 
           </div>
         </div>
       </Card>
+
+      <OrganizationBrandingThemeSection companyId={company.id} />
     </div>
   );
 }

@@ -1,14 +1,8 @@
 import type { ReactNode } from "react";
+import { cn } from "@/lib/cn";
+import { STATUS_BADGE_CLASS } from "@/lib/theme/status-variants";
 
-export type StatusBadgeVariant = "success" | "warning" | "danger" | "neutral" | "info";
-
-const variantClass: Record<StatusBadgeVariant, string> = {
-  success: "app-badge-emerald",
-  warning: "app-badge-amber",
-  danger: "app-badge-red",
-  neutral: "app-badge-slate",
-  info: "app-badge-blue",
-};
+export type StatusBadgeVariant = keyof typeof STATUS_BADGE_CLASS;
 
 export function StatusBadge({
   variant,
@@ -21,7 +15,11 @@ export function StatusBadge({
 }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold ${variantClass[variant]} ${className}`}
+      className={cn(
+        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold",
+        STATUS_BADGE_CLASS[variant],
+        className,
+      )}
     >
       {children}
     </span>

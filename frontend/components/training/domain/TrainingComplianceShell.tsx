@@ -10,6 +10,18 @@ import { WorkforceComplianceView } from "@/components/standards/workforce-traini
 import { ExpiringQualificationsView } from "@/components/standards/workforce-training/ExpiringQualificationsView";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { cn } from "@/lib/cn";
+import {
+  uiCalloutWarning,
+  uiIconInTab,
+  uiPageDescription,
+  uiPageStack,
+  uiPageTitle,
+  uiTabLink,
+  uiTabLinkActive,
+  uiTabLinkIdle,
+  uiTabNav,
+  uiTextLink,
+} from "@/styles/ui-classes";
 import { TRAINING_ROUTES, trainingComplianceHref } from "@/lib/training/routes";
 import {
   canViewAnyTrainingCompliance,
@@ -49,16 +61,13 @@ export function TrainingComplianceShell({ section }: { section: string }) {
     return (
       <div className="space-y-4">
         <header className="space-y-1">
-          <h2 className="text-lg font-bold tracking-tight text-ds-foreground">Compliance</h2>
+          <h2 className={uiPageTitle}>Compliance</h2>
         </header>
-        <p className="rounded-lg border border-amber-200/80 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-950/30 dark:text-amber-100">
+        <p className={uiCalloutWarning}>
           Compliance is available to company administrators, management, and supervisors. Your personal learning and
           completion status are on My Learning.
         </p>
-        <Link
-          href={TRAINING_ROUTES.learningMyLearning}
-          className="text-sm font-semibold text-teal-700 hover:underline dark:text-teal-300"
-        >
+        <Link href={TRAINING_ROUTES.learningMyLearning} className={cn("text-sm", uiTextLink)}>
           Go to My Learning →
         </Link>
       </div>
@@ -69,16 +78,16 @@ export function TrainingComplianceShell({ section }: { section: string }) {
 
   return (
     <WorkforceQualificationsProvider>
-      <div className="space-y-6">
+      <div className={uiPageStack}>
         <header className="space-y-1">
-          <h2 className="text-lg font-bold tracking-tight text-ds-foreground">Compliance</h2>
-          <p className="max-w-3xl text-sm text-ds-muted">
+          <h2 className={uiPageTitle}>Compliance</h2>
+          <p className={uiPageDescription}>
             Authoritative workforce qualification state — matrix, registry, expirations, and readiness. Schedules and
             dashboards consume this data; workers complete items under Learning.
           </p>
         </header>
 
-        <nav className="flex flex-wrap gap-1 border-b border-ds-border pb-2" aria-label="Compliance views">
+        <nav className={uiTabNav} aria-label="Compliance views">
           {visibleTabs.map((t) => {
             const Icon = t.icon;
             const href = trainingComplianceHref(t.id);
@@ -87,14 +96,9 @@ export function TrainingComplianceShell({ section }: { section: string }) {
               <Link
                 key={t.id}
                 href={href}
-                className={cn(
-                  "inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition",
-                  isActive
-                    ? "bg-ds-primary text-white"
-                    : "text-ds-muted hover:bg-ds-muted/30 hover:text-ds-foreground",
-                )}
+                className={cn(uiTabLink, isActive ? uiTabLinkActive : uiTabLinkIdle)}
               >
-                <Icon className="h-4 w-4 shrink-0" aria-hidden />
+                <Icon className={uiIconInTab} aria-hidden />
                 {t.label}
               </Link>
             );
@@ -102,9 +106,7 @@ export function TrainingComplianceShell({ section }: { section: string }) {
         </nav>
 
         {!canViewActive ? (
-          <p className="rounded-lg border border-amber-200/80 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-950/30 dark:text-amber-100">
-            You do not have access to this view.
-          </p>
+          <p className={uiCalloutWarning}>You do not have access to this view.</p>
         ) : null}
 
         {canViewActive && activeSection === "matrix" ? <WorkforceComplianceView /> : null}
@@ -115,7 +117,7 @@ export function TrainingComplianceShell({ section }: { section: string }) {
         {!canViewActive && fallback && fallback !== activeSection ? (
           <Link
             href={trainingComplianceHref(fallback)}
-            className="text-sm font-semibold text-teal-700 hover:underline dark:text-teal-300"
+            className={cn("text-sm", uiTextLink)}
           >
             Go to {TABS.find((t) => t.id === fallback)?.label ?? "Matrix"}
           </Link>

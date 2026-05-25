@@ -10,6 +10,22 @@ import { myProcedureRowsForWorker } from "@/lib/training/selectors";
 import { TRAINING_ROUTES } from "@/lib/training/routes";
 import type { TrainingAcknowledgement } from "@/lib/training/types";
 import { cn } from "@/lib/cn";
+import { StatusBadge, type StatusBadgeVariant } from "@/components/ui/StatusBadge";
+import {
+  uiSubsectionTitle,
+  uiTableCell,
+  uiTableHead,
+  uiTableRow,
+  uiTableWrap,
+  uiTextLink,
+} from "@/styles/ui-classes";
+
+function assignmentStatusBadgeVariant(status: string): StatusBadgeVariant {
+  if (status === "completed" || status === "expiring_soon" || status === "acknowledged") return "success";
+  if (status === "not_applicable") return "neutral";
+  if (status === "expired" || status === "quiz_failed") return "danger";
+  return "warning";
+}
 
 /** Worker-facing assigned procedures — always scoped to the signed-in account (`session.sub`). */
 export function MyProceduresAssignmentsView({ embedded = false }: { embedded?: boolean }) {
@@ -81,49 +97,37 @@ export function MyProceduresAssignmentsView({ embedded = false }: { embedded?: b
     <div className={embedded ? "space-y-4" : "space-y-6"}>
       {!embedded ? (
         <div>
-          <h2 className="text-lg font-semibold text-ds-foreground">My Learning</h2>
+          <h2 className={uiSubsectionTitle}>My Learning</h2>
           <p className="mt-1 max-w-2xl text-sm text-ds-muted">
             Assigned learning — procedures, acknowledgements, uploads, and completion status for your role.
           </p>
         </div>
       ) : null}
-      <div className="overflow-hidden rounded-xl border border-ds-border/90 bg-ds-primary shadow-sm dark:border-ds-border dark:bg-ds-secondary/30">
+      <div className={uiTableWrap}>
         {rows.length === 0 ? (
           <p className="px-4 py-8 text-center text-sm text-ds-muted">No assigned learning right now.</p>
         ) : (
           <table className="w-full min-w-[480px] border-collapse text-left text-sm">
             <thead>
-              <tr className="border-b border-ds-border/80 bg-ds-secondary/40 text-[11px] font-bold uppercase tracking-wide text-ds-muted dark:border-ds-border">
-                <th className="px-3 py-2">Procedure</th>
-                <th className="px-3 py-2">Status</th>
-                <th className="px-3 py-2">Revision</th>
-                <th className="px-3 py-2">Action</th>
+              <tr className={uiTableHead}>
+                <th className={uiTableCell}>Procedure</th>
+                <th className={uiTableCell}>Status</th>
+                <th className={uiTableCell}>Revision</th>
+                <th className={uiTableCell}>Action</th>
               </tr>
             </thead>
             <tbody>
               {rows.map(({ program, status }) => (
-                <tr key={program.id} className="border-b border-ds-border/60 dark:border-ds-border/60">
-                  <td className="px-3 py-2 font-medium text-ds-foreground">{program.title}</td>
-                  <td className="px-3 py-2">
-                    <span
-                      className={cn(
-                        "inline-flex rounded-md border px-2 py-0.5 text-[11px] font-semibold capitalize",
-                        status === "completed" || status === "expiring_soon"
-                          ? "border-emerald-500/35 bg-emerald-50 text-emerald-900 dark:bg-emerald-950/35 dark:text-emerald-100"
-                          : status === "not_applicable"
-                            ? "border-slate-500/35 bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-100"
-                            : "border-amber-500/35 bg-amber-50 text-amber-950 dark:bg-amber-950/35 dark:text-amber-50",
-                      )}
-                    >
+                <tr key={program.id} className={uiTableRow}>
+                  <td className={cn(uiTableCell, "font-medium")}>{program.title}</td>
+                  <td className={uiTableCell}>
+                    <StatusBadge variant={assignmentStatusBadgeVariant(status)}>
                       {status.replace(/_/g, " ")}
-                    </span>
+                    </StatusBadge>
                   </td>
-                  <td className="px-3 py-2 tabular-nums text-ds-muted">{program.revision_number}</td>
-                  <td className="px-3 py-2">
-                    <Link
-                      href={TRAINING_ROUTES.learningLibrary}
-                      className="text-sm font-semibold text-teal-700 hover:underline dark:text-teal-300"
-                    >
+                  <td className={cn(uiTableCell, "tabular-nums text-ds-muted")}>{program.revision_number}</td>
+                  <td className={uiTableCell}>
+                    <Link href={TRAINING_ROUTES.learningLibrary} className={cn("text-sm", uiTextLink)}>
                       Open
                     </Link>
                   </td>

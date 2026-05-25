@@ -1,7 +1,19 @@
 import type { ReactNode } from "react";
+import { Card as PulseCard, type CardVariant } from "@/components/pulse/Card";
 
-import { UI } from "@/styles/ui";
-
-export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <div className={`${UI.card} ${className}`.trim()}>{children}</div>;
+/** @deprecated Prefer `@/components/pulse/Card` — this wrapper maps to the canonical ds-card surface. */
+export function Card({
+  children,
+  className = "",
+  variant = "primary",
+}: {
+  children: ReactNode;
+  className?: string;
+  variant?: CardVariant;
+}) {
+  return (
+    <PulseCard variant={variant} padding="md" className={className}>
+      {children}
+    </PulseCard>
+  );
 }

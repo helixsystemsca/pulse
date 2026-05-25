@@ -92,6 +92,18 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   --ds-warning: #c9932e;
   --ds-info: #5f6e6c;
   --ds-danger: var(--ds-palette-crimson-carrot);
+
+  /**
+   * Organization brand slots (overridden by `OrganizationThemeSync` from Organization & Branding).
+   * Map into semantic `--ds-*` tokens — do not reference raw hex in feature code.
+   */
+  --ds-brand-primary: var(--ds-accent);
+  --ds-brand-secondary: var(--ds-palette-iron-grey);
+  --ds-brand-accent: var(--ds-palette-ice-active);
+  --ds-brand-success: var(--ds-success);
+  --ds-brand-warning: var(--ds-warning);
+  --ds-brand-danger: var(--ds-danger);
+
   /** Text on solid success / warning / danger fills */
   --ds-on-accent: #ffffff;
   --ds-interactive-hover: color-mix(in srgb, var(--ds-palette-ice-deep) 16%, transparent);
@@ -116,6 +128,8 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   --ds-chart-grid: rgba(15, 23, 42, 0.06);
   --ds-focus-ring: color-mix(in srgb, var(--ds-palette-ice-deep) 42%, transparent);
   --ds-radius-card: 1rem;
+  --ds-transition-fast: 150ms ease;
+  --ds-transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
 
   /** Stacked gradients for ds-card + `.ds-premium-panel` (light). */
   --ds-premium-card-bg:

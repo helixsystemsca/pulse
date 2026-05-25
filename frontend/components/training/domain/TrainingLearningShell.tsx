@@ -11,6 +11,18 @@ import { LearningBundleManager } from "@/components/training/domain/LearningBund
 import { TrainingEmployeeSelfView } from "@/components/training/TrainingEmployeeSelfView";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { cn } from "@/lib/cn";
+import {
+  uiCalloutWarning,
+  uiIconInTab,
+  uiPageDescription,
+  uiPageStack,
+  uiPageTitle,
+  uiTabLink,
+  uiTabLinkActive,
+  uiTabLinkIdle,
+  uiTabNav,
+  uiTextLink,
+} from "@/styles/ui-classes";
 import { TRAINING_ROUTES, trainingLearningHref } from "@/lib/training/routes";
 import {
   canAssignLearning,
@@ -49,10 +61,10 @@ export function TrainingLearningShell({ section }: { section: string }) {
 
   if (workerOnlyHub && activeSection === "my-learning") {
     return (
-      <div className="space-y-6">
+      <div className={uiPageStack}>
         <header className="space-y-1">
-          <h2 className="text-lg font-bold tracking-tight text-ds-foreground">Learning</h2>
-          <p className="max-w-2xl text-sm text-ds-muted">
+          <h2 className={uiPageTitle}>Learning</h2>
+          <p className={cn(uiPageDescription, "max-w-2xl")}>
             Assigned learning — read, acknowledge, upload proof, and submit for review. Compliance updates when
             supervisors verify your work.
           </p>
@@ -64,17 +76,17 @@ export function TrainingLearningShell({ section }: { section: string }) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className={uiPageStack}>
       <header className="space-y-1">
-        <h2 className="text-lg font-bold tracking-tight text-ds-foreground">Learning</h2>
-        <p className="max-w-3xl text-sm text-ds-muted">
+        <h2 className={uiPageTitle}>Learning</h2>
+        <p className={uiPageDescription}>
           Worker completion workflow — My Learning, assignments, acknowledgements, and submissions. Procedure content
           lives in the library; Compliance reflects verified qualification state.
         </p>
       </header>
 
       {visibleTabs.length > 1 ? (
-        <nav className="flex flex-wrap gap-1 border-b border-ds-border pb-2" aria-label="Learning sections">
+        <nav className={uiTabNav} aria-label="Learning sections">
           {visibleTabs.map((t) => {
             const Icon = t.icon;
             const href = trainingLearningHref(t.id);
@@ -83,14 +95,9 @@ export function TrainingLearningShell({ section }: { section: string }) {
               <Link
                 key={t.id}
                 href={href}
-                className={cn(
-                  "inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition",
-                  isActive
-                    ? "bg-ds-primary text-white"
-                    : "text-ds-muted hover:bg-ds-muted/30 hover:text-ds-foreground",
-                )}
+                className={cn(uiTabLink, isActive ? uiTabLinkActive : uiTabLinkIdle)}
               >
-                <Icon className="h-4 w-4 shrink-0" aria-hidden />
+                <Icon className={uiIconInTab} aria-hidden />
                 {t.label}
               </Link>
             );
@@ -99,7 +106,7 @@ export function TrainingLearningShell({ section }: { section: string }) {
       ) : null}
 
       {!canViewActive ? (
-        <div className="space-y-3 rounded-lg border border-amber-200/80 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-950/30 dark:text-amber-100">
+        <div className={cn(uiCalloutWarning, "space-y-3")}>
           <p>
             {activeSection === "archive"
               ? "The acknowledgment archive is available to company administrators, management, and supervisors."
@@ -108,7 +115,7 @@ export function TrainingLearningShell({ section }: { section: string }) {
           {activeSection === "archive" ? (
             <Link
               href={TRAINING_ROUTES.learningMyLearning}
-              className="font-semibold text-teal-800 hover:underline dark:text-teal-200"
+              className={uiTextLink}
             >
               Go to My Learning →
             </Link>
@@ -130,7 +137,7 @@ export function TrainingLearningShell({ section }: { section: string }) {
       {!canViewActive && fallback !== activeSection ? (
         <Link
           href={trainingLearningHref(fallback)}
-          className="inline-flex items-center gap-2 text-sm font-semibold text-teal-700 hover:underline dark:text-teal-300"
+          className={cn("inline-flex items-center gap-2 text-sm", uiTextLink)}
         >
           <UserPlus className="h-4 w-4" aria-hidden />
           Go to {TABS.find((t) => t.id === fallback)?.label ?? "My Learning"}
