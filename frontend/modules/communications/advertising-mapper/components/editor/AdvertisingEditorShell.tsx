@@ -75,7 +75,7 @@ export function AdvertisingEditorShell({
       </main>
 
       <aside
-        className="min-h-0 overflow-hidden border-l border-slate-200/80 bg-white"
+        className="min-h-0 overflow-hidden border-l border-slate-200/80 bg-[#dce3eb]"
         style={{ gridArea: "inspector" }}
       >
         {inspector}

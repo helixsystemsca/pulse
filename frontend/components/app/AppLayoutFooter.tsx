@@ -7,5 +7,6 @@ import { AppPoweredByFooter } from "./AppPoweredByFooter";
 export function AppLayoutFooter() {
   const pathname = usePathname();
   if (pathname.startsWith("/zones-devices/blueprint")) return null;
+  if (pathname.startsWith("/drawings")) return null;
   return <AppPoweredByFooter />;
 }
