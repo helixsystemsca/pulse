@@ -64,7 +64,7 @@ export const loginTaglineTransition: Transition = {
 };
 
 export const loginComingSoonSlideVariants: Variants = {
-  hidden: { opacity: 0, x: -72 },
+  hidden: { opacity: 0, x: "-100%" },
   visible: { opacity: 1, x: 0 },
 };
 

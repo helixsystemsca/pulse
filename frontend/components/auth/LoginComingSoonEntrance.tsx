@@ -30,7 +30,7 @@ export function LoginComingSoonEntrance({ visible }: Props) {
 
   return (
     <motion.div
-      className="flex items-center justify-center"
+      className="flex items-center justify-start max-md:justify-center"
       initial="hidden"
       animate="visible"
       variants={loginComingSoonSlideVariants}

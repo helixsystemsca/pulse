@@ -194,12 +194,13 @@ export default function LoginPage() {
         <main className="relative z-10 flex min-h-0 flex-1 flex-col justify-center px-4 pb-4 pt-1 sm:px-6 sm:pb-5 md:px-8">
           <div
             className={cn(
-              "z-[15] w-full shrink-0 justify-center pb-5 md:pointer-events-none md:absolute md:inset-y-0 md:left-0 md:w-auto md:items-center md:pb-0",
+              "z-[15] w-full shrink-0 justify-center pb-5",
+              "md:fixed md:inset-y-0 md:left-0 md:flex md:w-auto md:items-center md:justify-start md:pb-0 md:pointer-events-none",
               intro.showComingSoon ? "flex" : "hidden",
             )}
             aria-hidden={!intro.showComingSoon}
           >
-            <div className="pointer-events-auto md:pl-4 lg:pl-6">
+            <div className="pointer-events-auto">
               <LoginComingSoonEntrance visible={intro.showComingSoon} />
             </div>
           </div>

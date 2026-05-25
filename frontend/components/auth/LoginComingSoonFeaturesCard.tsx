@@ -1,7 +1,7 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
-import { Link2, Shield, Smartphone, Sparkles, Zap, type LucideProps } from "lucide-react";
+import { Link2, RadarIcon, Shield, Smartphone, Sparkles, Zap, type LucideProps } from "lucide-react";
 import { cn } from "@/lib/cn";
 import "./coming-soon-card.css";
 
@@ -31,6 +31,11 @@ const DEFAULT_FEATURES: UpcomingFeature[] = [
     Icon: Zap,
     title: "SAP Integration",
     description: "Enterprise ERP connectivity",
+  },
+  {
+    Icon: RadarIcon,
+    title: "Telemetry",
+    description: "Track equipment for asset management and automation",
   },
 ];
 

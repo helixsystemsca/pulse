@@ -13,7 +13,7 @@ export const DASHBOARD_GRID_ROW_HEIGHT_PX = 36;
 export const DASHBOARD_GRID_GAP_PX = 12;
 
 /** Inner widget body padding (px). */
-export const DASHBOARD_WIDGET_PADDING_PX = 16;
+export const DASHBOARD_WIDGET_PADDING_PX = 8;
 
 /** Widget header bar height (px). */
 export const DASHBOARD_WIDGET_HEADER_HEIGHT_PX = 36;
