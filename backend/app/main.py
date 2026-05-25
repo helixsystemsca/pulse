@@ -9,8 +9,10 @@ Layers:
 
 import logging
 from contextlib import asynccontextmanager
+from typing import Any
 
 from fastapi import FastAPI, Request
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -172,11 +174,25 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
+def _validation_errors_for_json(errors: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Pydantic v2 may embed Exception instances in error ``ctx`` (not JSON-serializable)."""
+    safe: list[dict[str, Any]] = []
+    for err in errors:
+        row = dict(err)
+        ctx = row.get("ctx")
+        if isinstance(ctx, dict):
+            row["ctx"] = {
+                key: str(val) if isinstance(val, BaseException) else val for key, val in ctx.items()
+            }
+        safe.append(row)
+    return jsonable_encoder(safe)
+
+
 @app.exception_handler(RequestValidationError)
 async def _validation_exception_with_cors(
     request: Request, exc: RequestValidationError
 ) -> JSONResponse:
-    return JSONResponse(status_code=422, content={"detail": exc.errors()})
+    return JSONResponse(status_code=422, content={"detail": _validation_errors_for_json(exc.errors())})
 
 
 @app.exception_handler(StarletteHTTPException)

@@ -58,6 +58,26 @@ function pathSkips401SessionRedirect(apiPath: string): boolean {
   return apiPath.toLowerCase().includes("/auth/login");
 }
 
+/** True when the resolved API URL is on a different origin than the Pulse app (typical production: Vercel → Render). */
+function isCrossOriginApiUrl(url: string): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return new URL(url).origin !== window.location.origin;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Pulse API auth uses `Authorization: Bearer` from `localStorage` (`pulse_auth_v2`), not API-domain cookies.
+ * The `pulse_session` cookie is same-site for the Next app only. We still set `credentials: "include"` on
+ * cross-origin calls so credentialed CORS (`allow_credentials=True` on the API) stays consistent if cookies are added later.
+ */
+function fetchCredentialsForUrl(url: string, init?: RequestInit): RequestCredentials {
+  if (init?.credentials !== undefined) return init.credentials;
+  return isCrossOriginApiUrl(url) ? "include" : "same-origin";
+}
+
 /**
  * When an API call returns 401 with a bearer we sent: clear impersonation overlay (tenant preview)
  * or end the Pulse session and go to sign-in so the UI cannot stay “logged in” with a dead token.
@@ -112,6 +132,7 @@ export async function apiFetch<T>(
   const res = await fetch(url, {
     ...init,
     headers,
+    credentials: fetchCredentialsForUrl(url, init),
     body: init?.json !== undefined ? JSON.stringify(init.json) : init?.body,
   });
   if (res.status === 204) {
@@ -149,6 +170,7 @@ export async function apiFetchBlob(path: string, init?: RequestInit): Promise<Bl
   const res = await fetch(url, {
     ...init,
     headers,
+    credentials: fetchCredentialsForUrl(url, init),
   });
   if (!res.ok) {
     handleSessionExpiredFromApiResponse(url, res.status, Boolean(bearer));
@@ -177,6 +199,7 @@ export async function apiPostFormData<T>(path: string, formData: FormData): Prom
   const res = await fetch(url, {
     method: "POST",
     headers,
+    credentials: fetchCredentialsForUrl(url),
     body: formData,
   });
   const text = await res.text();
@@ -202,6 +225,7 @@ export async function refreshSessionWithToken(token: string, remember: boolean):
   const meUrl = `${base}/api/v1/auth/me`;
   const meRes = await fetch(meUrl, {
     headers: { Authorization: `Bearer ${token}` },
+    credentials: fetchCredentialsForUrl(meUrl),
   });
   if (!meRes.ok) throw new Error("Session refresh failed");
   const meText = await meRes.text();
@@ -220,6 +244,7 @@ export async function refreshPulseUserFromServer(): Promise<void> {
   const meUrl = `${base}/api/v1/auth/me`;
   const meRes = await fetch(meUrl, {
     headers: { Authorization: `Bearer ${s.access_token}` },
+    credentials: fetchCredentialsForUrl(meUrl),
   });
   if (!meRes.ok) {
     if (meRes.status === 401) {

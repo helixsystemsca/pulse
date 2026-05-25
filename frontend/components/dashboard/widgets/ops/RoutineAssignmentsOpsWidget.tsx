@@ -69,9 +69,12 @@ function routineAssignmentsLoadMessage(err: unknown): string {
   const isAssignmentsDay =
     (typeof requestUrl === "string" && requestUrl.includes("/routines/assignments/day")) ||
     networkLike;
+  if (status === 401) {
+    return "Routine assignments require a signed-in session. Sign in again if this persists.";
+  }
   if (isAssignmentsDay && networkLike) {
     return (
-      "Could not load routine assignments from the API. Refresh the page; if it persists, deploy the latest API (route /api/v1/routines/assignments/day) and confirm CORS allows this site."
+      "Could not load routine assignments (network or server error). Open DevTools → Network for this request’s status; other widgets working usually means this route failed server-side."
     );
   }
   return message || "Could not load routine assignments for this day.";

@@ -35,11 +35,12 @@ export function parseClientApiError(err: unknown): {
     msg = err.message;
   }
   if (
+    status === undefined &&
     err instanceof TypeError &&
     /fetch|failed to fetch|networkerror|load failed/i.test(String(err.message))
   ) {
     msg =
-      "The browser could not read the API response (timeout, connection drop, or CORS—not only CORS). The server may still have completed the action—refresh this page and check the list or inbox. If everything looks correct, ignore this. Otherwise confirm CORS_ORIGINS (and API `PULSE_APP_PUBLIC_URL`) include your exact origin (e.g. https://panorama.helixsystems.ca) and redeploy the API.";
+      "The browser could not read the API response (network error, blocked response, or missing CORS on a server error). Refresh and try again; if other API calls work, this route may be failing on the server (check the Network tab status code).";
   }
   return { message: msg, status, requestUrl };
 }

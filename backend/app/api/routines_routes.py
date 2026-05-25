@@ -524,11 +524,15 @@ async def list_routine_assignments_for_day(
     db: Db,
     cid: CompanyId,
     user: Annotated[User, Depends(require_tenant_user)],
-    date: str = Query(..., description="Calendar date (YYYY-MM-DD)"),
+    assignment_day: str = Query(
+        ...,
+        alias="date",
+        description="Calendar date (YYYY-MM-DD)",
+    ),
 ) -> list[RoutineAssignmentDetailOut]:
     """All routine assignments on a calendar day — for ops dashboard / supervisor handoff view."""
     try:
-        assigned_date = date.fromisoformat(str(date).strip())
+        assigned_date = date.fromisoformat(str(assignment_day).strip())
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date (expected YYYY-MM-DD)") from None
 
