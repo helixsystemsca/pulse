@@ -18,46 +18,46 @@ export function LowInventoryOpsWidget({
   const items = model.inventory.shoppingList;
 
   return (
-    <div className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden">
-      <div className="ops-dash-inner-card flex h-full min-h-0 flex-1 flex-col gap-[3px]">
-      <div
-        className={cn(
-          "flex shrink-0 items-start justify-between gap-2 rounded-lg px-2.5",
-          fillRows ? "py-2.5" : "py-2",
-          model.inventory.consumablesOk
-            ? "bg-[color-mix(in_srgb,var(--ds-success)_10%,transparent)]"
-            : "bg-[color-mix(in_srgb,var(--ds-text-primary)_4%,transparent)]",
-        )}
-      >
-        <div className="min-w-0">
-          <p
-            className={cn(
-              "font-semibold text-[color-mix(in_srgb,var(--ds-text-primary)_92%,transparent)]",
-              fillRows ? "text-sm" : "text-xs",
-            )}
-          >
-            Consumables
-          </p>
-          <p
-            className={cn(
-              "text-[color-mix(in_srgb,var(--ds-text-primary)_56%,transparent)]",
-              fillRows ? "mt-1 text-xs" : "mt-0.5 text-[11px]",
-            )}
-          >
-            {model.inventory.consumablesOk ? "Within target range" : "Needs attention"}
-          </p>
-        </div>
-        <span
+    <div className="flex h-full min-h-0 w-full min-w-0 flex-col justify-end overflow-hidden">
+      <div className="ops-dash-inner-card mt-auto flex min-h-0 flex-col gap-[3px]">
+        <div
           className={cn(
-            "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+            "flex shrink-0 items-start justify-between gap-2 rounded-lg px-2.5",
+            fillRows ? "py-2.5" : "py-2",
             model.inventory.consumablesOk
-              ? "bg-[color-mix(in_srgb,var(--ds-success)_18%,transparent)] text-emerald-900 dark:text-emerald-100"
-              : "bg-[color-mix(in_srgb,var(--ds-info)_18%,transparent)] text-[var(--ds-info)]",
+              ? "bg-[color-mix(in_srgb,var(--ds-success)_10%,transparent)]"
+              : "bg-[color-mix(in_srgb,var(--ds-text-primary)_4%,transparent)]",
           )}
         >
-          {model.inventory.consumablesOk ? "OK" : "Review"}
-        </span>
-      </div>
+          <div className="min-w-0">
+            <p
+              className={cn(
+                "font-semibold text-[color-mix(in_srgb,var(--ds-text-primary)_92%,transparent)]",
+                fillRows ? "text-sm" : "text-xs",
+              )}
+            >
+              Consumables
+            </p>
+            <p
+              className={cn(
+                "text-[color-mix(in_srgb,var(--ds-text-primary)_56%,transparent)]",
+                fillRows ? "mt-1 text-xs" : "mt-0.5 text-[11px]",
+              )}
+            >
+              {model.inventory.consumablesOk ? "Within target range" : "Needs attention"}
+            </p>
+          </div>
+          <span
+            className={cn(
+              "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+              model.inventory.consumablesOk
+                ? "bg-[color-mix(in_srgb,var(--ds-success)_18%,transparent)] text-emerald-900 dark:text-emerald-100"
+                : "bg-[color-mix(in_srgb,var(--ds-info)_18%,transparent)] text-[var(--ds-info)]",
+            )}
+          >
+            {model.inventory.consumablesOk ? "OK" : "Review"}
+          </span>
+        </div>
 
       {model.inventory.alert ? (
         <div
