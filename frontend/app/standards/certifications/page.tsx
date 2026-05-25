@@ -1,10 +1,6 @@
 import { redirect } from "next/navigation";
+import { TRAINING_ROUTES } from "@/lib/training/routes";
 
-export const metadata = {
-  title: "Certifications · Standards",
-  description: "Canonical certification registry and employee credential tracking.",
-};
-
-export default function StandardsCertificationsPage() {
-  redirect("/standards/training/certifications");
+export default function StandardsCertificationsLegacyPage() {
+  redirect(TRAINING_ROUTES.complianceRegistry);
 }

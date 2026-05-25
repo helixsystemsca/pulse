@@ -1,15 +1,6 @@
-import { Suspense } from "react";
-import { ProcedureAcknowledgmentsArchiveClient } from "@/components/standards/ProcedureAcknowledgmentsArchiveClient";
+import { redirect } from "next/navigation";
+import { TRAINING_ROUTES } from "@/lib/training/routes";
 
-export const metadata = {
-  title: "Acknowledgment archive · Standards",
-  description: "Historical procedure training acknowledgments.",
-};
-
-export default function StandardsAcknowledgmentsPage() {
-  return (
-    <Suspense fallback={<p className="text-sm text-ds-muted">Loading archive…</p>}>
-      <ProcedureAcknowledgmentsArchiveClient />
-    </Suspense>
-  );
+export default function StandardsAcknowledgmentsLegacyPage() {
+  redirect(TRAINING_ROUTES.learningAcknowledgments);
 }

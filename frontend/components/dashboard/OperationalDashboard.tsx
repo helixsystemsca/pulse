@@ -1185,7 +1185,7 @@ function DashboardBody({
       training_compliance: {
         title: "Training compliance",
         accent: "none" as const,
-        shellJumpHref: pulseAppHref("/standards/training/compliance#training-matrix"),
+        shellJumpHref: pulseAppHref("/training/compliance/matrix#training-matrix"),
         shellJumpLabel: "Open training matrix",
         render: (ctx?: DashboardWidgetRenderContext) => (
           <TrainingComplianceWidget

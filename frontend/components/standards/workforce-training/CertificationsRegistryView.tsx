@@ -14,7 +14,18 @@ import type { RegistryCoverageStats } from "@/lib/standards/employee-certificati
 export function CertificationsRegistryView() {
   const session = readSession();
   const canManage = canManageCertificationRegistry(session);
-  const { api, loading, err, coverage, registry, updateRegistry } = useWorkforceQualifications();
+  const {
+    api,
+    loading,
+    err,
+    coverage,
+    registry,
+    updateRegistry,
+    cycleCompetency,
+    cycleVerification,
+    getEffectiveCompetency,
+    getEffectiveVerification,
+  } = useWorkforceQualifications();
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
   const [registryOpen, setRegistryOpen] = useState(false);
   const [registryDraft, setRegistryDraft] = useState({ code: "", label: "" });
@@ -173,10 +184,18 @@ export function CertificationsRegistryView() {
                           {h.expiryDate ? new Date(h.expiryDate).toLocaleDateString() : "—"}
                         </td>
                         <td className="px-3 py-2">
-                          <QualificationStatusChip kind="competency" value={h.competencyState} />
+                          <QualificationStatusChip
+                            kind="competency"
+                            value={getEffectiveCompetency(h)}
+                            onClick={() => cycleCompetency(h)}
+                          />
                         </td>
                         <td className="px-3 py-2">
-                          <QualificationStatusChip kind="verification" value={h.verificationStatus} />
+                          <QualificationStatusChip
+                            kind="verification"
+                            value={getEffectiveVerification(h)}
+                            onClick={() => cycleVerification(h)}
+                          />
                         </td>
                       </tr>
                     ))

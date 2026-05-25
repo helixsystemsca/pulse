@@ -39,26 +39,27 @@ describe("buildNavigationTree", () => {
   });
 
   it("groups authorized items into presentation domains only", () => {
-    const items = resolveAuthorizedNavItems(
-      session({
-        contract_features: ["schedule", "compliance", "procedures"],
-        enabled_features: ["schedule", "logs_inspections", "procedures"],
-        rbac_permissions: ["schedule.view", "compliance.view", "procedures.view"],
-      }),
+    const trainingSession = session({
+      contract_features: ["schedule", "compliance", "procedures"],
+      enabled_features: ["schedule", "logs_inspections", "procedures", "standards_training", "standards_compliance"],
+      rbac_permissions: [
+        "schedule.view",
+        "compliance.view",
+        "procedures.view",
+        "standards.training.view",
+        "standards.compliance.view",
+      ],
+    });
+    const items = resolveAuthorizedNavItems(trainingSession);
+    const tree = buildNavigationTree(trainingSession);
+    expect(items.map((i) => i.key)).toEqual(
+      expect.arrayContaining(["logs_inspections", "schedule", "training_overview", "training_learning", "training_compliance"]),
     );
-    const tree = buildNavigationTree(
-      session({
-        contract_features: ["schedule", "compliance", "procedures"],
-        enabled_features: ["schedule", "logs_inspections", "procedures"],
-        rbac_permissions: ["schedule.view", "compliance.view", "procedures.view"],
-      }),
-    );
-    expect(items.map((i) => i.key)).toEqual(expect.arrayContaining(["logs_inspections", "schedule", "standards_procedures"]));
     const domainNames = tree.map((d) => d.domain);
     expect(domainNames).not.toContain("Dashboards");
     expect(domainNames).toContain("Operations");
     expect(domainNames).toContain("Planning");
-    expect(domainNames).toContain("Standards");
+    expect(domainNames).toContain("Training");
     expect(domainNames).not.toContain("Administration");
     const operationsKeys =
       tree.find((d) => d.domain === "Operations")?.groups.flatMap((g) => g.items.map((i) => i.key)) ?? [];

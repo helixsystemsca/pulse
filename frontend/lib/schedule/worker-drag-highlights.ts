@@ -2,6 +2,7 @@ import { mondayOfCalendarWeek, parseLocalDate } from "@/lib/schedule/calendar";
 import { evaluateAvailabilityCell } from "@/lib/schedule/availability-layer";
 import type { EmployeeDailyAvailabilityEntry } from "@/lib/schedule/employee-availability-types";
 import { normalizeWeekdayKey, weekdayKeyFromIso } from "@/lib/schedule/recurring";
+import { workerEffectiveCertificationCodes } from "@/lib/standards/qualification-overrides";
 import type { ScheduleSettings, Shift, TimeOffBlock, Worker } from "@/lib/schedule/types";
 
 export type WorkerDayHighlightTone = "good" | "warning" | "invalid" | "neutral" | "pickup";
@@ -54,7 +55,7 @@ function proposedSlot(worker: Worker, date: string, settings: ScheduleSettings):
 
 function firstMissingCert(worker: Worker, required: string[]): string | null {
   if (!required.length) return null;
-  const wc = new Set(worker.certifications ?? []);
+  const wc = new Set(workerEffectiveCertificationCodes(worker));
   for (const c of required) {
     if (!wc.has(c)) return c;
   }

@@ -1,7 +1,12 @@
 "use client";
 
+/**
+ * @deprecated Use Training domain shells: Overview, Learning, Compliance at `/training/*`.
+ * Legacy `/standards/training/*` routes redirect via app router.
+ */
 import Link from "next/link";
 import { useMemo } from "react";
+import { LEGACY_TRAINING_SECTION_REDIRECTS, TRAINING_ROUTES } from "@/lib/training/routes";
 import {
   Award,
   Clock,
@@ -80,7 +85,7 @@ export function WorkforceTrainingShell({ section }: { section: string }) {
       >
         {visibleTabs.map((t) => {
           const Icon = t.icon;
-          const href = t.id === "overview" ? "/standards/training" : `/standards/training/${t.id}`;
+          const href = LEGACY_TRAINING_SECTION_REDIRECTS[t.id] ?? TRAINING_ROUTES.overview;
           const isActive = activeSection === t.id;
           return (
             <Link
@@ -114,7 +119,7 @@ export function WorkforceTrainingShell({ section }: { section: string }) {
 
       {!canViewActive && fallback !== activeSection ? (
         <Link
-          href={fallback === "overview" ? "/standards/training" : `/standards/training/${fallback}`}
+          href={LEGACY_TRAINING_SECTION_REDIRECTS[fallback] ?? TRAINING_ROUTES.overview}
           className="text-sm font-semibold text-teal-700 hover:underline dark:text-teal-300"
         >
           Go to {TABS.find((t) => t.id === fallback)?.label ?? "Overview"}

@@ -45,6 +45,7 @@ export const PRODUCT_PATH_PREFIXES = [
   "/team-management",
   "/system",
   "/standards",
+  "/training",
   "/kiosk",
   "/drawings",
   "/demo",

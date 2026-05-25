@@ -1,11 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search, Upload } from "lucide-react";
+import { Plus, Search, Upload } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useWorkforceQualifications } from "@/components/standards/workforce-training/WorkforceQualificationsContext";
 import { QualificationStatusChip } from "@/components/standards/workforce-training/QualificationStatusChip";
-import { WorkerTrainingMatrixPanel } from "@/components/training/WorkerTrainingMatrixPanel";
+import { WorkerTrainingComplianceRadial } from "@/components/standards/workforce-training/WorkerTrainingComplianceRadial";
 import { dsInputClass, dsLabelClass } from "@/components/ui/ds-form-classes";
 import { Button } from "@/components/ui/Button";
 import type { WorkerQualificationSummary } from "@/lib/standards/employee-certifications";
@@ -13,8 +13,21 @@ import type { WorkerQualificationSummary } from "@/lib/standards/employee-certif
 type StatusFilter = "all" | "gaps" | "current";
 
 export function WorkersQualificationView() {
-  const { api, loading, err, byWorker, workers } = useWorkforceQualifications();
+  const {
+    api,
+    loading,
+    err,
+    byWorker,
+    workers,
+    registry,
+    cycleCompetency,
+    cycleVerification,
+    addWorkerCertification,
+    getEffectiveCompetency,
+    getEffectiveVerification,
+  } = useWorkforceQualifications();
   const [search, setSearch] = useState("");
+  const [addCertOpen, setAddCertOpen] = useState(false);
   const [department, setDepartment] = useState("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -44,6 +57,9 @@ export function WorkersQualificationView() {
     filtered.find((w) => w.workerId === selectedId) ?? filtered[0] ?? null;
 
   const selectedWorker = workers.find((w) => w.id === selected?.workerId);
+
+  const heldCodes = new Set(selected?.certifications.map((c) => c.registryCode) ?? []);
+  const addableCerts = registry.filter((r) => r.active !== false && !heldCodes.has(r.code));
 
   return (
     <div className="grid min-h-[32rem] gap-4 lg:grid-cols-[minmax(240px,300px)_1fr]">
@@ -141,7 +157,39 @@ export function WorkersQualificationView() {
             </header>
 
             <section>
-              <h4 className="text-xs font-bold uppercase tracking-wide text-ds-muted">Certifications</h4>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h4 className="text-xs font-bold uppercase tracking-wide text-ds-muted">Certifications</h4>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setAddCertOpen((o) => !o)}
+                    disabled={addableCerts.length === 0}
+                    className="inline-flex items-center gap-1 rounded-md border border-ds-border px-2 py-1 text-xs font-semibold text-teal-700 transition hover:bg-ds-muted/20 disabled:cursor-not-allowed disabled:opacity-50 dark:text-teal-300"
+                    title={addableCerts.length === 0 ? "All registry certifications on file" : "Add certification"}
+                  >
+                    <Plus className="h-3.5 w-3.5" aria-hidden />
+                    Add
+                  </button>
+                  {addCertOpen && addableCerts.length > 0 ? (
+                    <ul className="absolute right-0 z-10 mt-1 max-h-48 min-w-[12rem] overflow-y-auto rounded-lg border border-ds-border bg-ds-card py-1 shadow-lg">
+                      {addableCerts.map((def) => (
+                        <li key={def.code}>
+                          <button
+                            type="button"
+                            className="w-full px-3 py-2 text-left text-xs hover:bg-ds-muted/30"
+                            onClick={() => {
+                              addWorkerCertification(selected.workerId, def.code);
+                              setAddCertOpen(false);
+                            }}
+                          >
+                            <span className="font-mono font-semibold text-ds-muted">{def.code}</span> — {def.label}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              </div>
               {selected.certifications.length === 0 ? (
                 <p className="mt-2 text-sm text-ds-muted">No registry-matched certifications on file.</p>
               ) : (
@@ -159,8 +207,16 @@ export function WorkersQualificationView() {
                         </p>
                       </div>
                       <div className="flex flex-wrap gap-1">
-                        <QualificationStatusChip kind="competency" value={c.competencyState} />
-                        <QualificationStatusChip kind="verification" value={c.verificationStatus} />
+                        <QualificationStatusChip
+                          kind="competency"
+                          value={getEffectiveCompetency(c)}
+                          onClick={() => cycleCompetency(c)}
+                        />
+                        <QualificationStatusChip
+                          kind="verification"
+                          value={getEffectiveVerification(c)}
+                          onClick={() => cycleVerification(c)}
+                        />
                       </div>
                     </li>
                   ))}
@@ -169,10 +225,14 @@ export function WorkersQualificationView() {
             </section>
 
             <section>
-              <h4 className="text-xs font-bold uppercase tracking-wide text-ds-muted">Procedure competencies</h4>
-              <p className="mt-1 text-xs text-ds-muted">SOP sign-offs and quizzes — owned under Procedures.</p>
-              <div className="mt-2">
-                <WorkerTrainingMatrixPanel employeeId={selected.workerId} employeeName={selected.workerName} />
+              <h4 className="text-xs font-bold uppercase tracking-wide text-ds-muted">Routines compliance</h4>
+              <p className="mt-1 text-xs text-ds-muted">Mandatory routines programs — click status badges above to prototype qualification state.</p>
+              <div className="mt-3">
+                <WorkerTrainingComplianceRadial
+                  employeeId={selected.workerId}
+                  employeeName={selected.workerName}
+                  department={selected.department}
+                />
               </div>
             </section>
 

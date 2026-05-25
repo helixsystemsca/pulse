@@ -28,12 +28,10 @@ export type WorkerCertSource = {
   certifications?: string[] | null;
 };
 
-function normalizeCertCodes(certs: string[] | null | undefined): string[] {
-  return (certs ?? []).map((c) => c.trim().toUpperCase()).filter(Boolean);
-}
+import { workerEffectiveCertificationCodes } from "@/lib/standards/qualification-overrides";
 
 export function workerMatchesCertSlot(worker: WorkerCertSource, slot: WorkforceSiteCertSlot): boolean {
-  const held = normalizeCertCodes(worker.certifications);
+  const held = workerEffectiveCertificationCodes(worker);
   if (slot.anyOf) return slot.codes.some((code) => held.includes(code));
   return slot.codes.every((code) => held.includes(code));
 }

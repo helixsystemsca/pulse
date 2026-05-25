@@ -1,3 +1,4 @@
+import { workerEffectiveCertificationCodes } from "@/lib/standards/qualification-overrides";
 import type { Shift, ShiftTypeKey, Worker } from "@/lib/schedule/types";
 
 export type CoverageRule =
@@ -62,7 +63,7 @@ export function parseCoverageRules(raw: unknown): CoverageRule[] {
 
 function workerHasCert(worker: Worker | undefined, cert: string): boolean {
   if (!worker) return false;
-  const set = new Set((worker.certifications ?? []).map((c) => String(c).trim().toLowerCase()).filter(Boolean));
+  const set = new Set(workerEffectiveCertificationCodes(worker).map((c) => c.toLowerCase()));
   return set.has(cert.trim().toLowerCase());
 }
 

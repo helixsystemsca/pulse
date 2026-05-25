@@ -1,16 +1,12 @@
 import { redirect } from "next/navigation";
-
-export const metadata = {
-  title: "Compliance · Standards",
-  description: "Workforce readiness, training matrix, and compliance visibility.",
-};
+import { TRAINING_ROUTES } from "@/lib/training/routes";
 
 type Props = { searchParams: Promise<{ tab?: string }> };
 
-export default async function StandardsCompliancePage({ searchParams }: Props) {
+export default async function StandardsComplianceLegacyPage({ searchParams }: Props) {
   const { tab } = await searchParams;
   if (tab === "archive") {
-    redirect("/standards/acknowledgments");
+    redirect(TRAINING_ROUTES.learningAcknowledgments);
   }
-  redirect("/standards/training/compliance#training-matrix");
+  redirect(`${TRAINING_ROUTES.complianceMatrix}#training-matrix`);
 }

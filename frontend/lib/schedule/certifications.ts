@@ -1,3 +1,4 @@
+import { workerEffectiveCertificationCodes } from "@/lib/standards/qualification-overrides";
 import type { Shift, Worker } from "./types";
 
 /** Built-in certification codes with human-readable labels (extend with pass-through for custom tags). */
@@ -39,7 +40,7 @@ export function scheduleShiftHoverSummary(
     }
   }
   if (worker) {
-    const wc = worker.certifications?.filter(Boolean) ?? [];
+    const wc = workerEffectiveCertificationCodes(worker);
     segments.push(
       wc.length ? `Worker certifications: ${formatCertCodesShort(wc)}` : "Worker certifications: none on file",
     );

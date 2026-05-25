@@ -48,7 +48,7 @@ export const pulseTenantNav = [
   { href: "/monitoring", label: "Monitoring" },
   { href: "/projects", label: "Projects" },
   { href: "/dashboard/maintenance", label: "Work Requests" },
-  { href: "/standards", label: "Standards" },
+  { href: "/training", label: "Training" },
   { href: "/dashboard/inventory", label: "Inventory" },
   { href: "/equipment", label: "Equipment" },
   { href: "/devices", label: "Zones & Devices" },

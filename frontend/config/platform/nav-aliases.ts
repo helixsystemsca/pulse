@@ -2,7 +2,7 @@
  * Route aliases — safe redirects preserving bookmarks (presentation / routing only).
  */
 export const NAV_ROUTE_ALIASES: Readonly<Record<string, string>> = {
-  "/dashboard/procedures": "/standards/procedures",
+  "/dashboard/procedures": "/training/learning/procedures",
   "/dashboard/work-requests": "/dashboard/maintenance",
   "/dashboard/maintenance/work-requests": "/dashboard/maintenance",
   "/dashboard/maintenance/work-orders": "/dashboard/maintenance",

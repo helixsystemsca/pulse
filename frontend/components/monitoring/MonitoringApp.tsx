@@ -5,7 +5,8 @@ import { useState } from "react";
 import { Card } from "@/components/pulse/Card";
 import { TankIndicator } from "@/components/monitoring/TankIndicator";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { co2Tanks, poolControllers } from "@/lib/monitoringMockData";
+import { useSimulatedPoolControllers } from "@/hooks/useSimulatedPoolControllers";
+import { co2Tanks } from "@/lib/monitoringMockData";
 import { cn } from "@/lib/cn";
 
 const CO2_LEVEL_MAX = 1000;
@@ -75,6 +76,8 @@ function PoolControllerMockCard({
 }
 
 function SystemsMockMonitoringPanel() {
+  const poolControllers = useSimulatedPoolControllers();
+
   return (
     <div className="space-y-6">
       <Card padding="md">

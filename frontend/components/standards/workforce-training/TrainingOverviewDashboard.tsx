@@ -4,6 +4,7 @@ import Link from "next/link";
 import { AlertTriangle, BookOpen, CheckCircle2, Clock, FileWarning, ShieldCheck, Users } from "lucide-react";
 import { useWorkforceQualifications } from "@/components/standards/workforce-training/WorkforceQualificationsContext";
 import { QualificationStatusChip } from "@/components/standards/workforce-training/QualificationStatusChip";
+import { TRAINING_ROUTES } from "@/lib/training/routes";
 
 function KpiCard({
   label,
@@ -65,12 +66,12 @@ export function TrainingOverviewDashboard() {
       {err ? <p className="text-sm font-medium text-rose-600">{err}</p> : null}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        <KpiCard label="Expiring (60d)" value={expiring.length} tone="amber" href="/standards/training/expiring" />
-        <KpiCard label="Expired" value={expired.length} tone="rose" href="/standards/training/expiring" />
-        <KpiCard label="Missing proof" value={missingProof.length} tone="amber" href="/standards/training/expiring" />
-        <KpiCard label="Pending verification" value={pendingVerification.length} tone="sky" href="/standards/training/expiring" />
-        <KpiCard label="Compliance %" value={`${compliancePct}%`} tone="emerald" href="/standards/training/compliance" />
-        <KpiCard label="Registry codes" value={registry.length} tone="neutral" href="/standards/training/certifications" />
+        <KpiCard label="Expiring (60d)" value={expiring.length} tone="amber" href={TRAINING_ROUTES.complianceQueues} />
+        <KpiCard label="Expired" value={expired.length} tone="rose" href={TRAINING_ROUTES.complianceQueues} />
+        <KpiCard label="Missing proof" value={missingProof.length} tone="amber" href={TRAINING_ROUTES.complianceQueues} />
+        <KpiCard label="Pending verification" value={pendingVerification.length} tone="sky" href={TRAINING_ROUTES.complianceQueues} />
+        <KpiCard label="Compliance %" value={`${compliancePct}%`} tone="emerald" href={TRAINING_ROUTES.complianceMatrix} />
+        <KpiCard label="Registry codes" value={registry.length} tone="neutral" href={TRAINING_ROUTES.complianceRegistry} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -98,21 +99,21 @@ export function TrainingOverviewDashboard() {
           <h3 className="text-sm font-bold text-ds-foreground">Quick actions</h3>
           <div className="mt-3 flex flex-wrap gap-2">
             <Link
-              href="/standards/training/workers"
+              href={TRAINING_ROUTES.complianceWorkers}
               className="inline-flex items-center gap-2 rounded-lg border border-ds-border bg-ds-muted/20 px-3 py-2 text-sm font-semibold text-ds-foreground hover:bg-ds-muted/40"
             >
               <Users className="h-4 w-4" aria-hidden />
               Review workers
             </Link>
             <Link
-              href="/standards/training/compliance"
+              href={TRAINING_ROUTES.complianceMatrix}
               className="inline-flex items-center gap-2 rounded-lg border border-ds-border bg-ds-muted/20 px-3 py-2 text-sm font-semibold text-ds-foreground hover:bg-ds-muted/40"
             >
               <ShieldCheck className="h-4 w-4" aria-hidden />
               Compliance matrix
             </Link>
             <Link
-              href="/standards/procedures"
+              href={TRAINING_ROUTES.learningProcedures}
               className="inline-flex items-center gap-2 rounded-lg border border-ds-border bg-ds-muted/20 px-3 py-2 text-sm font-semibold text-ds-foreground hover:bg-ds-muted/40"
             >
               <BookOpen className="h-4 w-4" aria-hidden />
@@ -125,7 +126,7 @@ export function TrainingOverviewDashboard() {
       <section className="rounded-xl border border-ds-border bg-ds-card p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm font-bold text-ds-foreground">Priority queue</h3>
-          <Link href="/standards/training/expiring" className="text-xs font-semibold text-teal-700 hover:underline dark:text-teal-300">
+          <Link href={TRAINING_ROUTES.complianceQueues} className="text-xs font-semibold text-teal-700 hover:underline dark:text-teal-300">
             View all →
           </Link>
         </div>

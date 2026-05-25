@@ -1,3 +1,4 @@
+import { workerEffectiveCertificationCodes } from "@/lib/standards/qualification-overrides";
 import { shiftHours } from "./calendar";
 import type { ScheduleSettings, Shift, TimeOffBlock, Worker, Zone } from "./types";
 
@@ -69,7 +70,7 @@ export function getShiftConflicts(
       });
     } else {
       const w = workers.find((x) => x.id === shift.workerId);
-      const wc = w?.certifications ?? [];
+      const wc = w ? workerEffectiveCertificationCodes(w) : [];
       let certLabel: string | null = null;
       if (anyCert) {
         const ok = certs.some((c) => wc.includes(c));
@@ -99,7 +100,7 @@ export function getShiftConflicts(
   const shiftMentionsPoolOp = certs.includes("P1") || certs.includes("P2");
   if (shift.workerId && zoneLabel.toLowerCase().includes("pool") && !shiftMentionsPoolOp) {
     const w = workers.find((x) => x.id === shift.workerId);
-    const wc = w?.certifications ?? [];
+    const wc = w ? workerEffectiveCertificationCodes(w) : [];
     const hasPoolOp = wc.includes("P1") || wc.includes("P2");
     if (!hasPoolOp) {
       out.push({
@@ -113,7 +114,7 @@ export function getShiftConflicts(
 
   if (shift.workerId) {
     const w = workers.find((x) => x.id === shift.workerId);
-    const wc = w?.certifications ?? [];
+    const wc = w ? workerEffectiveCertificationCodes(w) : [];
     const supLike =
       shift.requires_supervisor === true ||
       shift.role === "supervisor" ||

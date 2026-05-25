@@ -4,6 +4,6 @@ import { NAV_ROUTE_ALIASES, resolveNavRouteAlias } from "@/config/platform/nav-a
 describe("nav-aliases", () => {
   it("maps legacy maintenance dashboard paths to canonical routes", () => {
     expect(NAV_ROUTE_ALIASES["/dashboard/maintenance/inspections"]).toBe("/dashboard/compliance");
-    expect(resolveNavRouteAlias("/dashboard/procedures")).toBe("/standards/procedures");
+    expect(resolveNavRouteAlias("/dashboard/procedures")).toBe("/training/learning/procedures");
   });
 });

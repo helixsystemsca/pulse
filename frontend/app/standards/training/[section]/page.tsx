@@ -1,14 +1,9 @@
-import type { Metadata } from "next";
-import { WorkforceTrainingShell } from "@/components/standards/workforce-training/WorkforceTrainingShell";
-
-export const metadata: Metadata = {
-  title: "Workforce qualifications | Standards | Panorama",
-  description: "Workforce compliance, certifications, and qualification readiness.",
-};
+import { redirect } from "next/navigation";
+import { LEGACY_TRAINING_SECTION_REDIRECTS, TRAINING_ROUTES } from "@/lib/training/routes";
 
 type Props = { params: Promise<{ section: string }> };
 
-export default async function StandardsTrainingSectionPage({ params }: Props) {
+export default async function StandardsTrainingSectionLegacyPage({ params }: Props) {
   const { section } = await params;
-  return <WorkforceTrainingShell section={section} />;
+  redirect(LEGACY_TRAINING_SECTION_REDIRECTS[section] ?? TRAINING_ROUTES.overview);
 }

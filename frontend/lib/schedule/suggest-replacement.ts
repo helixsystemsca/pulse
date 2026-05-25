@@ -1,3 +1,4 @@
+import { workerEffectiveCertificationCodes } from "@/lib/standards/qualification-overrides";
 import { approvedTimeOffKind } from "@/lib/schedule/recurring";
 import type { ScheduleSettings, Shift, TimeOffBlock, Worker } from "@/lib/schedule/types";
 import { evaluateWorkerDrop } from "@/lib/schedule/worker-drag-highlights";
@@ -41,7 +42,7 @@ export function suggestReplacementWorker(
     if (approvedTimeOffKind(w.id, removed.date, timeOffBlocks)) continue;
     const drop = evaluateWorkerDrop(w, removed.date, shifts, settings, timeOffBlocks);
     if (!drop.ok) continue;
-    const wc = new Set(w.certifications ?? []);
+    const wc = new Set(workerEffectiveCertificationCodes(w));
     if (certs.length && !certs.every((c) => wc.has(c))) continue;
     const sameDay = shiftCountSameDay(shifts, w.id, removed.date, removed.id);
     const weekLoad = shifts.filter(

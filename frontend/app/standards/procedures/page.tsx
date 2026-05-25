@@ -1,6 +1,6 @@
-import { ProceduresApp } from "@/components/procedures/ProceduresApp";
+import { redirect } from "next/navigation";
+import { TRAINING_ROUTES } from "@/lib/training/routes";
 
-export default function StandardsProceduresPage() {
-  return <ProceduresApp />;
+export default function StandardsProceduresLegacyPage() {
+  redirect(TRAINING_ROUTES.learningProcedures);
 }
-

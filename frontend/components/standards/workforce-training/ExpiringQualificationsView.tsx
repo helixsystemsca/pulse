@@ -99,7 +99,7 @@ export function ExpiringQualificationsView() {
                   </td>
                   <td className="px-3 py-2 text-right">
                     <Link
-                      href={`/standards/training/workers`}
+                      href="/training/compliance/workers"
                       className="text-xs font-semibold text-teal-700 hover:underline dark:text-teal-300"
                     >
                       Open worker

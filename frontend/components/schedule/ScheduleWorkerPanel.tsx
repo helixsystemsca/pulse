@@ -15,6 +15,7 @@ import {
   resolvePlacementRoles,
 } from "@/lib/schedule/placement-panel-options";
 import { useScheduleStore } from "@/lib/schedule/schedule-store";
+import { workerEffectiveCertificationCodes } from "@/lib/standards/qualification-overrides";
 import type { ScheduleDragSession, SchedulePlacementBand, ScheduleRoleDefinition, Shift, Worker } from "@/lib/schedule/types";
 
 const BAND_SECTION_ORDER: WorkerPrimaryBand[] = ["D", "A", "N", "none"];
@@ -90,7 +91,7 @@ export function ScheduleWorkerPanel({
 
   function workerMeetsCerts(worker: Worker, required: string[]): boolean {
     if (!required.length) return true;
-    const wc = new Set(worker.certifications ?? []);
+    const wc = new Set(workerEffectiveCertificationCodes(worker));
     return required.every((c) => wc.has(c));
   }
 

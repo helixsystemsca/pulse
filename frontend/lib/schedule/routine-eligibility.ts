@@ -1,5 +1,6 @@
 import { isArenaRoutineName, parseArenaRoutineName } from "@/lib/schedule/arena-routine-catalog";
 import { certificationLabel } from "@/lib/schedule/certifications";
+import { workerEffectiveCertificationCodes } from "@/lib/standards/qualification-overrides";
 import type { RoutineDetail, RoutineItemRow, RoutineShiftBand } from "@/lib/routinesService";
 import type { Shift, ShiftTypeKey, Worker } from "@/lib/schedule/types";
 import { assignmentFor } from "@/lib/training/selectors";
@@ -31,7 +32,7 @@ const TRAINING_OK: ReadonlySet<TrainingAssignmentStatus> = new Set(["completed",
 function shiftCertBlock(worker: Worker, shift: Shift): string | null {
   const certs = shift.required_certifications?.filter(Boolean) ?? [];
   if (!certs.length || shift.eventType !== "work") return null;
-  const wc = worker.certifications ?? [];
+  const wc = workerEffectiveCertificationCodes(worker);
   if (shift.accepts_any_certification === true) {
     if (certs.some((c) => wc.includes(c))) return null;
     return certs.length === 1

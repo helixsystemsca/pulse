@@ -1,11 +1,6 @@
-import type { Metadata } from "next";
-import { WorkforceTrainingShell } from "@/components/standards/workforce-training/WorkforceTrainingShell";
+import { redirect } from "next/navigation";
+import { TRAINING_ROUTES } from "@/lib/training/routes";
 
-export const metadata: Metadata = {
-  title: "Workforce qualifications | Standards | Panorama",
-  description: "Operational workforce compliance, certifications, and readiness.",
-};
-
-export default function StandardsTrainingPage() {
-  return <WorkforceTrainingShell section="overview" />;
+export default function StandardsTrainingLegacyPage() {
+  redirect(TRAINING_ROUTES.overview);
 }

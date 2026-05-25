@@ -20,6 +20,18 @@ import {
   writeCompanyCertificationRegistry,
   type CanonicalCertificationDef,
 } from "@/lib/standards/certification-registry";
+import {
+  applyOverridesToCertificationRows,
+  cycleCompetencyOverride,
+  cycleVerificationOverride,
+  getEffectiveCompetency,
+  getEffectiveVerification,
+  readQualificationOverrides,
+  setSyntheticCertOverride,
+  workerRegistryOverrideKey,
+  writeQualificationOverrides,
+  type QualificationOverridesMap,
+} from "@/lib/standards/qualification-overrides";
 
 const WORKER_DETAIL_CAP = 120;
 const WORKER_DETAIL_CONCURRENCY = 6;
@@ -60,6 +72,12 @@ export type WorkforceQualificationsState = {
   byWorker: ReturnType<typeof groupCertificationsByWorker>;
   coverage: ReturnType<typeof registryCoverageStats>;
   compliancePct: number;
+  overrides: QualificationOverridesMap;
+  cycleCompetency: (record: EmployeeCertificationRecord) => void;
+  cycleVerification: (record: EmployeeCertificationRecord) => void;
+  addWorkerCertification: (workerId: string, registryCode: string) => void;
+  getEffectiveCompetency: (record: EmployeeCertificationRecord) => ReturnType<typeof getEffectiveCompetency>;
+  getEffectiveVerification: (record: EmployeeCertificationRecord) => ReturnType<typeof getEffectiveVerification>;
 };
 
 export function useWorkforceQualificationsState(): WorkforceQualificationsState {
@@ -70,6 +88,21 @@ export function useWorkforceQualificationsState(): WorkforceQualificationsState 
   const [workers, setWorkers] = useState<WorkerDetail[]>([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [overrides, setOverrides] = useState<QualificationOverridesMap>(() =>
+    readQualificationOverrides(companyId),
+  );
+
+  useEffect(() => {
+    setOverrides(readQualificationOverrides(companyId));
+  }, [companyId]);
+
+  const persistOverrides = useCallback(
+    (next: QualificationOverridesMap) => {
+      setOverrides(next);
+      writeQualificationOverrides(companyId, next);
+    },
+    [companyId],
+  );
 
   const loadGenRef = useRef(0);
   const lastLoadAtRef = useRef(0);
@@ -124,18 +157,87 @@ export function useWorkforceQualificationsState(): WorkforceQualificationsState 
     };
   }, [load]);
 
-  const expiring = useMemo(() => expiringCertifications(rows, 60), [rows]);
-  const expired = useMemo(() => expiredCertifications(rows), [rows]);
-  const missingProof = useMemo(() => missingProofCertifications(rows), [rows]);
-  const pendingVerification = useMemo(() => pendingVerificationCertifications(rows), [rows]);
-  const byWorker = useMemo(() => groupCertificationsByWorker(rows), [rows]);
-  const coverage = useMemo(() => registryCoverageStats(registry, rows), [registry, rows]);
+  const rowsWithSynthetic = useMemo(() => {
+    const existingKeys = new Set(rows.map((r) => workerRegistryOverrideKey(r.workerId, r.registryCode)));
+    const extra: EmployeeCertificationRecord[] = [];
+    for (const key of Object.keys(overrides)) {
+      if (!key.includes("::") || existingKeys.has(key)) continue;
+      const [workerId, code] = key.split("::");
+      if (!workerId || !code) continue;
+      const w = workers.find((x) => x.id === workerId);
+      const reg = registry.find((r) => r.code === code);
+      if (!w || !reg) continue;
+      extra.push({
+        id: key,
+        workerId,
+        workerName: w.full_name ?? w.email,
+        department: w.department ?? null,
+        registryCode: code,
+        label: reg.label,
+        expiryDate: null,
+        competencyState: "in_progress",
+        verificationStatus: "unverified",
+        proofDocumentUrl: null,
+        issuedAt: null,
+      });
+      existingKeys.add(key);
+    }
+    return [...rows, ...extra];
+  }, [rows, overrides, workers, registry]);
+
+  const effectiveRows = useMemo(
+    () => applyOverridesToCertificationRows(rowsWithSynthetic, overrides),
+    [rowsWithSynthetic, overrides],
+  );
+
+  const expiring = useMemo(() => expiringCertifications(effectiveRows, 60), [effectiveRows]);
+  const expired = useMemo(() => expiredCertifications(effectiveRows), [effectiveRows]);
+  const missingProof = useMemo(() => missingProofCertifications(effectiveRows), [effectiveRows]);
+  const pendingVerification = useMemo(
+    () => pendingVerificationCertifications(effectiveRows),
+    [effectiveRows],
+  );
+  const byWorker = useMemo(() => groupCertificationsByWorker(effectiveRows), [effectiveRows]);
+  const coverage = useMemo(() => registryCoverageStats(registry, effectiveRows), [registry, effectiveRows]);
 
   const compliancePct = useMemo(() => {
-    if (rows.length === 0) return 100;
-    const ok = rows.filter((r) => r.competencyState === "qualified" && r.verificationStatus === "verified").length;
-    return Math.round((ok / rows.length) * 100);
-  }, [rows]);
+    if (effectiveRows.length === 0) return 100;
+    const ok = effectiveRows.filter(
+      (r) => r.competencyState === "qualified" && r.verificationStatus === "verified",
+    ).length;
+    return Math.round((ok / effectiveRows.length) * 100);
+  }, [effectiveRows]);
+
+  const cycleCompetency = useCallback(
+    (record: EmployeeCertificationRecord) => {
+      persistOverrides(cycleCompetencyOverride(record, overrides));
+    },
+    [overrides, persistOverrides],
+  );
+
+  const cycleVerification = useCallback(
+    (record: EmployeeCertificationRecord) => {
+      persistOverrides(cycleVerificationOverride(record, overrides));
+    },
+    [overrides, persistOverrides],
+  );
+
+  const addWorkerCertification = useCallback(
+    (workerId: string, registryCode: string) => {
+      persistOverrides(setSyntheticCertOverride(workerId, registryCode, overrides));
+    },
+    [overrides, persistOverrides],
+  );
+
+  const getEffectiveCompetencyCb = useCallback(
+    (record: EmployeeCertificationRecord) => getEffectiveCompetency(record, overrides),
+    [overrides],
+  );
+
+  const getEffectiveVerificationCb = useCallback(
+    (record: EmployeeCertificationRecord) => getEffectiveVerification(record, overrides),
+    [overrides],
+  );
 
   const updateRegistry = useCallback(
     (next: CanonicalCertificationDef[]) => {
@@ -149,7 +251,7 @@ export function useWorkforceQualificationsState(): WorkforceQualificationsState 
   return {
     api,
     registry,
-    rows,
+    rows: effectiveRows,
     workers,
     loading,
     err,
@@ -162,5 +264,11 @@ export function useWorkforceQualificationsState(): WorkforceQualificationsState 
     byWorker,
     coverage,
     compliancePct,
+    overrides,
+    cycleCompetency,
+    cycleVerification,
+    addWorkerCertification,
+    getEffectiveCompetency: getEffectiveCompetencyCb,
+    getEffectiveVerification: getEffectiveVerificationCb,
   };
 }
