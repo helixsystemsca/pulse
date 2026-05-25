@@ -1204,9 +1204,14 @@ export function ScheduleApp() {
       const u = code.trim().toUpperCase();
       if (!u) return;
       addDeploymentBadge(workerId, targetDate, u);
-      for (const s of shifts) {
-        if (s.workerId !== workerId || s.date !== targetDate) continue;
-        if (s.shiftKind === "project_task" || (s.eventType !== "work" && s.eventType !== "training")) continue;
+      const matching = shifts.filter(
+        (s) =>
+          s.workerId === workerId &&
+          s.date === targetDate &&
+          s.shiftKind !== "project_task" &&
+          (s.eventType === "work" || s.eventType === "training"),
+      );
+      for (const s of matching) {
         const badges = (s.operationalBadges ?? []).map((x) => x.trim().toUpperCase()).filter(Boolean);
         if (badges.includes(u)) continue;
         updateShift(s.id, { operationalBadges: [...badges, u] });

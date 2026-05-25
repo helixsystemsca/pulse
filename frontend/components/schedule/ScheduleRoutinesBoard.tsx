@@ -48,6 +48,7 @@ import {
   mapApiAssignments,
   mapApiPrograms,
 } from "@/lib/trainingApi";
+import { deploymentOverlayKey } from "@/lib/schedule/deployment-overlay";
 import { parseLocalDate, formatLocalDate } from "@/lib/schedule/calendar";
 import { isPulseApiShiftId } from "@/lib/schedule/pulse-bridge";
 import type { EnsureShiftOnServerResult } from "@/lib/schedule/persist-shift";
@@ -124,7 +125,24 @@ export function ScheduleRoutinesBoard({
   const [syncingArena, setSyncingArena] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [assignedByRow, setAssignedByRow] = useState<Record<string, LocalAssignment[]>>({});
+  /** Worker+date keyed badges so chips survive shift id changes (ephemeral → API). */
+  const [localOpBadgesByWorkerDate, setLocalOpBadgesByWorkerDate] = useState<Record<string, string[]>>({});
   const [extraModalRow, setExtraModalRow] = useState<ScheduledRow | null>(null);
+
+  const addOperationalBadgeForWorker = useCallback(
+    (workerId: string, code: string) => {
+      const u = code.trim().toUpperCase();
+      if (!u) return;
+      const k = deploymentOverlayKey(workerId, focusDate);
+      setLocalOpBadgesByWorkerDate((prev) => {
+        const cur = prev[k] ?? [];
+        if (cur.includes(u)) return prev;
+        return { ...prev, [k]: [...cur, u] };
+      });
+      onAddOperationalBadge?.(workerId, focusDate, u);
+    },
+    [focusDate, onAddOperationalBadge],
+  );
 
   const zoneLabel = useMemo(() => {
     const m = new Map(zones.map((z) => [z.id, z.label]));
@@ -371,9 +389,7 @@ export function ScheduleRoutinesBoard({
 
   function rowOperationalBadges(row: ScheduledRow): string[] {
     const fromShift = (row.shift.operationalBadges ?? []).map((b) => b.trim().toUpperCase()).filter(Boolean);
-    const fromLocal = (assignedByRow[row.rowKey] ?? [])
-      .filter((a) => a.kind === "grounds")
-      .map(() => "GROUNDS");
+    const fromLocal = localOpBadgesByWorkerDate[deploymentOverlayKey(row.worker.id, focusDate)] ?? [];
     return [...new Set([...fromShift, ...fromLocal])];
   }
 
@@ -388,14 +404,7 @@ export function ScheduleRoutinesBoard({
       return;
     }
     if (badgePayload?.badgeKind === "GROUNDS") {
-      onAddOperationalBadge?.(row.worker.id, focusDate, "GROUNDS");
-      setAssignedByRow((prev) => ({
-        ...prev,
-        [row.rowKey]: [
-          ...(prev[row.rowKey] ?? []),
-          { routineId: "grounds", routineName: "Grounds", kind: "grounds" },
-        ],
-      }));
+      addOperationalBadgeForWorker(row.worker.id, "GROUNDS");
       setToast(`Grounds badge added for ${row.worker.name}.`);
       onBadgeDragEnd();
       return;
@@ -466,7 +475,7 @@ export function ScheduleRoutinesBoard({
           setExtraModalRow(null);
           if (!row) return;
           void (async () => {
-            onAddOperationalBadge?.(row.worker.id, focusDate, "EXTRA");
+            addOperationalBadgeForWorker(row.worker.id, "EXTRA");
             if (payload.extraRoutineId) {
               const name =
                 routines?.find((r) => r.id === payload.extraRoutineId)?.name ?? "Extra routine";
@@ -709,9 +718,9 @@ export function ScheduleRoutinesBoard({
                               </span>
                             );
                           })}
-                          {assigned.length === 0 && !isSaving && !dropActive ? (
+                          {assigned.length === 0 && opBadges.length === 0 && !isSaving && !dropActive ? (
                             <span className="text-xs text-ds-muted">Drop routine or badge here</span>
-                          ) : (
+                          ) : assigned.length > 0 ? (
                             assigned
                               .filter((a) => a.kind !== "grounds")
                               .map((a) => (
@@ -729,7 +738,7 @@ export function ScheduleRoutinesBoard({
                                   {a.extraNote ? ` — ${a.extraNote}` : ""}
                                 </span>
                               ))
-                          )}
+                          ) : null}
                         </div>
                         {draggingRoutineId && ev?.tooltip ? (
                           <p className="mt-1 text-[10px] text-ds-muted" title={ev.tooltip}>

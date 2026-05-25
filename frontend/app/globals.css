@@ -1397,6 +1397,7 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
     min-height: 0;
     display: flex;
     flex-direction: column;
+    padding: 3px;
   }
 
   /** Work requests KPI grid — min row height; grows to fill widget body. */

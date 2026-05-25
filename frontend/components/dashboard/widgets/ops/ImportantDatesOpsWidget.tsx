@@ -29,7 +29,7 @@ export function ImportantDatesOpsWidget({
 
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden">
-      <div className="ops-dash-inner-card flex h-full min-h-0 flex-1 flex-col gap-1.5 p-1.5">
+      <div className="ops-dash-inner-card flex h-full min-h-0 flex-1 flex-col gap-[3px]">
         <div
           className={cn(
             "flex shrink-0 items-center gap-1.5 rounded-md bg-[color-mix(in_srgb,var(--ds-text-primary)_5%,transparent)] px-2 font-semibold text-[color-mix(in_srgb,var(--ds-text-primary)_55%,transparent)]",
