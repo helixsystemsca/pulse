@@ -3,6 +3,12 @@
 import { X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/api";
+import {
+  boundsForScheduleMonth,
+  defaultCreateScheduleMonth,
+  isMayScheduleMonth,
+  scheduleMonthFromStartDate,
+} from "@/lib/schedule/period-utils";
 
 export type SchedulePeriodLite = {
   id: string;
@@ -26,8 +32,7 @@ function isoDateOnly(value: string | null | undefined): string {
 }
 
 export function SchedulePeriodModal({ open, onClose, onSaved, existing }: Props) {
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [periodMonth, setPeriodMonth] = useState("");
   const [availDeadline, setAvailDeadline] = useState("");
   const [publishDeadline, setPublishDeadline] = useState("");
   const [saving, setSaving] = useState(false);
@@ -39,8 +44,9 @@ export function SchedulePeriodModal({ open, onClose, onSaved, existing }: Props)
     if (!open) return;
     setErr(null);
     setSaving(false);
-    setStartDate(existing?.start_date ?? "");
-    setEndDate(existing?.end_date ?? "");
+    setPeriodMonth(
+      existing?.start_date ? scheduleMonthFromStartDate(existing.start_date) : defaultCreateScheduleMonth(),
+    );
     setAvailDeadline(isoDateOnly(existing?.availability_deadline));
     setPublishDeadline(isoDateOnly(existing?.publish_deadline));
   }, [open, existing]);
@@ -48,25 +54,48 @@ export function SchedulePeriodModal({ open, onClose, onSaved, existing }: Props)
   if (!open) return null;
 
   const save = async () => {
-    if (!startDate || !endDate) {
-      setErr("Start and end dates are required.");
+    if (!periodMonth) {
+      setErr("Select a period month.");
       return;
     }
+    let start_date: string;
+    let end_date: string;
+    try {
+      ({ start_date, end_date } = boundsForScheduleMonth(periodMonth));
+    } catch {
+      setErr("Invalid period month.");
+      return;
+    }
+
     setSaving(true);
     setErr(null);
     try {
       const json = {
-        start_date: startDate,
-        end_date: endDate,
+        start_date,
+        end_date,
         availability_deadline: availDeadline ? `${availDeadline}T23:59:00Z` : null,
         publish_deadline: publishDeadline ? `${publishDeadline}T23:59:00Z` : null,
-        status: "open",
       };
 
       if (existing) {
         await apiFetch(`/api/v1/pulse/schedule/periods/${existing.id}`, { method: "PATCH", json });
+        if (isMayScheduleMonth(periodMonth) && existing.status !== "published") {
+          await apiFetch(`/api/v1/pulse/schedule/periods/${existing.id}`, {
+            method: "PATCH",
+            json: { status: "published" },
+          });
+        }
       } else {
-        await apiFetch(`/api/v1/pulse/schedule/periods`, { method: "POST", json });
+        const created = await apiFetch<SchedulePeriodLite>(`/api/v1/pulse/schedule/periods`, {
+          method: "POST",
+          json,
+        });
+        if (isMayScheduleMonth(periodMonth)) {
+          await apiFetch(`/api/v1/pulse/schedule/periods/${created.id}`, {
+            method: "PATCH",
+            json: { status: "published" },
+          });
+        }
       }
       onSaved();
       onClose();
@@ -86,7 +115,7 @@ export function SchedulePeriodModal({ open, onClose, onSaved, existing }: Props)
     label: string;
     value: string;
     onChange: (v: string) => void;
-    type: "date" | "text";
+    type: "date" | "month";
   }) => (
     <div>
       <label className="mb-1 block text-xs font-semibold text-ds-muted">{label}</label>
@@ -111,9 +140,15 @@ export function SchedulePeriodModal({ open, onClose, onSaved, existing }: Props)
 
         <p className="text-xs text-ds-muted">Defines the scheduling period workers submit availability for.</p>
 
+        <Field label="Period month" type="month" value={periodMonth} onChange={setPeriodMonth} />
+
+        {isMayScheduleMonth(periodMonth) ? (
+          <p className="text-xs text-emerald-800 dark:text-emerald-200">
+            May periods are marked published so you can test shift assignments.
+          </p>
+        ) : null}
+
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Period start" type="date" value={startDate} onChange={setStartDate} />
-          <Field label="Period end" type="date" value={endDate} onChange={setEndDate} />
           <Field label="Availability deadline" type="date" value={availDeadline} onChange={setAvailDeadline} />
           <Field label="Publish deadline" type="date" value={publishDeadline} onChange={setPublishDeadline} />
         </div>
@@ -141,4 +176,3 @@ export function SchedulePeriodModal({ open, onClose, onSaved, existing }: Props)
     </div>
   );
 }
-

@@ -19,7 +19,7 @@ export function LowInventoryOpsWidget({
 
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden">
-      <div className="ops-dash-inner-card flex min-h-0 flex-1 flex-col gap-1.5 p-1.5">
+      <div className="ops-dash-inner-card flex h-full min-h-0 flex-1 flex-col gap-1.5 p-1.5">
       <div
         className={cn(
           "flex shrink-0 items-start justify-between gap-2 rounded-lg px-2.5",
@@ -78,7 +78,7 @@ export function LowInventoryOpsWidget({
         </div>
       ) : null}
 
-      <div className="mt-1.5 flex min-h-0 flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col">
         <p className="shrink-0 text-[10px] font-bold uppercase tracking-[0.1em] text-[color-mix(in_srgb,var(--ds-text-primary)_48%,transparent)]">
           Low stock list
         </p>
@@ -86,8 +86,8 @@ export function LowInventoryOpsWidget({
         {items.length === 0 ? (
           <p
             className={cn(
-              "flex flex-1 items-center justify-center text-center text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]",
-              fillRows ? "text-sm" : "mt-2 text-xs",
+              "mt-1.5 flex flex-1 items-center justify-center text-center text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]",
+              fillRows ? "text-sm" : "text-xs",
             )}
           >
             Nothing flagged.

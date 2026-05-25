@@ -114,6 +114,7 @@ import { Card } from "@/components/pulse/Card";
 import { ScheduleWeekView } from "./ScheduleWeekView";
 import { ScheduleDraftPanel, type DraftResult } from "./ScheduleDraftPanel";
 import { SchedulePeriodModal, type SchedulePeriodLite } from "./SchedulePeriodModal";
+import { findUnpublishedMayPeriod } from "@/lib/schedule/period-utils";
 import {
   ScheduleToolbar,
   type ScheduleContentFilter,
@@ -569,7 +570,15 @@ export function ScheduleApp() {
   const reloadActivePeriod = useCallback(async () => {
     if (!hydrated || !canEdit || !isApiMode()) return;
     try {
-      const periods = await apiFetch<SchedulePeriodLite[]>(`/api/v1/pulse/schedule/periods`);
+      let periods = await apiFetch<SchedulePeriodLite[]>(`/api/v1/pulse/schedule/periods`);
+      const mayDraft = findUnpublishedMayPeriod(periods);
+      if (mayDraft) {
+        await apiFetch(`/api/v1/pulse/schedule/periods/${mayDraft.id}`, {
+          method: "PATCH",
+          json: { status: "published" },
+        });
+        periods = await apiFetch<SchedulePeriodLite[]>(`/api/v1/pulse/schedule/periods`);
+      }
       const start = visibleDatesForScheduleMerge[0];
       const end = visibleDatesForScheduleMerge[visibleDatesForScheduleMerge.length - 1];
       if (start && end) {
