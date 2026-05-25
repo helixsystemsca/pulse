@@ -701,6 +701,52 @@ class PulseRoutineAssignmentExtra(Base):
     note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
 
+class PulseRoutineAssignmentHandover(Base):
+    """Shift handover note tied to a routine assignment (operational continuity)."""
+
+    __tablename__ = "pulse_routine_assignment_handovers"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    routine_assignment_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("pulse_routine_assignments.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    author_user_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    employee_user_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    employee_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    department_slug: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    operational_area: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    shift_id: Mapped[Optional[str]] = mapped_column(UUID(as_uuid=False), nullable=True, index=True)
+    shift_label: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    assignment_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True, index=True)
+    note_type: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    is_resolved: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
+    resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    resolved_by_user_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    last_edited_by_user_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    attachment_path: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+
 class PulseProcedureAssignmentPhoto(Base):
     """Photo evidence attached to a procedure assignment (worker upload)."""
 

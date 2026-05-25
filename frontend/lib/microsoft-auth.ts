@@ -170,7 +170,7 @@ export async function completeMicrosoftSignInFromCallback(): Promise<MicrosoftAu
 
   try {
     const token = await exchangeMicrosoftToken(accessToken);
-    await refreshSessionWithToken(token.access_token, false);
+    await refreshSessionWithToken(token.access_token, false, { resetWelcomeOverlay: true });
   } catch (err) {
     return {
       ok: false,

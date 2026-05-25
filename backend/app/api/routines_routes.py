@@ -23,6 +23,7 @@ from app.models.pulse_models import (
     PulseRoutineAssignment,
     PulseRoutineItemAssignment,
     PulseRoutineAssignmentExtra,
+    PulseRoutineAssignmentHandover,
 )
 from app.schemas.routines import (
     RoutineCreateIn,
@@ -37,6 +38,21 @@ from app.schemas.routines import (
     RoutineRunCreateIn,
     RoutineRunDetailOut,
     RoutineRunOut,
+    AssignmentHandoverCreateIn,
+    AssignmentHandoverPatchIn,
+    AssignmentHandoverOut,
+    AssignmentHandoverSummaryOut,
+)
+from app.services.assignment_handover import (
+    HANDOVER_NOTE_TYPES,
+    OPEN_HANDOVER_NOTE_TYPES,
+    display_name_for_user,
+    handover_defaults_resolved,
+    handover_out_dict,
+    resolve_handover_metadata,
+    user_involved_in_assignment,
+    user_is_supervisor_for_handovers,
+    utc_now,
 )
 from app.services.routine_shift_band import filter_items_for_shift_band, resolve_shift_band_for_shift_id
 
@@ -716,4 +732,243 @@ async def get_routine_run_detail(db: Db, cid: CompanyId, run_id: str) -> Routine
             for e in extras_out
         ],
     )
+
+
+async def _get_assignment_or_404(
+    db: AsyncSession,
+    cid: str,
+    assignment_id: str,
+) -> PulseRoutineAssignment:
+    try:
+        aid = str(UUID(str(assignment_id).strip()))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid assignment_id") from None
+    a = await db.get(PulseRoutineAssignment, aid)
+    if not a or str(a.company_id) != cid:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found")
+    return a
+
+
+async def _handover_row_to_out(db: AsyncSession, row: PulseRoutineAssignmentHandover) -> AssignmentHandoverOut:
+    author_display = await display_name_for_user(db, str(row.author_user_id))
+    resolved_by_display = await display_name_for_user(db, str(row.resolved_by_user_id) if row.resolved_by_user_id else None)
+    edited_by_display = await display_name_for_user(db, str(row.last_edited_by_user_id) if row.last_edited_by_user_id else None)
+    return AssignmentHandoverOut.model_validate(
+        handover_out_dict(
+            row,
+            author_display=author_display,
+            resolved_by_display=resolved_by_display,
+            edited_by_display=edited_by_display,
+        )
+    )
+
+
+@router.get("/assignments/day/handovers/summary", response_model=list[AssignmentHandoverSummaryOut])
+async def list_assignment_handover_summaries(
+    db: Db,
+    cid: CompanyId,
+    user: Annotated[User, Depends(require_tenant_user)],
+    assignment_day: str = Query(..., alias="date", description="Calendar date (YYYY-MM-DD)"),
+) -> list[AssignmentHandoverSummaryOut]:
+    """Per-assignment handover counts for ops widgets."""
+    del user
+    try:
+        assigned_date = date.fromisoformat(str(assignment_day).strip())
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date (expected YYYY-MM-DD)") from None
+
+    aq = await db.execute(
+        select(PulseRoutineAssignment.id).where(
+            PulseRoutineAssignment.company_id == cid,
+            PulseRoutineAssignment.date == assigned_date,
+        )
+    )
+    assignment_ids = [str(x) for x in aq.scalars().all()]
+    if not assignment_ids:
+        return []
+
+    total_expr = func.count(PulseRoutineAssignmentHandover.id)
+    open_cond = and_(
+        PulseRoutineAssignmentHandover.is_resolved.is_(False),
+        PulseRoutineAssignmentHandover.note_type.in_(tuple(OPEN_HANDOVER_NOTE_TYPES)),
+    )
+    q = await db.execute(
+        select(
+            PulseRoutineAssignmentHandover.routine_assignment_id,
+            total_expr.label("total_count"),
+            func.count(PulseRoutineAssignmentHandover.id).filter(open_cond).label("open_count"),
+        )
+        .where(
+            PulseRoutineAssignmentHandover.company_id == cid,
+            PulseRoutineAssignmentHandover.routine_assignment_id.in_(assignment_ids),
+        )
+        .group_by(PulseRoutineAssignmentHandover.routine_assignment_id)
+    )
+    return [
+        AssignmentHandoverSummaryOut(
+            assignment_id=str(row.routine_assignment_id),
+            total_count=int(row.total_count or 0),
+            open_count=int(row.open_count or 0),
+        )
+        for row in q.all()
+    ]
+
+
+@router.get("/assignments/{assignment_id}/handovers", response_model=list[AssignmentHandoverOut])
+async def list_assignment_handovers(
+    assignment_id: str,
+    db: Db,
+    cid: CompanyId,
+    user: Annotated[User, Depends(require_tenant_user)],
+) -> list[AssignmentHandoverOut]:
+    a = await _get_assignment_or_404(db, cid, assignment_id)
+    uid = str(user.id)
+    if not user_is_supervisor_for_handovers(user):
+        if not await user_involved_in_assignment(db, cid, a, uid):
+            raise HTTPException(status_code=403, detail="Not authorized for this assignment")
+
+    q = await db.execute(
+        select(PulseRoutineAssignmentHandover)
+        .where(
+            PulseRoutineAssignmentHandover.company_id == cid,
+            PulseRoutineAssignmentHandover.routine_assignment_id == str(a.id),
+        )
+        .order_by(PulseRoutineAssignmentHandover.created_at.desc())
+        .limit(200)
+    )
+    rows = q.scalars().all()
+    out: list[AssignmentHandoverOut] = []
+    for row in rows:
+        out.append(await _handover_row_to_out(db, row))
+    return out
+
+
+@router.post(
+    "/assignments/{assignment_id}/handovers",
+    response_model=AssignmentHandoverOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_assignment_handover(
+    assignment_id: str,
+    body: AssignmentHandoverCreateIn,
+    db: Db,
+    cid: CompanyId,
+    user: Annotated[User, Depends(require_tenant_user)],
+) -> AssignmentHandoverOut:
+    a = await _get_assignment_or_404(db, cid, assignment_id)
+    uid = str(user.id)
+    if not user_is_supervisor_for_handovers(user):
+        if not await user_involved_in_assignment(db, cid, a, uid):
+            raise HTTPException(status_code=403, detail="Workers may only add handovers for their assignments")
+
+    note_type = str(body.note_type).strip()
+    if note_type not in HANDOVER_NOTE_TYPES:
+        raise HTTPException(status_code=400, detail="Invalid note_type")
+
+    meta = await resolve_handover_metadata(
+        db,
+        cid,
+        a,
+        employee_name_override=(body.employee_name or "").strip() or None,
+    )
+    now = utc_now()
+    resolved = handover_defaults_resolved(note_type)
+    row = PulseRoutineAssignmentHandover(
+        company_id=cid,
+        routine_assignment_id=str(a.id),
+        author_user_id=uid,
+        employee_user_id=meta["employee_user_id"],
+        employee_name=meta["employee_name"],
+        department_slug=meta["department_slug"],
+        operational_area=(body.operational_area or "").strip() or meta["operational_area"],
+        shift_id=meta["shift_id"],
+        shift_label=(body.shift_label or "").strip() or meta["shift_label"],
+        assignment_date=meta["assignment_date"],
+        note_type=note_type,
+        content=body.content.strip(),
+        is_resolved=resolved,
+        resolved_at=now if resolved else None,
+        resolved_by_user_id=uid if resolved else None,
+        last_edited_by_user_id=uid,
+        created_at=now,
+        updated_at=now,
+    )
+    db.add(row)
+    await db.commit()
+    await db.refresh(row)
+    return await _handover_row_to_out(db, row)
+
+
+@router.patch("/assignments/{assignment_id}/handovers/{handover_id}", response_model=AssignmentHandoverOut)
+async def patch_assignment_handover(
+    assignment_id: str,
+    handover_id: str,
+    body: AssignmentHandoverPatchIn,
+    db: Db,
+    cid: CompanyId,
+    user: Annotated[User, Depends(require_tenant_user)],
+) -> AssignmentHandoverOut:
+    a = await _get_assignment_or_404(db, cid, assignment_id)
+    row = await db.get(PulseRoutineAssignmentHandover, handover_id)
+    if not row or str(row.company_id) != cid or str(row.routine_assignment_id) != str(a.id):
+        raise HTTPException(status_code=404, detail="Handover not found")
+
+    uid = str(user.id)
+    is_super = user_is_supervisor_for_handovers(user)
+    if not is_super and str(row.author_user_id) != uid:
+        raise HTTPException(status_code=403, detail="Only the author or a supervisor may edit this handover")
+    if not is_super and not await user_involved_in_assignment(db, cid, a, uid):
+        raise HTTPException(status_code=403, detail="Not authorized for this assignment")
+
+    if body.content is not None:
+        row.content = body.content.strip()
+    if body.note_type is not None:
+        nt = str(body.note_type).strip()
+        if nt not in HANDOVER_NOTE_TYPES:
+            raise HTTPException(status_code=400, detail="Invalid note_type")
+        row.note_type = nt
+        if handover_defaults_resolved(nt):
+            row.is_resolved = True
+            row.resolved_at = row.resolved_at or utc_now()
+            row.resolved_by_user_id = row.resolved_by_user_id or uid
+        elif not is_super:
+            row.is_resolved = False
+            row.resolved_at = None
+            row.resolved_by_user_id = None
+
+    row.last_edited_by_user_id = uid
+    row.updated_at = utc_now()
+    await db.commit()
+    await db.refresh(row)
+    return await _handover_row_to_out(db, row)
+
+
+@router.post(
+    "/assignments/{assignment_id}/handovers/{handover_id}/resolve",
+    response_model=AssignmentHandoverOut,
+)
+async def resolve_assignment_handover(
+    assignment_id: str,
+    handover_id: str,
+    db: Db,
+    cid: CompanyId,
+    user: Annotated[User, Depends(require_tenant_user)],
+) -> AssignmentHandoverOut:
+    if not user_is_supervisor_for_handovers(user):
+        raise HTTPException(status_code=403, detail="Supervisor access required")
+
+    a = await _get_assignment_or_404(db, cid, assignment_id)
+    row = await db.get(PulseRoutineAssignmentHandover, handover_id)
+    if not row or str(row.company_id) != cid or str(row.routine_assignment_id) != str(a.id):
+        raise HTTPException(status_code=404, detail="Handover not found")
+
+    now = utc_now()
+    row.is_resolved = True
+    row.resolved_at = now
+    row.resolved_by_user_id = str(user.id)
+    row.last_edited_by_user_id = str(user.id)
+    row.updated_at = now
+    await db.commit()
+    await db.refresh(row)
+    return await _handover_row_to_out(db, row)
 

@@ -8,7 +8,7 @@ import { WelcomeLoaderModal } from "@/components/ui/WelcomeLoaderModal";
 import { UI } from "@/styles/ui";
 import { isApiMode } from "@/lib/api";
 import { navigateToPulseLogin, pulsePostLoginPath } from "@/lib/pulse-app";
-import { readSession } from "@/lib/pulse-session";
+import { isWelcomeOverlayDismissed, readSession } from "@/lib/pulse-session";
 import { sessionHasAnyRole } from "@/lib/pulse-roles";
 import { canShowClassicSidebarItem, firstAccessibleClassicTenantHref } from "@/lib/rbac/session-access";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
@@ -40,6 +40,12 @@ export default function OverviewPage() {
   const onDashboardReady = useCallback((payload?: OperationalDashboardReadyPayload) => {
     setWelcomeAlertContext(payload ?? { criticalCount: 0, warningCount: 0 });
     setDashboardDataReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (isWelcomeOverlayDismissed()) {
+      setDashboardDataReady(true);
+    }
   }, []);
 
   useEffect(() => {

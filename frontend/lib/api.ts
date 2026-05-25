@@ -220,7 +220,11 @@ export async function apiPostFormData<T>(path: string, formData: FormData): Prom
   return data as T;
 }
 
-export async function refreshSessionWithToken(token: string, remember: boolean): Promise<void> {
+export async function refreshSessionWithToken(
+  token: string,
+  remember: boolean,
+  options?: { resetWelcomeOverlay?: boolean },
+): Promise<void> {
   logPulseAuth("token-refresh-start", { kind: "with-token" });
   const base = getApiBaseUrl();
   if (!base) throw new Error("NEXT_PUBLIC_API_URL is not configured");
@@ -233,7 +237,10 @@ export async function refreshSessionWithToken(token: string, remember: boolean):
   const meText = await meRes.text();
   const user = parseApiResponseJson(meText, { ok: true, status: meRes.status, url: meUrl }) as UserOut;
   applyServerTimeFromUserOut(user);
-  writeApiSession(token, user, remember, { allowDuringTeardown: true });
+  writeApiSession(token, user, remember, {
+    allowDuringTeardown: true,
+    resetWelcomeOverlay: options?.resetWelcomeOverlay,
+  });
   logPulseAuth("token-refresh-done", { kind: "with-token", email: user.email });
 }
 

@@ -202,6 +202,59 @@ class RoutineExtraRunOut(BaseModel):
     note: Optional[str] = None
 
 
+HandoverNoteType = Literal[
+    "informational",
+    "follow_up_required",
+    "incomplete",
+    "maintenance_concern",
+    "safety_concern",
+]
+
+
+class AssignmentHandoverCreateIn(BaseModel):
+    content: str = Field(..., min_length=1, max_length=8000)
+    note_type: HandoverNoteType = "informational"
+    employee_name: Optional[str] = Field(None, max_length=255)
+    operational_area: Optional[str] = Field(None, max_length=255)
+    shift_label: Optional[str] = Field(None, max_length=128)
+
+
+class AssignmentHandoverPatchIn(BaseModel):
+    content: Optional[str] = Field(None, min_length=1, max_length=8000)
+    note_type: Optional[HandoverNoteType] = None
+
+
+class AssignmentHandoverOut(BaseModel):
+    id: str
+    routine_assignment_id: str
+    author_user_id: str
+    author_display: Optional[str] = None
+    employee_user_id: Optional[str] = None
+    employee_name: Optional[str] = None
+    department_slug: Optional[str] = None
+    operational_area: Optional[str] = None
+    shift_id: Optional[str] = None
+    shift_label: Optional[str] = None
+    assignment_date: Optional[str] = None
+    note_type: HandoverNoteType
+    content: str
+    is_resolved: bool
+    resolved_at: Optional[datetime] = None
+    resolved_by_user_id: Optional[str] = None
+    resolved_by_display: Optional[str] = None
+    last_edited_by_user_id: Optional[str] = None
+    edited_by_display: Optional[str] = None
+    attachment_path: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class AssignmentHandoverSummaryOut(BaseModel):
+    assignment_id: str
+    total_count: int
+    open_count: int
+
+
 RoutineRunDetailOut.model_rebuild()
 RoutineDetailOut.model_rebuild()
 

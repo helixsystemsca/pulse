@@ -10,7 +10,13 @@ export type DayRoutineWorkerRow = {
   shiftWindow: string | null;
   /** Primary shift band for grouping (from today's schedule shift). */
   shiftBand: ShiftTypeKey | null;
-  routines: Array<{ assignmentId: string; name: string }>;
+  routines: Array<{
+    assignmentId: string;
+    name: string;
+    primaryUserId: string;
+    shiftId?: string | null;
+    operationalArea?: string | null;
+  }>;
   badges: string[];
 };
 
@@ -101,12 +107,27 @@ export function buildDayRoutineWorkerRows(params: {
     badgesByWorker.set(wid, set);
   }
 
-  const assignmentsByWorker = new Map<string, Array<{ assignmentId: string; name: string }>>();
+  const assignmentsByWorker = new Map<
+    string,
+    Array<{
+      assignmentId: string;
+      name: string;
+      primaryUserId: string;
+      shiftId?: string | null;
+      operationalArea?: string | null;
+    }>
+  >();
   for (const a of params.assignments) {
     const wid = a.primary_user_id;
     if (!workerById.has(wid)) continue;
     const list = assignmentsByWorker.get(wid) ?? [];
-    list.push({ assignmentId: a.id, name: a.routine.name });
+    list.push({
+      assignmentId: a.id,
+      name: a.routine.name,
+      primaryUserId: a.primary_user_id,
+      shiftId: a.shift_id ?? null,
+      operationalArea: a.routine.name,
+    });
     assignmentsByWorker.set(wid, list);
   }
 

@@ -292,6 +292,11 @@ export function canAccessPulseTenantApis(session: PulseAuthSession | null): bool
 export type WriteSessionOptions = {
   /** Allow persisting during post-logout teardown (explicit sign-in only). */
   allowDuringTeardown?: boolean;
+  /**
+   * When true, clear the per-tab welcome overlay flag so the next dashboard landing can show it.
+   * Use only for explicit sign-in — not for `/auth/me` hydration or session refresh.
+   */
+  resetWelcomeOverlay?: boolean;
 };
 
 export function writeSession(email: string, remember: boolean, options?: WriteSessionOptions) {
@@ -391,7 +396,9 @@ export function writeApiSession(
   const ttlSec = Math.max(60, exp - now);
   localStorage.setItem(PULSE_AUTH_STORAGE_KEY, JSON.stringify(payload));
   document.cookie = `pulse_session=1; path=/; max-age=${ttlSec}; SameSite=Lax`;
-  resetWelcomeOverlayForNewLogin();
+  if (options?.resetWelcomeOverlay) {
+    resetWelcomeOverlayForNewLogin();
+  }
   logPulseAuth("session-write", { kind: "api", email: user.email, provider: user.auth_provider });
   emitAuthChange();
 }

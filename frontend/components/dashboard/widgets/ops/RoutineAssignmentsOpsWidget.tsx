@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ClipboardList } from "lucide-react";
 
 import { apiFetch, isApiMode } from "@/lib/api";
@@ -43,6 +43,12 @@ import { useScheduleStore } from "@/lib/schedule/schedule-store";
 import type { Shift, Worker } from "@/lib/schedule/types";
 import type { RoutineAssignmentDetail } from "@/lib/routinesService";
 import { cn } from "@/lib/cn";
+import {
+  demoHandoverSummaries,
+  listAssignmentHandoverSummariesForDate,
+  type AssignmentHandoverSummary,
+} from "@/lib/routines/assignment-handover";
+import { RoutineAssignmentHandoverChip } from "@/components/routines/handover/RoutineAssignmentHandoverChip";
 
 const DEMO_WORKFORCE_ROWS: DayRoutineWorkerRow[] = [
   {
@@ -50,7 +56,7 @@ const DEMO_WORKFORCE_ROWS: DayRoutineWorkerRow[] = [
     workerName: "Alex Chen",
     shiftWindow: "06:00–14:00",
     shiftBand: "day",
-    routines: [{ assignmentId: "d1", name: "Arena A — Day" }],
+    routines: [{ assignmentId: "d1", name: "Arena A — Day", primaryUserId: "demo-1" }],
     badges: ["GROUNDS"],
   },
   {
@@ -58,7 +64,7 @@ const DEMO_WORKFORCE_ROWS: DayRoutineWorkerRow[] = [
     workerName: "Jordan Lee",
     shiftWindow: "14:00–22:00",
     shiftBand: "afternoon",
-    routines: [{ assignmentId: "d2", name: "Arena B — Afternoon" }],
+    routines: [{ assignmentId: "d2", name: "Arena B — Afternoon", primaryUserId: "demo-2" }],
     badges: ["EXTRA"],
   },
   {
@@ -104,6 +110,7 @@ type LoadState =
       workers: Worker[];
       assignments: RoutineAssignmentDetail[];
       routines: RoutineRow[];
+      handoverSummaries: AssignmentHandoverSummary[];
       loadErr: string | null;
     };
 
@@ -145,7 +152,8 @@ export function useRoutineAssignmentsBoardState() {
 
       let loadErr: string | null = null;
       try {
-        const [assignments, routines, shiftList, pulseWorkers, pulseZones] = await Promise.all([
+        const [assignments, routines, shiftList, pulseWorkers, pulseZones, handoverSummaries] =
+          await Promise.all([
           listRoutineAssignmentsForDate(dateStr).catch((e) => {
             const { status } = parseClientApiError(e);
             if (status === 404) return [] as RoutineAssignmentDetail[];
@@ -162,7 +170,8 @@ export function useRoutineAssignmentsBoardState() {
           }),
           apiFetch<PulseWorkerApi[]>("/api/v1/pulse/workers").catch(() => [] as PulseWorkerApi[]),
           apiFetch<PulseZoneApi[]>("/api/v1/pulse/schedule-facilities").catch(() => [] as PulseZoneApi[]),
-        ]);
+          listAssignmentHandoverSummariesForDate(dateStr).catch(() => [] as AssignmentHandoverSummary[]),
+          ]);
 
         const storeWorkers = useScheduleStore.getState().workers;
         const workers =
@@ -183,6 +192,7 @@ export function useRoutineAssignmentsBoardState() {
             workers,
             assignments,
             routines,
+            handoverSummaries,
             loadErr,
           });
         }
@@ -196,6 +206,7 @@ export function useRoutineAssignmentsBoardState() {
           workers: [],
           assignments: [],
           routines: [],
+          handoverSummaries: [],
           loadErr: routineAssignmentsLoadMessage(e),
         });
       }
@@ -217,6 +228,15 @@ export function useRoutineAssignmentsBoardState() {
     });
   }, [state, deploymentBadgeOverlays]);
 
+  const handoverSummaryByAssignment = useMemo(() => {
+    if (state.kind !== "live") return new Map<string, AssignmentHandoverSummary>();
+    const m = new Map<string, AssignmentHandoverSummary>();
+    for (const s of state.handoverSummaries) m.set(s.assignment_id, s);
+    return m;
+  }, [state]);
+
+  const reload = () => setReloadToken((n) => n + 1);
+
   if (state.kind === "live") {
     return {
       kind: "live" as const,
@@ -224,7 +244,13 @@ export function useRoutineAssignmentsBoardState() {
       routines: state.routines,
       dateLabel: state.dateLabel,
       loadErr: state.loadErr,
+      handoverSummaryByAssignment,
+      reload,
+      dateStr: state.dateStr,
     };
+  }
+  if (state.kind === "demo") {
+    return { kind: "demo" as const, reload };
   }
   return state;
 }
@@ -269,11 +295,15 @@ function WorkforceRoutineRow({
   compact,
   fillShell,
   emphasizeMissing,
+  handoverSummaryByAssignment,
+  onHandoverChange,
 }: {
   row: DayRoutineWorkerRow;
   compact?: boolean;
   fillShell?: boolean;
   emphasizeMissing?: boolean;
+  handoverSummaryByAssignment?: Map<string, AssignmentHandoverSummary>;
+  onHandoverChange?: () => void;
 }) {
   return (
     <li
@@ -315,12 +345,14 @@ function WorkforceRoutineRow({
             );
           })}
           {row.routines.map((r) => (
-            <span
+            <RoutineAssignmentHandoverChip
               key={r.assignmentId}
-              className="rounded-md border border-violet-200/80 bg-violet-50/90 px-1.5 py-0.5 text-[10px] font-medium text-violet-900 dark:border-violet-500/30 dark:bg-violet-950/60 dark:text-violet-100"
-            >
-              {r.name}
-            </span>
+              assignment={r}
+              workerName={row.workerName}
+              shiftWindow={row.shiftWindow}
+              summary={handoverSummaryByAssignment?.get(r.assignmentId)}
+              onHandoverChange={onHandoverChange}
+            />
           ))}
         </div>
       )}
@@ -342,6 +374,8 @@ function WorkforceByShiftSections({
   dateLabel,
   loadErr,
   demoHint,
+  handoverSummaryByAssignment,
+  onHandoverChange,
 }: {
   groups: ReturnType<typeof groupDayRoutineWorkerRows>;
   compact?: boolean;
@@ -349,6 +383,8 @@ function WorkforceByShiftSections({
   dateLabel?: string;
   loadErr?: string | null;
   demoHint?: string;
+  handoverSummaryByAssignment?: Map<string, AssignmentHandoverSummary>;
+  onHandoverChange?: () => void;
 }) {
   const totalWorkers = groups.reduce((n, g) => n + g.rows.length, 0);
 
@@ -398,6 +434,8 @@ function WorkforceByShiftSections({
                     compact={compact}
                     fillShell={fillShell}
                     emphasizeMissing={section === "missing"}
+                    handoverSummaryByAssignment={handoverSummaryByAssignment}
+                    onHandoverChange={onHandoverChange}
                   />
                 ))}
               </ul>
@@ -421,8 +459,20 @@ function RoutineAssignmentsInner({
   fillShell?: boolean;
 }) {
   const state = useRoutineAssignmentsBoardState();
+  const [handoverBump, setHandoverBump] = useState(0);
   const mutedText = "text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]";
   const fillCenter = fillShell ? "flex flex-1 items-center justify-center text-center px-2" : "";
+
+  const onHandoverChange = useCallback(() => {
+    setHandoverBump((n) => n + 1);
+    if ("reload" in state && typeof state.reload === "function") state.reload();
+  }, [state]);
+
+  const demoHandoverMap = useMemo(() => {
+    const ids = DEMO_WORKFORCE_ROWS.flatMap((r) => r.routines.map((x) => x.assignmentId));
+    const summaries = demoHandoverSummaries(ids);
+    return new Map(summaries.map((s) => [s.assignment_id, s]));
+  }, [handoverBump]);
 
   const body = useMemo(() => {
     if (state.kind === "loading") {
@@ -438,6 +488,8 @@ function RoutineAssignmentsInner({
           compact={compact}
           fillShell={fillShell}
           demoHint="Demo workforce handoffs — sign in to sync with the schedule board."
+          handoverSummaryByAssignment={demoHandoverMap}
+          onHandoverChange={onHandoverChange}
         />
       );
     }
@@ -457,9 +509,11 @@ function RoutineAssignmentsInner({
         fillShell={fillShell}
         dateLabel={state.dateLabel}
         loadErr={state.loadErr}
+        handoverSummaryByAssignment={state.handoverSummaryByAssignment}
+        onHandoverChange={onHandoverChange}
       />
     );
-  }, [state, compact, maxWorkers, fillShell, fillCenter, mutedText]);
+  }, [state, compact, maxWorkers, fillShell, fillCenter, mutedText, demoHandoverMap]);
 
   return (
     <div className={cn(fillShell ? "flex h-full min-h-0 flex-col" : "space-y-2")}>

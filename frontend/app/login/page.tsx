@@ -122,7 +122,10 @@ export default function LoginPage() {
           }
           return;
         }
-        writeApiSession(result.token, result.user, false, { allowDuringTeardown: true });
+        writeApiSession(result.token, result.user, false, {
+          allowDuringTeardown: true,
+          resetWelcomeOverlay: true,
+        });
         navigateAfterPulseLogin(result.user);
         return;
       }
