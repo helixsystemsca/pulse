@@ -50,6 +50,7 @@ import { DASHBOARD_SCOPE_LABEL } from "@/config/platform/dashboard-scope";
 import type { NavigationTreeDomain, NavigationTreeItem } from "@/lib/navigation/build-navigation-tree";
 import type { TenantNavIcon } from "@/config/platform/tenant-nav-registry";
 import { cn } from "@/lib/cn";
+import { TennisBall } from "@/lib/icons/tennis-ball";
 
 const ICONS: Record<string, LucideIcon> = {
   layout: LayoutDashboard,
@@ -80,6 +81,7 @@ const PLATFORM_DEPT_ICONS: Record<PlatformIconKey, LucideIcon> = {
   building: Building2,
   clipboard: ClipboardList,
   "scroll-text": ScrollText,
+  "tennis-ball": TennisBall,
   package: Package,
   "book-open": BookOpen,
   "bar-chart-2": BarChart2,
@@ -155,6 +157,7 @@ export function AppSideNav() {
   return (
     <aside
       ref={asideRef}
+      data-tour="sidebar-navigation"
       onMouseEnter={() => setRailExpanded(true)}
       onMouseLeave={() => setRailExpanded(false)}
       className={cn(

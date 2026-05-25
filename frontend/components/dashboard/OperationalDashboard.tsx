@@ -71,6 +71,7 @@ import { Co2MonitoringOpsWidget } from "@/components/dashboard/widgets/ops/Co2Mo
 import { PoolReadingsOpsWidget } from "@/components/dashboard/widgets/ops/PoolReadingsOpsWidget";
 import { FacilityScheduleOpsWidget } from "@/components/dashboard/widgets/ops/FacilityScheduleOpsWidget";
 import { RoutineAssignmentsOpsWidget } from "@/components/dashboard/widgets/ops/RoutineAssignmentsOpsWidget";
+import { DASHBOARD_TOUR_TARGET_BY_WIDGET } from "@/lib/onboarding/tour-steps";
 import { isUserFeatureEnabled } from "@/lib/features/tenant-features";
 import { fetchWorkRequestKpiSummary } from "@/lib/work-requests/kpi-summary";
 import { hasRbacPermission } from "@/lib/rbac/session-access";
@@ -1218,8 +1219,11 @@ function DashboardBody({
                   {model.workforce.summaryLine}
                 </p>
               </div>
-              <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1.5 overflow-hidden">
-                <div className="flex min-h-0 flex-1 min-w-0 flex-col overflow-hidden py-0.5">
+                <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1.5 overflow-hidden">
+                <div
+                  data-tour="workforce-today"
+                  className="flex min-h-0 flex-1 min-w-0 flex-col overflow-hidden py-0.5"
+                >
                   <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--ds-accent)]">
                     Scheduled today
                   </p>
@@ -1736,8 +1740,11 @@ function DashboardBody({
                 const registryEntry = (widgetRegistry as Record<string, { shellJumpHref?: string; shellJumpLabel?: string }>)[slot.id];
                 const peekPage = slot.id.startsWith("cw_") ? catalogPage(customConfigs[slot.id]?.pageId ?? "") : null;
 
+                const tourTarget = DASHBOARD_TOUR_TARGET_BY_WIDGET[slot.id];
+
                 return (
                   <div
+                    {...(tourTarget ? { "data-tour": tourTarget } : {})}
                     data-guided-tour-anchor={
                       slot.id === "notifications_work_orders"
                         ? "dashboard-alerts"

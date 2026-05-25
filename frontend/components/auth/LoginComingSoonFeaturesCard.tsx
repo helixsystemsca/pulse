@@ -2,7 +2,6 @@
 
 import type { LucideIcon } from "lucide-react";
 import { Link2, Shield, Smartphone, Sparkles, Zap, type LucideProps } from "lucide-react";
-import { useCallback, useState } from "react";
 import { cn } from "@/lib/cn";
 import "./coming-soon-card.css";
 
@@ -42,29 +41,13 @@ function FeatureIcon({ icon: Icon }: { icon: LucideIcon }) {
 
 type LoginComingSoonFeaturesCardProps = {
   features?: UpcomingFeature[];
-  onNotify?: () => void | Promise<void>;
   className?: string;
 };
 
 export function LoginComingSoonFeaturesCard({
   features = DEFAULT_FEATURES,
-  onNotify,
   className,
 }: LoginComingSoonFeaturesCardProps) {
-  const [notified, setNotified] = useState(false);
-
-  const handleNotify = useCallback(async () => {
-    try {
-      if (onNotify) {
-        await onNotify();
-      }
-      setNotified(true);
-      window.setTimeout(() => setNotified(false), 3000);
-    } catch {
-      /* parent may surface errors */
-    }
-  }, [onNotify]);
-
   return (
     <div
       className={cn("coming-soon-card coming-soon-card--dock-left", className)}
@@ -97,24 +80,6 @@ export function LoginComingSoonFeaturesCard({
           </li>
         ))}
       </ul>
-
-      <div className="coming-soon-footer">
-        <p className="notify-text">Get launch updates?</p>
-        {!notified ? (
-          <button
-            type="button"
-            className="notify-btn"
-            onClick={() => void handleNotify()}
-            aria-label="Subscribe to feature updates"
-          >
-            Notify Me
-          </button>
-        ) : (
-          <div className="notify-success" role="status">
-            ✓ Notified
-          </div>
-        )}
-      </div>
     </div>
   );
 }

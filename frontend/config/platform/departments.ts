@@ -51,7 +51,7 @@ export const PLATFORM_DEPARTMENTS: readonly Department[] = [
     id: "dept_racquets",
     slug: "racquets",
     name: "Racquets",
-    icon: "scroll-text",
+    icon: "tennis-ball",
     accentColor: "var(--ds-accent)",
     enabledModuleIds: moduleIdsForDepartmentSlug("racquets"),
   },

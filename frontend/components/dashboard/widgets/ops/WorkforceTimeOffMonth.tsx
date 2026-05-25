@@ -50,21 +50,28 @@ function TimeOffBubble({ entry }: { entry: WorkforceTimeOffEntry }) {
 }
 
 export function WorkforceTimeOffMonth({ entries }: { entries: WorkforceTimeOffEntry[] }) {
-  if (entries.length === 0) return null;
-
   return (
-    <div className="mt-auto shrink-0 border-t border-[color-mix(in_srgb,var(--ds-text-primary)_10%,transparent)] pt-2">
+    <div
+      data-tour="time-off-monitoring"
+      className="mt-auto shrink-0 border-t border-[color-mix(in_srgb,var(--ds-text-primary)_10%,transparent)] pt-2"
+    >
       <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[color-mix(in_srgb,var(--ds-text-primary)_48%,transparent)]">
         Time-off this Month
       </p>
-      <ul
-        className="mt-1 flex min-h-0 w-full max-w-full flex-nowrap items-start justify-start gap-x-1 overflow-x-auto overflow-y-visible pb-0.5 pt-0.5"
-        aria-label="Time-off this month"
-      >
-        {entries.map((entry) => (
-          <TimeOffBubble key={entry.id} entry={entry} />
-        ))}
-      </ul>
+      {entries.length === 0 ? (
+        <p className="mt-1 text-[11px] text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]">
+          No time-off scheduled this month.
+        </p>
+      ) : (
+        <ul
+          className="mt-1 flex min-h-0 w-full max-w-full flex-nowrap items-start justify-start gap-x-1 overflow-x-auto overflow-y-visible pb-0.5 pt-0.5"
+          aria-label="Time-off this month"
+        >
+          {entries.map((entry) => (
+            <TimeOffBubble key={entry.id} entry={entry} />
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

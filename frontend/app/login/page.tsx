@@ -350,22 +350,9 @@ export default function LoginPage() {
                 </div>
               </div>
             </div>
-
-            <div className="relative mt-5 sm:mt-6">
-              <div className="h-px w-full bg-[color-mix(in_srgb,#4c6085_14%,transparent)] dark:bg-ds-border" />
-              <p className="absolute left-1/2 top-1/2 w-max -translate-x-1/2 -translate-y-1/2 bg-white/80 px-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[color-mix(in_srgb,var(--ds-text-primary)_38%,transparent)] backdrop-blur-sm dark:bg-[var(--ds-bg)] dark:text-ds-muted">
-                Secure link
-              </p>
-            </div>
             </div>
           </div>
         </main>
-
-        <footer className="relative z-10 mt-auto border-t border-[color-mix(in_srgb,#4c6085_10%,transparent)] bg-[color-mix(in_srgb,#ffffff_70%,transparent)] px-5 py-2 dark:border-ds-border dark:bg-ds-surface-primary/40 sm:px-8 sm:py-2.5 lg:px-12">
-          <p className="mx-auto max-w-6xl text-center text-[10px] font-bold uppercase tracking-wide text-[color-mix(in_srgb,var(--ds-text-primary)_48%,transparent)] dark:text-ds-muted">
-            © {new Date().getFullYear()} Helix Systems
-          </p>
-        </footer>
       </div>
     </AuthScreenShell>
   );

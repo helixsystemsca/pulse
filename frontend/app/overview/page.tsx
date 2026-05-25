@@ -4,6 +4,7 @@ import {
   OperationalDashboard,
   type OperationalDashboardReadyPayload,
 } from "@/components/dashboard/OperationalDashboard";
+import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
 import { WelcomeLoaderModal } from "@/components/ui/WelcomeLoaderModal";
 import { UI } from "@/styles/ui";
 import { isApiMode } from "@/lib/api";
@@ -103,6 +104,7 @@ export default function OverviewPage() {
           criticalCount={welcomeAlertContext.criticalCount}
           warningCount={welcomeAlertContext.warningCount}
         />
+        <OnboardingTour />
       </div>
     </div>
   );

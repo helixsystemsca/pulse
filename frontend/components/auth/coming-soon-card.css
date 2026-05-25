@@ -171,56 +171,6 @@
   line-height: 1.4;
 }
 
-.coming-soon-footer {
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid #e2e8f0;
-  text-align: center;
-}
-
-.notify-text {
-  color: #64748b;
-  font-size: 10px;
-  margin-bottom: 8px;
-  line-height: 1.35;
-}
-
-.notify-btn {
-  background: linear-gradient(135deg, #56c9d9 0%, #4db8c4 100%);
-  color: white;
-  border: none;
-  padding: 8px 14px;
-  border-radius: 8px;
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 12px rgba(86, 201, 217, 0.3);
-  width: 100%;
-}
-
-.notify-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(86, 201, 217, 0.4);
-}
-
-.notify-btn:focus-visible {
-  outline: 2px solid #3ba6b3;
-  outline-offset: 2px;
-}
-
-.notify-success {
-  color: #10b981;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 8px 12px;
-  background: rgba(16, 185, 129, 0.1);
-  border-radius: 8px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
 @keyframes comingSoonFadeInUp {
   from {
     opacity: 0;
@@ -307,7 +257,6 @@
 }
 
 .dark .coming-soon-subtitle,
-.dark .notify-text,
 .dark .feature-description {
   color: var(--ds-text-secondary);
 }
@@ -326,10 +275,6 @@
   color: var(--ds-text-primary);
 }
 
-.dark .coming-soon-footer {
-  border-top-color: var(--ds-border);
-}
-
 @media (prefers-reduced-motion: reduce) {
   .coming-soon-card,
   .feature-item {
@@ -343,17 +288,12 @@
     transform: translateY(-50%) perspective(800px) rotateY(-2deg);
   }
 
-  .feature-item,
-  .notify-btn {
+  .feature-item {
     transition: none;
   }
 
   .feature-item:hover,
   .coming-soon-card--dock-left .feature-item:hover {
-    transform: none;
-  }
-
-  .notify-btn:hover {
     transform: none;
   }
 }
