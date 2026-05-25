@@ -6,7 +6,7 @@ import { Card } from "@/components/pulse/Card";
 import { TankIndicator } from "@/components/monitoring/TankIndicator";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useSimulatedPoolControllers } from "@/hooks/useSimulatedPoolControllers";
-import { co2Tanks } from "@/lib/monitoringMockData";
+import { co2Tanks, type PoolController } from "@/lib/monitoringMockData";
 import { cn } from "@/lib/cn";
 
 const CO2_LEVEL_MAX = 1000;
@@ -19,7 +19,7 @@ function PoolControllerMockCard({
   temp,
   co2FeederActive,
   chlorineFeederActive,
-}: (typeof poolControllers)[number]) {
+}: PoolController) {
   return (
     <div className="ds-premium-panel rounded-xl p-4">
       <p className="font-headline text-sm font-bold text-ds-foreground">{name}</p>
