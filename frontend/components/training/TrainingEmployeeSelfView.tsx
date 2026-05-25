@@ -4,7 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import { ClipboardCheck } from "lucide-react";
 import { TrainingMatrixTable } from "@/components/training/TrainingMatrixTable";
 import { isApiMode } from "@/lib/api";
-import { complianceAlertsForEmployee } from "@/lib/training/complianceAlerts";
+import {
+  complianceAlertsForEmployee,
+  complianceAlertsGroupedByTier,
+} from "@/lib/training/complianceAlerts";
+import { TrainingTierBadge } from "@/components/training/TrainingTierBadge";
 import { MOCK_TRAINING_PROGRAMS } from "@/lib/training/mockData";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { readSession } from "@/lib/pulse-session";
@@ -93,6 +97,8 @@ export function TrainingEmployeeSelfView() {
     [workerId, programs, assignments, acks, trustServer],
   );
 
+  const alertsByTier = useMemo(() => complianceAlertsGroupedByTier(alerts), [alerts]);
+
   if (!workerId) {
     return (
       <div className="rounded-xl border border-ds-border bg-ds-primary/80 p-5 text-sm text-ds-muted">
@@ -125,26 +131,39 @@ export function TrainingEmployeeSelfView() {
         </div>
       </div>
 
-      {alerts.length > 0 ? (
+      {alertsByTier.length > 0 ? (
         <section className="rounded-xl border border-ds-border bg-ds-secondary/40 p-4">
           <h3 className="text-[11px] font-bold uppercase tracking-wide text-ds-muted">Compliance attention</h3>
-          <ol className="mt-3 space-y-2 text-sm">
-            {alerts.map((a) => (
-              <li
-                key={a.programId}
-                className="flex flex-wrap items-baseline justify-between gap-2 border-b border-ds-border/60 pb-2 last:border-0 last:pb-0"
-              >
-                <span className="font-medium text-ds-foreground">{a.title}</span>
-                <span
-                  className={`text-xs font-semibold tabular-nums ${
-                    a.priority <= 2 ? "text-ds-danger" : a.priority === 3 ? "text-ds-warning" : "text-ds-muted"
-                  }`}
-                >
-                  {a.label}
-                </span>
-              </li>
+          <p className="mt-1 text-xs text-ds-muted">Assigned training that needs action, grouped by risk level.</p>
+          <div className="mt-4 space-y-5">
+            {alertsByTier.map((group) => (
+              <div key={group.tier}>
+                <div className="mb-2 flex items-center gap-2">
+                  <TrainingTierBadge tier={group.tier} />
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-ds-muted">
+                    {group.alerts.length} item{group.alerts.length === 1 ? "" : "s"}
+                  </span>
+                </div>
+                <ol className="space-y-2 text-sm">
+                  {group.alerts.map((a) => (
+                    <li
+                      key={a.programId}
+                      className="flex flex-wrap items-baseline justify-between gap-2 rounded-lg border border-ds-border/70 bg-ds-primary/50 px-3 py-2"
+                    >
+                      <span className="font-medium text-ds-foreground">{a.title}</span>
+                      <span
+                        className={`text-xs font-semibold ${
+                          a.priority <= 2 ? "text-ds-danger" : a.priority === 3 ? "text-ds-warning" : "text-ds-muted"
+                        }`}
+                      >
+                        {a.label}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
             ))}
-          </ol>
+          </div>
         </section>
       ) : null}
 

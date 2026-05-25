@@ -50,6 +50,8 @@ import { DASHBOARD_SCOPE_LABEL } from "@/config/platform/dashboard-scope";
 import type { NavigationTreeDomain, NavigationTreeItem } from "@/lib/navigation/build-navigation-tree";
 import type { TenantNavIcon } from "@/config/platform/tenant-nav-registry";
 import { cn } from "@/lib/cn";
+import { navDomainTourSlug } from "@/lib/onboarding/domain-tour-slugs";
+import { useOnboardingFlyoutBridge } from "@/lib/onboarding/onboarding-flyout-bridge";
 import { TennisRacket } from "@/lib/icons/tennis-racket";
 
 const ICONS: Record<string, LucideIcon> = {
@@ -201,6 +203,7 @@ function TenantDomainFlyoutNav({
   labelVisibility: string;
 }) {
   const flyoutId = useId();
+  const flyoutBridge = useOnboardingFlyoutBridge();
   const shellRef = useRef<HTMLDivElement | null>(null);
   const domainButtonRefs = useRef<Partial<Record<NavDomain, HTMLButtonElement>>>({});
   const [hoverDomain, setHoverDomain] = useState<NavDomain | null>(null);
@@ -209,7 +212,8 @@ function TenantDomainFlyoutNav({
   const [shellHeight, setShellHeight] = useState(0);
 
   const routeActiveDomain = useMemo(() => domainForPathname(tree, pathname), [tree, pathname]);
-  const openDomain = pinnedDomain ?? hoverDomain;
+  const tourFlyoutDomain = flyoutBridge?.tourFlyoutDomain ?? null;
+  const openDomain = tourFlyoutDomain ?? pinnedDomain ?? hoverDomain;
   const openDomainNode = openDomain ? tree.find((d) => d.domain === openDomain) : undefined;
 
   const syncFlyoutAnchor = useCallback((domain: NavDomain) => {
@@ -231,8 +235,16 @@ function TenantDomainFlyoutNav({
   }, [openDomain, syncFlyoutAnchor, tree.length, railExpanded]);
 
   useEffect(() => {
+    if (flyoutBridge?.isTourActive) return;
     closeFlyout();
-  }, [pathname, closeFlyout]);
+  }, [pathname, closeFlyout, flyoutBridge?.isTourActive]);
+
+  useEffect(() => {
+    if (!tourFlyoutDomain) return;
+    setPinnedDomain(tourFlyoutDomain);
+    setHoverDomain(tourFlyoutDomain);
+    syncFlyoutAnchor(tourFlyoutDomain);
+  }, [tourFlyoutDomain, syncFlyoutAnchor]);
 
   useEffect(() => {
     if (!openDomain) return;
@@ -281,6 +293,7 @@ function TenantDomainFlyoutNav({
         return (
           <button
             key={domainNode.domain}
+            data-tour={`domain-rail-${navDomainTourSlug(domainNode.domain)}`}
             ref={(el) => {
               if (el) domainButtonRefs.current[domainNode.domain] = el;
               else delete domainButtonRefs.current[domainNode.domain];
@@ -386,6 +399,7 @@ function NavFlyoutPanel({
     <div
       ref={panelRef}
       id={id}
+      data-tour="domain-flyout"
       role="menu"
       aria-label={`${domain.label} modules`}
       style={{ top: panelTop }}
@@ -439,6 +453,7 @@ function FlyoutNavLink({ item, pathname }: { item: NavigationTreeItem; pathname:
       href={item.href}
       role="menuitem"
       title={flyoutItemTitle(item)}
+      data-tour={`flyout-item-${item.key}`}
       data-guided-tour-anchor={item.href === "/dashboard/maintenance" ? "sidebar-work-requests" : undefined}
       className={cn(
         SIDENAV_ROW_BASE,

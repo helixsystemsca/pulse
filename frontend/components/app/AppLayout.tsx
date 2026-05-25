@@ -13,6 +13,7 @@ import { AppLayoutFooter } from "./AppLayoutFooter";
 import { GamificationProvider } from "@/components/gamification/GamificationProvider";
 import { SidebarStateProvider } from "@/components/app/SidebarState";
 import { AppMainChromeColumn } from "@/components/app/AppMainChromeColumn";
+import { OnboardingFlyoutBridgeProvider } from "@/lib/onboarding/onboarding-flyout-bridge";
 import { OnboardingTourProvider } from "@/lib/onboarding/onboarding-tour-context";
 
 type AppLayoutProps = {
@@ -38,7 +39,8 @@ export function AppLayout({
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-ds-secondary">
       <ModuleSettingsProvider>
         <GamificationProvider>
-          <OnboardingTourProvider>
+          <OnboardingFlyoutBridgeProvider>
+            <OnboardingTourProvider>
             <SidebarStateProvider>
             <InactivitySessionGuard />
             <ServerTimeSync />
@@ -82,7 +84,8 @@ export function AppLayout({
               ) : null}
             </div>
             </SidebarStateProvider>
-          </OnboardingTourProvider>
+            </OnboardingTourProvider>
+          </OnboardingFlyoutBridgeProvider>
         </GamificationProvider>
       </ModuleSettingsProvider>
     </div>

@@ -17,7 +17,10 @@ import { RotateCcw } from "lucide-react";
 import type { TourPlacement, TourStep } from "@/lib/onboarding/tour-steps/types";
 import { clearTourCompleted, isTourCompleted, markTourCompleted } from "@/lib/onboarding/tour-storage";
 import { getTourTargetElements, getTourTargetUnionRect, hasTourTarget } from "@/lib/onboarding/tour-target";
+import { buildNavigationTree } from "@/lib/navigation/build-navigation-tree";
+import { useOnboardingFlyoutBridge } from "@/lib/onboarding/onboarding-flyout-bridge";
 import { hasProductTour, resolveProductTour } from "@/lib/onboarding/tour-registry";
+import { usePulseAuth } from "@/hooks/usePulseAuth";
 import "@/components/onboarding/onboarding-tour.css";
 
 const CARD_WIDTH = 420;
@@ -93,9 +96,16 @@ function calculateCardPosition(rect: DOMRect, placement: TourPlacement): CardSty
 
 export function OnboardingTourProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? "";
-  const activeTour = useMemo(() => resolveProductTour(pathname), [pathname]);
-  const tourEnabled = hasProductTour(pathname);
+  const { session } = usePulseAuth();
+  const flyoutBridge = useOnboardingFlyoutBridge();
+  const navigationTree = useMemo(() => buildNavigationTree(session), [session]);
+  const activeTour = useMemo(
+    () => resolveProductTour(pathname, navigationTree),
+    [pathname, navigationTree],
+  );
+  const tourEnabled = hasProductTour(pathname, navigationTree);
   const tourId = activeTour?.id ?? null;
+  const tourDomain = activeTour?.domain ?? null;
   const steps = activeTour?.steps ?? [];
 
   const [mounted, setMounted] = useState(false);
@@ -121,6 +131,12 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
       setShowStart(true);
     }
   }, [mounted, tourEnabled, tourId]);
+
+  useEffect(() => {
+    const active = isActive || showStart;
+    flyoutBridge?.setTourActive(active);
+    flyoutBridge?.setTourFlyoutDomain(active && tourDomain ? tourDomain : null);
+  }, [isActive, showStart, tourDomain, flyoutBridge]);
 
   const updatePositions = useCallback(() => {
     const step = steps[currentStep];
