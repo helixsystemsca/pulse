@@ -1,4 +1,4 @@
-import type { TourStep } from "@/lib/onboarding/tour-steps";
+import type { TourStep } from "@/lib/onboarding/tour-steps/types";
 
 export const TOUR_STEP_SIDEBAR: TourStep = {
   target: '[data-tour="sidebar-navigation"]',
@@ -49,15 +49,11 @@ export function standardFeatureTourSteps(
       placement: "bottom",
     });
   }
-  steps.push(
-    {
-      target: '[data-tour="feature-workspace"]',
-      title: "Workspace",
-      description: workspaceDescription,
-      placement: "top",
-    },
-    TOUR_STEP_SIDEBAR,
-    TOUR_STEP_FEEDBACK,
-  );
+  steps.push({
+    target: '[data-tour="feature-workspace"]',
+    title: "Workspace",
+    description: workspaceDescription,
+    placement: "top",
+  });
   return steps;
 }

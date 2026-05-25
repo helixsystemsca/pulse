@@ -10,6 +10,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import Image from "next/image";
 import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { RotateCcw } from "lucide-react";
@@ -261,7 +262,6 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
   const step = steps[currentStep];
   const welcomeTitle = activeTour?.welcomeTitle ?? "Welcome";
   const welcomeSubtitle = activeTour?.welcomeSubtitle ?? "";
-  const welcomeEmoji = activeTour?.welcomeEmoji ?? "✨";
 
   const portal =
     mounted && tourEnabled && activeTour ? (
@@ -283,7 +283,14 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
         {showStart ? (
           <div className="tour-start-screen active" role="dialog" aria-modal="true" aria-labelledby="tour-start-title">
             <div className="start-icon" aria-hidden>
-              {welcomeEmoji}
+              <Image
+                src="/images/panoramalogo2.png"
+                alt=""
+                width={148}
+                height={148}
+                priority
+                className="start-icon__logo"
+              />
             </div>
             <h1 id="tour-start-title" className="start-title">
               {welcomeTitle}

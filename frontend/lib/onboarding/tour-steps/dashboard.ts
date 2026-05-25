@@ -1,4 +1,5 @@
-import type { TourStep } from "@/lib/onboarding/tour-steps";
+import type { TourStep } from "@/lib/onboarding/tour-steps/types";
+import { TOUR_STEP_FEEDBACK, TOUR_STEP_SIDEBAR } from "@/lib/onboarding/tour-steps/shared";
 
 export const DASHBOARD_TOUR_STEPS: TourStep[] = [
   {
@@ -57,20 +58,8 @@ export const DASHBOARD_TOUR_STEPS: TourStep[] = [
       "CO₂ tanks and live pool chemistry in one place. Visual indicators show what's in range and what needs attention—open Monitoring for the full view.",
     placement: "left",
   },
-  {
-    target: '[data-tour="sidebar-navigation"]',
-    title: "Quick Navigation",
-    description:
-      "Access all major sections from the sidebar. Operations, scheduling, inventory, maintenance, analytics, and team management—everything is just one click away.",
-    placement: "right",
-  },
-  {
-    target: '[data-tour="feedback"]',
-    title: "Questions or feedback?",
-    description:
-      "Tap the megaphone anytime to send product feedback or ask a question. Your note goes to administrators under Messages → Product feedback.",
-    placement: "bottom",
-  },
+  TOUR_STEP_SIDEBAR,
+  TOUR_STEP_FEEDBACK,
 ];
 
 /** Widget slot id → `data-tour` when the whole card is the target. */
