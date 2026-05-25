@@ -1556,6 +1556,7 @@ function DashboardBody({
 
   return (
     <div
+      data-tour="department-dashboards-area"
       className={cn(
         DASH.page,
         "pulse-dashboard-canvas pulse-operations-dashboard min-w-0",
@@ -1567,10 +1568,15 @@ function DashboardBody({
       <div
         data-tour={isDeptDashboard ? "feature-header" : undefined}
         className={cn(
-          "ops-dash-header-bar flex flex-wrap items-center justify-between gap-3 px-3 py-2.5",
+          "ops-dash-header-bar relative flex flex-wrap items-center justify-between gap-3 px-3 py-2.5",
           isKiosk && "shrink-0",
         )}
       >
+        <span
+          data-tour="department-dashboards-card"
+          className="pointer-events-none absolute left-1/2 top-0 h-1 w-1 -translate-x-1/2 opacity-0"
+          aria-hidden
+        />
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[color-mix(in_srgb,var(--ds-text-primary)_48%,transparent)]">
             {dashboardTitle}

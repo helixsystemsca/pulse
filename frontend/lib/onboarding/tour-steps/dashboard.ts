@@ -1,13 +1,35 @@
 import type { TourStep } from "@/lib/onboarding/tour-steps/types";
-import { TOUR_STEP_FEEDBACK, TOUR_STEP_SIDEBAR } from "@/lib/onboarding/tour-steps/shared";
+import { TOUR_STEP_SIDEBAR, TOUR_STEP_USER_HUB } from "@/lib/onboarding/tour-steps/shared";
+
+/** Spotlight order for the widget-system carousel (one selector per dashboard tile). */
+export const DASHBOARD_WIDGET_ROTATION_TARGETS: readonly string[] = [
+  '[data-tour="important-dates"]',
+  '[data-tour="low-inventory"]',
+  '[data-tour="workforce-widget"]',
+  '[data-tour="routine-assignments"]',
+  '[data-tour="pool-readings"]',
+  '[data-tour="co2-monitoring"]',
+  '[data-tour="work-requests"]',
+  '[data-tour="training-compliance"]',
+];
 
 export const DASHBOARD_TOUR_STEPS: TourStep[] = [
   {
-    target: '[data-tour="leadership-dashboard"]',
-    title: "Leadership Dashboard",
+    target: '[data-tour="department-dashboards-area"]',
+    cardTarget: '[data-tour="department-dashboards-card"]',
+    title: "Department Dashboards",
     description:
       "Your central command center. Here you'll find today's overview, important dates, and quick access to key metrics. Everything you need starts here.",
-    placement: "right",
+    placement: "bottom",
+  },
+  {
+    target: DASHBOARD_WIDGET_ROTATION_TARGETS[0]!,
+    rotateTargets: DASHBOARD_WIDGET_ROTATION_TARGETS,
+    rotateIntervalMs: 2400,
+    title: "Widget System",
+    description:
+      "Every feature comes with a moveable widget packed with compressed data—drag tiles, resize them, and choose what matters most on your dashboard.",
+    placement: "center",
   },
   {
     target: '[data-tour="workforce-today"]',
@@ -59,16 +81,17 @@ export const DASHBOARD_TOUR_STEPS: TourStep[] = [
     placement: "left",
   },
   TOUR_STEP_SIDEBAR,
-  TOUR_STEP_FEEDBACK,
+  TOUR_STEP_USER_HUB,
 ];
 
-/** Widget slot id → `data-tour` when the whole card is the target. */
+/** Widget slot id → `data-tour` on the grid tile wrapper. */
 export const DASHBOARD_TOUR_TARGET_BY_WIDGET: Partial<Record<string, string>> = {
-  important_dates: "leadership-dashboard",
+  important_dates: "important-dates",
   low_inventory: "low-inventory",
-  co2_monitoring: "monitoring",
-  pool_readings: "monitoring",
+  workforce: "workforce-widget",
   routine_assignments: "routine-assignments",
+  pool_readings: "pool-readings",
+  co2_monitoring: "co2-monitoring",
   notifications_work_orders: "work-requests",
   training_compliance: "training-compliance",
 };

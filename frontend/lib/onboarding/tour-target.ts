@@ -1,3 +1,5 @@
+import type { TourStep } from "@/lib/onboarding/tour-steps/types";
+
 /** Union bounding rect for one or more tour target nodes (e.g. CO₂ + pool widgets). */
 export function getTourTargetElements(selector: string): Element[] {
   return Array.from(document.querySelectorAll(selector));
@@ -26,4 +28,11 @@ export function getTourTargetUnionRect(elements: Element[]): DOMRect | null {
   if (!Number.isFinite(top)) return null;
 
   return new DOMRect(left, top, right - left, bottom - top);
+}
+
+export function stepHasTourTarget(step: TourStep): boolean {
+  if (step.rotateTargets?.length) {
+    return step.rotateTargets.some((selector) => hasTourTarget(selector));
+  }
+  return hasTourTarget(step.target);
 }

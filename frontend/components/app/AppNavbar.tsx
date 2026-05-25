@@ -242,7 +242,10 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
           </Link>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+        <div
+          className="flex shrink-0 items-center gap-1 sm:gap-2"
+          {...(authed ? { "data-tour": "user-hub" } : {})}
+        >
           {!authed ? (
             pathname !== "/login" ? (
               <Link
@@ -287,7 +290,6 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
                   ref={feedbackMegaphoneRef}
                   type="button"
                   className="feedback-header-btn"
-                  data-tour="feedback"
                   aria-label="Send product feedback"
                   title="Feedback"
                   onClick={() => {

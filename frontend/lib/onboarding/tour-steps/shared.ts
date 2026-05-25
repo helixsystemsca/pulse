@@ -8,11 +8,10 @@ export const TOUR_STEP_SIDEBAR: TourStep = {
   placement: "right",
 };
 
-export const TOUR_STEP_FEEDBACK: TourStep = {
-  target: '[data-tour="feedback"]',
-  title: "Questions or feedback?",
-  description:
-    "The Panorama Platform is in alpha—you may run into occasional bugs. Tap the megaphone anytime to report issues, send product feedback, or ask a question.",
+export const TOUR_STEP_USER_HUB: TourStep = {
+  target: '[data-tour="user-hub"]',
+  title: "User Hub",
+  description: "Important notifications and profile settings.",
   placement: "bottom",
 };
 

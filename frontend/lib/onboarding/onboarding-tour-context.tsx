@@ -16,11 +16,17 @@ import { usePathname } from "next/navigation";
 import { RotateCcw } from "lucide-react";
 import type { TourPlacement, TourStep } from "@/lib/onboarding/tour-steps/types";
 import { clearTourCompleted, isTourCompleted, markTourCompleted } from "@/lib/onboarding/tour-storage";
-import { getTourTargetElements, getTourTargetUnionRect, hasTourTarget } from "@/lib/onboarding/tour-target";
+import {
+  getTourTargetElements,
+  getTourTargetUnionRect,
+  hasTourTarget,
+  stepHasTourTarget,
+} from "@/lib/onboarding/tour-target";
 import { buildNavigationTree } from "@/lib/navigation/build-navigation-tree";
 import { useOnboardingFlyoutBridge } from "@/lib/onboarding/onboarding-flyout-bridge";
 import { hasProductTour, resolveProductTour } from "@/lib/onboarding/tour-registry";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
+import { cn } from "@/lib/cn";
 import "@/components/onboarding/onboarding-tour.css";
 
 const CARD_WIDTH = 420;
@@ -51,7 +57,17 @@ export function useOnboardingTour(): OnboardingTourContextValue | null {
   return useContext(OnboardingTourContext);
 }
 
+function calculateCenterCardPosition(): CardStyle {
+  return {
+    top: Math.max(8, (window.innerHeight - CARD_HEIGHT) / 2),
+    left: Math.max(8, (window.innerWidth - CARD_WIDTH) / 2),
+  };
+}
+
 function calculateCardPosition(rect: DOMRect, placement: TourPlacement): CardStyle {
+  if (placement === "center") {
+    return calculateCenterCardPosition();
+  }
   let top = rect.top;
   let left = rect.left;
 
@@ -84,6 +100,10 @@ function calculateCardPosition(rect: DOMRect, placement: TourPlacement): CardSty
         top = rect.bottom + CARD_OFFSET;
       }
       break;
+    case "center":
+      top = (window.innerHeight - CARD_HEIGHT) / 2;
+      left = (window.innerWidth - CARD_WIDTH) / 2;
+      break;
     default:
       left = rect.right + CARD_OFFSET;
   }
@@ -110,9 +130,12 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
   const [isActive, setIsActive] = useState(false);
   const [showStart, setShowStart] = useState(false);
+  const [showComplete, setShowComplete] = useState(false);
+  const [completeFading, setCompleteFading] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [spotlightStyle, setSpotlightStyle] = useState<SpotlightStyle | null>(null);
   const [cardStyle, setCardStyle] = useState<CardStyle | null>(null);
+  const [rotateIndex, setRotateIndex] = useState(0);
 
   useEffect(() => {
     setMounted(true);
@@ -121,8 +144,15 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setIsActive(false);
     setShowStart(false);
+    setShowComplete(false);
+    setCompleteFading(false);
     setCurrentStep(0);
+    setRotateIndex(0);
   }, [tourId]);
+
+  useEffect(() => {
+    setRotateIndex(0);
+  }, [currentStep]);
 
   useEffect(() => {
     if (!mounted || !tourEnabled || !tourId) return;
@@ -141,19 +171,35 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
     const step = steps[currentStep];
     if (!step) return;
 
-    const elements = getTourTargetElements(step.target);
+    const rotatePool =
+      step.rotateTargets?.filter((selector) => hasTourTarget(selector)) ?? [];
+    const rotating = rotatePool.length > 0;
+    const spotlightSelector = rotating
+      ? rotatePool[rotateIndex % rotatePool.length]!
+      : step.target;
+
+    const elements = getTourTargetElements(spotlightSelector);
     const union = getTourTargetUnionRect(elements);
     if (!union) {
-      console.warn(`Tour target not found: ${step.target}`);
+      if (rotating) {
+        setSpotlightStyle(null);
+        if (step.placement === "center") {
+          setCardStyle(calculateCenterCardPosition());
+        }
+        return;
+      }
+      console.warn(`Tour target not found: ${spotlightSelector}`);
       setSpotlightStyle(null);
       setCardStyle(null);
       return;
     }
 
-    elements[0]?.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+    if (!rotating && step.placement !== "center") {
+      elements[0]?.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+    }
 
     const apply = () => {
-      const rect = getTourTargetUnionRect(getTourTargetElements(step.target));
+      const rect = getTourTargetUnionRect(getTourTargetElements(spotlightSelector));
       if (!rect) return;
       const pad = 4;
       setSpotlightStyle({
@@ -162,14 +208,33 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
         width: rect.width + pad * 2,
         height: rect.height + pad * 2,
       });
-      setCardStyle(calculateCardPosition(rect, step.placement));
+      if (step.placement === "center") {
+        setCardStyle(calculateCenterCardPosition());
+        return;
+      }
+      const cardRect = step.cardTarget
+        ? getTourTargetUnionRect(getTourTargetElements(step.cardTarget)) ?? rect
+        : rect;
+      setCardStyle(calculateCardPosition(cardRect, step.placement));
     };
 
     window.requestAnimationFrame(() => {
       apply();
-      window.setTimeout(apply, 400);
+      window.setTimeout(apply, rotating ? 80 : 400);
     });
-  }, [currentStep, steps]);
+  }, [currentStep, rotateIndex, steps]);
+
+  useEffect(() => {
+    if (!isActive) return;
+    const step = steps[currentStep];
+    const pool = step.rotateTargets.filter((selector) => hasTourTarget(selector));
+    if (pool.length < 2) return;
+    const ms = step.rotateIntervalMs ?? 2400;
+    const id = window.setInterval(() => {
+      setRotateIndex((i) => (i + 1) % pool.length);
+    }, ms);
+    return () => window.clearInterval(id);
+  }, [isActive, currentStep, steps]);
 
   useLayoutEffect(() => {
     if (!isActive) return;
@@ -192,8 +257,24 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
 
   const endTour = useCallback(() => {
     setIsActive(false);
+    setShowComplete(false);
+    setCompleteFading(false);
     if (tourId) markTourCompleted(tourId);
   }, [tourId]);
+
+  const finishTour = useCallback(() => {
+    setShowComplete(true);
+  }, []);
+
+  useEffect(() => {
+    if (!showComplete) return;
+    const fadeTimer = window.setTimeout(() => setCompleteFading(true), 2000);
+    const endTimer = window.setTimeout(() => endTour(), 2600);
+    return () => {
+      window.clearTimeout(fadeTimer);
+      window.clearTimeout(endTimer);
+    };
+  }, [showComplete, endTour]);
 
   const restartTour = useCallback(() => {
     if (!tourId) return;
@@ -206,7 +287,7 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
   const advanceFromMissing = useCallback(
     (fromIndex: number) => {
       for (let i = fromIndex + 1; i < steps.length; i += 1) {
-        if (hasTourTarget(steps[i]!.target)) {
+        if (stepHasTourTarget(steps[i]!)) {
           setCurrentStep(i);
           return;
         }
@@ -218,31 +299,31 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
 
   const nextStep = useCallback(() => {
     if (currentStep >= steps.length - 1) {
-      endTour();
+      finishTour();
       return;
     }
     const next = currentStep + 1;
-    if (!hasTourTarget(steps[next]!.target)) {
+    if (!stepHasTourTarget(steps[next]!)) {
       advanceFromMissing(currentStep);
       return;
     }
     setCurrentStep(next);
-  }, [advanceFromMissing, currentStep, endTour, steps]);
+  }, [advanceFromMissing, currentStep, finishTour, steps]);
 
   const previousStep = useCallback(() => {
     if (currentStep <= 0) return;
     let prev = currentStep - 1;
-    while (prev > 0 && !hasTourTarget(steps[prev]!.target)) {
+    while (prev > 0 && !stepHasTourTarget(steps[prev]!)) {
       prev -= 1;
     }
-    if (!hasTourTarget(steps[prev]!.target)) return;
+    if (!stepHasTourTarget(steps[prev]!)) return;
     setCurrentStep(prev);
   }, [currentStep, steps]);
 
   useEffect(() => {
     if (!isActive) return;
     const step = steps[currentStep];
-    if (step && !hasTourTarget(step.target)) {
+    if (step && !stepHasTourTarget(step)) {
       advanceFromMissing(currentStep);
     }
   }, [isActive, currentStep, steps, advanceFromMissing]);
@@ -250,6 +331,13 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isActive) return;
     const onKeyDown = (e: KeyboardEvent) => {
+      if (showComplete) {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          endTour();
+        }
+        return;
+      }
       if (e.key === "ArrowRight" || e.key === "Enter") {
         e.preventDefault();
         nextStep();
@@ -263,7 +351,7 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [isActive, nextStep, previousStep, endTour]);
+  }, [isActive, showComplete, nextStep, previousStep, endTour]);
 
   const contextValue = useMemo(
     () => ({
@@ -281,9 +369,9 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
   const portal =
     mounted && tourEnabled && activeTour ? (
       <>
-        {isActive ? <div className="tour-overlay active" aria-hidden /> : null}
+        {isActive || showComplete ? <div className="tour-overlay active" aria-hidden /> : null}
 
-        {isActive && spotlightStyle ? (
+        {isActive && !showComplete && spotlightStyle ? (
           <div
             className="spotlight"
             style={{
@@ -317,9 +405,43 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
           </div>
         ) : null}
 
-        {isActive && step && cardStyle ? (
+        {showComplete ? (
           <div
-            className="tour-card active"
+            className={cn("tour-end-screen active", completeFading && "tour-end-screen--fading")}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="tour-complete-title"
+          >
+            <div className="tour-complete-check" aria-hidden>
+              <svg className="tour-complete-check__svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <linearGradient id="tour-complete-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#34d399" />
+                    <stop offset="100%" stopColor="#059669" />
+                  </linearGradient>
+                </defs>
+                <circle className="tour-complete-check__pulse" cx="50" cy="50" r="48" fill="none" stroke="#34d399" strokeWidth="2" />
+                <circle className="tour-complete-check__circle" cx="50" cy="50" r="44" fill="url(#tour-complete-gradient)" />
+                <path
+                  className="tour-complete-check__mark"
+                  d="M30 52 L44 66 L72 38"
+                  fill="none"
+                  stroke="#ffffff"
+                  strokeWidth="6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+            <h2 id="tour-complete-title" className="end-title">
+              You&apos;re all set!
+            </h2>
+          </div>
+        ) : null}
+
+        {isActive && !showComplete && step && cardStyle ? (
+          <div
+            className={cn("tour-card active", step.placement === "center" && "tour-card--center")}
             role="dialog"
             aria-modal="true"
             aria-labelledby="tour-step-title"
