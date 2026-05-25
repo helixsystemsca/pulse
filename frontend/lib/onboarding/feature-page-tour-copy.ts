@@ -51,11 +51,15 @@ const FEATURE_PAGE_TOUR_COPY: Partial<Record<string, FeaturePageTourCopy>> = {
   work_requests: {
     welcomeSubtitle: "Walk through the work request queue from intake to completion.",
     headerDescription: "Track maintenance and service requests—status, assignee, and priority show in the header KPIs.",
+    toolbarDescription:
+      "Switch between My work, Approval queue, and All requests, then filter by priority, location, category, and due dates.",
     workspaceDescription: "Filter and open requests, update status, and link assets or zones from the main list or board.",
+    includeToolbar: true,
   },
   monitoring: {
     welcomeSubtitle: "How to read live monitoring for CO₂, pools, and system health.",
-    workspaceDescription: "Widgets call out what is in range, trending, and what needs immediate attention.",
+    workspaceDescription:
+      "Tank levels and live readings show what is in range, trending, and what needs immediate attention.",
   },
   logs_inspections: {
     welcomeSubtitle: "Inspection checklists, compliance logs, and audit history on one page.",
@@ -87,7 +91,11 @@ const FEATURE_PAGE_TOUR_COPY: Partial<Record<string, FeaturePageTourCopy>> = {
   },
   messaging: {
     welcomeSubtitle: "Operational inbox and administrator product feedback.",
-    workspaceDescription: "Read operational alerts and, for admins, product feedback submitted from the header.",
+    toolbarDescription:
+      "Switch between your operational Inbox and Product feedback. Unread feedback counts appear on the tab badge.",
+    workspaceDescription:
+      "Operational alerts list here with actions to open the related screen or dismiss. Admins manage product feedback in the other tab.",
+    includeToolbar: true,
   },
   workforce_hub: {
     welcomeSubtitle: "Entry point for hiring, development, recognition, and planning.",
@@ -126,8 +134,7 @@ export function featurePageTourCopy(featureKey: string, label: string): FeatureP
   const custom = FEATURE_PAGE_TOUR_COPY[featureKey];
   if (custom) return custom;
   return {
-    welcomeSubtitle: `A quick tour of the ${label} page—header, tools, and main workspace.`,
-    headerDescription: `${label} is where your team runs this workflow. The header shows where you are and surfaces primary actions.`,
+    welcomeSubtitle: `A quick tour of the ${label} page—tools and main workspace.`,
     workspaceDescription: DEFAULT_WORKSPACE,
   };
 }

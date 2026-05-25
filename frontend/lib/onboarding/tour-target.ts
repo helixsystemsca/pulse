@@ -2,7 +2,12 @@ import type { TourStep } from "@/lib/onboarding/tour-steps/types";
 
 /** Union bounding rect for one or more tour target nodes (e.g. CO₂ + pool widgets). */
 export function getTourTargetElements(selector: string): Element[] {
-  return Array.from(document.querySelectorAll(selector));
+  const all = Array.from(document.querySelectorAll(selector));
+  if (selector === '[data-tour="feature-workspace"]' && all.length > 1) {
+    // Page-level workspace wins over the app-shell wrapper in AppMainChromeColumn.
+    return [all[all.length - 1]!];
+  }
+  return all;
 }
 
 export function hasTourTarget(selector: string): boolean {

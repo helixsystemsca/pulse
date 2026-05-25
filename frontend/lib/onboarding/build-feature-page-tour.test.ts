@@ -35,10 +35,11 @@ describe("buildFeaturePageTour", () => {
     const item = TREE[0]!.groups[0]!.items[0]!;
     const tour = buildFeaturePageTour(item);
     expect(tour.id).toBe(featurePageTourId("projects"));
-    expect(tour.steps.map((s) => s.target)).toEqual(
-      expect.arrayContaining(['[data-tour="feature-header"]', '[data-tour="feature-workspace"]']),
-    );
-    expect(tour.steps.some((s) => s.target === '[data-tour="feature-toolbar"]')).toBe(true);
+    expect(tour.steps.map((s) => s.target)).toEqual([
+      '[data-tour="feature-toolbar"]',
+      '[data-tour="feature-workspace"]',
+    ]);
+    expect(tour.steps.some((s) => s.target === '[data-tour="feature-header"]')).toBe(false);
   });
 
   it("resolves nested paths with pathPrefix", () => {

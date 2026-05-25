@@ -12,7 +12,7 @@ import {
   Settings2,
   Trash2,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/pulse/Card";
 import { HintCallout } from "@/components/ui/HintCallout";
 import { FeatureTourToolbar } from "@/components/onboarding/FeatureTourRegions";
@@ -198,6 +198,20 @@ function inferredStatusFromStartDate(startDateStr: string): "active" | "future" 
   return delta > FUTURE_TAB_THRESHOLD_DAYS ? "future" : "active";
 }
 
+function isActiveTabProject(p: ProjectRow): boolean {
+  if (p.status === "completed" || p.archived_at) return false;
+  const delta = daysFromTodayToStartDate(p.start_date);
+  if (delta === null) return p.status !== "future";
+  return delta <= FUTURE_TAB_THRESHOLD_DAYS;
+}
+
+function isFutureTabProject(p: ProjectRow): boolean {
+  if (p.status === "completed" || p.archived_at) return false;
+  const delta = daysFromTodayToStartDate(p.start_date);
+  if (delta === null) return p.status === "future";
+  return delta > FUTURE_TAB_THRESHOLD_DAYS;
+}
+
 const ICON_BTN =
   "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-slate-200/90 bg-white text-pulse-navy shadow-sm transition-colors hover:border-slate-300/90 hover:bg-ds-interactive-hover active:bg-slate-100 dark:border-ds-border dark:bg-ds-secondary dark:text-slate-100 dark:hover:border-ds-border dark:hover:bg-ds-interactive-hover";
 
@@ -218,6 +232,7 @@ export function ProjectsApp() {
   const [workers, setWorkers] = useState<PulseWorkerApi[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [filter, setFilter] = useState<"active" | "future" | "completed" | "archive">("active");
+  const initialTabResolved = useRef(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editFor, setEditFor] = useState<ProjectRow | null>(null);
@@ -371,25 +386,23 @@ export function ProjectsApp() {
     };
   }, [settingsOpen, settingsFor?.id]);
 
+  useEffect(() => {
+    if (!rows || initialTabResolved.current) return;
+    initialTabResolved.current = true;
+    const hasActive = rows.some(isActiveTabProject);
+    if (hasActive) return;
+    if (rows.some(isFutureTabProject)) setFilter("future");
+  }, [rows]);
+
   const filtered = useMemo(() => {
     if (!rows) return [];
     const now = new Date();
     const year = now.getFullYear();
     if (filter === "active") {
-      return rows.filter((p) => {
-        if (p.status === "completed" || p.archived_at) return false;
-        const delta = daysFromTodayToStartDate(p.start_date);
-        if (delta === null) return p.status !== "future";
-        return delta <= FUTURE_TAB_THRESHOLD_DAYS;
-      });
+      return rows.filter(isActiveTabProject);
     }
     if (filter === "future") {
-      return rows.filter((p) => {
-        if (p.status === "completed" || p.archived_at) return false;
-        const delta = daysFromTodayToStartDate(p.start_date);
-        if (delta === null) return p.status === "future";
-        return delta > FUTURE_TAB_THRESHOLD_DAYS;
-      });
+      return rows.filter(isFutureTabProject);
     }
     if (filter === "completed") {
       // Annual snapshot: only show projects completed in the current year.

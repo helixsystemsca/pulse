@@ -9,8 +9,11 @@ export function MaintenanceWorkHub() {
     <div className="space-y-8">
       <Suspense
         fallback={
-          <div className="flex min-h-[12rem] items-center justify-center rounded-md border border-ds-border bg-ds-secondary p-8 text-ds-muted">
-            <p className="text-sm text-pulse-muted">Loading work requests…</p>
+          <div className="space-y-6">
+            <div data-tour="feature-toolbar" className="h-32 rounded-md border border-ds-border bg-ds-secondary" aria-hidden />
+            <div data-tour="feature-workspace" className="flex min-h-[12rem] items-center justify-center rounded-md border border-ds-border bg-ds-secondary p-8 text-ds-muted">
+              <p className="text-sm text-pulse-muted">Loading work requests…</p>
+            </div>
           </div>
         }
       >

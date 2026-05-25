@@ -23,7 +23,7 @@ export function PageHeader({
   className = "",
 }: PageHeaderProps) {
   return (
-    <div id="page-header" data-tour="feature-header" className={`space-y-4 ${className}`.trim()}>
+    <div id="page-header" className={`space-y-4 ${className}`.trim()}>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 gap-3 sm:gap-4">
           <span

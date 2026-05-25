@@ -4,6 +4,7 @@ import { Activity, Droplets, Gauge, Server, Thermometer, Wind } from "lucide-rea
 import { useState } from "react";
 import { Card } from "@/components/pulse/Card";
 import { TankIndicator } from "@/components/monitoring/TankIndicator";
+import { FeatureTourWorkspace } from "@/components/onboarding/FeatureTourRegions";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useSimulatedPoolControllers } from "@/hooks/useSimulatedPoolControllers";
 import { co2Tanks, type PoolController } from "@/lib/monitoringMockData";
@@ -135,14 +136,16 @@ export function MonitoringApp() {
     <div className="space-y-6">
       <PageHeader title="Monitoring" description="Real-time visibility into systems" icon={Activity} />
 
-      <nav
-        className="flex flex-wrap gap-1 rounded-md border border-ds-border bg-ds-secondary p-1"
-        aria-label="Monitoring sections"
-      >
-        {tabBtn("systems", "Systems", Server)}
-      </nav>
+      <FeatureTourWorkspace className="space-y-6">
+        <nav
+          className="flex flex-wrap gap-1 rounded-md border border-ds-border bg-ds-secondary p-1"
+          aria-label="Monitoring sections"
+        >
+          {tabBtn("systems", "Systems", Server)}
+        </nav>
 
-      {tab === "systems" ? <SystemsMockMonitoringPanel /> : null}
+        {tab === "systems" ? <SystemsMockMonitoringPanel /> : null}
+      </FeatureTourWorkspace>
     </div>
   );
 }

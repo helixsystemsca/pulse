@@ -10,7 +10,6 @@ import type { ReactNode } from "react";
 export function SchedulePageHeader({ actions }: { actions: ReactNode }) {
   return (
     <header
-      data-tour="feature-header"
       className="flex min-h-[4.25rem] max-h-[5.5rem] flex-col justify-center gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
     >
       <div className="flex min-w-0 items-center gap-3">

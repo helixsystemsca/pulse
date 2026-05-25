@@ -3,6 +3,7 @@
 import { Gift, Inbox, Megaphone, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { OperationalInboxPanel } from "@/components/app/OperationalInboxPanel";
+import { FeatureTourToolbar, FeatureTourWorkspace } from "@/components/onboarding/FeatureTourRegions";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { isApiMode } from "@/lib/api";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
@@ -186,7 +187,7 @@ export function MessagesInboxApp() {
           icon={Inbox}
         />
         {megaphoneHint}
-        {inboxSection}
+        <FeatureTourWorkspace>{inboxSection}</FeatureTourWorkspace>
       </div>
     );
   }
@@ -215,46 +216,49 @@ export function MessagesInboxApp() {
         ) : null}
       </div>
 
-      <div
-        className="flex flex-wrap gap-2 rounded-lg border border-ds-border bg-ds-primary/40 p-1"
-        role="tablist"
-        aria-label="Messages sections"
-      >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mainTab === "inbox"}
-          onClick={() => setMainTab("inbox")}
-          className={cn(
-            "rounded-md px-3 py-2 text-xs font-semibold transition-colors",
-            mainTab === "inbox"
-              ? "bg-ds-elevated text-ds-foreground shadow-sm"
-              : "text-ds-muted hover:bg-ds-secondary/60 hover:text-ds-foreground",
-          )}
+      <FeatureTourToolbar>
+        <div
+          className="flex flex-wrap gap-2 rounded-lg border border-ds-border bg-ds-primary/40 p-1"
+          role="tablist"
+          aria-label="Messages sections"
         >
-          Inbox
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mainTab === "feedback"}
-          onClick={() => setMainTab("feedback")}
-          className={cn(
-            "rounded-md px-3 py-2 text-xs font-semibold transition-colors",
-            mainTab === "feedback"
-              ? "bg-ds-elevated text-ds-foreground shadow-sm"
-              : "text-ds-muted hover:bg-ds-secondary/60 hover:text-ds-foreground",
-          )}
-        >
-          Product feedback
-          {unreadFeedback > 0 ? (
-            <span className="ml-1.5 inline-flex min-w-[1.25rem] justify-center rounded-full bg-[var(--ds-accent)] px-1 py-0.5 text-[10px] font-bold text-white">
-              {unreadFeedback > 99 ? "99+" : unreadFeedback}
-            </span>
-          ) : null}
-        </button>
-      </div>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mainTab === "inbox"}
+            onClick={() => setMainTab("inbox")}
+            className={cn(
+              "rounded-md px-3 py-2 text-xs font-semibold transition-colors",
+              mainTab === "inbox"
+                ? "bg-ds-elevated text-ds-foreground shadow-sm"
+                : "text-ds-muted hover:bg-ds-secondary/60 hover:text-ds-foreground",
+            )}
+          >
+            Inbox
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mainTab === "feedback"}
+            onClick={() => setMainTab("feedback")}
+            className={cn(
+              "rounded-md px-3 py-2 text-xs font-semibold transition-colors",
+              mainTab === "feedback"
+                ? "bg-ds-elevated text-ds-foreground shadow-sm"
+                : "text-ds-muted hover:bg-ds-secondary/60 hover:text-ds-foreground",
+            )}
+          >
+            Product feedback
+            {unreadFeedback > 0 ? (
+              <span className="ml-1.5 inline-flex min-w-[1.25rem] justify-center rounded-full bg-[var(--ds-accent)] px-1 py-0.5 text-[10px] font-bold text-white">
+                {unreadFeedback > 99 ? "99+" : unreadFeedback}
+              </span>
+            ) : null}
+          </button>
+        </div>
+      </FeatureTourToolbar>
 
+      <FeatureTourWorkspace>
       {mainTab === "inbox" ? (
         <>
           {megaphoneHint}
@@ -389,6 +393,7 @@ export function MessagesInboxApp() {
           </div>
         </>
       )}
+      </FeatureTourWorkspace>
     </div>
   );
 }

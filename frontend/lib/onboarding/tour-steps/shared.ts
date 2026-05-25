@@ -24,20 +24,11 @@ export function standardFeatureTourSteps(
     includeToolbar?: boolean;
   },
 ): TourStep[] {
-  const headerDescription =
-    options?.headerDescription ??
-    `${label} is where your team runs this workflow. The header shows where you are and surfaces primary actions.`;
   const workspaceDescription =
     options?.workspaceDescription ??
+    options?.headerDescription ??
     "This is the main work area—lists, boards, charts, and editors update here as you work.";
-  const steps: TourStep[] = [
-    {
-      target: '[data-tour="feature-header"]',
-      title: label,
-      description: headerDescription,
-      placement: "bottom",
-    },
-  ];
+  const steps: TourStep[] = [];
   if (options?.includeToolbar) {
     steps.push({
       target: '[data-tour="feature-toolbar"]',
@@ -50,7 +41,7 @@ export function standardFeatureTourSteps(
   }
   steps.push({
     target: '[data-tour="feature-workspace"]',
-    title: "Workspace",
+    title: label,
     description: workspaceDescription,
     placement: "top",
   });

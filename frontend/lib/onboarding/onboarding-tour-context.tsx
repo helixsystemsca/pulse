@@ -10,7 +10,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import Image from "next/image";
 import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { RotateCcw } from "lucide-react";
@@ -25,6 +24,7 @@ import {
 import { buildNavigationTree } from "@/lib/navigation/build-navigation-tree";
 import { useOnboardingFlyoutBridge } from "@/lib/onboarding/onboarding-flyout-bridge";
 import { hasProductTour, resolveProductTour } from "@/lib/onboarding/tour-registry";
+import { formatTourWelcomeLine } from "@/lib/onboarding/tour-welcome";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { cn } from "@/lib/cn";
 import "@/components/onboarding/onboarding-tour.css";
@@ -100,10 +100,6 @@ function calculateCardPosition(rect: DOMRect, placement: TourPlacement): CardSty
         top = rect.bottom + CARD_OFFSET;
       }
       break;
-    case "center":
-      top = (window.innerHeight - CARD_HEIGHT) / 2;
-      left = (window.innerWidth - CARD_WIDTH) / 2;
-      break;
     default:
       left = rect.right + CARD_OFFSET;
   }
@@ -125,11 +121,13 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
   );
   const tourEnabled = hasProductTour(pathname, navigationTree);
   const tourId = activeTour?.id ?? null;
-  const steps = activeTour?.steps ?? [];
+  const steps = useMemo(
+    () => (activeTour?.steps ?? []).filter((s) => s.target !== '[data-tour="feature-header"]'),
+    [activeTour?.steps],
+  );
 
   const [mounted, setMounted] = useState(false);
   const [isActive, setIsActive] = useState(false);
-  const [showStart, setShowStart] = useState(false);
   const [showComplete, setShowComplete] = useState(false);
   const [completeFading, setCompleteFading] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
@@ -143,7 +141,6 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setIsActive(false);
-    setShowStart(false);
     setShowComplete(false);
     setCompleteFading(false);
     setCurrentStep(0);
@@ -157,15 +154,15 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!mounted || !tourEnabled || !tourId) return;
     if (!isTourCompleted(tourId)) {
-      setShowStart(true);
+      setCurrentStep(0);
+      setIsActive(true);
     }
   }, [mounted, tourEnabled, tourId]);
 
   useEffect(() => {
-    const active = isActive || showStart;
-    flyoutBridge?.setTourActive(active);
+    flyoutBridge?.setTourActive(isActive);
     flyoutBridge?.setTourFlyoutDomain(null);
-  }, [isActive, showStart, flyoutBridge]);
+  }, [isActive, flyoutBridge]);
 
   const updatePositions = useCallback(() => {
     const step = steps[currentStep];
@@ -227,7 +224,7 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isActive) return;
     const step = steps[currentStep];
-    const pool = step.rotateTargets.filter((selector) => hasTourTarget(selector));
+    const pool = step.rotateTargets?.filter((selector) => hasTourTarget(selector)) ?? [];
     if (pool.length < 2) return;
     const ms = step.rotateIntervalMs ?? 2400;
     const id = window.setInterval(() => {
@@ -246,14 +243,6 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("scroll", updatePositions, true);
     };
   }, [isActive, updatePositions]);
-
-  const startTour = useCallback(() => {
-    setShowStart(false);
-    window.setTimeout(() => {
-      setCurrentStep(0);
-      setIsActive(true);
-    }, 300);
-  }, []);
 
   const endTour = useCallback(() => {
     setIsActive(false);
@@ -278,10 +267,11 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
 
   const restartTour = useCallback(() => {
     if (!tourId) return;
-    setIsActive(false);
-    setCurrentStep(0);
+    setShowComplete(false);
+    setCompleteFading(false);
     clearTourCompleted(tourId);
-    window.setTimeout(() => setShowStart(true), 300);
+    setCurrentStep(0);
+    setIsActive(true);
   }, [tourId]);
 
   const advanceFromMissing = useCallback(
@@ -321,12 +311,33 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
   }, [currentStep, steps]);
 
   useEffect(() => {
-    if (!isActive) return;
+    if (!isActive || showComplete) return;
     const step = steps[currentStep];
-    if (step && !stepHasTourTarget(step)) {
-      advanceFromMissing(currentStep);
-    }
-  }, [isActive, currentStep, steps, advanceFromMissing]);
+    if (!step || stepHasTourTarget(step)) return;
+
+    let cancelled = false;
+    let attempts = 0;
+    const maxAttempts = 25;
+
+    const tick = () => {
+      if (cancelled) return;
+      attempts += 1;
+      updatePositions();
+      if (stepHasTourTarget(step)) return;
+      if (attempts >= maxAttempts) advanceFromMissing(currentStep);
+    };
+
+    tick();
+    const interval = window.setInterval(tick, 200);
+    const observer = new MutationObserver(tick);
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      observer.disconnect();
+    };
+  }, [isActive, showComplete, currentStep, steps, advanceFromMissing, updatePositions]);
 
   useEffect(() => {
     if (!isActive) return;
@@ -363,8 +374,7 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
   );
 
   const step = steps[currentStep];
-  const welcomeTitle = activeTour?.welcomeTitle ?? "Welcome";
-  const welcomeSubtitle = activeTour?.welcomeSubtitle ?? "";
+  const welcomeLine = formatTourWelcomeLine(activeTour?.welcomeTitle ?? "this page");
 
   const portal =
     mounted && tourEnabled && activeTour ? (
@@ -381,28 +391,6 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
               height: spotlightStyle.height,
             }}
           />
-        ) : null}
-
-        {showStart ? (
-          <div className="tour-start-screen active" role="dialog" aria-modal="true" aria-labelledby="tour-start-title">
-            <div className="start-icon" aria-hidden>
-              <Image
-                src="/images/panoramalogo2.png"
-                alt=""
-                width={148}
-                height={148}
-                priority
-                className="start-icon__logo"
-              />
-            </div>
-            <h1 id="tour-start-title" className="start-title">
-              {welcomeTitle}
-            </h1>
-            <p className="start-subtitle">{welcomeSubtitle}</p>
-            <button type="button" className="btn-start" onClick={startTour}>
-              Start Tour
-            </button>
-          </div>
         ) : null}
 
         {showComplete ? (
@@ -448,6 +436,9 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
             style={{ top: cardStyle.top, left: cardStyle.left }}
           >
             <div className="tour-header">
+              {currentStep === 0 ? (
+                <p className="tour-welcome-line">{welcomeLine}</p>
+              ) : null}
               <div className="tour-step-counter">
                 Step {currentStep + 1} of {steps.length}
               </div>

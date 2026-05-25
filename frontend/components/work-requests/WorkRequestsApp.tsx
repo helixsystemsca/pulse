@@ -26,6 +26,7 @@ import { apiFetch } from "@/lib/api";
 import { fetchEquipmentList, fetchEquipmentParts } from "@/lib/equipmentService";
 import { PulseDrawer } from "@/components/schedule/PulseDrawer";
 import { ModuleSettingsModal } from "@/components/module-settings/ModuleSettingsModal";
+import { FeatureTourToolbar, FeatureTourWorkspace } from "@/components/onboarding/FeatureTourRegions";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageBody } from "@/components/ui/PageBody";
 import { SegmentedControl } from "@/components/schedule/SegmentedControl";
@@ -1467,15 +1468,16 @@ export function WorkRequestsApp() {
 
       <ModuleSettingsModal moduleId="workRequests" open={orgSettingsOpen} onClose={() => setOrgSettingsOpen(false)} />
 
-      <div className="mt-4 space-y-2">
-        {scopeTabOptions.length > 1 ? (
-          <div className="max-w-3xl">
-            <SegmentedControl<WorkTab> value={tab} onChange={handleScopeTab} options={scopeTabOptions} />
-          </div>
-        ) : (
-          <p className="text-sm font-medium text-ds-muted">Showing requests assigned to you</p>
-        )}
-      </div>
+      <FeatureTourToolbar className="mt-4 space-y-4">
+        <div className="space-y-2">
+          {scopeTabOptions.length > 1 ? (
+            <div className="max-w-3xl">
+              <SegmentedControl<WorkTab> value={tab} onChange={handleScopeTab} options={scopeTabOptions} />
+            </div>
+          ) : (
+            <p className="text-sm font-medium text-ds-muted">Showing requests assigned to you</p>
+          )}
+        </div>
 
       {isSystemAdmin ? (
         <div className="mt-6 rounded-md border border-pulse-border bg-white p-4 shadow-sm dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
@@ -1503,7 +1505,6 @@ export function WorkRequestsApp() {
           {isSystemAdmin ? "Select a company to load work requests." : "Unable to resolve organization."}
         </p>
       ) : (
-        <>
           <div className="ds-premium-panel mt-6 p-4 md:p-5">
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
@@ -1635,7 +1636,12 @@ export function WorkRequestsApp() {
               ) : null}
             </div>
           </div>
+      )}
+      </FeatureTourToolbar>
 
+      {dataEnabled ? (
+        <>
+          <FeatureTourWorkspace>
           <div className="app-data-shell mt-4">
             {listLoading ? (
               <div className="flex items-center justify-center gap-2 py-16 text-pulse-muted">
@@ -1864,8 +1870,9 @@ export function WorkRequestsApp() {
               </>
             )}
           </div>
+          </FeatureTourWorkspace>
         </>
-      )}
+      ) : null}
 
       {menuFor ? (
         <button
