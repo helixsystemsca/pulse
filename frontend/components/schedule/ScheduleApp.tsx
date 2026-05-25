@@ -63,7 +63,10 @@ import {
 } from "@/lib/schedule/employee-availability-api";
 import type { EmployeeDailyAvailabilityEntry } from "@/lib/schedule/employee-availability-types";
 import { buildWorkerDragHighlightMap, evaluateWorkerDrop } from "@/lib/schedule/worker-drag-highlights";
-import { persistScheduleShiftToServer } from "@/lib/schedule/persist-shift";
+import {
+  ensureShiftOnServerForAssignment,
+  persistScheduleShiftToServer,
+} from "@/lib/schedule/persist-shift";
 import {
   isPulseApiShiftId,
   localDateTimeToIso,
@@ -553,11 +556,8 @@ export function ScheduleApp() {
   }, [reloadPulseSchedule, scheduleDepartmentSlug]);
 
   const ensureShiftOnServer = useCallback(
-    async (shift: Shift): Promise<string | null> => {
-      const id = await persistScheduleShiftToServer(shift, scheduleDepartmentSlug);
-      if (id) await reloadPulseSchedule();
-      return id;
-    },
+    async (shift: Shift) =>
+      ensureShiftOnServerForAssignment(shift, scheduleDepartmentSlug, reloadPulseSchedule),
     [reloadPulseSchedule, scheduleDepartmentSlug],
   );
 
@@ -938,10 +938,14 @@ export function ScheduleApp() {
       if (mode === "move" && isApiMode() && sh.workerId && sh.eventType === "work") {
         const moved = { ...sh, date: targetDate };
         if (sh.date === targetDate && isPulseApiShiftId(shiftId)) return;
-        const serverId = await persistScheduleShiftToServer(moved, scheduleDepartmentSlug);
-        if (serverId) {
-          await reloadPulseSchedule();
-          return;
+        try {
+          const serverId = await persistScheduleShiftToServer(moved, scheduleDepartmentSlug);
+          if (serverId) {
+            await reloadPulseSchedule();
+            return;
+          }
+        } catch {
+          /* fall through to local update */
         }
         if (sh.date !== targetDate) {
           updateShift(shiftId, { date: targetDate, uiFlags: { ...sh.uiFlags, isUpdated: true } });

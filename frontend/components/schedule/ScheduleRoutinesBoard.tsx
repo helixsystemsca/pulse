@@ -50,6 +50,7 @@ import {
 } from "@/lib/trainingApi";
 import { parseLocalDate, formatLocalDate } from "@/lib/schedule/calendar";
 import { isPulseApiShiftId } from "@/lib/schedule/pulse-bridge";
+import type { EnsureShiftOnServerResult } from "@/lib/schedule/persist-shift";
 import { ScheduleRoutineExtraModal } from "@/components/schedule/ScheduleRoutineExtraModal";
 import { AssignmentsLockedNotice } from "@/components/schedule/AssignmentsLockedNotice";
 
@@ -75,8 +76,8 @@ type Props = {
   zones: Zone[];
   shiftTypes: ShiftTypeConfig[];
   onAddOperationalBadge?: (workerId: string, date: string, code: string) => void;
-  /** Persist a local shift before routine assignment; returns server shift id. */
-  ensureShiftOnServer?: (shift: Shift) => Promise<string | null>;
+  /** Materialize shift on server when published (recurring rows included). */
+  ensureShiftOnServer?: (shift: Shift) => Promise<EnsureShiftOnServerResult>;
   /** Requires a published schedule. */
   assignmentsEnabled?: boolean;
 };
@@ -262,24 +263,19 @@ export function ScheduleRoutinesBoard({
   ) {
     let shiftId = row.shift.id;
     if (!isPulseApiShiftId(shiftId)) {
-      if (!ensureShiftOnServer) {
-        setLoadErr(
-          "This shift is not saved on the server yet. Use Save changes on the Schedule tab, then assign the routine again.",
-        );
+      if (!assignmentsEnabled || !ensureShiftOnServer) {
+        setLoadErr("Publish the schedule before assigning routines.");
         return;
       }
       setSavingRowKey(row.rowKey);
       setLoadErr(null);
-      const serverId = await ensureShiftOnServer(row.shift);
-      if (!serverId) {
-        setSavingRowKey(null);
-        setLoadErr(
-          "Could not save this shift to the server. Use Save changes on the Schedule tab, then try again.",
-        );
+      const ensured = await ensureShiftOnServer(row.shift);
+      setSavingRowKey(null);
+      if ("error" in ensured) {
+        setLoadErr(ensured.error);
         return;
       }
-      shiftId = serverId;
-      setSavingRowKey(null);
+      shiftId = ensured.id;
     }
 
     let detail: RoutineDetail | null = null;
