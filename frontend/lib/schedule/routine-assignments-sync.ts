@@ -2,6 +2,17 @@ import { localScheduleDateKey } from "@/lib/schedule/dashboardScheduleDay";
 import type { RoutineAssignmentDetail } from "@/lib/routinesService";
 
 const FOCUS_DATE_KEY = "pulse_routine_assignments_focus_date";
+const ISO_DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Normalize any stored or computed day key to `YYYY-MM-DD`, or return null when invalid. */
+export function normalizeRoutineAssignmentDate(
+  raw: string | null | undefined,
+): string | null {
+  const t = (raw ?? "").trim();
+  const m = t.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (!m || !ISO_DAY_RE.test(m[1])) return null;
+  return m[1];
+}
 
 export type RoutineBoardAssignment = {
   routineId: string;
@@ -21,8 +32,12 @@ export type RoutineBoardRow = {
 export function readRoutineAssignmentsFocusDate(): string | null {
   if (typeof window === "undefined") return null;
   try {
-    const v = sessionStorage.getItem(FOCUS_DATE_KEY)?.trim();
-    return v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null;
+    const raw = sessionStorage.getItem(FOCUS_DATE_KEY);
+    const normalized = normalizeRoutineAssignmentDate(raw);
+    if (raw?.trim() && !normalized) {
+      sessionStorage.removeItem(FOCUS_DATE_KEY);
+    }
+    return normalized;
   } catch {
     return null;
   }
@@ -30,8 +45,8 @@ export function readRoutineAssignmentsFocusDate(): string | null {
 
 export function writeRoutineAssignmentsFocusDate(date: string): void {
   if (typeof window === "undefined") return;
-  const d = date.trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return;
+  const d = normalizeRoutineAssignmentDate(date);
+  if (!d) return;
   try {
     sessionStorage.setItem(FOCUS_DATE_KEY, d);
   } catch {

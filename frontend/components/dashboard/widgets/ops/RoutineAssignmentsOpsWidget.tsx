@@ -16,7 +16,10 @@ import {
 import { routineAssignmentRowCap } from "@/lib/dashboard/widget-tier-disclosure";
 import { readSession } from "@/lib/pulse-session";
 import { mergedScheduleShiftsForCalendarDate } from "@/lib/schedule/dashboardScheduleDay";
-import { routineAssignmentsDisplayDate } from "@/lib/schedule/routine-assignments-sync";
+import {
+  normalizeRoutineAssignmentDate,
+  routineAssignmentsDisplayDate,
+} from "@/lib/schedule/routine-assignments-sync";
 import {
   OPERATIONAL_BADGE_REGISTRY,
   operationalBadgeChipLabel,
@@ -55,6 +58,25 @@ const DEMO_WORKFORCE_ROWS: DayRoutineWorkerRow[] = [
   },
 ];
 
+function routineAssignmentsLoadMessage(err: unknown): string {
+  const { message, status, requestUrl } = parseClientApiError(err);
+  if (status === 404) return "";
+  const networkLike =
+    err instanceof TypeError ||
+    /browser could not read the api response|cors|failed to fetch|networkerror|load failed/i.test(
+      message,
+    );
+  const isAssignmentsDay =
+    (typeof requestUrl === "string" && requestUrl.includes("/routines/assignments/day")) ||
+    networkLike;
+  if (isAssignmentsDay && networkLike) {
+    return (
+      "Could not load routine assignments from the API. Refresh the page; if it persists, deploy the latest API (route /api/v1/routines/assignments/day) and confirm CORS allows this site."
+    );
+  }
+  return message || "Could not load routine assignments for this day.";
+}
+
 function spreadListClass(fillShell: boolean, count: number, tight?: boolean) {
   return cn(
     "mt-1.5 min-h-0",
@@ -83,6 +105,13 @@ type LoadState =
 export function useRoutineAssignmentsBoardState() {
   const deploymentBadgeOverlays = useScheduleStore((s) => s.deploymentBadgeOverlays);
   const [state, setState] = useState<LoadState>({ kind: "loading" });
+  const [reloadToken, setReloadToken] = useState(0);
+
+  useEffect(() => {
+    const bump = () => setReloadToken((n) => n + 1);
+    window.addEventListener("focus", bump);
+    return () => window.removeEventListener("focus", bump);
+  }, []);
 
   useEffect(() => {
     let cancel = false;
@@ -95,7 +124,9 @@ export function useRoutineAssignmentsBoardState() {
       }
 
       const now = Date.now();
-      const dateStr = routineAssignmentsDisplayDate(now);
+      const dateStr =
+        normalizeRoutineAssignmentDate(routineAssignmentsDisplayDate(now)) ??
+        routineAssignmentsDisplayDate(now);
       const dateLabel = new Date(`${dateStr}T12:00:00`).toLocaleDateString(undefined, {
         weekday: "short",
         month: "short",
@@ -111,9 +142,9 @@ export function useRoutineAssignmentsBoardState() {
       try {
         const [assignments, routines, shiftList, pulseWorkers, pulseZones] = await Promise.all([
           listRoutineAssignmentsForDate(dateStr).catch((e) => {
-            const { message, status } = parseClientApiError(e);
+            const { status } = parseClientApiError(e);
             if (status === 404) return [] as RoutineAssignmentDetail[];
-            loadErr = message || "Could not load routine assignments for this day.";
+            loadErr = routineAssignmentsLoadMessage(e);
             return [] as RoutineAssignmentDetail[];
           }),
           listRoutines().catch(() => [] as RoutineRow[]),
@@ -152,7 +183,6 @@ export function useRoutineAssignmentsBoardState() {
         }
       } catch (e) {
         if (cancel) return;
-        const { message } = parseClientApiError(e);
         setState({
           kind: "live",
           dateStr,
@@ -161,7 +191,7 @@ export function useRoutineAssignmentsBoardState() {
           workers: [],
           assignments: [],
           routines: [],
-          loadErr: message || "Could not load routine assignments.",
+          loadErr: routineAssignmentsLoadMessage(e),
         });
       }
     };
@@ -169,7 +199,7 @@ export function useRoutineAssignmentsBoardState() {
     return () => {
       cancel = true;
     };
-  }, []);
+  }, [reloadToken]);
 
   const workforce = useMemo(() => {
     if (state.kind !== "live") return [] as DayRoutineWorkerRow[];

@@ -28,6 +28,29 @@ const SESSION_FALLBACK_TTL_SEC = 62 * 60;
 /** `sessionStorage` flag for the post-login welcome overlay; cleared when auth ends so the next sign-in can show it. */
 export const PULSE_WELCOME_SESSION_KEY = "welcome_shown";
 
+export function isWelcomeOverlayDismissed(
+  storageKey: string = PULSE_WELCOME_SESSION_KEY,
+): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return sessionStorage.getItem(storageKey) === "true";
+  } catch {
+    return false;
+  }
+}
+
+/** Mark the welcome overlay as done for this browser tab session (Leadership / Operations landing). */
+export function markWelcomeOverlayDismissed(
+  storageKey: string = PULSE_WELCOME_SESSION_KEY,
+): void {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.setItem(storageKey, "true");
+  } catch {
+    /* ignore */
+  }
+}
+
 /** Populated from `/api/v1/auth/me` for tenant users. */
 export type CompanySummary = {
   id: string;

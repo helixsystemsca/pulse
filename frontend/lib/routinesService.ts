@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/api";
+import { normalizeRoutineAssignmentDate } from "@/lib/schedule/routine-assignments-sync";
 
 export type RoutineShiftBand = "day" | "afternoon" | "night";
 
@@ -175,7 +176,11 @@ export async function listMyRoutineAssignments(params?: { shift_id?: string }): 
 
 /** Supervisor / ops view — all assignments on a calendar day for scheduled handoffs. */
 export async function listRoutineAssignmentsForDate(date: string): Promise<RoutineAssignmentDetail[]> {
-  const sp = new URLSearchParams({ date });
+  const day = normalizeRoutineAssignmentDate(date);
+  if (!day) {
+    throw new Error("Invalid calendar date (expected YYYY-MM-DD)");
+  }
+  const sp = new URLSearchParams({ date: day });
   return apiFetch<RoutineAssignmentDetail[]>(`/api/v1/routines/assignments/day?${sp}`);
 }
 

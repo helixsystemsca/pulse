@@ -10,7 +10,11 @@ import Image from "next/image";
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/cn";
-import { PULSE_WELCOME_SESSION_KEY } from "@/lib/pulse-session";
+import {
+  isWelcomeOverlayDismissed,
+  markWelcomeOverlayDismissed,
+  PULSE_WELCOME_SESSION_KEY,
+} from "@/lib/pulse-session";
 
 /** @deprecated Use `PULSE_WELCOME_SESSION_KEY` from `@/lib/pulse-session`. */
 export const WELCOME_SESSION_STORAGE_KEY = PULSE_WELCOME_SESSION_KEY;
@@ -117,10 +121,10 @@ export function WelcomeLoaderModal({
   storageKey = PULSE_WELCOME_SESSION_KEY,
   onWelcomeComplete,
 }: WelcomeLoaderModalProps) {
+  const dismissedOnMount = isWelcomeOverlayDismissed(storageKey);
   const [hydrated, setHydrated] = useState(false);
-  const [skipEntirely, setSkipEntirely] = useState(false);
-  /** Stay closed until we know welcome was already shown this session (avoids flash on /overview remount). */
-  const [open, setOpen] = useState(false);
+  const [skipEntirely, setSkipEntirely] = useState(dismissedOnMount);
+  const [open, setOpen] = useState(!dismissedOnMount);
   const [phase, setPhase] = useState<WelcomePhase>("loading");
   /** 0–100: wave bar reveals left-to-right while preparing; completes when data is ready. */
   const [loadProgress, setLoadProgress] = useState(0);
@@ -129,20 +133,24 @@ export function WelcomeLoaderModal({
   /** When the overlay first shows the loading wave for this visit (for minimum wave duration). */
   const waveSessionStartRef = useRef<number | null>(null);
   const isReadyForWaveRef = useRef(isReady);
+  /** True once this mount actually displayed the overlay (used to persist on early navigation). */
+  const overlayVisitedRef = useRef(false);
   isReadyForWaveRef.current = isReady;
 
   useEffect(() => {
     setHydrated(true);
-    try {
-      if (sessionStorage.getItem(storageKey) === "true") {
-        setSkipEntirely(true);
-        setOpen(false);
-      } else {
-        setOpen(true);
+  }, []);
+
+  useEffect(() => {
+    if (open) overlayVisitedRef.current = true;
+  }, [open]);
+
+  useEffect(() => {
+    return () => {
+      if (overlayVisitedRef.current && !isWelcomeOverlayDismissed(storageKey)) {
+        markWelcomeOverlayDismissed(storageKey);
       }
-    } catch {
-      setOpen(true);
-    }
+    };
   }, [storageKey]);
 
   useEffect(() => {
@@ -182,7 +190,7 @@ export function WelcomeLoaderModal({
 
   // After the dashboard is ready: keep the wave at least MIN_WAVE_DISPLAY_MS total, then switch to welcome.
   useEffect(() => {
-    if (!hydrated || skipEntirely || !isReady) return;
+    if (!hydrated || skipEntirely || !open || !isReady) return;
     if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
     setPhase("loading");
     const anchor = waveSessionStartRef.current ?? Date.now();
@@ -190,23 +198,21 @@ export function WelcomeLoaderModal({
     const waitMs = Math.max(LOADING_PHASE_MS, MIN_WAVE_DISPLAY_MS - elapsed);
     loadingTimerRef.current = setTimeout(() => {
       setPhase("welcome");
+      markWelcomeOverlayDismissed(storageKey);
     }, waitMs);
     return () => {
       if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
       loadingTimerRef.current = null;
     };
-  }, [hydrated, isReady, skipEntirely]);
+  }, [hydrated, isReady, skipEntirely, open, storageKey]);
 
   // After the welcome line is shown, dismiss and mark session so we do not show again.
   useEffect(() => {
-    if (!hydrated || skipEntirely || !isReady || phase !== "welcome") return;
+    if (!hydrated || skipEntirely || !open || !isReady || phase !== "welcome") return;
     if (welcomeTimerRef.current) clearTimeout(welcomeTimerRef.current);
     welcomeTimerRef.current = setTimeout(() => {
-      try {
-        sessionStorage.setItem(storageKey, "true");
-      } catch {
-        /* ignore */
-      }
+      markWelcomeOverlayDismissed(storageKey);
+      setSkipEntirely(true);
       setOpen(false);
       onWelcomeComplete?.();
     }, WELCOME_PHASE_MS);
