@@ -1394,6 +1394,14 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
    * Operations dashboard: widget bodies and inner cards stretch to slot height.
    * Pair with {@link OPS_WIDGET_BODY_CLASS} on OpsWidgetShell bodies.
    */
+  .pulse-operations-dashboard .dash-workspace-slot {
+    background: transparent;
+    border: none;
+  }
+  .pulse-operations-dashboard .dash-workspace-slot::before {
+    box-shadow: none;
+  }
+
   .pulse-operations-dashboard .ops-dash-widget-body--fill {
     display: flex;
     flex-direction: column;
