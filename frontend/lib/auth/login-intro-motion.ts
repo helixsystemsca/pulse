@@ -2,25 +2,31 @@ import type { Transition, Variants } from "framer-motion";
 
 /** Premium ease — no bounce */
 export const LOGIN_EASE = [0.22, 1, 0.36, 1] as const;
+export const LOGIN_EASE_OUT = [0.16, 1, 0.3, 1] as const;
 
 export const LOGIN_INTRO_MS = {
-  heroFocus: 950,
-  logoSettle: 600,
-  formReveal: 520,
-  comingSoonDelay: 400,
-  scrimFade: 900,
+  /** Small → large emerge from depth (opacity only, no blur) */
+  heroEmergence: 1100,
+  /** Large logo shrinks and slides into layout slot */
+  logoSettle: 900,
+  /** Brief beat before form */
+  formPause: 450,
+  /** Login modal fade */
+  formReveal: 720,
+  /** After form, coming soon slides in */
+  comingSoonDelay: 380,
+  scrimFade: 1000,
 } as const;
 
-export const LOGIN_INTRO_TOTAL_MS =
-  LOGIN_INTRO_MS.heroFocus +
-  LOGIN_INTRO_MS.logoSettle +
-  LOGIN_INTRO_MS.formReveal +
-  LOGIN_INTRO_MS.comingSoonDelay;
-
-export type LoginIntroStage = "intro" | "logo-settle" | "reveal-form" | "reveal-card" | "complete";
+export type LoginIntroStage =
+  | "intro"
+  | "logo-settle"
+  | "reveal-form"
+  | "reveal-card"
+  | "complete";
 
 export const loginScrimVariants: Variants = {
-  intro: { opacity: 0.52 },
+  intro: { opacity: 0.5 },
   idle: { opacity: 0 },
 };
 
@@ -29,34 +35,21 @@ export const loginScrimTransition: Transition = {
   ease: LOGIN_EASE,
 };
 
-export const loginHeroLogoVariants: Variants = {
-  hidden: {
-    opacity: 0.05,
-    scale: 2.65,
-    y: 24,
-    filter: "blur(16px)",
-  },
-  focus: {
-    opacity: 0.82,
-    scale: 1.12,
-    y: -10,
-    filter: "blur(2px)",
-  },
-  exit: {
-    opacity: 0,
-    scale: 0.92,
-    filter: "blur(0px)",
-  },
+/** Emerge from depth: small, faint → large, sharp (transform/opacity only). */
+export const loginLogoEmergenceTransition: Transition = {
+  opacity: { duration: LOGIN_INTRO_MS.heroEmergence / 1000, ease: LOGIN_EASE_OUT },
+  scale: { duration: LOGIN_INTRO_MS.heroEmergence / 1000, ease: LOGIN_EASE_OUT },
 };
 
-export const loginHeroLogoTransition: Transition = {
-  duration: LOGIN_INTRO_MS.heroFocus / 1000,
-  ease: LOGIN_EASE,
+export const loginLogoSettleTransition: Transition = {
+  layout: { duration: LOGIN_INTRO_MS.logoSettle / 1000, ease: LOGIN_EASE },
+  scale: { duration: LOGIN_INTRO_MS.logoSettle / 1000, ease: LOGIN_EASE },
+  opacity: { duration: 0.25, ease: LOGIN_EASE },
 };
 
 export const loginFormRevealVariants: Variants = {
-  hidden: { opacity: 0, y: 28, filter: "blur(10px)" },
-  visible: { opacity: 1, y: 0, filter: "blur(0px)" },
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0 },
 };
 
 export const loginFormRevealTransition: Transition = {
@@ -64,29 +57,17 @@ export const loginFormRevealTransition: Transition = {
   ease: LOGIN_EASE,
 };
 
-/** Opacity only — parent transform breaks `position: fixed` on the docked card. */
-export const loginComingSoonVariants: Variants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1 },
-};
-
-export const loginComingSoonTransition: Transition = {
-  duration: 0.58,
-  ease: LOGIN_EASE,
-};
-
 export const loginTaglineVariants: Variants = {
-  hidden: { opacity: 0, y: 10 },
+  hidden: { opacity: 0, y: 8 },
   visible: { opacity: 1, y: 0 },
 };
 
-export const loginLayoutLogoVariants: Variants = {
-  hidden: { opacity: 0, scale: 0.94 },
-  visible: { opacity: 1, scale: 1 },
+export const loginComingSoonSlideVariants: Variants = {
+  hidden: { opacity: 0, x: -72 },
+  visible: { opacity: 1, x: 0 },
 };
 
-export const loginLayoutLogoTransition: Transition = {
-  layout: { duration: LOGIN_INTRO_MS.logoSettle / 1000, ease: LOGIN_EASE },
-  opacity: { duration: 0.35, ease: LOGIN_EASE },
-  scale: { duration: LOGIN_INTRO_MS.logoSettle / 1000, ease: LOGIN_EASE },
+export const loginComingSoonSlideTransition: Transition = {
+  duration: 0.68,
+  ease: LOGIN_EASE,
 };

@@ -12,7 +12,7 @@ export const TOUR_STEP_FEEDBACK: TourStep = {
   target: '[data-tour="feedback"]',
   title: "Questions or feedback?",
   description:
-    "Panorama is in alpha—you may run into occasional bugs. Tap the megaphone anytime to report issues, send product feedback, or ask a question. Administrators review notes under Messages → Product feedback.",
+    "The Panorama Platform is in alpha—you may run into occasional bugs. Tap the megaphone anytime to report issues, send product feedback, or ask a question.",
   placement: "bottom",
 };
 

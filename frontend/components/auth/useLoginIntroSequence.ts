@@ -7,6 +7,14 @@ import {
   type LoginIntroStage,
 } from "@/lib/auth/login-intro-motion";
 
+function introDelayMs(): number {
+  return (
+    LOGIN_INTRO_MS.heroEmergence +
+    LOGIN_INTRO_MS.logoSettle +
+    LOGIN_INTRO_MS.formPause
+  );
+}
+
 export function useLoginIntroSequence() {
   const reducedMotion = useReducedMotion();
   const [stage, setStage] = useState<LoginIntroStage>(reducedMotion ? "complete" : "intro");
@@ -17,22 +25,21 @@ export function useLoginIntroSequence() {
       return;
     }
 
-    const t1 = window.setTimeout(() => setStage("logo-settle"), LOGIN_INTRO_MS.heroFocus);
+    const t1 = window.setTimeout(() => setStage("logo-settle"), LOGIN_INTRO_MS.heroEmergence);
     const t2 = window.setTimeout(
       () => setStage("reveal-form"),
-      LOGIN_INTRO_MS.heroFocus + LOGIN_INTRO_MS.logoSettle,
+      LOGIN_INTRO_MS.heroEmergence + LOGIN_INTRO_MS.logoSettle + LOGIN_INTRO_MS.formPause,
     );
     const t3 = window.setTimeout(
       () => setStage("reveal-card"),
-      LOGIN_INTRO_MS.heroFocus + LOGIN_INTRO_MS.logoSettle + LOGIN_INTRO_MS.formReveal,
+      introDelayMs() + LOGIN_INTRO_MS.formReveal + LOGIN_INTRO_MS.comingSoonDelay,
     );
     const t4 = window.setTimeout(
       () => setStage("complete"),
-      LOGIN_INTRO_MS.heroFocus +
-        LOGIN_INTRO_MS.logoSettle +
+      introDelayMs() +
         LOGIN_INTRO_MS.formReveal +
         LOGIN_INTRO_MS.comingSoonDelay +
-        200,
+        720,
     );
 
     return () => {
@@ -46,8 +53,6 @@ export function useLoginIntroSequence() {
   return {
     stage,
     reducedMotion: Boolean(reducedMotion),
-    showHeroLogo: stage === "intro",
-    showLayoutLogo: stage !== "intro",
     showForm: stage === "reveal-form" || stage === "reveal-card" || stage === "complete",
     showComingSoon: stage === "reveal-card" || stage === "complete",
     showTagline: stage === "reveal-form" || stage === "reveal-card" || stage === "complete",

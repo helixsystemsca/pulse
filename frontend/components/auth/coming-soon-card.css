@@ -55,7 +55,23 @@
   pointer-events: none;
 }
 
-.coming-soon-card--dock-left.coming-soon-card--play {
+/* Card lives inside LoginComingSoonEntrance — slide handled by Framer, not fixed twice */
+.coming-soon-card--dock-left.coming-soon-card--embedded {
+  position: relative;
+  top: auto;
+  left: auto;
+  z-index: auto;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: perspective(800px) rotateY(-2deg);
+}
+
+.coming-soon-card--dock-left.coming-soon-card--embedded.coming-soon-card--play {
+  animation: none;
+}
+
+.coming-soon-card--dock-left.coming-soon-card--play:not(.coming-soon-card--embedded) {
   visibility: visible;
   pointer-events: auto;
   animation: comingSoonDockIn 0.65s ease-out both;
@@ -307,6 +323,7 @@
     opacity: 1;
   }
 
+  .coming-soon-card--dock-left.coming-soon-card--embedded,
   .coming-soon-card--dock-left,
   .coming-soon-card--dock-left.coming-soon-card--play {
     animation: none;

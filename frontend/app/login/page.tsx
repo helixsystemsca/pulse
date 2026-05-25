@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { FormEvent, useEffect, useId, useState } from "react";
 import { AuthScreenShell } from "@/components/auth/AuthScreenShell";
 import { LoginCinematicLogo } from "@/components/auth/LoginCinematicLogo";
-import { LoginComingSoonFeaturesCard } from "@/components/auth/LoginComingSoonFeaturesCard";
+import { LoginComingSoonEntrance } from "@/components/auth/LoginComingSoonEntrance";
 import { LoginIntroAtmosphere } from "@/components/auth/LoginIntroAtmosphere";
 import { useLoginIntroSequence } from "@/components/auth/useLoginIntroSequence";
 import { AuroraBackground } from "@/components/ui/AuroraBackground";
@@ -29,6 +29,7 @@ import { mailtoInfo, mailtoSupport } from "@/lib/helix-emails";
 import { isMicrosoftSsoConfigured, startMicrosoftSignIn } from "@/lib/microsoft-auth";
 import { cn } from "@/lib/cn";
 import {
+  LOGIN_EASE,
   loginFormRevealTransition,
   loginFormRevealVariants,
   loginTaglineVariants,
@@ -191,25 +192,17 @@ export default function LoginPage() {
         </header>
 
         <main className="relative z-10 flex min-h-0 flex-1 flex-col justify-center px-4 pb-4 pt-1 sm:px-6 sm:pb-5 md:px-8">
-          {intro.showComingSoon ? (
-            <LoginComingSoonFeaturesCard playAnimation />
-          ) : null}
+          <LoginComingSoonEntrance visible={intro.showComingSoon} />
           <div className="login-content">
             <div className="login-content__form">
-            <LoginCinematicLogo showHero={intro.showHeroLogo} showLayout={intro.showLayoutLogo} />
-            {!intro.showLayoutLogo ? (
-              <div
-                className="h-[9.25rem] w-[min(22rem,calc(100vw-2rem))] sm:h-[11rem] sm:w-[min(26rem,calc(100vw-2rem))] md:h-[12.5rem] md:w-[min(30rem,calc(100vw-2.5rem))]"
-                aria-hidden
-              />
-            ) : null}
+            <LoginCinematicLogo stage={intro.stage} />
 
             <motion.p
               className="mt-3 text-center text-sm font-medium text-[#5a6d82] dark:text-ds-muted sm:mt-3.5"
-              initial={false}
+              initial={intro.reducedMotion ? false : "hidden"}
               animate={intro.showTagline ? "visible" : "hidden"}
               variants={loginTaglineVariants}
-              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ duration: 0.45, ease: LOGIN_EASE }}
             >
               Access only for verified users.
             </motion.p>
