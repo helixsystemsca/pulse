@@ -244,6 +244,12 @@ class User(Base):
         nullable=False,
         server_default=text("'[]'::jsonb"),
     )
+    #: Per-user UI state (dashboard layouts, etc.) — synced across devices for the same account.
+    ui_preferences: Mapped[dict[str, Any]] = mapped_column(
+        JSONB,
+        nullable=False,
+        server_default=text("'{}'::jsonb"),
+    )
     #: Optional access overlay assignment (organizational label; does not widen product modules versus the matrix).
     tenant_role_id: Mapped[Optional[str]] = mapped_column(
         UUID(as_uuid=False),

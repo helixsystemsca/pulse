@@ -12,6 +12,8 @@ type TankIndicatorProps = {
   fillHeight?: boolean;
   /** Explicit tank capsule height (CSS length). */
   tankHeight?: string;
+  /** Explicit tank capsule width (CSS length); used with `tankHeight`. */
+  tankWidth?: string;
 };
 
 type TankStatus = "ok" | "change_soon" | "change_now";
@@ -42,6 +44,7 @@ export function TankIndicator({
   compact = false,
   fillHeight = false,
   tankHeight,
+  tankWidth,
 }: TankIndicatorProps) {
   const status = useMemo(() => getStatus(value), [value]);
   const percent = useMemo(() => {
@@ -56,9 +59,13 @@ export function TankIndicator({
     "shadow-[0_0_0_1px_rgb(255_255_255/0.65)_inset,0_1px_0_rgb(255_255_255/0.85)_inset,0_6px_14px_-6px_rgb(15,23,42,0.14)]",
   );
 
+  const fixedOpsSize = Boolean(compact && tankHeight);
+
   const capsuleClass = cn(
-    "relative overflow-hidden rounded-full bg-ds-secondary/60",
-    fillHeight && compact
+    "relative overflow-hidden rounded-full bg-ds-secondary/60 shrink-0",
+    fixedOpsSize
+      ? cn("w-7", compactTankShell)
+      : fillHeight && compact
       ? cn("h-full min-h-[4rem] w-8 shrink-0 sm:min-h-[4.75rem] sm:w-9", compactTankShell)
       : compact && !tankHeight
         ? cn(
@@ -74,8 +81,9 @@ export function TankIndicator({
     <div
       className={cn(
         "flex flex-col items-center",
-        compact && "w-full min-w-0 max-w-[5.5rem]",
-        fillHeight && "h-full min-h-0",
+        compact && !fixedOpsSize && "w-full min-w-0 max-w-[4.25rem] sm:max-w-[4.5rem]",
+        compact && fixedOpsSize && "w-[3.25rem] shrink-0",
+        fillHeight && !fixedOpsSize && "h-full min-h-0",
       )}
     >
       {compact && fillHeight ? null : (
@@ -85,12 +93,16 @@ export function TankIndicator({
         className={cn(
           "flex flex-col justify-end",
           compact ? "w-full min-w-0 max-w-[3.75rem] sm:max-w-[4rem]" : "w-9 sm:w-10",
-          fillHeight && compact ? "min-h-0 flex-1" : "shrink-0",
+          fillHeight && compact && !fixedOpsSize ? "min-h-0 flex-1" : "shrink-0",
         )}
       >
         <div
           className={capsuleClass}
-          style={tankHeight ? { height: tankHeight, width: "2.25rem" } : undefined}
+          style={
+            tankHeight
+              ? { height: tankHeight, width: tankWidth ?? (fixedOpsSize ? "1.75rem" : "2.25rem") }
+              : undefined
+          }
           role="img"
           aria-label={`${label} indicator`}
         >
@@ -132,7 +144,12 @@ export function TankIndicator({
       <p
         className={cn(
           "w-full text-center font-semibold leading-tight text-ds-foreground",
-          compact ? "mt-0.5 line-clamp-2 text-[9px] leading-snug sm:text-[10px]" : "mt-2 text-sm",
+          compact
+            ? cn(
+                "mt-0.5 line-clamp-2 leading-snug",
+                fixedOpsSize ? "text-[8px] sm:text-[9px]" : "text-[9px] sm:text-[10px]",
+              )
+            : "mt-2 text-sm",
         )}
         title={label}
       >

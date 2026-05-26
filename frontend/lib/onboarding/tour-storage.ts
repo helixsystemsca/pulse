@@ -46,6 +46,11 @@ export function markTourCompleted(tourId: string): void {
   writeCompletedMap(map);
 }
 
+/** Clear all tour completion flags in this browser (demo / QA). */
+export function resetAllOnboardingTours(): void {
+  clearTourCompleted();
+}
+
 /** Clear one tour or all tours (restart). */
 export function clearTourCompleted(tourId?: string): void {
   if (typeof window === "undefined") return;

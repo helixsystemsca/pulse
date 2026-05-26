@@ -44,6 +44,7 @@ from app.api.demo_routes import router as demo_router
 from app.api.feedback_routes import router as feedback_router
 from app.api.infrastructure_map_routes import router as infrastructure_map_router
 from app.api.organization_routes import router as organization_router
+from app.api.dashboard_preferences_routes import router as dashboard_preferences_router
 from app.api.profile_routes import router as profile_router
 from app.api.compliance_routes import router as compliance_router
 from app.api.pm_coord_routes import router as pm_coord_router
@@ -281,6 +282,7 @@ app.include_router(telemetry_ingest_router, prefix="/api/v1")
 app.include_router(config_router, prefix="/api/v1")
 app.include_router(demo_router, prefix="/api/v1")
 app.include_router(profile_router, prefix="/api/v1")
+app.include_router(dashboard_preferences_router, prefix="/api/v1")
 app.include_router(automation_events_router, prefix="/api/v1")
 app.include_router(automation_debug_router, prefix="/api/v1")
 app.include_router(notifications_router, prefix="/api/v1")

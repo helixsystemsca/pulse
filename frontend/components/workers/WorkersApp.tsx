@@ -26,6 +26,7 @@ import {
   dsLabelClass,
   dsSelectClass,
 } from "@/components/ui/ds-form-classes";
+import { ResetOnboardingToursButton } from "@/components/onboarding/ResetOnboardingToursButton";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { apiFetch, refreshPulseUserFromServer } from "@/lib/api";
 import {
@@ -1566,6 +1567,7 @@ export function WorkersApp() {
         icon={Shield}
         actions={
           <>
+            {managerOrAbove(session) ? <ResetOnboardingToursButton /> : null}
             <button
               type="button"
               className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-4 py-2.5")}

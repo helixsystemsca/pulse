@@ -14,7 +14,12 @@ import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { RotateCcw } from "lucide-react";
 import type { TourPlacement, TourStep } from "@/lib/onboarding/tour-steps/types";
-import { clearTourCompleted, isTourCompleted, markTourCompleted } from "@/lib/onboarding/tour-storage";
+import {
+  clearTourCompleted,
+  isTourCompleted,
+  markTourCompleted,
+  resetAllOnboardingTours,
+} from "@/lib/onboarding/tour-storage";
 import {
   getTourTargetElements,
   getTourTargetUnionRect,
@@ -49,6 +54,8 @@ type CardStyle = {
 
 type OnboardingTourContextValue = {
   restartTour: () => void;
+  /** Clears every completed tour in this browser; starts current page tour if one exists. */
+  resetAllTours: () => void;
   showRestartInHeader: boolean;
   tourId: string | null;
 };
@@ -277,6 +284,18 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
     setIsActive(true);
   }, [tourId]);
 
+  const resetAllTours = useCallback(() => {
+    resetAllOnboardingTours();
+    setShowComplete(false);
+    setCompleteFading(false);
+    setCurrentStep(0);
+    if (tourEnabled && tourId) {
+      setIsActive(true);
+    } else {
+      setIsActive(false);
+    }
+  }, [tourEnabled, tourId]);
+
   const advanceFromMissing = useCallback(
     (fromIndex: number) => {
       for (let i = fromIndex + 1; i < steps.length; i += 1) {
@@ -371,10 +390,11 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
   const contextValue = useMemo(
     () => ({
       restartTour,
+      resetAllTours,
       showRestartInHeader: tourEnabled,
       tourId,
     }),
-    [restartTour, tourEnabled, tourId],
+    [restartTour, resetAllTours, tourEnabled, tourId],
   );
 
   const step = steps[currentStep];

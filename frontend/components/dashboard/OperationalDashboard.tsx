@@ -25,6 +25,10 @@ import {
 import { canAccessCompanyConfiguration, sessionHasAnyRole } from "@/lib/pulse-roles";
 import { getServerDate, getServerNow } from "@/lib/serverTime";
 import { useResolvedAvatarSrc } from "@/lib/useResolvedAvatarSrc";
+import {
+  loadDashboardLayoutBundle,
+  saveDashboardLayoutBundle,
+} from "@/lib/dashboard/dashboard-layout-persistence";
 import { DASHBOARD_CUSTOM_WIDGETS_STORAGE, type CustomDashboardWidgetConfig } from "@/lib/dashboardPageWidgetCatalog";
 import { fetchTrainingMatrix, mapApiAssignments, mapApiEmployees, mapApiPrograms } from "@/lib/trainingApi";
 import { computeComplianceRadialSummary } from "@/lib/training/selectors";
@@ -1133,15 +1137,6 @@ function DashboardBody({
     return canAccessCompanyConfiguration(session);
   }, [isDeptDashboard, isKiosk, readOnly, session]);
 
-  /** Kiosk fullscreen uses the same persisted layout as the in-app dashboard (not a separate TV layout). */
-  const layoutStorageKey = useMemo(() => {
-    return `pulse_dashboard_layout_v${DASHBOARD_LAYOUT_STORAGE_VERSION}_${dashboardContext}_standard`;
-  }, [dashboardContext]);
-
-  const customWidgetStorageKey = useMemo(() => {
-    return `pulse_dashboard_widgets_v3_${dashboardContext}_standard`;
-  }, [dashboardContext]);
-
   const [editMode, setEditMode] = useState(false);
   useEffect(() => {
     if (readOnly) setEditMode(false);
@@ -1154,6 +1149,8 @@ function DashboardBody({
   const [peekWizardMode, setPeekWizardMode] = useState<"create" | "edit">("create");
   const [peekWizardInitial, setPeekWizardInitial] = useState<CustomDashboardWidgetConfig | null>(null);
   const [customConfigs, setCustomConfigs] = useState<Record<string, CustomDashboardWidgetConfig>>({});
+  const customConfigsRef = useRef(customConfigs);
+  customConfigsRef.current = customConfigs;
   const [layoutHydrated, setLayoutHydrated] = useState(false);
   const { width, containerRef, mounted } = useContainerWidth({ initialWidth: 1200 });
 
@@ -1417,77 +1414,102 @@ function DashboardBody({
   const [layout, setLayout] = useState<WorkspaceLayout>(defaultLayout);
 
   useEffect(() => {
-    let parsedConfigs: Record<string, CustomDashboardWidgetConfig> = {};
-    try {
-      const cw = window.localStorage.getItem(customWidgetStorageKey) ?? window.localStorage.getItem(DASHBOARD_CUSTOM_WIDGETS_STORAGE);
-      if (cw) parsedConfigs = JSON.parse(cw) as Record<string, CustomDashboardWidgetConfig>;
-    } catch {
-      parsedConfigs = {};
-    }
+    let cancelled = false;
 
-    const validIds = new Set([
-      ...(builtinWidgetIdsSignature.length ? builtinWidgetIdsSignature.split("|") : []),
-      ...Object.keys(parsedConfigs),
-    ]);
+    const hydrate = async () => {
+      let parsedConfigs: Record<string, CustomDashboardWidgetConfig> = {};
+      try {
+        const cw = window.localStorage.getItem(DASHBOARD_CUSTOM_WIDGETS_STORAGE);
+        if (cw) parsedConfigs = JSON.parse(cw) as Record<string, CustomDashboardWidgetConfig>;
+      } catch {
+        parsedConfigs = {};
+      }
 
-    let nextLayout: WorkspaceLayout | null = null;
-    let loadedFromStorage = false;
-    try {
-      let raw = window.localStorage.getItem(layoutStorageKey);
-      if (!raw) {
-        for (const legacyKey of [
-          `pulse_dashboard_layout_v10_${dashboardContext}_standard`,
-          `pulse_dashboard_layout_v9_${dashboardContext}_standard`,
-          `pulse_dashboard_layout_v8_${dashboardContext}_standard`,
-          `pulse_dashboard_layout_v7_${dashboardContext}_standard`,
-        ]) {
-          raw = window.localStorage.getItem(legacyKey);
-          if (raw) break;
+      const { bundle, source } = await loadDashboardLayoutBundle(dashboardContext);
+      if (bundle?.customWidgets && typeof bundle.customWidgets === "object") {
+        parsedConfigs = bundle.customWidgets;
+      }
+
+      const validIds = new Set([
+        ...(builtinWidgetIdsSignature.length ? builtinWidgetIdsSignature.split("|") : []),
+        ...Object.keys(parsedConfigs),
+      ]);
+
+      let nextLayout: WorkspaceLayout | null = bundle?.layout ?? null;
+      let loadedFromStorage = source !== "none" && nextLayout != null;
+
+      if (!nextLayout) {
+        try {
+          let raw: string | null = null;
+          for (const legacyKey of [
+            `pulse_dashboard_layout_v10_${dashboardContext}_standard`,
+            `pulse_dashboard_layout_v9_${dashboardContext}_standard`,
+            `pulse_dashboard_layout_v8_${dashboardContext}_standard`,
+            `pulse_dashboard_layout_v7_${dashboardContext}_standard`,
+          ]) {
+            raw = window.localStorage.getItem(legacyKey);
+            if (raw) break;
+          }
+          if (raw) {
+            const parsed = JSON.parse(raw) as unknown;
+            if (parseWorkspaceLayout(parsed)) {
+              nextLayout = parsed as WorkspaceLayout;
+              loadedFromStorage = true;
+            } else if (isLegacyGridLayout(parsed)) {
+              nextLayout = migrateGridLayoutToWorkspace(parsed as import("react-grid-layout").LayoutItem[]);
+              loadedFromStorage = true;
+            }
+          }
+        } catch {
+          nextLayout = null;
         }
       }
-      if (raw) {
-        const parsed = JSON.parse(raw) as unknown;
-        if (parseWorkspaceLayout(parsed)) {
-          nextLayout = parsed as WorkspaceLayout;
-          loadedFromStorage = true;
-        } else if (isLegacyGridLayout(parsed)) {
-          nextLayout = migrateGridLayoutToWorkspace(parsed as import("react-grid-layout").LayoutItem[]);
-          loadedFromStorage = true;
-        }
+
+      if (!loadedFromStorage || !nextLayout) nextLayout = defaultLayout;
+
+      let merged = sanitizeWorkspaceLayout(nextLayout, validIds);
+      merged = mergeMissingDefaults(merged, validIds, !loadedFromStorage);
+
+      if (cancelled) return;
+      setLayout(merged);
+      setCustomConfigs(parsedConfigs);
+      setLayoutHydrated(true);
+
+      if (loadedFromStorage && source === "local" && isApiMode()) {
+        saveDashboardLayoutBundle(dashboardContext, {
+          version: DASHBOARD_LAYOUT_STORAGE_VERSION,
+          layout: merged,
+          customWidgets: parsedConfigs,
+        });
       }
-    } catch {
-      nextLayout = null;
-    }
+    };
 
-    if (!loadedFromStorage || !nextLayout) nextLayout = defaultLayout;
-
-    let merged = sanitizeWorkspaceLayout(nextLayout, validIds);
-    merged = mergeMissingDefaults(merged, validIds, !loadedFromStorage);
-    setLayout(merged);
-    setCustomConfigs(parsedConfigs);
-    setLayoutHydrated(true);
-  }, [builtinWidgetIdsSignature, customWidgetStorageKey, dashboardContext, defaultLayout, layoutStorageKey]);
+    void hydrate();
+    return () => {
+      cancelled = true;
+    };
+  }, [builtinWidgetIdsSignature, dashboardContext, defaultLayout]);
 
   const persistLayout = useCallback(
     (next: WorkspaceLayout) => {
       if (!layoutHydrated) return;
-      try {
-        window.localStorage.setItem(layoutStorageKey, JSON.stringify(next));
-      } catch {
-        /* ignore quota / privacy mode */
-      }
+      saveDashboardLayoutBundle(dashboardContext, {
+        version: DASHBOARD_LAYOUT_STORAGE_VERSION,
+        layout: next,
+        customWidgets: customConfigsRef.current,
+      });
     },
-    [layoutHydrated, layoutStorageKey],
+    [dashboardContext, layoutHydrated],
   );
 
   useEffect(() => {
     if (!layoutHydrated) return;
-    try {
-      window.localStorage.setItem(customWidgetStorageKey, JSON.stringify(customConfigs));
-    } catch {
-      /* ignore */
-    }
-  }, [customConfigs, customWidgetStorageKey, layoutHydrated]);
+    saveDashboardLayoutBundle(dashboardContext, {
+      version: DASHBOARD_LAYOUT_STORAGE_VERSION,
+      layout,
+      customWidgets: customConfigs,
+    });
+  }, [customConfigs, dashboardContext, layout, layoutHydrated]);
 
   const layoutKeys = useMemo(() => new Set(allWorkspaceWidgetIds(layout)), [layout]);
   const availableToAdd = useMemo(() => allWidgetKeys.filter((k) => !layoutKeys.has(k)), [allWidgetKeys, layoutKeys]);
