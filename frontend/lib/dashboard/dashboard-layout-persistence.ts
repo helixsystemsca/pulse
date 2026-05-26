@@ -48,7 +48,8 @@ function writeLocalBundle(context: string, bundle: DashboardLayoutBundle): void 
   }
 }
 
-const saveTimers = new Map<string, ReturnType<typeof setTimeout>>();
+/** Browser timer id (`window.setTimeout`); avoid Node `Timeout` type from global `setTimeout`. */
+const saveTimers = new Map<string, number>();
 
 export type DashboardLayoutLoadResult = {
   bundle: DashboardLayoutBundle | null;
