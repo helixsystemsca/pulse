@@ -23,7 +23,7 @@ function opsLayoutForTier(tier?: WidgetHeightTier): {
     case "compact":
       return { radialSize: "sm", dualWheels: false, badgeGap: "gap-1", outerGap: "gap-1.5" };
     case "medium":
-      return { radialSize: "sm", dualWheels: true, badgeGap: "gap-1", outerGap: "gap-2" };
+      return { radialSize: "sm", dualWheels: true, badgeGap: "gap-0.5", outerGap: "gap-1.5" };
     case "expanded":
     case "tall":
       return { radialSize: "lg", dualWheels: true, badgeGap: "gap-0.5", outerGap: "gap-2" };
@@ -48,6 +48,7 @@ function TrainingComplianceOpsFill({
   const expiring = Math.max(0, training.expiringSoon);
   const missing = Math.max(0, training.missing);
   const total = Math.max(0, training.totalSlots);
+  const denseBadges = heightTier === "medium";
   const tightBadges = heightTier === "expanded" || heightTier === "tall";
   const badgeTightClass = tightBadges ? "!gap-1.5 !px-2 !py-1.5" : undefined;
 
@@ -61,6 +62,7 @@ function TrainingComplianceOpsFill({
         count={completed}
         variant="completed"
         compact
+        dense={denseBadges}
         className={badgeTightClass}
       />
       <StatusMetricCard
@@ -71,6 +73,7 @@ function TrainingComplianceOpsFill({
         count={expiring}
         variant="expiring"
         compact
+        dense={denseBadges}
         className={badgeTightClass}
       />
       <StatusMetricCard
@@ -82,6 +85,7 @@ function TrainingComplianceOpsFill({
         variant="missing"
         emphasize={missing > 0}
         compact
+        dense={denseBadges}
         className={badgeTightClass}
       />
     </>
@@ -91,8 +95,12 @@ function TrainingComplianceOpsFill({
     <div className={cn("flex h-full min-h-0 w-full min-w-0 flex-col", layout.outerGap)}>
       <div
         className={cn(
-          "flex min-h-0 flex-1 items-center justify-center",
-          layout.dualWheels ? "gap-2 px-0.5 sm:gap-3" : "gap-0",
+          "flex min-h-0 flex-1 items-center justify-center overflow-hidden",
+          layout.dualWheels
+            ? heightTier === "medium"
+              ? "gap-1.5 px-0.5"
+              : "gap-2 px-0.5 sm:gap-3"
+            : "gap-0",
         )}
       >
         <ComplianceRadial

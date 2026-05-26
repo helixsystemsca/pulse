@@ -77,21 +77,24 @@ export function TankIndicator({
           : "h-40 w-16 shrink-0 border border-ds-border shadow-[0_10px_24px_rgba(15,23,42,0.10)]",
   );
 
+  const showValueLine = compact && !fillHeight && !fixedOpsSize;
+
   return (
     <div
       className={cn(
-        "flex flex-col items-center",
+        "flex flex-col items-center justify-center",
         compact && !fixedOpsSize && "w-full min-w-0 max-w-[4.25rem] sm:max-w-[4.5rem]",
         compact && fixedOpsSize && "w-[3.25rem] shrink-0",
         fillHeight && !fixedOpsSize && "h-full min-h-0",
       )}
     >
-      {compact && fillHeight ? null : (
+      {compact && (fillHeight || fixedOpsSize) ? null : (
         <div className={cn("shrink-0 rounded bg-ds-muted/30", compact ? "mb-0.5 h-1 w-4" : "mb-1 h-2 w-6")} aria-hidden />
       )}
       <div
         className={cn(
-          "flex flex-col justify-end",
+          "flex flex-col",
+          fixedOpsSize ? "items-center justify-center" : "justify-end",
           compact ? "w-full min-w-0 max-w-[3.75rem] sm:max-w-[4rem]" : "w-9 sm:w-10",
           fillHeight && compact && !fixedOpsSize ? "min-h-0 flex-1" : "shrink-0",
         )}
@@ -155,11 +158,18 @@ export function TankIndicator({
       >
         {label}
       </p>
-      {compact && fillHeight ? null : (
-        <p className={cn("w-full text-center text-ds-muted", compact ? "mt-0.5 text-[9px] leading-tight sm:text-[10px]" : "mt-0.5 text-xs")}>
-          <span className="tabular-nums">{value}</span> / {max} \u00b7 {statusLabels[status]}
+      {showValueLine ? (
+        <p
+          className={cn(
+            "w-full text-center text-ds-muted",
+            compact ? "mt-0.5 text-[9px] leading-tight sm:text-[10px]" : "mt-0.5 text-xs",
+          )}
+        >
+          <span className="tabular-nums">{value}</span>
+          <span className="text-ds-muted/80"> / {max} </span>
+          <span>{statusLabels[status]}</span>
         </p>
-      )}
+      ) : null}
     </div>
   );
 }

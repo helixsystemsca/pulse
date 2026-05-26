@@ -51,6 +51,8 @@ export type StatusMetricCardProps = {
   className?: string;
   /** Tighter vertical rhythm for stacked dashboard column */
   compact?: boolean;
+  /** Extra-compact rows (medium-height ops widget — frees space for radial charts). */
+  dense?: boolean;
 };
 
 export function StatusMetricCard({
@@ -63,6 +65,7 @@ export function StatusMetricCard({
   emphasize = false,
   className,
   compact = false,
+  dense = false,
 }: StatusMetricCardProps) {
   const vs = VARIANT_STYLES[variant];
   const glow =
@@ -74,7 +77,7 @@ export function StatusMetricCard({
         href={href}
         className={cn(
           "dash-metric-row group relative flex items-center transition-all duration-200 dark:border-white/[0.08]",
-          compact ? "gap-2 px-2.5 py-2" : "gap-3 px-3 py-2.5",
+          dense ? "gap-1.5 px-2 py-1" : compact ? "gap-2 px-2.5 py-2" : "gap-3 px-3 py-2.5",
           variant === "completed" && "dash-metric-row--completed",
           variant === "expiring" && "dash-metric-row--expiring",
           variant === "missing" && "dash-metric-row--missing",
@@ -95,17 +98,35 @@ export function StatusMetricCard({
         <span
           className={cn(
             "relative flex shrink-0 items-center justify-center rounded-lg ring-1 ring-black/[0.05] dark:ring-white/10",
-            compact ? "h-8 w-8" : "h-10 w-10",
+            dense ? "h-7 w-7" : compact ? "h-8 w-8" : "h-10 w-10",
             vs.iconWrap,
           )}
         >
-          <Icon className={compact ? "h-4 w-4" : "h-5 w-5"} strokeWidth={2} aria-hidden />
+          <Icon
+            className={dense ? "h-3.5 w-3.5" : compact ? "h-4 w-4" : "h-5 w-5"}
+            strokeWidth={2}
+            aria-hidden
+          />
         </span>
         <div className="min-w-0 flex-1">
-          <p className={cn("font-semibold text-ds-foreground", compact ? "text-xs" : "text-sm")}>{label}</p>
-          <p className={cn("font-medium text-ds-muted", compact ? "mt-px text-[10px]" : "mt-0.5 text-xs")}>{subtext}</p>
+          <p
+            className={cn(
+              "font-semibold leading-tight text-ds-foreground",
+              dense ? "text-[10px]" : compact ? "text-xs" : "text-sm",
+            )}
+          >
+            {label}
+          </p>
+          <p
+            className={cn(
+              "font-medium leading-tight text-ds-muted",
+              dense ? "mt-px text-[9px]" : compact ? "mt-px text-[10px]" : "mt-0.5 text-xs",
+            )}
+          >
+            {subtext}
+          </p>
         </div>
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="flex shrink-0 items-center gap-0.5">
           <motion.span
             key={count}
             initial={{ opacity: 0.35, x: 4 }}
@@ -113,7 +134,7 @@ export function StatusMetricCard({
             transition={{ duration: 0.22 }}
             className={cn(
               "font-extrabold tabular-nums tracking-tight text-ds-foreground",
-              compact ? "text-base" : "text-lg",
+              dense ? "text-sm" : compact ? "text-base" : "text-lg",
             )}
           >
             {count.toLocaleString()}
