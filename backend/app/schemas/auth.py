@@ -8,6 +8,16 @@ from app.schemas.access_snapshot import AccessSnapshotOut
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    #: Present when AUTH_SESSION_MODE=dual (phase 2 refresh rotation).
+    refresh_token: Optional[str] = None
+
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str = Field(..., min_length=32, max_length=512)
+
+
+class LogoutRequest(BaseModel):
+    refresh_token: Optional[str] = Field(default=None, max_length=512)
 
 
 class TokenPayload(BaseModel):

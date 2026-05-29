@@ -70,6 +70,8 @@ type Props = {
   /** When false, minimap is rendered by SpatialWorkspaceShell. */
   showMinimap?: boolean;
   editorLightMode?: boolean;
+  /** Letterbox alignment for backdrop photos inside the wall bounds. */
+  backdropImageAlign?: "center" | "end";
   onCursorInchesChange?: (pt: { x: number; y: number } | null) => void;
   className?: string;
 };
@@ -113,6 +115,7 @@ export function InventoryPlannerCanvas({
   showFloatingHints = true,
   showMinimap = true,
   editorLightMode = false,
+  backdropImageAlign = "center",
   onCursorInchesChange,
   className,
 }: Props) {
@@ -448,6 +451,7 @@ export function InventoryPlannerCanvas({
                 showGrid={showGrid}
                 gridInches={gridInches}
                 image={backdropImage}
+                imageAlign={backdropImageAlign}
               />
             ) : null}
             {constraintReveal ? (

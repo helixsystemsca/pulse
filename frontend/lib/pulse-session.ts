@@ -15,6 +15,8 @@ import {
 } from "@/lib/pulse-auth-lifecycle";
 import { navigateToPulseLogin } from "@/lib/pulse-app";
 import { applyServerTimeFromUserOut } from "@/lib/serverTime";
+import { clearStoredRefreshToken, readStoredRefreshToken } from "@/lib/auth-token-storage";
+import { isRefreshTokenEnabled } from "@/lib/auth-session-mode";
 import type { AccessSnapshot } from "@/lib/access-snapshot";
 
 export const PULSE_AUTH_STORAGE_KEY = "pulse_auth_v2";
@@ -231,6 +233,10 @@ export function readSession(): PulseAuthSession | null {
     }
     const data = JSON.parse(raw) as PulseAuthSession;
     if (typeof data.exp !== "number" || data.exp * 1000 <= Date.now()) {
+      if (isRefreshTokenEnabled() && readStoredRefreshToken()) {
+        logSessionRead("ok");
+        return data;
+      }
       logSessionRead("expired");
       clearSession();
       if (!isPulsePublicPath(window.location.pathname)) {
@@ -255,6 +261,7 @@ export function readSession(): PulseAuthSession | null {
 function clearSessionQuiet() {
   if (typeof window === "undefined") return;
   setImpersonationOverlayAccessToken(null);
+  clearStoredRefreshToken();
   localStorage.removeItem(PULSE_AUTH_STORAGE_KEY);
   try {
     localStorage.removeItem("pulse_auth_v1");
@@ -456,7 +463,7 @@ export async function attemptMockLogin(
   return { ok: false, reason: "invalid_credentials" };
 }
 
-type TokenResponse = { access_token: string; token_type?: string };
+type TokenResponse = { access_token: string; token_type?: string; refresh_token?: string | null };
 
 export async function loginWithBackend(
   email: string,
@@ -498,5 +505,7 @@ export async function loginWithBackend(
     return { ok: false, reason: "api_config" };
   }
   applyServerTimeFromUserOut(user);
+  const { persistRefreshTokenFromLogin } = await import("@/lib/auth-refresh");
+  persistRefreshTokenFromLogin(tokenJson);
   return { ok: true, token, user };
 }

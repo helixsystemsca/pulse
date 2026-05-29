@@ -14,9 +14,10 @@ export const ADVERTISING_WORKSPACE: SpatialWorkspaceDefinition = {
   layout: {
     chrome: "editor",
     hideToolRail: true,
+    leftPanelWidthPx: 96,
     rightPanelWidthPx: 380,
   },
-  sidePanels: ["right"],
+  sidePanels: ["left", "right"],
   layers: [
     { id: "backdrop", label: "Backdrop", zIndex: 0, defaultVisible: true, interactive: false },
     { id: "constraints", label: "Constraints", zIndex: 10, defaultVisible: true, interactive: true },

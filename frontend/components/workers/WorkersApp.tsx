@@ -26,7 +26,7 @@ import {
   dsLabelClass,
   dsSelectClass,
 } from "@/components/ui/ds-form-classes";
-import { ResetOnboardingToursButton } from "@/components/onboarding/ResetOnboardingToursButton";
+import { ResetDashboardTourButton } from "@/components/workers/ResetDashboardTourButton";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { apiFetch, refreshPulseUserFromServer } from "@/lib/api";
 import {
@@ -146,6 +146,7 @@ type CompanyOption = { id: string; name: string };
 function matrixModuleToggleLabel(key: string): string {
   const canonical = toCanonicalFeatureKey(key);
   if (canonical && MODULE_LABEL[canonical]) return MODULE_LABEL[canonical];
+  if (key === "compliance") return MODULE_LABEL.logs_inspections;
   return key;
 }
 
@@ -1567,7 +1568,6 @@ export function WorkersApp() {
         icon={Shield}
         actions={
           <>
-            {managerOrAbove(session) ? <ResetOnboardingToursButton /> : null}
             <button
               type="button"
               className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-4 py-2.5")}
@@ -2357,6 +2357,13 @@ export function WorkersApp() {
                                   </div>
                                 </div>
                                 <div className="flex shrink-0 items-center gap-1">
+                                  {managerOrAbove(session) ? (
+                                    <ResetDashboardTourButton
+                                      userId={row.id}
+                                      fullName={row.full_name}
+                                      companyId={apiCompany}
+                                    />
+                                  ) : null}
                                   {(row.account_status ?? "active") === "invited" ? (
                                     <button
                                       type="button"

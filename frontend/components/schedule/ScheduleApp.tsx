@@ -33,6 +33,7 @@ import {
   weekDatesFromSunday,
   weekRangeLabel,
 } from "@/lib/schedule/calendar";
+import { operationalScheduleDateKeyFromDate } from "@/lib/schedule/operational-schedule-day";
 import { evaluateCoverageRules } from "@/lib/schedule/coverage-rules";
 import { mergeDeploymentBadgeOverlays } from "@/lib/schedule/deployment-overlay";
 import type { PaletteDragPayload } from "@/lib/schedule/drag";
@@ -182,7 +183,9 @@ export function ScheduleApp() {
   });
   const [workspaceView, setWorkspaceView] = useState<ScheduleWorkspaceView>("calendar");
   const [timeScale, setTimeScale] = useState<ScheduleTimeScale>("month");
-  const [focusDate, setFocusDate] = useState(() => formatLocalDate(getServerDate()));
+  const [focusDate, setFocusDate] = useState(() =>
+    operationalScheduleDateKeyFromDate(getServerDate()),
+  );
   const [contentFilter, setContentFilter] = useState<ScheduleContentFilter>("combined");
   const [sidebarSearch, setSidebarSearch] = useState("");
   const [facilityFilterIds, setFacilityFilterIds] = useState<string[]>([]);
@@ -1311,7 +1314,7 @@ export function ScheduleApp() {
 
   function goToday() {
     const td = getServerDate();
-    setFocusDate(formatLocalDate(td));
+    setFocusDate(operationalScheduleDateKeyFromDate(td));
     setCursor({ y: td.getFullYear(), m: td.getMonth() });
   }
 

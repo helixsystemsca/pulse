@@ -45,6 +45,7 @@ from app.api.feedback_routes import router as feedback_router
 from app.api.infrastructure_map_routes import router as infrastructure_map_router
 from app.api.organization_routes import router as organization_router
 from app.api.dashboard_preferences_routes import router as dashboard_preferences_router
+from app.api.onboarding_preferences_routes import router as onboarding_preferences_router
 from app.api.profile_routes import router as profile_router
 from app.api.compliance_routes import router as compliance_router
 from app.api.pm_coord_routes import router as pm_coord_router
@@ -93,6 +94,8 @@ from app.middleware.feature_gate import FeatureGateMiddleware
 from app.middleware.demo_viewer_guard import DemoViewerGuardMiddleware
 from app.middleware.require_https import RequireHttpsMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
+from app.middleware.request_context import RequestContextMiddleware
+from app.core.security.startup_validation import log_security_startup_summary
 from app.modules.pulse.router import router as pulse_router
 from app.modules.registry import register_modules
 
@@ -154,7 +157,10 @@ async def lifespan(app: FastAPI):
         _startup_log.exception("STARTUP STEP 2: bootstrap system admin failed")
         raise
 
-    _startup_log.info("STARTUP STEP 3: application ready (lifespan yield)")
+    _startup_log.info("STARTUP STEP 3: security configuration review")
+    log_security_startup_summary(settings)
+
+    _startup_log.info("STARTUP STEP 4: application ready (lifespan yield)")
     try:
         yield
     finally:
@@ -231,6 +237,7 @@ async def root_probe() -> dict[str, str]:
     return {"status": "ok"}
 
 # First registered sits innermost (just above routes); last registered is outermost.
+app.add_middleware(RequestContextMiddleware)
 app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(
     SecurityHeadersMiddleware,
@@ -283,6 +290,7 @@ app.include_router(config_router, prefix="/api/v1")
 app.include_router(demo_router, prefix="/api/v1")
 app.include_router(profile_router, prefix="/api/v1")
 app.include_router(dashboard_preferences_router, prefix="/api/v1")
+app.include_router(onboarding_preferences_router, prefix="/api/v1")
 app.include_router(automation_events_router, prefix="/api/v1")
 app.include_router(automation_debug_router, prefix="/api/v1")
 app.include_router(notifications_router, prefix="/api/v1")

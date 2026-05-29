@@ -14,7 +14,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, require_system_admin
 from app.core.audit.service import record_audit
+from app.core.auth.lockout import apply_failed_login_lockout, clear_login_lockout
 from app.core.auth.password_policy import validate_new_password
+from app.core.auth.refresh_tokens import (
+    create_refresh_session,
+    refresh_sessions_enabled,
+    revoke_all_refresh_sessions_for_user,
+    revoke_refresh_token,
+    rotate_refresh_session,
+)
 from app.core.auth.security import (
     bump_access_token_version,
     create_access_token,
@@ -22,10 +30,15 @@ from app.core.auth.security import (
     hash_password,
     verify_password,
 )
+from app.core.audit.security_events import record_security_event
 from app.core.config import Settings, get_settings
 from app.core.database import get_db
 from app.core.login_activity import log_login_event
 from app.core.microsoft_oauth import MicrosoftOAuthError, MicrosoftIdentity, verify_supabase_microsoft_access_token
+from app.core.security.tenant_auth_policy import (
+    microsoft_sso_allowed_for_company,
+    password_login_allowed_for_user,
+)
 from app.core.permissions.service import PermissionService
 from app.core.rbac.resolve import effective_rbac_permission_keys
 from app.core.workspace_departments import primary_hr_department_slug_for_auth
@@ -54,8 +67,10 @@ from app.schemas.auth import (
     ImpersonateRequest,
     InviteAcceptBody,
     LoginRequest,
+    LogoutRequest,
     MicrosoftOAuthRequest,
     PasswordResetConfirmBody,
+    RefreshTokenRequest,
     Token,
     UserOut,
 )
@@ -72,11 +87,21 @@ def _invite_role(raw: str) -> UserRole:
         return UserRole.company_admin
 
 
+def _client_ip(request: Request) -> str | None:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()[:128]
+    if request.client:
+        return request.client.host[:128]
+    return None
+
+
 def _token_for_user(
     user: User,
     *,
     is_impersonating: bool = False,
     impersonator_sub: str | None = None,
+    refresh_token: str | None = None,
 ) -> Token:
     prim = primary_jwt_role(user)
     token = create_access_token(
@@ -90,7 +115,31 @@ def _token_for_user(
             "tv": int(getattr(user, "token_version", 0) or 0),
         },
     )
-    return Token(access_token=token)
+    return Token(access_token=token, refresh_token=refresh_token)
+
+
+async def _issue_token_pair(
+    db: AsyncSession,
+    request: Request,
+    user: User,
+    *,
+    is_impersonating: bool = False,
+    impersonator_sub: str | None = None,
+) -> Token:
+    refresh_raw: str | None = None
+    if refresh_sessions_enabled():
+        refresh_raw, _ = await create_refresh_session(
+            db,
+            user,
+            user_agent=(request.headers.get("user-agent") or "")[:512] or None,
+            ip_address=_client_ip(request),
+        )
+    return _token_for_user(
+        user,
+        is_impersonating=is_impersonating,
+        impersonator_sub=impersonator_sub,
+        refresh_token=refresh_raw,
+    )
 
 
 def _oauth_error_response(exc: MicrosoftOAuthError) -> HTTPException:
@@ -156,6 +205,8 @@ async def _upsert_microsoft_user(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Account is not active.")
 
     user.auth_provider = "microsoft"
+    user.sso_subject = identity.supabase_user_id
+    user.mfa_method = "entra"
     if identity.display_name and not (user.full_name or "").strip():
         user.full_name = identity.display_name
     if identity.avatar_url and not (user.avatar_url or "").strip():
@@ -193,15 +244,21 @@ async def login(
         )
         await db.commit()
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    company = None
+    if user.company_id:
+        company = await db.get(Company, user.company_id)
+    if not password_login_allowed_for_user(user, company):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Password sign-in is disabled for this organization. Use Microsoft sign-in.",
+        )
     if user.locked_until and user.locked_until > now:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Account temporarily locked after repeated failed sign-ins. Try again later or reset your password.",
         )
     if not verify_password(body.password, user.hashed_password):
-        user.failed_login_attempts = int(getattr(user, "failed_login_attempts", 0) or 0) + 1
-        if user.failed_login_attempts >= settings.login_lockout_max_attempts:
-            user.locked_until = now + timedelta(minutes=settings.login_lockout_minutes)
+        apply_failed_login_lockout(user, settings, now)
         await record_audit(
             db,
             action="auth.login_failed",
@@ -213,8 +270,7 @@ async def login(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
     user.auth_provider = "email"
-    user.failed_login_attempts = 0
-    user.locked_until = None
+    clear_login_lockout(user)
     user.last_login = now
     user.last_active_at = now
     await record_audit(
@@ -225,8 +281,9 @@ async def login(
         metadata={"email": user.email},
     )
     await log_login_event(db, request, user, login_method="password")
+    out = await _issue_token_pair(db, request, user)
     await db.commit()
-    return _token_for_user(user)
+    return out
 
 
 @router.post("/oauth/microsoft", response_model=Token)
@@ -243,9 +300,15 @@ async def microsoft_oauth_login(
         raise _oauth_error_response(exc) from exc
 
     user, created = await _upsert_microsoft_user(db, identity)
+    company = await db.get(Company, user.company_id) if user.company_id else None
+    if not microsoft_sso_allowed_for_company(company):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Microsoft sign-in is disabled for this organization.",
+        )
     now = datetime.now(timezone.utc)
-    user.failed_login_attempts = 0
-    user.locked_until = None
+    clear_login_lockout(user)
+    user.mfa_enrolled_at = now
     user.last_login = now
     user.last_active_at = now
     await record_audit(
@@ -261,8 +324,9 @@ async def microsoft_oauth_login(
         },
     )
     await log_login_event(db, request, user, login_method="microsoft")
+    out = await _issue_token_pair(db, request, user)
     await db.commit()
-    return _token_for_user(user)
+    return out
 
 
 @router.post("/impersonate", response_model=Token)
@@ -621,6 +685,94 @@ async def confirm_password_reset(
     )
     await db.commit()
     return _token_for_user(u)
+
+
+@router.post("/refresh", response_model=Token)
+@limiter.limit("30/minute")
+async def refresh_access_token(
+    request: Request,
+    body: RefreshTokenRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> Token:
+    if not refresh_sessions_enabled():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Refresh tokens are not enabled (AUTH_SESSION_MODE=bearer)",
+        )
+    rotated = await rotate_refresh_session(
+        db,
+        body.refresh_token,
+        user_agent=(request.headers.get("user-agent") or "")[:512] or None,
+        ip_address=_client_ip(request),
+    )
+    if not rotated:
+        rid = getattr(request.state, "request_id", None)
+        await record_security_event(
+            db,
+            action="auth.refresh_failed",
+            metadata={"reason": "invalid_or_expired"},
+            request_id=rid,
+        )
+        await db.commit()
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
+    user, new_refresh = rotated
+    await record_security_event(
+        db,
+        action="auth.refresh",
+        actor_user_id=str(user.id),
+        company_id=str(user.company_id) if user.company_id else None,
+        request_id=getattr(request.state, "request_id", None),
+    )
+    out = _token_for_user(user, refresh_token=new_refresh)
+    await db.commit()
+    return out
+
+
+@router.post("/logout")
+@limiter.limit("30/minute")
+async def logout(
+    request: Request,
+    body: LogoutRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict[str, str]:
+    """Revoke a single refresh session (AUTH_SESSION_MODE=dual)."""
+    if not refresh_sessions_enabled():
+        return {"status": "ok", "detail": "refresh_not_enabled"}
+    if not (body.refresh_token or "").strip():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="refresh_token required")
+    ok = await revoke_refresh_token(db, body.refresh_token or "")
+    await record_security_event(
+        db,
+        action="auth.logout",
+        metadata={"revoked": ok},
+        request_id=getattr(request.state, "request_id", None),
+    )
+    await db.commit()
+    return {"status": "ok"}
+
+
+@router.post("/logout/all")
+@limiter.limit("20/minute")
+async def logout_all_sessions(
+    request: Request,
+    user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict[str, str]:
+    """Revoke all refresh sessions and invalidate access JWTs (bump token_version)."""
+    revoked = 0
+    if refresh_sessions_enabled():
+        revoked = await revoke_all_refresh_sessions_for_user(db, str(user.id))
+    bump_access_token_version(user)
+    await record_security_event(
+        db,
+        action="auth.logout_all",
+        actor_user_id=str(user.id),
+        company_id=str(user.company_id) if user.company_id else None,
+        metadata={"refresh_sessions_revoked": revoked},
+        request_id=getattr(request.state, "request_id", None),
+    )
+    await db.commit()
+    return {"status": "ok", "refresh_sessions_revoked": revoked}
 
 
 @router.get("/permissions", response_model=EffectivePermissionsOut)

@@ -20,6 +20,9 @@ import { routineAssignmentRowCap } from "@/lib/dashboard/widget-tier-disclosure"
 import { readSession } from "@/lib/pulse-session";
 import { mergedScheduleShiftsForCalendarDate } from "@/lib/schedule/dashboardScheduleDay";
 import {
+  operationalDayRolloverHint,
+} from "@/lib/schedule/operational-schedule-day";
+import {
   normalizeRoutineAssignmentDate,
   routineAssignmentsDisplayDate,
 } from "@/lib/schedule/routine-assignments-sync";
@@ -112,6 +115,7 @@ type LoadState =
       routines: RoutineRow[];
       handoverSummaries: AssignmentHandoverSummary[];
       loadErr: string | null;
+      rolloverHint: string | null;
     };
 
 export function useRoutineAssignmentsBoardState() {
@@ -139,16 +143,18 @@ export function useRoutineAssignmentsBoardState() {
       const dateStr =
         normalizeRoutineAssignmentDate(routineAssignmentsDisplayDate(now)) ??
         routineAssignmentsDisplayDate(now);
+      const rolloverHint = operationalDayRolloverHint(now);
       const dateLabel = new Date(`${dateStr}T12:00:00`).toLocaleDateString(undefined, {
         weekday: "short",
         month: "short",
         day: "numeric",
       });
-      const { dayStartMs, dayEndMsExclusive } = localCalendarDayBoundsMs(
-        new Date(`${dateStr}T12:00:00`).getTime(),
-      );
+      const anchorMs = new Date(`${dateStr}T12:00:00`).getTime();
+      const { dayStartMs, dayEndMsExclusive } = localCalendarDayBoundsMs(anchorMs);
+      // Include overnight spill into the next calendar morning (e.g. Mon 22:00 → Tue 08:00).
+      const toMs = dayEndMsExclusive + 10 * 60 * 60 * 1000;
       const from = new Date(dayStartMs).toISOString();
-      const to = new Date(dayEndMsExclusive).toISOString();
+      const to = new Date(toMs).toISOString();
 
       let loadErr: string | null = null;
       try {
@@ -194,6 +200,7 @@ export function useRoutineAssignmentsBoardState() {
             routines,
             handoverSummaries,
             loadErr,
+            rolloverHint,
           });
         }
       } catch (e) {
@@ -225,6 +232,7 @@ export function useRoutineAssignmentsBoardState() {
       workers: state.workers,
       assignments: state.assignments,
       deploymentBadgeOverlays,
+      nowMs: Date.now(),
     });
   }, [state, deploymentBadgeOverlays]);
 
@@ -247,6 +255,7 @@ export function useRoutineAssignmentsBoardState() {
       handoverSummaryByAssignment,
       reload,
       dateStr: state.dateStr,
+      rolloverHint: state.rolloverHint,
     };
   }
   if (state.kind === "demo") {
@@ -373,6 +382,7 @@ function WorkforceByShiftSections({
   dateLabel,
   loadErr,
   demoHint,
+  rolloverHint,
   handoverSummaryByAssignment,
   onHandoverChange,
 }: {
@@ -381,6 +391,7 @@ function WorkforceByShiftSections({
   fillShell?: boolean;
   dateLabel?: string;
   loadErr?: string | null;
+  rolloverHint?: string | null;
   demoHint?: string;
   handoverSummaryByAssignment?: Map<string, AssignmentHandoverSummary>;
   onHandoverChange?: () => void;
@@ -394,6 +405,11 @@ function WorkforceByShiftSections({
       </p>
       {demoHint ? (
         <p className="mt-1 shrink-0 text-[11px] text-[color-mix(in_srgb,var(--ds-text-primary)_58%,transparent)]">{demoHint}</p>
+      ) : null}
+      {rolloverHint ? (
+        <p className="mt-1 shrink-0 text-[11px] text-[color-mix(in_srgb,var(--ds-text-primary)_58%,transparent)]">
+          {rolloverHint}
+        </p>
       ) : null}
       {loadErr ? (
         <p className="mt-1 shrink-0 text-[11px] font-medium text-amber-700 dark:text-amber-300">{loadErr}</p>
@@ -500,6 +516,7 @@ function RoutineAssignmentsInner({
         fillShell={fillShell}
         dateLabel={state.dateLabel}
         loadErr={state.loadErr}
+        rolloverHint={state.rolloverHint}
         handoverSummaryByAssignment={state.handoverSummaryByAssignment}
         onHandoverChange={onHandoverChange}
       />

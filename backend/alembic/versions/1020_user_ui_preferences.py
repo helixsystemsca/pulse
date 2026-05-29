@@ -29,4 +29,5 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_column("users", "ui_preferences")
+    conn = op.get_bind()
+    ah.safe_drop_column(op, conn, "users", "ui_preferences")

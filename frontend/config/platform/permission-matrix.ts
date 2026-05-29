@@ -3,7 +3,7 @@
  * `department_role_feature_access` on workers settings).
  */
 
-import { expandContractKeysForMatrixFilter } from "@/lib/features/canonical-features";
+import { expandContractKeysForMatrixFilter, toCanonicalFeatureKey } from "@/lib/features/canonical-features";
 
 export const PERMISSION_MATRIX_DEPARTMENTS = [
   "maintenance",
@@ -93,7 +93,7 @@ export type PermissionFeatureGroup = { id: string; label: string; description?: 
 /** Keys mirrored across departments — master Team Management matrix lists every module once. */
 const MAINTENANCE_OPS_KEYS = [
   "work_requests",
-  "compliance",
+  "logs_inspections",
   "inventory",
   "equipment",
   "monitoring",
@@ -170,7 +170,7 @@ export const MASTER_PERMISSION_FEATURE_GROUPS: PermissionFeatureGroup[] = [
   {
     id: "ops",
     label: "Maintenance & operations",
-    description: "Work requests, inspections, inventory, equipment, monitoring, and projects.",
+    description: "Work requests, inspections & logs, inventory, equipment, monitoring, and projects.",
     keys: [...MAINTENANCE_OPS_KEYS],
   },
   {
@@ -194,8 +194,9 @@ export const MASTER_PERMISSION_FEATURE_GROUPS: PermissionFeatureGroup[] = [
   },
   {
     id: "standards",
-    label: "Standards",
-    description: "Procedures, training hub, certifications, compliance, and personal procedure views.",
+    label: "Training (sidebar)",
+    description:
+      "Routes under the Training domain: overview, learning, workforce compliance matrix, certifications, procedures, and routines.",
     keys: [...STANDARDS_PROGRAM_KEYS],
   },
   {
@@ -244,7 +245,7 @@ export function permissionFeatureGroupsForDepartment(dept: PermissionMatrixDepar
         keys: [...PLANNING_SCHEDULE_KEYS],
       },
       { id: "planning_projects", label: "Planning · Projects", keys: [...PLANNING_PROJECT_KEYS] },
-      { id: "standards", label: "Standards", keys: [...STANDARDS_PROGRAM_KEYS] },
+      { id: "standards", label: "Training (sidebar)", keys: [...STANDARDS_PROGRAM_KEYS] },
       { id: "shared", label: "People & messaging", keys: [...SHARED_PROGRAM_KEYS] },
       { id: "maps", label: "Maps, drawings & devices", keys: [...maps] },
     ];
@@ -485,7 +486,14 @@ export function normalizeDepartmentRoleMatrixFromApi(
     for (const s of PERMISSION_MATRIX_ROLE_SLOTS) {
       const list = row[s];
       if (Array.isArray(list)) {
-        seed[d]![s] = list.map((x) => String(x)).filter((x) => cat.has(x));
+        seed[d]![s] = list
+          .map((x) => {
+            const raw = String(x).trim();
+            const canonical = toCanonicalFeatureKey(raw);
+            if (canonical === "logs_inspections") return "logs_inspections";
+            return raw;
+          })
+          .filter((x) => cat.has(x) || cat.has(toCanonicalFeatureKey(x) ?? ""));
       }
     }
     if (baseline && !seed[d]![baseline]?.length && seed[d]!.team_member?.length) {

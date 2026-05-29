@@ -20,11 +20,19 @@ function readCompletedMap(): Record<string, boolean> {
   return {};
 }
 
-function writeCompletedMap(map: Record<string, boolean>): void {
+export function readCompletedMapForSync(): Record<string, boolean> {
+  return readCompletedMap();
+}
+
+export function writeCompletedMap(map: Record<string, boolean>): void {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(TOURS_COMPLETED_MAP_KEY, JSON.stringify(map));
-    localStorage.setItem(TOUR_COMPLETED_KEY, "true");
+    if (Object.keys(map).length === 0) {
+      localStorage.removeItem(TOUR_COMPLETED_KEY);
+    } else {
+      localStorage.setItem(TOUR_COMPLETED_KEY, "true");
+    }
   } catch {
     /* ignore */
   }
@@ -64,9 +72,6 @@ export function clearTourCompleted(tourId?: string): void {
     const map = readCompletedMap();
     delete map[tourId];
     writeCompletedMap(map);
-    if (Object.keys(map).length === 0) {
-      localStorage.removeItem(TOUR_COMPLETED_KEY);
-    }
   } catch {
     /* ignore */
   }

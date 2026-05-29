@@ -13,6 +13,19 @@ export function viewportAt100Percent(): PlannerViewport {
   };
 }
 
+/** Nudge pan so the wall sits flush to the right of the drawable area (beside the inspector rail). */
+export function viewportRightAlignedInContainer(
+  viewport: PlannerViewport,
+  containerWidth: number,
+  wallWidthInches: number,
+): PlannerViewport {
+  const drawableW = Math.max(1, containerWidth - RULER_THICKNESS_PX);
+  const wallPx = wallWidthInches * BASE_PX_PER_INCH * viewport.scale;
+  const slack = drawableW - wallPx;
+  if (slack <= 8) return viewport;
+  return { ...viewport, panX: viewport.panX + slack };
+}
+
 export function drawablePixelsFromContainer(containerWidth: number, containerHeight: number): {
   widthPx: number;
   heightPx: number;

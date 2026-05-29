@@ -5,12 +5,15 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
 from app.core.config import get_settings
+from app.core.security.internal_cron import verify_internal_cron_secret
+from app.core.security.tenant_rls import apply_pulse_rls_system_context
+from app.limiter import limiter
 from app.models.domain import User
 from app.models.pulse_models import PulseScheduleAcknowledgement, PulseScheduleAvailabilitySubmission, PulseSchedulePeriod
 
@@ -20,9 +23,12 @@ Db = Annotated[AsyncSession, Depends(get_db)]
 
 
 @router.post("/reminders/run")
+@limiter.limit("30/minute")
 async def run_schedule_reminders(
+    request: Request,
     db: Db,
     x_pm_cron_key: Annotated[Optional[str], Header(alias="X-PM-Cron-Key")] = None,
+    x_cron_timestamp: Annotated[Optional[str], Header(alias="X-Cron-Timestamp")] = None,
 ) -> dict:
     """
     Minimal “cron hook” for schedule reminders.
@@ -31,11 +37,13 @@ async def run_schedule_reminders(
     for periods with a deadline within the next 48 hours (best-effort; no notifications sent yet).
     """
     settings = get_settings()
-    secret = (settings.pm_cron_secret or "").strip()
-    if not secret:
-        raise HTTPException(status_code=503, detail="PM_CRON_SECRET is not configured")
-    if (x_pm_cron_key or "").strip() != secret:
-        raise HTTPException(status_code=401, detail="Invalid cron key")
+    verify_internal_cron_secret(
+        configured_secret=settings.pm_cron_secret,
+        provided_secret=x_pm_cron_key,
+        header_name="X-PM-Cron-Key",
+        cron_timestamp=x_cron_timestamp,
+    )
+    await apply_pulse_rls_system_context(db)
 
     now = datetime.now(timezone.utc)
     soon = now + timedelta(hours=48)

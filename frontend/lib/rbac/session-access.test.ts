@@ -68,6 +68,24 @@ describe("canAccessClassicNavHref", () => {
   });
 });
 
+describe("tenantSidebarNavItemsForLiveApp — training compliance", () => {
+  it("shows Training · Compliance for manager with standards_compliance matrix toggle", () => {
+    const items = tenantSidebarNavItemsForLiveApp(
+      session({
+        contract_features: ["procedures"],
+        enabled_features: ["procedures", "standards_compliance"],
+        rbac_permissions: [
+          "procedures.view",
+          "standards.compliance.view",
+          "standards.training.compliance.view",
+        ],
+        roles: ["manager"],
+      }),
+    );
+    expect(items.some((i) => i.key === "training_compliance")).toBe(true);
+  });
+});
+
 describe("tenantSidebarNavItemsForLiveApp", () => {
   it("includes arena advertising when registry and route gate both pass", () => {
     const items = tenantSidebarNavItemsForLiveApp(

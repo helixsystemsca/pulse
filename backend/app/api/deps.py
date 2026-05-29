@@ -22,6 +22,9 @@ from app.core.features.service import FeatureFlagService
 from app.core.inference.engine import InferenceEngine
 from app.core.permissions.service import PermissionService
 from app.core.rbac.observability import log_rbac_denial
+from app.core.security.tenant_rls import apply_pulse_rls_context_for_user
+from app.core.audit.security_events import record_security_event
+from app.core.security.suspicious_activity import note_suspicious_activity
 from app.core.rbac.registry import assert_known_rbac_keys
 from app.core.rbac.resolve import effective_rbac_permission_keys
 from app.core.state.manager import StateManager
@@ -34,6 +37,7 @@ security = HTTPBearer(auto_error=False)
 
 
 async def get_current_user(
+    request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     creds: Annotated[Optional[HTTPAuthorizationCredentials], Depends(security)],
 ) -> User:
@@ -82,7 +86,39 @@ async def get_current_user(
     if token_tv != int(getattr(user, "token_version", 0) or 0):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session expired — sign in again")
 
+    await apply_pulse_rls_context_for_user(db, user)
+
     return user
+
+
+async def assert_company_scope(
+    db: AsyncSession,
+    user: User,
+    company_id: str,
+    *,
+    request: Request | None = None,
+) -> None:
+    """Reject cross-tenant company_id parameters (defense in depth with RLS)."""
+    if user_has_any_role(user, UserRole.system_admin):
+        return
+    if user.company_id is None or str(user.company_id) != str(company_id):
+        rid = getattr(getattr(request, "state", None), "request_id", None) if request else None
+        await record_security_event(
+            db,
+            action="security.tenant_access_denied",
+            actor_user_id=str(user.id),
+            company_id=str(user.company_id) if user.company_id else None,
+            metadata={"attempted_company_id": company_id},
+            request_id=rid,
+        )
+        note_suspicious_activity(
+            kind="cross_tenant_company_id",
+            actor_user_id=str(user.id),
+            company_id=str(user.company_id) if user.company_id else None,
+            request_id=rid,
+            metadata={"attempted_company_id": company_id},
+        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cross-tenant access denied")
 
 
 require_auth = get_current_user
@@ -273,6 +309,14 @@ def require_rbac_any(*permission_keys: str) -> Callable[..., Awaitable[User]]:
             mode="any",
             route=str(request.url.path),
         )
+        await record_security_event(
+            db,
+            action="security.rbac_denied",
+            actor_user_id=str(user.id),
+            company_id=str(user.company_id) if user.company_id else None,
+            metadata={"route": str(request.url.path), "required_any_of": list(permission_keys)},
+            request_id=getattr(getattr(request, "state", None), "request_id", None),
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={
@@ -317,6 +361,18 @@ def require_rbac_all(*permission_keys: str) -> Callable[..., Awaitable[User]]:
             mode="all",
             route=str(request.url.path),
             extra={"missing_all_of": missing},
+        )
+        await record_security_event(
+            db,
+            action="security.rbac_denied",
+            actor_user_id=str(user.id),
+            company_id=str(user.company_id) if user.company_id else None,
+            metadata={
+                "route": str(request.url.path),
+                "required_all_of": list(permission_keys),
+                "missing": missing,
+            },
+            request_id=getattr(getattr(request, "state", None), "request_id", None),
         )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

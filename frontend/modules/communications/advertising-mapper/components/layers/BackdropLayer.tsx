@@ -13,9 +13,11 @@ type Props = {
   showGrid: boolean;
   gridInches: number;
   image: HTMLImageElement | null;
+  /** When set, letterboxed photos hug this edge inside the wall bounds. */
+  imageAlign?: "center" | "end";
 };
 
-function BackdropLayerInner({ wall, widthPx, heightPx, showGrid, gridInches, image }: Props) {
+function BackdropLayerInner({ wall, widthPx, heightPx, showGrid, gridInches, image, imageAlign = "center" }: Props) {
   const kind = wall.backdropKind;
   const gradient =
     kind === "arena"
@@ -46,6 +48,7 @@ function BackdropLayerInner({ wall, widthPx, heightPx, showGrid, gridInches, ima
         image,
         wall.backdropNaturalWidth,
         wall.backdropNaturalHeight,
+        imageAlign,
       )
     : null;
 

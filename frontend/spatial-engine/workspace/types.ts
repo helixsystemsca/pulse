@@ -45,6 +45,7 @@ export type SpatialWorkspaceLayout = {
   chrome?: SpatialWorkspaceChrome;
   /** When true, tools render in `floatingToolbar` slot instead of left rail. */
   hideToolRail?: boolean;
+  leftPanelWidthPx?: number;
   rightPanelWidthPx?: number;
 };
 

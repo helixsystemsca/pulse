@@ -5,12 +5,15 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy import delete, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_company_user, get_db, require_manager_or_above
 from app.core.config import get_settings
+from app.core.security.internal_cron import verify_internal_cron_secret
+from app.core.security.tenant_rls import apply_pulse_rls_system_context
+from app.limiter import limiter
 from app.models.domain import Tool, User
 from app.models.pm_models import PmTask, PmTaskChecklistItem, PmTaskPart
 from app.schemas.pm_task import PmDueScanResultOut, PmTaskCreateIn, PmTaskOut
@@ -250,24 +253,32 @@ internal_router = APIRouter(prefix="/internal", tags=["internal-pm"])
 
 
 @internal_router.post("/pm-tasks/run-due-scan", response_model=PmDueScanResultOut)
+@limiter.limit("30/minute")
 async def internal_run_pm_due_scan(
+    request: Request,
     db: Db,
     x_pm_cron_key: Annotated[Optional[str], Header(alias="X-PM-Cron-Key")] = None,
+    x_cron_timestamp: Annotated[Optional[str], Header(alias="X-Cron-Timestamp")] = None,
 ) -> PmDueScanResultOut:
     settings = get_settings()
-    secret = (settings.pm_cron_secret or "").strip()
-    if not secret:
-        raise HTTPException(status_code=503, detail="PM_CRON_SECRET is not configured")
-    if (x_pm_cron_key or "").strip() != secret:
-        raise HTTPException(status_code=401, detail="Invalid cron key")
+    verify_internal_cron_secret(
+        configured_secret=settings.pm_cron_secret,
+        provided_secret=x_pm_cron_key,
+        header_name="X-PM-Cron-Key",
+        cron_timestamp=x_cron_timestamp,
+    )
+    await apply_pulse_rls_system_context(db)
     out = await pm_svc.run_pm_due_scan(db)
     return PmDueScanResultOut(work_orders_created=out["work_orders_created"])
 
 
 @internal_router.post("/maintenance-inferences/cleanup")
+@limiter.limit("12/minute")
 async def internal_cleanup_maintenance_inferences(
+    request: Request,
     db: Db,
     x_pm_cron_key: Annotated[Optional[str], Header(alias="X-PM-Cron-Key")] = None,
+    x_cron_timestamp: Annotated[Optional[str], Header(alias="X-Cron-Timestamp")] = None,
 ) -> dict:
     """
     Nightly TTL cleanup for maintenance inference rows.
@@ -276,11 +287,13 @@ async def internal_cleanup_maintenance_inferences(
     Protected by the same cron secret as PM due-scan.
     """
     settings = get_settings()
-    secret = (settings.pm_cron_secret or "").strip()
-    if not secret:
-        raise HTTPException(status_code=503, detail="PM_CRON_SECRET is not configured")
-    if (x_pm_cron_key or "").strip() != secret:
-        raise HTTPException(status_code=401, detail="Invalid cron key")
+    verify_internal_cron_secret(
+        configured_secret=settings.pm_cron_secret,
+        provided_secret=x_pm_cron_key,
+        header_name="X-PM-Cron-Key",
+        cron_timestamp=x_cron_timestamp,
+    )
+    await apply_pulse_rls_system_context(db)
 
     stmt = text(
         """

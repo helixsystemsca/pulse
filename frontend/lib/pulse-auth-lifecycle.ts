@@ -4,6 +4,7 @@
  * Microsoft SSO also keeps a Supabase session in browser storage until explicitly cleared.
  */
 
+import { revokeRefreshSessionsOnLogout } from "@/lib/auth-refresh";
 import { navigateToPulseLogin } from "@/lib/pulse-app";
 import { signOutSupabaseIdentity } from "@/lib/microsoft-auth";
 import {

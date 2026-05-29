@@ -66,12 +66,37 @@ export function TrainingOverviewDashboard() {
       {err ? <p className="text-sm font-medium text-rose-600">{err}</p> : null}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        <KpiCard label="Expiring (60d)" value={expiring.length} tone="amber" href={TRAINING_ROUTES.complianceQueues} />
-        <KpiCard label="Expired" value={expired.length} tone="rose" href={TRAINING_ROUTES.complianceQueues} />
-        <KpiCard label="Missing proof" value={missingProof.length} tone="amber" href={TRAINING_ROUTES.complianceQueues} />
-        <KpiCard label="Pending verification" value={pendingVerification.length} tone="sky" href={TRAINING_ROUTES.complianceQueues} />
+        <KpiCard
+          label="Expiring (60d)"
+          value={expiring.length}
+          tone="amber"
+          href={`${TRAINING_ROUTES.complianceWorkers}?panel=queues`}
+        />
+        <KpiCard
+          label="Expired"
+          value={expired.length}
+          tone="rose"
+          href={`${TRAINING_ROUTES.complianceWorkers}?panel=queues`}
+        />
+        <KpiCard
+          label="Missing proof"
+          value={missingProof.length}
+          tone="amber"
+          href={`${TRAINING_ROUTES.complianceWorkers}?panel=queues`}
+        />
+        <KpiCard
+          label="Pending verification"
+          value={pendingVerification.length}
+          tone="sky"
+          href={`${TRAINING_ROUTES.complianceWorkers}?panel=queues`}
+        />
         <KpiCard label="Compliance %" value={`${compliancePct}%`} tone="emerald" href={TRAINING_ROUTES.complianceMatrix} />
-        <KpiCard label="Registry codes" value={registry.length} tone="neutral" href={TRAINING_ROUTES.complianceRegistry} />
+        <KpiCard
+          label="Registry codes"
+          value={registry.length}
+          tone="neutral"
+          href={`${TRAINING_ROUTES.complianceWorkers}?panel=certifications`}
+        />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -126,7 +151,10 @@ export function TrainingOverviewDashboard() {
       <section className="rounded-xl border border-ds-border bg-ds-card p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm font-bold text-ds-foreground">Priority queue</h3>
-          <Link href={TRAINING_ROUTES.complianceQueues} className="text-xs font-semibold text-teal-700 hover:underline dark:text-teal-300">
+          <Link
+            href={`${TRAINING_ROUTES.complianceWorkers}?panel=queues`}
+            className="text-xs font-semibold text-teal-700 hover:underline dark:text-teal-300"
+          >
             View all →
           </Link>
         </div>

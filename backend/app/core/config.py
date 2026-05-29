@@ -113,6 +113,41 @@ class Settings(BaseSettings):
         le=24 * 60,
         validation_alias=AliasChoices("LOGIN_LOCKOUT_MINUTES", "login_lockout_minutes"),
     )
+    #: When true, repeated lockout cycles multiply lock duration (capped at 8× base minutes).
+    login_lockout_exponential: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("LOGIN_LOCKOUT_EXPONENTIAL", "login_lockout_exponential"),
+    )
+    #: Set per-request GUCs for PostgreSQL RLS policies (see migration 1021).
+    database_rls_context_enabled: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("DATABASE_RLS_CONTEXT_ENABLED", "database_rls_context_enabled"),
+    )
+    #: When true, startup warns if DATABASE_URL uses a superuser (RLS bypass). Env-only guardrail.
+    database_rls_enforced: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("DATABASE_RLS_ENFORCED", "database_rls_enforced"),
+    )
+    #: Platform kill-switch for email/password login (SSO-only operations).
+    platform_allow_password_login: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("PLATFORM_ALLOW_PASSWORD_LOGIN", "platform_allow_password_login"),
+    )
+    platform_allow_microsoft_sso: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("PLATFORM_ALLOW_MICROSOFT_SSO", "platform_allow_microsoft_sso"),
+    )
+    #: JWT session mode: bearer (default), dual (access + refresh body), cookie (future HttpOnly).
+    auth_session_mode: str = Field(
+        default="bearer",
+        validation_alias=AliasChoices("AUTH_SESSION_MODE", "auth_session_mode"),
+    )
+    refresh_token_expire_days: int = Field(
+        default=14,
+        ge=1,
+        le=90,
+        validation_alias=AliasChoices("REFRESH_TOKEN_EXPIRE_DAYS", "refresh_token_expire_days"),
+    )
     # Comma-separated origins, no paths. Env: CORS_ORIGINS (preferred) or CORS_ORIGIN.
     # Production: include every site the browser uses (https://www.example.com and https://example.com
     # are different Origins). The origin of `pulse_app_public_url` is always merged in. See also cors_origin_regex.

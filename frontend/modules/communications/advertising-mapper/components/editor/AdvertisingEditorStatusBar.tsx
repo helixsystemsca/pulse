@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { cn } from "@/lib/cn";
 import { formatMeasurement } from "@/modules/communications/advertising-mapper/lib/measurements";
 import type { FacilityWallPlan, MeasurementUnit } from "@/modules/communications/advertising-mapper/types";
 import { SpatialViewportControls } from "@/spatial-engine/workspace";
@@ -19,11 +20,11 @@ export type AdvertisingEditorStatusBarProps = {
   onGridToggle: () => void;
   zoomDisabled?: boolean;
   fitDisabled?: boolean;
-  surfaceNav: ReactNode;
+  surfaceNav?: ReactNode;
   trailing?: ReactNode;
 };
 
-/** CAD-style footer — surface tabs (left) · metadata (center) · viewport tools (right). */
+/** CAD-style footer — optional surface strip · metadata (center) · viewport tools (right). */
 export function AdvertisingEditorStatusBar({
   wall,
   unit,
@@ -49,8 +50,15 @@ export function AdvertisingEditorStatusBar({
       : null;
 
   return (
-    <footer className="grid h-[40px] shrink-0 grid-cols-[minmax(0,auto)_minmax(0,1fr)_auto] items-center gap-2 border-t border-slate-200/80 bg-[#f8fafc]/98 px-2 font-mono text-[11px] text-slate-600 backdrop-blur-sm">
-      <div className="flex min-w-0 items-center pl-0.5">{surfaceNav}</div>
+    <footer
+      className={cn(
+        "grid h-[40px] shrink-0 items-center gap-2 border-t border-slate-200/80 bg-[#f8fafc]/98 px-2 font-mono text-[11px] text-slate-600 backdrop-blur-sm",
+        surfaceNav
+          ? "grid-cols-[minmax(0,auto)_minmax(0,1fr)_auto]"
+          : "grid-cols-[minmax(0,1fr)_auto]",
+      )}
+    >
+      {surfaceNav ? <div className="flex min-w-0 items-center pl-0.5">{surfaceNav}</div> : null}
 
       <div className="flex min-w-0 flex-col items-center justify-center gap-0 text-center leading-tight">
         <span className="truncate text-[11px] font-semibold text-slate-800">

@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from starlette.responses import Response
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +14,7 @@ from app.api.deps import (
     require_company_admin_scoped,
     require_manager_or_above,
 )
+from app.core.audit.permission_audit import record_permission_change
 from app.core.audit.service import record_audit
 from app.core.config import get_settings
 from app.core.database import get_db
@@ -181,6 +182,7 @@ async def create_company_user(
 
 @router.patch("/{user_id}/role")
 async def assign_role(
+    request: Request,
     user_id: str,
     body: AssignRoleBody,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -215,16 +217,14 @@ async def assign_role(
             )
     target.roles = new_roles
     await db.flush()
-    await record_audit(
+    await record_permission_change(
         db,
         action="users.role_changed",
-        actor_user_id=admin.id,
-        company_id=admin.company_id,
-        metadata={
-            "target_user_id": user_id,
-            "old_roles": old_roles,
-            "new_roles": new_roles,
-        },
+        actor_user_id=str(admin.id),
+        company_id=str(admin.company_id) if admin.company_id else None,
+        target_user_id=user_id,
+        payload={"old_roles": old_roles, "new_roles": new_roles},
+        request_id=getattr(getattr(request, "state", None), "request_id", None),
     )
     await db.commit()
     return {"id": user_id, "role": new_roles[0], "roles": new_roles}
@@ -232,6 +232,7 @@ async def assign_role(
 
 @router.put("/permissions/roles")
 async def put_role_permissions(
+    request: Request,
     body: RolePermissionsPut,
     db: Annotated[AsyncSession, Depends(get_db)],
     admin: Annotated[User, Depends(require_company_admin_scoped)],
@@ -239,12 +240,13 @@ async def put_role_permissions(
     target = RolePermissionTarget(body.role)
     svc = PermissionService(db)
     row = await svc.upsert_role_template(str(admin.company_id), target, body.allow)
-    await record_audit(
+    await record_permission_change(
         db,
         action="permissions.role_template_updated",
-        actor_user_id=admin.id,
-        company_id=admin.company_id,
-        metadata={"role": body.role, "allow": body.allow},
+        actor_user_id=str(admin.id),
+        company_id=str(admin.company_id) if admin.company_id else None,
+        payload={"role": body.role, "allow": body.allow},
+        request_id=getattr(getattr(request, "state", None), "request_id", None),
     )
     await db.commit()
     return {"company_id": str(admin.company_id), "role": body.role, "allow": body.allow}
@@ -252,6 +254,7 @@ async def put_role_permissions(
 
 @router.patch("/{user_id}/worker-deny")
 async def patch_worker_deny(
+    request: Request,
     user_id: str,
     body: WorkerDenyPatch,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -277,12 +280,14 @@ async def patch_worker_deny(
 
     target.permission_deny = body.deny
     await db.flush()
-    await record_audit(
+    await record_permission_change(
         db,
         action="permissions.worker_deny_updated",
-        actor_user_id=actor.id,
-        company_id=target.company_id,
-        metadata={"target_user_id": user_id, "deny": body.deny},
+        actor_user_id=str(actor.id),
+        company_id=str(target.company_id) if target.company_id else None,
+        target_user_id=user_id,
+        payload={"deny": body.deny},
+        request_id=getattr(getattr(request, "state", None), "request_id", None),
     )
     await db.commit()
     return {"id": user_id, "deny": body.deny}

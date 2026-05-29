@@ -5,7 +5,7 @@ from __future__ import annotations
 from urllib.parse import urlparse
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from starlette.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,7 +13,9 @@ from app.api.deps import get_current_company_user, get_db
 from app.core.company_logo_upload import normalize_logo_content_type
 from app.core.supabase_storage import create_signed_upload_url, public_object_url
 from app.core.pulse_storage import read_user_avatar_bytes, read_user_avatar_pending_bytes, write_user_avatar_bytes
+from app.core.audit.security_events import record_security_event
 from app.core.auth.password_policy import validate_new_password
+from app.limiter import limiter
 from app.core.auth.security import bump_access_token_version, hash_password, verify_password
 from app.core.config import get_settings
 from app.core.user_avatar_upload import INTERNAL_AVATAR_PATH, validate_avatar_bytes
@@ -194,7 +196,9 @@ async def patch_my_profile_settings(
 
 
 @router.post("/password")
+@limiter.limit("8/minute")
 async def change_my_password(
+    request: Request,
     body: ChangePasswordBody,
     user: Annotated[User, Depends(get_current_company_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -204,6 +208,16 @@ async def change_my_password(
     if body.current_password == body.new_password:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="New password must be different")
     if not verify_password(body.current_password, user.hashed_password):
+        rid = getattr(request.state, "request_id", None)
+        await record_security_event(
+            db,
+            action="auth.password_change_failed",
+            actor_user_id=str(user.id),
+            company_id=str(user.company_id) if user.company_id else None,
+            metadata={"reason": "bad_current_password"},
+            request_id=rid,
+        )
+        await db.commit()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid current password")
     try:
         validate_new_password(body.new_password, get_settings())
@@ -211,5 +225,13 @@ async def change_my_password(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     user.hashed_password = hash_password(body.new_password)
     bump_access_token_version(user)
+    rid = getattr(request.state, "request_id", None)
+    await record_security_event(
+        db,
+        action="auth.password_changed",
+        actor_user_id=str(user.id),
+        company_id=str(user.company_id) if user.company_id else None,
+        request_id=rid,
+    )
     await db.commit()
     return {"message": "Password updated"}

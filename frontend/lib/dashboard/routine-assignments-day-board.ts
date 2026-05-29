@@ -1,4 +1,5 @@
 import { deploymentOverlayKey, mergeDeploymentBadgeOverlays } from "@/lib/schedule/deployment-overlay";
+import { workforceShiftsForOperationalDay } from "@/lib/schedule/operational-schedule-day";
 import { isRoutineAssignmentWorkforceWorker } from "@/lib/schedule/routine-workforce-roles";
 import type { RoutineAssignmentDetail } from "@/lib/routinesService";
 import type { Shift, ShiftTypeKey, Worker } from "@/lib/schedule/types";
@@ -82,11 +83,15 @@ export function buildDayRoutineWorkerRows(params: {
   workers: Worker[];
   assignments: RoutineAssignmentDetail[];
   deploymentBadgeOverlays: Record<string, string[]>;
+  /** When set, includes previous-day overnight shifts still in progress (safety net). */
+  nowMs?: number;
 }): DayRoutineWorkerRow[] {
   const workforceWorkers = params.workers.filter(isRoutineAssignmentWorkforceWorker);
   const workerById = new Map(workforceWorkers.map((w) => [w.id, w]));
-  const dayShifts = params.shifts.filter(
-    (s) => s.date === params.dateStr && isWorkforceShift(s) && s.workerId && workerById.has(s.workerId),
+  const nowMs = params.nowMs ?? Date.now();
+  const scheduled = workforceShiftsForOperationalDay(params.shifts, params.dateStr, nowMs);
+  const dayShifts = scheduled.filter(
+    (s) => isWorkforceShift(s) && s.workerId && workerById.has(s.workerId),
   );
   const withBadges = mergeDeploymentBadgeOverlays(dayShifts, params.deploymentBadgeOverlays);
 

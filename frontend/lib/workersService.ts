@@ -206,6 +206,17 @@ export async function applyDepartmentMatrixBaselines(
   return apiFetch(withCompany("/api/workers/apply-department-baselines", companyId), { method: "POST" });
 }
 
+export async function resetWorkerDashboardTour(
+  companyId: string | null,
+  userId: string,
+): Promise<{ tour_id: string; completed: Record<string, boolean> }> {
+  return apiFetch(withCompany(`/api/workers/${encodeURIComponent(userId)}/onboarding-tours/reset`, companyId), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tour_id: "dashboard-overview" }),
+  });
+}
+
 export async function fetchWorkerList(
   companyId: string | null,
   params?: { q?: string; include_inactive?: boolean },

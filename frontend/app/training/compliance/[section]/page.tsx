@@ -6,9 +6,13 @@ export const metadata: Metadata = {
   description: "Workforce qualification matrix, registry, and expiring credentials.",
 };
 
-type Props = { params: Promise<{ section: string }> };
+type Props = {
+  params: Promise<{ section: string }>;
+  searchParams: Promise<{ panel?: string }>;
+};
 
-export default async function TrainingComplianceSectionPage({ params }: Props) {
+export default async function TrainingComplianceSectionPage({ params, searchParams }: Props) {
   const { section } = await params;
-  return <TrainingComplianceShell section={section} />;
+  const { panel } = await searchParams;
+  return <TrainingComplianceShell section={section} panel={panel} />;
 }

@@ -11,7 +11,7 @@ from typing import Annotated, Any, Optional
 from urllib.parse import quote
 from uuid import uuid4
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, status
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.dialects.postgresql import array as pg_array
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,7 +33,7 @@ from app.core.login_activity import latest_login_event_per_user
 from app.core.user_avatar_upload import co_worker_avatar_url
 from app.core.features.service import MODULE_KEYS
 from app.core.features.system_catalog import GLOBAL_SYSTEM_FEATURES
-from app.core.rbac.audit_service import record_rbac_audit_event
+from app.core.audit.permission_audit import record_permission_change
 from app.core.tenant_feature_access import (
     contract_and_effective_features_for_me,
     load_merged_workers_settings,
@@ -90,6 +90,12 @@ from app.models.pulse_models import (
 )
 from app.modules.compliance.service import effective_status, repeat_offender_user_ids
 from app.modules.pulse import service as pulse_svc
+from app.api.onboarding_preferences_routes import clear_onboarding_tour_completed
+from app.schemas.onboarding_preferences import (
+    DASHBOARD_OVERVIEW_TOUR_ID,
+    OnboardingTourResetIn,
+    OnboardingTourResetOut,
+)
 from app.schemas.training import WorkerTrainingOut as WorkerTrainingBundleOut
 from app.schemas.pulse_workers import (
     WorkerCertificationOut,
@@ -978,6 +984,24 @@ async def worker_work_summary(db: Db, _: RosterPageUser, cid: CompanyId, user_id
     return await _work_summary(db, cid, user_id, datetime.now(timezone.utc))
 
 
+@router.post("/{user_id}/onboarding-tours/reset", response_model=OnboardingTourResetOut)
+async def reset_worker_onboarding_tour(
+    db: Db,
+    _: RosterPageUser,
+    cid: CompanyId,
+    user_id: str,
+    body: OnboardingTourResetIn | None = Body(None),
+) -> OnboardingTourResetOut:
+    """Clear a user's completed onboarding tour so it runs again on their next visit."""
+    u = await pulse_svc._user_in_company(db, cid, user_id)
+    if not u:
+        raise HTTPException(status_code=404, detail="User not found")
+    tour_id = (body.tour_id if body else DASHBOARD_OVERVIEW_TOUR_ID).strip() or DASHBOARD_OVERVIEW_TOUR_ID
+    completed = clear_onboarding_tour_completed(u, tour_id)
+    await db.commit()
+    return OnboardingTourResetOut(tour_id=tour_id, completed=completed)
+
+
 @router.get("/{user_id}", response_model=WorkerDetailOut)
 async def get_worker(db: Db, _: RosterPageUser, cid: CompanyId, user_id: str) -> WorkerDetailOut:
     u = await pulse_svc._user_in_company(db, cid, user_id)
@@ -1304,6 +1328,7 @@ async def resend_worker_invite(
 
 @router.patch("/{user_id}", response_model=WorkerDetailOut)
 async def patch_worker(
+    request: Request,
     db: Db,
     actor: RosterPageUser,
     cid: CompanyId,
@@ -1522,13 +1547,14 @@ async def patch_worker(
             if not role:
                 raise HTTPException(status_code=400, detail="Invalid tenant role")
             await assign_user_tenant_role(db, target, role)
-        await record_rbac_audit_event(
+        await record_permission_change(
             db,
-            company_id=cid,
-            actor_user_id=str(actor.id),
             action="user.tenant_role.updated",
+            actor_user_id=str(actor.id),
+            company_id=cid,
             target_user_id=str(target.id),
             payload={"tenant_role_id": target.tenant_role_id},
+            request_id=getattr(getattr(request, "state", None), "request_id", None),
         )
 
     if body.feature_allow_extra is not None:
@@ -1541,13 +1567,14 @@ async def patch_worker(
         raw_ex = getattr(target, "feature_allow_extra", None)
         before_extras = list(raw_ex) if isinstance(raw_ex, list) else []
         target.feature_allow_extra = _sanitize_feature_key_list(body.feature_allow_extra)
-        await record_rbac_audit_event(
+        await record_permission_change(
             db,
-            company_id=cid,
-            actor_user_id=str(actor.id),
             action="user.feature_allow_extra.updated",
+            actor_user_id=str(actor.id),
+            company_id=cid,
             target_user_id=str(target.id),
             payload={"before": before_extras, "after": list(target.feature_allow_extra)},
+            request_id=getattr(getattr(request, "state", None), "request_id", None),
         )
 
     if body.rbac_permission_extra is not None:
@@ -1559,13 +1586,14 @@ async def patch_worker(
         raw_perm = getattr(target, "rbac_permission_extra", None)
         before_perm = list(raw_perm) if isinstance(raw_perm, list) else []
         target.rbac_permission_extra = _sanitize_rbac_permission_list(body.rbac_permission_extra)
-        await record_rbac_audit_event(
+        await record_permission_change(
             db,
-            company_id=cid,
-            actor_user_id=str(actor.id),
             action="user.rbac_permission_extra.updated",
+            actor_user_id=str(actor.id),
+            company_id=cid,
             target_user_id=str(target.id),
             payload={"before": before_perm, "after": list(target.rbac_permission_extra)},
+            request_id=getattr(getattr(request, "state", None), "request_id", None),
         )
 
     await db.commit()

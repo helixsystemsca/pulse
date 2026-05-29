@@ -31,14 +31,16 @@ export function backdropImageLetterbox(
   image: HTMLImageElement,
   naturalWidth?: number,
   naturalHeight?: number,
+  align: "center" | "end" = "center",
 ): { x: number; y: number; width: number; height: number } {
   const nw = naturalWidth ?? image.naturalWidth ?? image.width;
   const nh = naturalHeight ?? image.naturalHeight ?? image.height;
   const scale = Math.min(wallWidthPx / nw, wallHeightPx / nh);
   const width = nw * scale;
   const height = nh * scale;
+  const x = align === "end" ? wallWidthPx - width : (wallWidthPx - width) / 2;
   return {
-    x: (wallWidthPx - width) / 2,
+    x,
     y: (wallHeightPx - height) / 2,
     width,
     height,

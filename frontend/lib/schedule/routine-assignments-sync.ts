@@ -1,4 +1,4 @@
-import { localScheduleDateKey } from "@/lib/schedule/dashboardScheduleDay";
+import { operationalScheduleDateKey } from "@/lib/schedule/operational-schedule-day";
 import type { RoutineAssignmentDetail } from "@/lib/routinesService";
 
 const FOCUS_DATE_KEY = "pulse_routine_assignments_focus_date";
@@ -54,9 +54,12 @@ export function writeRoutineAssignmentsFocusDate(date: string): void {
   }
 }
 
-/** Ops widget date: schedule board focus day when set, else viewer's local today. */
+/**
+ * Ops widget / handoff date: explicit schedule-board focus when set, else the
+ * operational day (rolls at 8:00 AM local, not midnight — night shift stays on prior day until then).
+ */
 export function routineAssignmentsDisplayDate(nowMs = Date.now()): string {
-  return readRoutineAssignmentsFocusDate() ?? localScheduleDateKey(nowMs);
+  return readRoutineAssignmentsFocusDate() ?? operationalScheduleDateKey(nowMs);
 }
 
 /** Map API assignments onto current schedule rows (by shift id, else first shift for worker). */

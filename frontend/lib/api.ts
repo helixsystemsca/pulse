@@ -14,6 +14,7 @@ import {
   writeApiSession,
   type UserOut,
 } from "@/lib/pulse-session";
+import { shouldAttemptRefreshOn401, tryRefreshAccessToken } from "@/lib/auth-refresh";
 import { logPulseAuth } from "@/lib/pulse-auth-lifecycle";
 import { applyServerTimeFromUserOut } from "@/lib/serverTime";
 
@@ -77,6 +78,32 @@ function isCrossOriginApiUrl(url: string): boolean {
 function fetchCredentialsForUrl(url: string, init?: RequestInit): RequestCredentials {
   if (init?.credentials !== undefined) return init.credentials;
   return isCrossOriginApiUrl(url) ? "include" : "same-origin";
+}
+
+async function fetchWithAuthRefreshRetry(
+  url: string,
+  init: RequestInit,
+  hadBearer: boolean,
+): Promise<Response> {
+  let res = await fetch(url, init);
+  if (res.status === 401 && hadBearer && shouldAttemptRefreshOn401(url)) {
+    const refreshed = await tryRefreshAccessToken();
+    if (refreshed) {
+      const headers = new Headers(init.headers);
+      const retryBearer = bearerTokenForRequest(url);
+      if (retryBearer) {
+        headers.set("Authorization", `Bearer ${retryBearer}`);
+      } else {
+        headers.delete("Authorization");
+      }
+      res = await fetch({
+        ...init,
+        headers,
+        credentials: fetchCredentialsForUrl(url, init),
+      });
+    }
+  }
+  return res;
 }
 
 /**
@@ -188,14 +215,15 @@ export async function apiFetch<T>(
   if (bearer && !headers.has("Authorization")) {
     headers.set("Authorization", `Bearer ${bearer}`);
   }
+  const fetchInit: RequestInit = {
+    ...init,
+    headers,
+    credentials: fetchCredentialsForUrl(url, init),
+    body: init?.json !== undefined ? JSON.stringify(init.json) : init?.body,
+  };
   let res: Response;
   try {
-    res = await fetch(url, {
-      ...init,
-      headers,
-      credentials: fetchCredentialsForUrl(url, init),
-      body: init?.json !== undefined ? JSON.stringify(init.json) : init?.body,
-    });
+    res = await fetchWithAuthRefreshRetry(url, fetchInit, Boolean(bearer));
   } catch (err) {
     if (isLikelyNetworkOrCorsFailure(err)) {
       const networkErr = new Error("Network request failed") as ApiFetchError;
@@ -266,12 +294,16 @@ export async function apiPostFormData<T>(path: string, formData: FormData): Prom
   if (bearer && !headers.has("Authorization")) {
     headers.set("Authorization", `Bearer ${bearer}`);
   }
-  const res = await fetch(url, {
-    method: "POST",
-    headers,
-    credentials: fetchCredentialsForUrl(url),
-    body: formData,
-  });
+  const res = await fetchWithAuthRefreshRetry(
+    url,
+    {
+      method: "POST",
+      headers,
+      credentials: fetchCredentialsForUrl(url),
+      body: formData,
+    },
+    Boolean(bearer),
+  );
   const text = await res.text();
   let data: unknown = null;
   if (text) {
@@ -292,7 +324,7 @@ export async function apiPostFormData<T>(path: string, formData: FormData): Prom
 export async function refreshSessionWithToken(
   token: string,
   remember: boolean,
-  options?: { resetWelcomeOverlay?: boolean },
+  options?: { resetWelcomeOverlay?: boolean; refreshToken?: string | null },
 ): Promise<void> {
   logPulseAuth("token-refresh-start", { kind: "with-token" });
   const base = getApiBaseUrl();

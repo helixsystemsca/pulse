@@ -124,6 +124,10 @@ class Company(Base):
         index=True,
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    #: Tenant auth policy: auth_mode, mfa_required, mfa_provider, password_login_allowed, etc.
+    security_policy: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
@@ -223,6 +227,11 @@ class User(Base):
     failed_login_attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"), default=0)
     #: When set and in the future, password login is rejected until the window passes.
     locked_until: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    #: MFA enrollment timestamp (Entra Conditional Access or future TOTP).
+    mfa_enrolled_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    mfa_method: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    #: Stable IdP subject (Microsoft oid) when using SSO.
+    sso_subject: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

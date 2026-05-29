@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from sqlalchemy.exc import IntegrityError
 
 from app.api.workers_routes import CompanyId, Db, RosterPageUser
+from app.core.audit.permission_audit import record_permission_change
 from app.core.company_features import tenant_enabled_feature_names_with_legacy
 from app.core.features.canonical_catalog import canonical_keys_from_contract
 from app.core.features.system_catalog import coerce_legacy_feature_names
@@ -29,6 +30,10 @@ async def _contract_names(db, company_id: str) -> list[str]:
     return coerce_legacy_feature_names(raw)
 
 
+def _request_id(request: Request) -> str | None:
+    return getattr(getattr(request, "state", None), "request_id", None)
+
+
 @router.get("", response_model=TenantRoleListOut)
 async def list_roles(db: Db, _: RosterPageUser, cid: CompanyId) -> TenantRoleListOut:
     roles = await list_tenant_roles(db, cid)
@@ -45,8 +50,9 @@ async def list_roles(db: Db, _: RosterPageUser, cid: CompanyId) -> TenantRoleLis
 
 @router.post("", response_model=TenantRoleOut, status_code=status.HTTP_201_CREATED)
 async def create_role(
+    request: Request,
     db: Db,
-    _: RosterPageUser,
+    actor: RosterPageUser,
     cid: CompanyId,
     body: TenantRoleCreateIn,
 ) -> TenantRoleOut:
@@ -68,6 +74,14 @@ async def create_role(
         await db.rollback()
         raise HTTPException(status_code=400, detail="Role slug already exists") from None
     await sync_tenant_role_grants(db, role, contract_names=contract)
+    await record_permission_change(
+        db,
+        action="tenant_role.created",
+        actor_user_id=str(actor.id),
+        company_id=cid,
+        payload={"role_id": str(role.id), "slug": slug, "feature_keys": fkeys},
+        request_id=_request_id(request),
+    )
     await db.commit()
     await db.refresh(role)
     return TenantRoleOut(**role_to_dict(role, user_count=0))
@@ -75,8 +89,9 @@ async def create_role(
 
 @router.patch("/{role_id}", response_model=TenantRoleOut)
 async def patch_role(
+    request: Request,
     db: Db,
-    _: RosterPageUser,
+    actor: RosterPageUser,
     cid: CompanyId,
     role_id: str,
     body: TenantRolePatchIn,
@@ -87,6 +102,7 @@ async def patch_role(
     contract = await _contract_names(db, cid)
     contract_canonical = set(canonical_keys_from_contract(contract))
     data = body.model_dump(exclude_unset=True)
+    before_keys = list(role.feature_keys or [])
     if "name" in data and data["name"] is not None:
         role.name = str(data["name"]).strip()
     if "slug" in data and data["slug"] is not None:
@@ -97,6 +113,18 @@ async def patch_role(
         role.feature_keys = [k for k in data["feature_keys"] if k in contract_canonical]
     try:
         await sync_tenant_role_grants(db, role, contract_names=contract)
+        await record_permission_change(
+            db,
+            action="tenant_role.updated",
+            actor_user_id=str(actor.id),
+            company_id=cid,
+            payload={
+                "role_id": str(role.id),
+                "before_feature_keys": before_keys,
+                "after_feature_keys": list(role.feature_keys or []),
+            },
+            request_id=_request_id(request),
+        )
         await db.commit()
         await db.refresh(role)
     except IntegrityError:
@@ -108,8 +136,9 @@ async def patch_role(
 
 @router.delete("/{role_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_role(
+    request: Request,
     db: Db,
-    _: RosterPageUser,
+    actor: RosterPageUser,
     cid: CompanyId,
     role_id: str,
 ) -> None:
@@ -119,5 +148,14 @@ async def delete_role(
     uc = await count_users_with_role(db, role.id)
     if uc > 0:
         raise HTTPException(status_code=400, detail="Remove users from this role before deleting")
+    slug = role.slug
+    await record_permission_change(
+        db,
+        action="tenant_role.deleted",
+        actor_user_id=str(actor.id),
+        company_id=cid,
+        payload={"role_id": str(role.id), "slug": slug},
+        request_id=_request_id(request),
+    )
     await db.delete(role)
     await db.commit()

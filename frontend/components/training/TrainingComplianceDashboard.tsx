@@ -76,6 +76,8 @@ import {
   trainingProgramsToComplianceMap,
 } from "@/lib/trainingApi";
 import { cn } from "@/lib/cn";
+import Link from "next/link";
+import { TRAINING_ROUTES } from "@/lib/training/routes";
 
 const STATUS_OPTIONS: Array<{ value: TrainingAssignment["status"] | "all"; label: string }> = [
   { value: "all", label: "Any Status" },
@@ -567,15 +569,24 @@ export function TrainingComplianceDashboard() {
               oversight. Procedure sign-offs and quizzes remain under Procedures.
             </p>
           </div>
-          <Button
-            type="button"
-            variant="secondary"
-            className="h-9 shrink-0 gap-2 px-3 text-xs"
-            onClick={() => setConfigOpen(true)}
-          >
-            <Settings className="h-4 w-4" aria-hidden />
-            Configure procedure tiers
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href={TRAINING_ROUTES.complianceWorkers}
+              className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              <Users className="h-4 w-4" aria-hidden />
+              Workforce credentials
+            </Link>
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-9 shrink-0 gap-2 px-3 text-xs"
+              onClick={() => setConfigOpen(true)}
+            >
+              <Settings className="h-4 w-4" aria-hidden />
+              Configure procedure tiers
+            </Button>
+          </div>
         </div>
 
         <nav className="flex gap-1 overflow-x-auto pb-0.5" aria-label="Training sections">

@@ -32,7 +32,11 @@ import { RULER_THICKNESS_PX } from "@/modules/communications/advertising-mapper/
 import {
   rescaleWallPlanToInches,
 } from "@/modules/communications/advertising-mapper/lib/wall-workable-area";
-import { drawableInchesFromContainer, viewportAt100Percent } from "@/modules/communications/advertising-mapper/lib/viewport-at-100";
+import {
+  drawableInchesFromContainer,
+  viewportAt100Percent,
+  viewportRightAlignedInContainer,
+} from "@/modules/communications/advertising-mapper/lib/viewport-at-100";
 import type {
   DimensionEditTarget,
   FacilityWallPlan,
@@ -121,8 +125,14 @@ export function AdvertisingWorkspaceView({
   useSpatialWorkspaceTools(workspace.tools, onToolChange);
 
   const resetViewportTo100 = useCallback(() => {
-    setViewport(viewportAt100Percent());
-  }, [setViewport]);
+    const el = canvasContainerRef.current;
+    const base = viewportAt100Percent();
+    if (!el) {
+      setViewport(base);
+      return;
+    }
+    setViewport(viewportRightAlignedInContainer(base, el.clientWidth, wall.width_inches));
+  }, [setViewport, wall.width_inches]);
 
   const syncWallToViewport = useCallback(() => {
     const el = canvasContainerRef.current;
@@ -431,6 +441,27 @@ export function AdvertisingWorkspaceView({
         immersive={immersive}
         fullscreen={editorFullscreen}
         className="min-h-0 flex-1"
+        surfaceRail={
+          <AdvertisingSurfaceNav
+            variant="rail"
+            walls={walls}
+            activeWallId={wallId}
+            onWallChange={(id) => {
+              setWallId(id);
+              setSelectedInventoryId(null);
+              setSelectedConstraintId(null);
+            }}
+            onAddWall={() => {
+              const id = addWall();
+              setWallId(id);
+              setSelectedInventoryId(null);
+              setSelectedConstraintId(null);
+            }}
+            onBackdropChange={handleBackdropChange}
+            onGenerateEmptySpace={handleGenerateEmptyBackdrop}
+            generateBusy={backdropBusy}
+          />
+        }
         header={
           <AdvertisingEditorHeaderBar
             workspaceSwitcher={workspaceSwitcher}
@@ -459,26 +490,6 @@ export function AdvertisingWorkspaceView({
             onGridToggle={() => setShowGrid((v) => !v)}
             zoomDisabled={!canZoomViewport}
             fitDisabled={!canPanViewport && !canZoomViewport}
-            surfaceNav={
-              <AdvertisingSurfaceNav
-                walls={walls}
-                activeWallId={wallId}
-                onWallChange={(id) => {
-                  setWallId(id);
-                  setSelectedInventoryId(null);
-                  setSelectedConstraintId(null);
-                }}
-                onAddWall={() => {
-                  const id = addWall();
-                  setWallId(id);
-                  setSelectedInventoryId(null);
-                  setSelectedConstraintId(null);
-                }}
-                onBackdropChange={handleBackdropChange}
-                onGenerateEmptySpace={handleGenerateEmptyBackdrop}
-                generateBusy={backdropBusy}
-              />
-            }
           />
         }
         floatingToolbar={advertisingToolbar}
@@ -545,6 +556,7 @@ export function AdvertisingWorkspaceView({
               showFloatingHints={false}
               showMinimap={false}
               editorLightMode
+              backdropImageAlign="end"
               onCursorInchesChange={setCursorInches}
               className="h-full w-full"
             />
