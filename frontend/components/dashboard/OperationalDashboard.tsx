@@ -1424,7 +1424,7 @@ function DashboardBody({
   const allWidgetKeys = useMemo(() => {
     return Object.keys(widgetRegistry).filter((k) => {
       if ((widgetRegistry as Record<string, unknown>)[k] == null) return false;
-      return opsWidgetAllowed(session, k);
+      return opsWidgetAllowed(session ?? null, k);
     });
   }, [widgetRegistry, session]);
 
