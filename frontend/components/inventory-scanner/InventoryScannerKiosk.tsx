@@ -23,26 +23,61 @@ import {
 import { performPulseLogout } from "@/lib/pulse-auth-lifecycle";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { cn } from "@/lib/cn";
-import { dsInputClass, dsLabelClass } from "@/components/ui/ds-form-classes";
-import { buttonVariants } from "@/styles/button-variants";
+import { dsInputClass } from "@/components/ui/ds-form-classes";
 
 type ScanAction = "receive" | "issue";
 
-const scannerSearchClass = cn(
-  dsInputClass,
-  "h-14 rounded-2xl border-ds-border bg-ds-secondary pl-12 pr-4 text-lg text-ds-foreground shadow-sm placeholder:text-ds-muted",
+const SCANNER_LOBSTER = "#e85d6f";
+
+const bubbleBase =
+  "relative overflow-hidden border border-white/50 shadow-[0_8px_32px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.65)] backdrop-blur-xl transition-all duration-200 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-45";
+
+const bubbleIdle = cn(
+  bubbleBase,
+  "bg-gradient-to-br from-white/75 via-white/45 to-[color-mix(in_srgb,var(--ds-accent)_10%,transparent)]",
+  "hover:from-white/85 hover:to-[color-mix(in_srgb,var(--ds-accent)_16%,transparent)]",
 );
 
-const panelClass = "rounded-2xl border border-ds-border bg-ds-secondary shadow-sm";
+const bubbleActiveReceive = cn(
+  bubbleBase,
+  "border-[color-mix(in_srgb,var(--ds-success)_35%,white)]",
+  "bg-gradient-to-br from-[color-mix(in_srgb,var(--ds-success)_28%,white)] via-[color-mix(in_srgb,var(--ds-success)_16%,white/60)] to-[color-mix(in_srgb,var(--ds-success)_8%,transparent)]",
+  "shadow-[0_10px_40px_color-mix(in_srgb,var(--ds-success)_22%,transparent),inset_0_1px_0_rgba(255,255,255,0.7)]",
+  "ring-2 ring-[color-mix(in_srgb,var(--ds-success)_25%,transparent)]",
+);
 
-const SCANNER_LOBSTER = "#e85d6f";
+const bubbleActiveIssue = cn(
+  bubbleBase,
+  "border-[color-mix(in_srgb,#e85d6f_35%,white)]",
+  "bg-gradient-to-br from-[color-mix(in_srgb,#e85d6f_24%,white)] via-[color-mix(in_srgb,#e85d6f_14%,white/60)] to-[color-mix(in_srgb,#e85d6f_8%,transparent)]",
+  "shadow-[0_10px_40px_color-mix(in_srgb,#e85d6f_20%,transparent),inset_0_1px_0_rgba(255,255,255,0.7)]",
+  "ring-2 ring-[color-mix(in_srgb,#e85d6f_22%,transparent)]",
+);
+
+const bubbleCircle = cn(
+  bubbleIdle,
+  "flex shrink-0 items-center justify-center rounded-full !p-0",
+);
+
+const scannerSearchClass = cn(
+  dsInputClass,
+  "h-[4.5rem] w-full rounded-[2rem] border-white/50 bg-white/60 pl-14 pr-6 text-2xl text-ds-foreground shadow-[0_8px_32px_rgba(15,23,42,0.06)] backdrop-blur-md placeholder:text-ds-muted",
+);
+
+const dropdownClass =
+  "rounded-[1.5rem] border border-white/50 bg-white/80 py-2 shadow-xl backdrop-blur-xl";
+
+const quickPickClass = cn(
+  bubbleIdle,
+  "flex min-w-0 flex-col rounded-[1.25rem] px-5 py-4 text-left",
+);
 
 function ScannerConnectionBadge({ status }: { status: ScannerConnectionStatus }) {
   const connected = status === "connected";
   return (
     <div
       className={cn(
-        "pointer-events-none fixed bottom-4 right-4 z-30 flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold shadow-md backdrop-blur-sm sm:bottom-6 sm:right-6",
+        "pointer-events-none fixed bottom-4 right-4 z-30 flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold shadow-md backdrop-blur-sm sm:bottom-5 sm:right-5",
         connected
           ? "border-[color-mix(in_srgb,var(--ds-success)_40%,var(--ds-border))] bg-[color-mix(in_srgb,var(--ds-success)_14%,var(--ds-bg))] text-[var(--ds-success)]"
           : "border-[color-mix(in_srgb,#e85d6f_40%,var(--ds-border))] bg-[color-mix(in_srgb,#e85d6f_14%,var(--ds-bg))] text-[#e85d6f]",
@@ -75,17 +110,9 @@ function QuickPickButton({
   onSelect: () => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={cn(
-        panelClass,
-        "flex min-w-0 flex-col px-4 py-3 text-left transition",
-        "hover:border-[color-mix(in_srgb,var(--ds-accent)_35%,var(--ds-border))] hover:bg-ds-interactive-hover",
-      )}
-    >
-      <span className="truncate text-base font-medium text-ds-foreground">{item.name}</span>
-      <span className="truncate text-sm text-ds-muted">
+    <button type="button" onClick={onSelect} className={quickPickClass}>
+      <span className="truncate text-lg font-semibold text-ds-foreground">{item.name}</span>
+      <span className="truncate text-base text-ds-muted">
         {item.sku}
         {meta ? ` · ${meta}` : ""}
       </span>
@@ -263,298 +290,287 @@ export function InventoryScannerKiosk() {
         onChange={handleChange}
       />
 
-      <header className="shrink-0 border-b border-ds-border bg-ds-primary px-5 py-4 sm:px-8">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-4">
-          <div className="flex min-w-0 items-center gap-4">
-            <Image
-              src="/images/panoramalogo2.png"
-              alt="Panorama"
-              width={120}
-              height={48}
-              priority
-              className="h-10 w-auto object-contain"
-            />
-            <div className="min-w-0">
-              <h1 className="text-xl font-semibold tracking-tight text-ds-foreground sm:text-2xl">Inventory</h1>
-              <p className="text-sm text-ds-muted">Search or scan to receive / issue stock</p>
-            </div>
+      <header className="flex shrink-0 items-center justify-between gap-4 border-b border-ds-border/80 bg-ds-primary/90 px-4 py-3 backdrop-blur-sm sm:px-6 sm:py-4">
+        <div className="flex min-w-0 items-center gap-3 sm:gap-5">
+          <Image
+            src="/images/panoramalogo2.png"
+            alt="Panorama"
+            width={140}
+            height={56}
+            priority
+            className="h-11 w-auto shrink-0 object-contain sm:h-12"
+          />
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold tracking-tight text-ds-foreground sm:text-3xl">Inventory</h1>
+            <p className="hidden text-sm text-ds-muted sm:block">Search or scan to receive / issue stock</p>
           </div>
-          <button
-            type="button"
-            onClick={onLogout}
-            disabled={logoutBusy || busy}
-            className={cn(
-              buttonVariants({ surface: "light", intent: "secondary" }),
-              "inline-flex shrink-0 items-center gap-2 px-3 py-2 text-sm font-semibold",
-            )}
-            title="Sign out (testing)"
-          >
-            <LogOut className="h-4 w-4" aria-hidden />
-            Log out
-          </button>
         </div>
+        <button
+          type="button"
+          onClick={onLogout}
+          disabled={logoutBusy || busy}
+          className={cn(
+            bubbleIdle,
+            "inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold sm:px-5 sm:py-3 sm:text-base",
+          )}
+          title="Sign out (testing)"
+        >
+          <LogOut className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
+          Log out
+        </button>
       </header>
 
-      <main className="mx-auto flex w-full max-w-3xl min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-5 py-6 sm:px-8">
-        {flash ? (
-          <p
-            className="rounded-xl border px-4 py-3 text-sm"
-            style={{
-              borderColor: "color-mix(in srgb, var(--ds-success) 40%, var(--ds-border))",
-              background: "color-mix(in srgb, var(--ds-success) 12%, var(--ds-bg))",
-              color: "var(--ds-text-primary)",
-            }}
-          >
-            {flash}
-          </p>
-        ) : null}
-        {lookupErr ? (
-          <p
-            className="rounded-xl border px-4 py-3 text-sm"
-            style={{
-              borderColor: "color-mix(in srgb, var(--ds-danger) 40%, var(--ds-border))",
-              background: "color-mix(in srgb, var(--ds-danger) 10%, var(--ds-bg))",
-              color: "var(--ds-text-primary)",
-            }}
-          >
-            {lookupErr}
-          </p>
-        ) : null}
+      <main className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-4 py-6 sm:px-8 sm:py-8">
+        <div className="flex w-full max-w-4xl flex-col items-center gap-8 sm:max-w-5xl sm:gap-10">
+          {flash ? (
+            <p
+              className="w-full rounded-2xl border px-5 py-4 text-center text-lg"
+              style={{
+                borderColor: "color-mix(in srgb, var(--ds-success) 40%, var(--ds-border))",
+                background: "color-mix(in srgb, var(--ds-success) 12%, var(--ds-bg))",
+                color: "var(--ds-text-primary)",
+              }}
+            >
+              {flash}
+            </p>
+          ) : null}
+          {lookupErr ? (
+            <p
+              className="w-full rounded-2xl border px-5 py-4 text-center text-lg"
+              style={{
+                borderColor: "color-mix(in srgb, var(--ds-danger) 40%, var(--ds-border))",
+                background: "color-mix(in srgb, var(--ds-danger) 10%, var(--ds-bg))",
+                color: "var(--ds-text-primary)",
+              }}
+            >
+              {lookupErr}
+            </p>
+          ) : null}
 
-        {!product ? (
-          <section className="space-y-3">
-            <label className={dsLabelClass} htmlFor="scanner-search">
-              Find product
-            </label>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-ds-muted" />
-              <input
-                ref={searchRef}
-                id="scanner-search"
-                type="search"
-                value={search}
-                data-scanner-manual-input="true"
-                autoComplete="off"
-                autoCorrect="off"
-                spellCheck={false}
-                placeholder="Name, SKU, or category…"
-                disabled={busy}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setSuggestOpen(true);
-                  setLookupErr(null);
-                }}
-                onFocus={() => setSuggestOpen(true)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    submitSearch();
-                  }
-                  if (e.key === "Escape") {
-                    setSuggestOpen(false);
-                  }
-                }}
-                className={scannerSearchClass}
-              />
-              {suggestOpen && debouncedSearch && suggestions.length > 0 ? (
-                <ul
-                  className={cn(
-                    panelClass,
-                    "absolute z-20 mt-2 max-h-72 w-full overflow-y-auto py-2 shadow-lg",
-                  )}
-                  role="listbox"
-                >
-                  {suggestions.map((row) => (
-                    <li key={row.id}>
-                      <button
-                        type="button"
-                        role="option"
-                        className="flex w-full flex-col px-4 py-3 text-left hover:bg-ds-interactive-hover"
-                        onClick={() => void selectProduct({ row })}
-                      >
-                        <span className="font-medium text-ds-foreground">{row.name}</span>
-                        <span className="text-sm text-ds-muted">
-                          {row.sku}
-                          {row.category ? ` · ${row.category}` : ""} · {row.quantity} {row.unit}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-              {suggestOpen && debouncedSearch && !busy && suggestions.length === 0 ? (
-                <p
-                  className={cn(
-                    panelClass,
-                    "absolute z-20 mt-2 w-full px-4 py-3 text-sm text-ds-muted",
-                  )}
-                >
-                  No matches — press Enter to try exact SKU
-                </p>
-              ) : null}
-            </div>
-          </section>
-        ) : null}
+          {!product ? (
+            <section className="flex w-full flex-col items-center gap-6">
+              <label
+                className="text-center text-lg font-semibold uppercase tracking-widest text-ds-muted sm:text-xl"
+                htmlFor="scanner-search"
+              >
+                Find product
+              </label>
+              <div className="relative w-full">
+                <Search className="pointer-events-none absolute left-6 top-1/2 h-7 w-7 -translate-y-1/2 text-ds-muted" />
+                <input
+                  ref={searchRef}
+                  id="scanner-search"
+                  type="search"
+                  value={search}
+                  data-scanner-manual-input="true"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  placeholder="Name, SKU, or category…"
+                  disabled={busy}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setSuggestOpen(true);
+                    setLookupErr(null);
+                  }}
+                  onFocus={() => setSuggestOpen(true)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      submitSearch();
+                    }
+                    if (e.key === "Escape") {
+                      setSuggestOpen(false);
+                    }
+                  }}
+                  className={scannerSearchClass}
+                />
+                {suggestOpen && debouncedSearch && suggestions.length > 0 ? (
+                  <ul
+                    className={cn(dropdownClass, "absolute z-20 mt-3 max-h-80 w-full overflow-y-auto")}
+                    role="listbox"
+                  >
+                    {suggestions.map((row) => (
+                      <li key={row.id}>
+                        <button
+                          type="button"
+                          role="option"
+                          className="flex w-full flex-col px-6 py-4 text-left hover:bg-white/50"
+                          onClick={() => void selectProduct({ row })}
+                        >
+                          <span className="text-xl font-semibold text-ds-foreground">{row.name}</span>
+                          <span className="text-base text-ds-muted">
+                            {row.sku}
+                            {row.category ? ` · ${row.category}` : ""} · {row.quantity} {row.unit}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                {suggestOpen && debouncedSearch && !busy && suggestions.length === 0 ? (
+                  <p className={cn(dropdownClass, "absolute z-20 mt-3 w-full px-6 py-4 text-center text-lg text-ds-muted")}>
+                    No matches — press Enter to try exact SKU
+                  </p>
+                ) : null}
+              </div>
+            </section>
+          ) : null}
 
-        {product ? (
-          <section className={cn(panelClass, "space-y-5 p-5 sm:p-6")}>
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0 space-y-1">
-                <p className="text-xs uppercase tracking-wide text-ds-muted">{product.sku}</p>
-                <h2 className="text-2xl font-semibold leading-tight text-ds-foreground">{product.name}</h2>
-                <p className="text-sm text-ds-muted">
+          {product ? (
+            <section className="flex w-full flex-col items-center gap-8 sm:gap-10">
+              <div className="relative w-full text-center">
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={clearProduct}
+                  className={cn(
+                    bubbleIdle,
+                    "absolute right-0 top-0 rounded-full px-4 py-2 text-sm font-semibold sm:text-base",
+                  )}
+                >
+                  Change
+                </button>
+                <p className="text-base font-medium uppercase tracking-widest text-ds-muted sm:text-lg">{product.sku}</p>
+                <h2 className="mt-2 text-4xl font-bold leading-tight text-ds-foreground sm:text-5xl">{product.name}</h2>
+                <p className="mt-3 text-lg text-ds-muted sm:text-xl">
                   {[product.category, product.item_type, statusLabel(product.inv_status)]
                     .filter(Boolean)
                     .join(" · ")}
                 </p>
                 {product.location_name ? (
-                  <p className="text-sm text-ds-muted">Location: {product.location_name}</p>
+                  <p className="mt-1 text-lg text-ds-muted">Location: {product.location_name}</p>
                 ) : null}
-                <p className="pt-1 text-xl font-medium text-ds-foreground">
+                <p className="mt-5 text-3xl font-semibold text-ds-foreground sm:text-4xl">
                   On hand: {product.quantity} {product.unit}
                 </p>
               </div>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={clearProduct}
-                className={cn(
-                  buttonVariants({ surface: "light", intent: "secondary" }),
-                  "shrink-0 px-3 py-2 text-sm",
-                )}
-              >
-                Change
-              </button>
-            </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              {(["receive", "issue"] as const).map((kind) => (
+              <div className="grid w-full grid-cols-2 gap-4 sm:gap-5">
+                {(["receive", "issue"] as const).map((kind) => (
+                  <button
+                    key={kind}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => setAction(kind)}
+                    className={cn(
+                      "rounded-[2rem] px-4 py-7 text-2xl font-bold capitalize sm:py-8 sm:text-3xl",
+                      action === kind
+                        ? kind === "receive"
+                          ? bubbleActiveReceive
+                          : bubbleActiveIssue
+                        : bubbleIdle,
+                    )}
+                  >
+                    {kind}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex w-full max-w-md items-center justify-center gap-5 sm:gap-6">
                 <button
-                  key={kind}
                   type="button"
+                  aria-label="Decrease quantity"
                   disabled={busy}
-                  onClick={() => setAction(kind)}
-                  className={cn(
-                    "rounded-xl border px-4 py-4 text-lg font-semibold capitalize transition",
-                    action === kind
-                      ? "border-[color-mix(in_srgb,var(--ds-accent)_50%,var(--ds-border))] bg-[color-mix(in_srgb,var(--ds-accent)_14%,var(--ds-secondary))] text-ds-foreground"
-                      : "border-ds-border bg-ds-primary text-ds-foreground hover:bg-ds-interactive-hover",
-                  )}
+                  onClick={() => adjustQty(-1)}
+                  className={cn(bubbleCircle, "h-20 w-20 sm:h-24 sm:w-24")}
                 >
-                  {kind}
+                  <Minus className="h-9 w-9 sm:h-10 sm:w-10" />
                 </button>
-              ))}
-            </div>
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  inputMode="decimal"
+                  value={quantity}
+                  disabled={busy}
+                  data-scanner-manual-input="true"
+                  onChange={(e) => {
+                    const n = Number(e.target.value);
+                    setQuantity(Number.isFinite(n) && n > 0 ? n : 1);
+                  }}
+                  className={cn(
+                    scannerSearchClass,
+                    "h-20 w-32 text-center text-4xl font-bold sm:h-24 sm:w-36 sm:text-5xl",
+                  )}
+                />
+                <button
+                  type="button"
+                  aria-label="Increase quantity"
+                  disabled={busy}
+                  onClick={() => adjustQty(1)}
+                  className={cn(bubbleCircle, "h-20 w-20 sm:h-24 sm:w-24")}
+                >
+                  <Plus className="h-9 w-9 sm:h-10 sm:w-10" />
+                </button>
+              </div>
 
-            <div className="flex items-center justify-center gap-4">
+              {submitErr ? (
+                <p
+                  className="w-full rounded-2xl border px-5 py-4 text-center text-lg"
+                  style={{
+                    borderColor: "color-mix(in srgb, var(--ds-danger) 40%, var(--ds-border))",
+                    background: "color-mix(in srgb, var(--ds-danger) 8%, var(--ds-bg))",
+                    color: "var(--ds-text-primary)",
+                  }}
+                >
+                  {submitErr}
+                </p>
+              ) : null}
+
               <button
                 type="button"
-                aria-label="Decrease quantity"
                 disabled={busy}
-                onClick={() => adjustQty(-1)}
+                onClick={() => void submit()}
                 className={cn(
-                  buttonVariants({ surface: "light", intent: "secondary" }),
-                  "flex h-16 w-16 items-center justify-center !p-0",
+                  bubbleBase,
+                  "w-full rounded-[2rem] border-[color-mix(in_srgb,var(--ds-accent)_40%,white)] bg-gradient-to-br from-[color-mix(in_srgb,var(--ds-accent)_55%,#ffffff)] via-[color-mix(in_srgb,var(--ds-accent)_35%,#ffffff)] to-[color-mix(in_srgb,var(--ds-accent)_20%,transparent)] py-6 text-2xl font-bold text-white shadow-[0_12px_40px_color-mix(in_srgb,var(--ds-accent)_35%,transparent),inset_0_1px_0_rgba(255,255,255,0.35)] sm:py-7 sm:text-3xl",
                 )}
               >
-                <Minus className="h-8 w-8" />
+                {busy ? "Saving…" : "Complete transaction"}
               </button>
-              <input
-                type="number"
-                min={1}
-                step={1}
-                inputMode="decimal"
-                value={quantity}
-                disabled={busy}
-                data-scanner-manual-input="true"
-                onChange={(e) => {
-                  const n = Number(e.target.value);
-                  setQuantity(Number.isFinite(n) && n > 0 ? n : 1);
-                }}
-                className={cn(
-                  scannerSearchClass,
-                  "h-16 w-28 px-2 text-center text-2xl font-semibold",
-                )}
-              />
-              <button
-                type="button"
-                aria-label="Increase quantity"
-                disabled={busy}
-                onClick={() => adjustQty(1)}
-                className={cn(
-                  buttonVariants({ surface: "light", intent: "secondary" }),
-                  "flex h-16 w-16 items-center justify-center !p-0",
-                )}
-              >
-                <Plus className="h-8 w-8" />
-              </button>
-            </div>
+            </section>
+          ) : (
+            <>
+              {recent.length > 0 ? (
+                <section className="w-full space-y-4">
+                  <div className="flex items-center justify-center gap-2 text-lg font-semibold text-ds-muted">
+                    <Clock className="h-5 w-5" />
+                    Recent
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {recent.map((item) => (
+                      <QuickPickButton
+                        key={item.id}
+                        item={item}
+                        onSelect={() => void selectProduct({ sku: item.sku })}
+                      />
+                    ))}
+                  </div>
+                </section>
+              ) : null}
 
-            {submitErr ? (
-              <p
-                className="rounded-lg border px-3 py-2 text-sm"
-                style={{
-                  borderColor: "color-mix(in srgb, var(--ds-danger) 40%, var(--ds-border))",
-                  background: "color-mix(in srgb, var(--ds-danger) 8%, var(--ds-bg))",
-                  color: "var(--ds-text-primary)",
-                }}
-              >
-                {submitErr}
-              </p>
-            ) : null}
-
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void submit()}
-              className={cn(
-                buttonVariants({ surface: "light", intent: "primary" }),
-                "w-full py-4 text-lg font-semibold",
-              )}
-            >
-              {busy ? "Saving…" : "Complete transaction"}
-            </button>
-          </section>
-        ) : (
-          <>
-            {recent.length > 0 ? (
-              <section className="space-y-3">
-                <div className="flex items-center gap-2 text-sm font-medium text-ds-muted">
-                  <Clock className="h-4 w-4" />
-                  Recent
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {recent.map((item) => (
-                    <QuickPickButton
-                      key={item.id}
-                      item={item}
-                      onSelect={() => void selectProduct({ sku: item.sku })}
-                    />
-                  ))}
-                </div>
-              </section>
-            ) : null}
-
-            {popular.length > 0 ? (
-              <section className="space-y-3">
-                <div className="flex items-center gap-2 text-sm font-medium text-ds-muted">
-                  <TrendingUp className="h-4 w-4" />
-                  Popular
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {popular.map((item) => (
-                    <QuickPickButton
-                      key={item.id}
-                      item={item}
-                      meta={`${item.quantity} ${item.unit}`}
-                      onSelect={() => void selectProduct({ row: item })}
-                    />
-                  ))}
-                </div>
-              </section>
-            ) : null}
-          </>
-        )}
+              {popular.length > 0 ? (
+                <section className="w-full space-y-4">
+                  <div className="flex items-center justify-center gap-2 text-lg font-semibold text-ds-muted">
+                    <TrendingUp className="h-5 w-5" />
+                    Popular
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {popular.map((item) => (
+                      <QuickPickButton
+                        key={item.id}
+                        item={item}
+                        meta={`${item.quantity} ${item.unit}`}
+                        onSelect={() => void selectProduct({ row: item })}
+                      />
+                    ))}
+                  </div>
+                </section>
+              ) : null}
+            </>
+          )}
+        </div>
       </main>
     </div>
   );
