@@ -2,12 +2,11 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Clock, Minus, Plus, Search, TrendingUp } from "lucide-react";
+import { Clock, LogOut, Minus, Plus, Search, TrendingUp } from "lucide-react";
 
 import { useBarcodeScannerInput } from "@/lib/inventory-scanner/useBarcodeScannerInput";
 import {
   fetchPopularInventoryProducts,
-  lookupInventoryBySku,
   postInventoryScanTransaction,
   resolveInventoryProduct,
   searchInventoryProducts,
@@ -18,10 +17,20 @@ import {
   rememberScannerRecentItem,
   type ScannerRecentItem,
 } from "@/lib/inventory-scanner/scanner-recent";
+import { performPulseLogout } from "@/lib/pulse-auth-lifecycle";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { cn } from "@/lib/cn";
+import { dsInputClass, dsLabelClass } from "@/components/ui/ds-form-classes";
+import { buttonVariants } from "@/styles/button-variants";
 
 type ScanAction = "receive" | "issue";
+
+const scannerSearchClass = cn(
+  dsInputClass,
+  "h-14 rounded-2xl border-ds-border bg-ds-secondary pl-12 pr-4 text-lg text-ds-foreground shadow-sm placeholder:text-ds-muted",
+);
+
+const panelClass = "rounded-2xl border border-ds-border bg-ds-secondary shadow-sm";
 
 function statusLabel(status: string): string {
   return status.replace(/_/g, " ");
@@ -40,10 +49,14 @@ function QuickPickButton({
     <button
       type="button"
       onClick={onSelect}
-      className="flex min-w-0 flex-col rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-left transition hover:border-sky-400/40 hover:bg-white/[0.07]"
+      className={cn(
+        panelClass,
+        "flex min-w-0 flex-col px-4 py-3 text-left transition",
+        "hover:border-[color-mix(in_srgb,var(--ds-accent)_35%,var(--ds-border))] hover:bg-ds-interactive-hover",
+      )}
     >
-      <span className="truncate text-base font-medium text-white">{item.name}</span>
-      <span className="truncate text-sm text-white/50">
+      <span className="truncate text-base font-medium text-ds-foreground">{item.name}</span>
+      <span className="truncate text-sm text-ds-muted">
         {item.sku}
         {meta ? ` · ${meta}` : ""}
       </span>
@@ -62,6 +75,7 @@ export function InventoryScannerKiosk() {
   const [action, setAction] = useState<ScanAction>("receive");
   const [quantity, setQuantity] = useState(1);
   const [busy, setBusy] = useState(false);
+  const [logoutBusy, setLogoutBusy] = useState(false);
   const [lookupErr, setLookupErr] = useState<string | null>(null);
   const [submitErr, setSubmitErr] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
@@ -195,8 +209,14 @@ export function InventoryScannerKiosk() {
     }
   };
 
+  const onLogout = () => {
+    if (logoutBusy) return;
+    setLogoutBusy(true);
+    void performPulseLogout("user").finally(() => setLogoutBusy(false));
+  };
+
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col bg-[#0a0f14] text-white">
+    <div className="relative flex min-h-0 flex-1 flex-col bg-ds-bg text-ds-foreground">
       <input
         ref={scannerInputRef}
         type="text"
@@ -212,42 +232,71 @@ export function InventoryScannerKiosk() {
         onChange={handleChange}
       />
 
-      <header className="shrink-0 border-b border-white/10 px-5 py-4 sm:px-8">
-        <div className="mx-auto flex max-w-3xl items-center gap-4">
-          <Image
-            src="/images/panoramalogo2.png"
-            alt="Panorama"
-            width={120}
-            height={48}
-            priority
-            className="h-10 w-auto object-contain"
-          />
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Inventory</h1>
-            <p className="text-sm text-white/55">Search or scan to receive / issue stock</p>
+      <header className="shrink-0 border-b border-ds-border bg-ds-primary px-5 py-4 sm:px-8">
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-4">
+            <Image
+              src="/images/panoramalogo2.png"
+              alt="Panorama"
+              width={120}
+              height={48}
+              priority
+              className="h-10 w-auto object-contain"
+            />
+            <div className="min-w-0">
+              <h1 className="text-xl font-semibold tracking-tight text-ds-foreground sm:text-2xl">Inventory</h1>
+              <p className="text-sm text-ds-muted">Search or scan to receive / issue stock</p>
+            </div>
           </div>
+          <button
+            type="button"
+            onClick={onLogout}
+            disabled={logoutBusy || busy}
+            className={cn(
+              buttonVariants({ surface: "light", intent: "secondary" }),
+              "inline-flex shrink-0 items-center gap-2 px-3 py-2 text-sm font-semibold",
+            )}
+            title="Sign out (testing)"
+          >
+            <LogOut className="h-4 w-4" aria-hidden />
+            Log out
+          </button>
         </div>
       </header>
 
       <main className="mx-auto flex w-full max-w-3xl min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-5 py-6 sm:px-8">
         {flash ? (
-          <p className="rounded-xl border border-emerald-500/40 bg-emerald-950/40 px-4 py-3 text-sm text-emerald-100">
+          <p
+            className="rounded-xl border px-4 py-3 text-sm"
+            style={{
+              borderColor: "color-mix(in srgb, var(--ds-success) 40%, var(--ds-border))",
+              background: "color-mix(in srgb, var(--ds-success) 12%, var(--ds-bg))",
+              color: "var(--ds-text-primary)",
+            }}
+          >
             {flash}
           </p>
         ) : null}
         {lookupErr ? (
-          <p className="rounded-xl border border-rose-500/40 bg-rose-950/40 px-4 py-3 text-sm text-rose-100">
+          <p
+            className="rounded-xl border px-4 py-3 text-sm"
+            style={{
+              borderColor: "color-mix(in srgb, var(--ds-danger) 40%, var(--ds-border))",
+              background: "color-mix(in srgb, var(--ds-danger) 10%, var(--ds-bg))",
+              color: "var(--ds-text-primary)",
+            }}
+          >
             {lookupErr}
           </p>
         ) : null}
 
         {!product ? (
           <section className="space-y-3">
-            <label className="block text-sm font-medium text-white/70" htmlFor="scanner-search">
+            <label className={dsLabelClass} htmlFor="scanner-search">
               Find product
             </label>
             <div className="relative">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-white/40" />
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-ds-muted" />
               <input
                 ref={searchRef}
                 id="scanner-search"
@@ -274,11 +323,14 @@ export function InventoryScannerKiosk() {
                     setSuggestOpen(false);
                   }
                 }}
-                className="h-14 w-full rounded-2xl border border-white/15 bg-white/[0.06] pl-12 pr-4 text-lg text-white outline-none placeholder:text-white/35 focus:border-sky-400/60"
+                className={scannerSearchClass}
               />
               {suggestOpen && debouncedSearch && suggestions.length > 0 ? (
                 <ul
-                  className="absolute z-20 mt-2 max-h-72 w-full overflow-y-auto rounded-2xl border border-white/10 bg-[#121820] py-2 shadow-2xl"
+                  className={cn(
+                    panelClass,
+                    "absolute z-20 mt-2 max-h-72 w-full overflow-y-auto py-2 shadow-lg",
+                  )}
                   role="listbox"
                 >
                   {suggestions.map((row) => (
@@ -286,11 +338,11 @@ export function InventoryScannerKiosk() {
                       <button
                         type="button"
                         role="option"
-                        className="flex w-full flex-col px-4 py-3 text-left hover:bg-white/[0.06]"
+                        className="flex w-full flex-col px-4 py-3 text-left hover:bg-ds-interactive-hover"
                         onClick={() => void selectProduct({ row })}
                       >
-                        <span className="font-medium">{row.name}</span>
-                        <span className="text-sm text-white/50">
+                        <span className="font-medium text-ds-foreground">{row.name}</span>
+                        <span className="text-sm text-ds-muted">
                           {row.sku}
                           {row.category ? ` · ${row.category}` : ""} · {row.quantity} {row.unit}
                         </span>
@@ -300,7 +352,12 @@ export function InventoryScannerKiosk() {
                 </ul>
               ) : null}
               {suggestOpen && debouncedSearch && !busy && suggestions.length === 0 ? (
-                <p className="absolute z-20 mt-2 w-full rounded-2xl border border-white/10 bg-[#121820] px-4 py-3 text-sm text-white/55">
+                <p
+                  className={cn(
+                    panelClass,
+                    "absolute z-20 mt-2 w-full px-4 py-3 text-sm text-ds-muted",
+                  )}
+                >
                   No matches — press Enter to try exact SKU
                 </p>
               ) : null}
@@ -309,20 +366,20 @@ export function InventoryScannerKiosk() {
         ) : null}
 
         {product ? (
-          <section className="space-y-5 rounded-2xl border border-white/10 bg-[#121820] p-5 sm:p-6">
+          <section className={cn(panelClass, "space-y-5 p-5 sm:p-6")}>
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0 space-y-1">
-                <p className="text-xs uppercase tracking-wide text-white/50">{product.sku}</p>
-                <h2 className="text-2xl font-semibold leading-tight">{product.name}</h2>
-                <p className="text-sm text-white/65">
+                <p className="text-xs uppercase tracking-wide text-ds-muted">{product.sku}</p>
+                <h2 className="text-2xl font-semibold leading-tight text-ds-foreground">{product.name}</h2>
+                <p className="text-sm text-ds-muted">
                   {[product.category, product.item_type, statusLabel(product.inv_status)]
                     .filter(Boolean)
                     .join(" · ")}
                 </p>
                 {product.location_name ? (
-                  <p className="text-sm text-white/55">Location: {product.location_name}</p>
+                  <p className="text-sm text-ds-muted">Location: {product.location_name}</p>
                 ) : null}
-                <p className="pt-1 text-xl font-medium">
+                <p className="pt-1 text-xl font-medium text-ds-foreground">
                   On hand: {product.quantity} {product.unit}
                 </p>
               </div>
@@ -330,7 +387,10 @@ export function InventoryScannerKiosk() {
                 type="button"
                 disabled={busy}
                 onClick={clearProduct}
-                className="shrink-0 rounded-lg border border-white/15 px-3 py-2 text-sm text-white/75 hover:bg-white/5"
+                className={cn(
+                  buttonVariants({ surface: "light", intent: "secondary" }),
+                  "shrink-0 px-3 py-2 text-sm",
+                )}
               >
                 Change
               </button>
@@ -346,8 +406,8 @@ export function InventoryScannerKiosk() {
                   className={cn(
                     "rounded-xl border px-4 py-4 text-lg font-semibold capitalize transition",
                     action === kind
-                      ? "border-sky-400 bg-sky-500/20 text-white"
-                      : "border-white/15 bg-white/5 text-white/80 hover:bg-white/10",
+                      ? "border-[color-mix(in_srgb,var(--ds-accent)_50%,var(--ds-border))] bg-[color-mix(in_srgb,var(--ds-accent)_14%,var(--ds-secondary))] text-ds-foreground"
+                      : "border-ds-border bg-ds-primary text-ds-foreground hover:bg-ds-interactive-hover",
                   )}
                 >
                   {kind}
@@ -361,7 +421,10 @@ export function InventoryScannerKiosk() {
                 aria-label="Decrease quantity"
                 disabled={busy}
                 onClick={() => adjustQty(-1)}
-                className="flex h-16 w-16 items-center justify-center rounded-xl border border-white/20 bg-white/5 text-white hover:bg-white/10"
+                className={cn(
+                  buttonVariants({ surface: "light", intent: "secondary" }),
+                  "flex h-16 w-16 items-center justify-center !p-0",
+                )}
               >
                 <Minus className="h-8 w-8" />
               </button>
@@ -377,21 +440,34 @@ export function InventoryScannerKiosk() {
                   const n = Number(e.target.value);
                   setQuantity(Number.isFinite(n) && n > 0 ? n : 1);
                 }}
-                className="h-16 w-28 rounded-xl border border-white/20 bg-black/30 text-center text-2xl font-semibold text-white outline-none focus:border-sky-400"
+                className={cn(
+                  scannerSearchClass,
+                  "h-16 w-28 px-2 text-center text-2xl font-semibold",
+                )}
               />
               <button
                 type="button"
                 aria-label="Increase quantity"
                 disabled={busy}
                 onClick={() => adjustQty(1)}
-                className="flex h-16 w-16 items-center justify-center rounded-xl border border-white/20 bg-white/5 text-white hover:bg-white/10"
+                className={cn(
+                  buttonVariants({ surface: "light", intent: "secondary" }),
+                  "flex h-16 w-16 items-center justify-center !p-0",
+                )}
               >
                 <Plus className="h-8 w-8" />
               </button>
             </div>
 
             {submitErr ? (
-              <p className="rounded-lg border border-rose-500/40 bg-rose-950/30 px-3 py-2 text-sm text-rose-100">
+              <p
+                className="rounded-lg border px-3 py-2 text-sm"
+                style={{
+                  borderColor: "color-mix(in srgb, var(--ds-danger) 40%, var(--ds-border))",
+                  background: "color-mix(in srgb, var(--ds-danger) 8%, var(--ds-bg))",
+                  color: "var(--ds-text-primary)",
+                }}
+              >
                 {submitErr}
               </p>
             ) : null}
@@ -400,7 +476,10 @@ export function InventoryScannerKiosk() {
               type="button"
               disabled={busy}
               onClick={() => void submit()}
-              className="w-full rounded-xl bg-sky-500 py-4 text-lg font-semibold text-white hover:bg-sky-400 disabled:opacity-60"
+              className={cn(
+                buttonVariants({ surface: "light", intent: "primary" }),
+                "w-full py-4 text-lg font-semibold",
+              )}
             >
               {busy ? "Saving…" : "Complete transaction"}
             </button>
@@ -409,7 +488,7 @@ export function InventoryScannerKiosk() {
           <>
             {recent.length > 0 ? (
               <section className="space-y-3">
-                <div className="flex items-center gap-2 text-sm font-medium text-white/60">
+                <div className="flex items-center gap-2 text-sm font-medium text-ds-muted">
                   <Clock className="h-4 w-4" />
                   Recent
                 </div>
@@ -427,7 +506,7 @@ export function InventoryScannerKiosk() {
 
             {popular.length > 0 ? (
               <section className="space-y-3">
-                <div className="flex items-center gap-2 text-sm font-medium text-white/60">
+                <div className="flex items-center gap-2 text-sm font-medium text-ds-muted">
                   <TrendingUp className="h-4 w-4" />
                   Popular
                 </div>

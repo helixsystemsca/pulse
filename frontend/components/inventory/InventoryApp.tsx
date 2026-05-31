@@ -27,6 +27,11 @@ import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from "r
 import { PulseDrawer } from "@/components/schedule/PulseDrawer";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { apiFetch } from "@/lib/api";
+import {
+  fetchPulseAssetsCached,
+  fetchPulseWorkersOptsCached,
+  fetchPulseZonesCached,
+} from "@/lib/pulse/pulse-reference-data";
 import type {
   InventoryDetail,
   InventoryModuleSettings,
@@ -394,9 +399,9 @@ export function InventoryApp() {
     void (async () => {
       try {
         const [z, a, w] = await Promise.all([
-          apiFetch<ZoneOpt[]>(`/api/v1/pulse/zones`),
-          apiFetch<AssetOpt[]>(`/api/v1/pulse/assets`),
-          apiFetch<WorkerOpt[]>(`/api/v1/pulse/workers`),
+          fetchPulseZonesCached(),
+          fetchPulseAssetsCached(),
+          fetchPulseWorkersOptsCached(),
         ]);
         setZones(z);
         setAssets(a);

@@ -83,6 +83,8 @@ import { FacilityScheduleOpsWidget } from "@/components/dashboard/widgets/ops/Fa
 import { RoutineAssignmentsOpsWidget } from "@/components/dashboard/widgets/ops/RoutineAssignmentsOpsWidget";
 import { DASHBOARD_TOUR_TARGET_BY_WIDGET } from "@/lib/onboarding/tour-steps";
 import { isUserFeatureEnabled } from "@/lib/features/tenant-features";
+import { fetchDashboardBootstrap } from "@/lib/pulse/dashboard-bootstrap";
+import { primePulseReferenceFromBootstrap } from "@/lib/pulse/pulse-reference-data";
 import { fetchWorkRequestKpiSummary } from "@/lib/work-requests/kpi-summary";
 import { hasRbacPermission } from "@/lib/rbac/session-access";
 import {
@@ -1990,29 +1992,55 @@ export function OperationalDashboard({
     const to = new Date(dayEndMsExclusive).toISOString();
 
     try {
-      const [dash, wrList, workers, assetList, lowStock, zoneList, beaconList, trainingMatrix] = await Promise.all([
-        fetchJson<DashboardPayload>("/api/v1/pulse/dashboard"),
-        fetchJson<WorkRequestListOut>("/api/v1/pulse/work-requests?limit=40&offset=0"),
-        fetchJson<WorkerOut[]>("/api/v1/pulse/workers"),
-        fetchJson<AssetOut[]>("/api/v1/pulse/assets"),
-        fetchJson<InventoryItemOut[]>("/api/v1/pulse/inventory/low-stock"),
-        fetchJson<ZoneOut[]>("/api/v1/pulse/schedule-facilities"),
-        fetchJson<BeaconEquipmentOut[]>("/api/v1/pulse/equipment"),
+      const [boot, trainingMatrix] = await Promise.all([
+        tokenOverride
+          ? Promise.all([
+              fetchJson<DashboardPayload>("/api/v1/pulse/dashboard"),
+              fetchJson<WorkRequestListOut>("/api/v1/pulse/work-requests?limit=40&offset=0"),
+              fetchJson<WorkerOut[]>("/api/v1/pulse/workers"),
+              fetchJson<AssetOut[]>("/api/v1/pulse/assets"),
+              fetchJson<InventoryItemOut[]>("/api/v1/pulse/inventory/low-stock"),
+              fetchJson<ZoneOut[]>("/api/v1/pulse/schedule-facilities"),
+              fetchJson<BeaconEquipmentOut[]>("/api/v1/pulse/equipment"),
+              fetchJson<ShiftOut[]>(
+                `/api/v1/pulse/schedule/shifts?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+              ).catch((se) => {
+                const st = (se as { status?: number })?.status;
+                if (st === 403) return [] as ShiftOut[];
+                throw se;
+              }),
+            ]).then(([dashboard, work_requests, workers, assets, low_stock, schedule_facilities, equipment, shifts]) => ({
+              dashboard,
+              work_requests,
+              workers,
+              assets,
+              low_stock,
+              schedule_facilities,
+              equipment,
+              shifts,
+            }))
+          : fetchDashboardBootstrap({ fromIso: from, toIso: to, workRequestLimit: 40 }),
         fetchTrainingMatrix().catch((e) => {
           const st = (e as { status?: number })?.status;
           if (st === 403 || st === 401) return null;
           throw e;
         }),
       ]);
-      let shiftList: ShiftOut[] = [];
-      try {
-        shiftList = await fetchJson<ShiftOut[]>(
-          `/api/v1/pulse/schedule/shifts?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
-        );
-      } catch (se) {
-        const st = (se as { status?: number })?.status;
-        if (st !== 403) throw se;
-      }
+
+      primePulseReferenceFromBootstrap({
+        workers: boot.workers as WorkerOut[],
+        schedule_facilities: boot.schedule_facilities as ZoneOut[],
+        assets: boot.assets,
+      });
+
+      const dash = boot.dashboard as DashboardPayload;
+      const wrList = boot.work_requests as WorkRequestListOut;
+      const workers = boot.workers as WorkerOut[];
+      const assetList = boot.assets as AssetOut[];
+      const lowStock = boot.low_stock as InventoryItemOut[];
+      const zoneList = boot.schedule_facilities as ZoneOut[];
+      const beaconList = boot.equipment as BeaconEquipmentOut[];
+      const shiftList = (boot.shifts ?? []) as ShiftOut[];
       const auth = readSession();
       const model = buildLiveModel(
         dash,

@@ -3,7 +3,6 @@
 import { InventoryScannerKiosk } from "@/components/inventory-scanner/InventoryScannerKiosk";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { isApiMode } from "@/lib/api";
-import { isInventoryScannerOnlySession } from "@/lib/inventory-scanner/scanner-session";
 import { navigateToPulseLogin } from "@/lib/pulse-app";
 import { can } from "@/lib/rbac/session-access";
 import { readSession } from "@/lib/pulse-session";
@@ -37,7 +36,7 @@ export default function InventoryScannerKioskPage() {
 
   if (!ready || !session) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0a0f14] text-lg text-white">
+      <div className="flex min-h-screen items-center justify-center bg-ds-bg text-lg text-ds-muted">
         Checking access…
       </div>
     );
@@ -47,12 +46,5 @@ export default function InventoryScannerKioskPage() {
     return null;
   }
 
-  return (
-    <>
-      {isInventoryScannerOnlySession(session) ? (
-        <div className="absolute right-4 top-3 z-10 text-xs text-white/40">{session.email}</div>
-      ) : null}
-      <InventoryScannerKiosk />
-    </>
-  );
+  return <InventoryScannerKiosk />;
 }

@@ -5,6 +5,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ClipboardList } from "lucide-react";
 
 import { apiFetch, isApiMode } from "@/lib/api";
+import {
+  fetchPulseScheduleFacilitiesCached,
+  fetchPulseShiftsCached,
+  fetchPulseWorkersCached,
+} from "@/lib/pulse/pulse-reference-data";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import type { DashboardWidgetRenderContext } from "@/lib/dashboard/render-context";
 import { opsWidgetFillLayout } from "@/lib/dashboard/ops-widget-fill";
@@ -167,15 +172,13 @@ export function useRoutineAssignmentsBoardState() {
             return [] as RoutineAssignmentDetail[];
           }),
           listRoutines().catch(() => [] as RoutineRow[]),
-          apiFetch<PulseShiftApi[]>(
-            `/api/v1/pulse/schedule/shifts?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
-          ).catch((e) => {
+          fetchPulseShiftsCached(from, to).catch((e) => {
             const st = (e as { status?: number })?.status;
             if (st === 403) return [] as PulseShiftApi[];
             throw e;
           }),
-          apiFetch<PulseWorkerApi[]>("/api/v1/pulse/workers").catch(() => [] as PulseWorkerApi[]),
-          apiFetch<PulseZoneApi[]>("/api/v1/pulse/schedule-facilities").catch(() => [] as PulseZoneApi[]),
+          fetchPulseWorkersCached().catch(() => [] as PulseWorkerApi[]),
+          fetchPulseScheduleFacilitiesCached().catch(() => [] as PulseZoneApi[]),
           listAssignmentHandoverSummariesForDate(dateStr).catch(() => [] as AssignmentHandoverSummary[]),
           ]);
 

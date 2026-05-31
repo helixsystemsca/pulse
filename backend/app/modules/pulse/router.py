@@ -61,6 +61,9 @@ from app.models.pulse_models import (
 )
 from app.modules.pulse import project_service as proj_task_svc
 from app.modules.pulse import service as pulse_svc
+from app.modules.pulse.dashboard_bootstrap import build_dashboard_bootstrap
+from app.modules.pulse.read_queries import fetch_dashboard, fetch_workers_roster
+from app.schemas.pulse_bootstrap import DashboardBootstrapOut
 from app.schemas.devices import ZoneCreateIn, ZoneUpdateIn
 from app.services.devices.device_service import DeviceService
 from app.services.routine_shift_band import band_from_shift_and_definition
@@ -295,12 +298,27 @@ async def _zone_in_company(db: AsyncSession, company_id: str, zone_id: str) -> b
 
 @router.get("/dashboard", response_model=DashboardOut)
 async def pulse_dashboard(db: Db, cid: CompanyId, user: User = Depends(require_tenant_user)) -> DashboardOut:
-    inv_filter: set[str] | None = None
-    policy = await resolve_effective_inventory_policy(db, user, cid)
-    if not policy.is_company_admin:
-        inv_filter = set(policy.readable_scope_ids)
-    data = await pulse_svc.dashboard_aggregate(db, cid, inventory_readable_scope_ids=inv_filter)
-    return DashboardOut.model_validate(data)
+    return await fetch_dashboard(db, cid, user)
+
+
+@router.get("/dashboard/bootstrap", response_model=DashboardBootstrapOut)
+async def pulse_dashboard_bootstrap(
+    db: Db,
+    cid: CompanyId,
+    user: User = Depends(require_tenant_user),
+    from_ts: Optional[datetime] = Query(None, alias="from"),
+    to_ts: Optional[datetime] = Query(None, alias="to"),
+    work_request_limit: int = Query(40, ge=1, le=100),
+) -> DashboardBootstrapOut:
+    """Single payload for the operations overview (reduces browser round trips)."""
+    return await build_dashboard_bootstrap(
+        db,
+        cid,
+        user,
+        shifts_from=from_ts,
+        shifts_to=to_ts,
+        work_request_limit=work_request_limit,
+    )
 
 
 @router.get("/work-requests", response_model=WorkRequestListOut)
@@ -481,75 +499,7 @@ async def list_workers(
     cid: CompanyId,
     department_slug: Optional[str] = Query(None, description="Filter roster by HR department slug"),
 ) -> list[WorkerOut]:
-    uq = await db.execute(
-        select(User).where(
-            User.company_id == cid,
-            User.is_active.is_(True),
-            User.account_status == UserAccountStatus.active,
-            User.operational_role.in_([e.value for e in OperationalRole]),
-            User.roles.overlap(
-                pg_array(
-                    [
-                        UserRole.worker.value,
-                        UserRole.lead.value,
-                        UserRole.supervisor.value,
-                        UserRole.manager.value,
-                        UserRole.company_admin.value,
-                    ]
-                )
-            ),
-        )
-    )
-    users = uq.scalars().all()
-    uids = [str(u.id) for u in users]
-    hr_map = await load_hr_by_user_ids(db, cid, uids)
-    dept_filter = normalize_schedule_department_slug(department_slug)
-    skills_map: dict[str, list[WorkerSkillMiniOut]] = defaultdict(list)
-    if uids:
-        sq = await db.execute(
-            select(PulseWorkerSkill.user_id, PulseWorkerSkill.name, PulseWorkerSkill.level).where(
-                PulseWorkerSkill.company_id == cid,
-                PulseWorkerSkill.user_id.in_(uids),
-            )
-        )
-        for row in sq.all():
-            uid, name, level = row[0], row[1], row[2]
-            skills_map[str(uid)].append(WorkerSkillMiniOut(name=name, level=int(level or 1)))
-    out: list[WorkerOut] = []
-    for u in users:
-        pq = await db.execute(
-            select(PulseWorkerProfile).where(
-                PulseWorkerProfile.user_id == u.id,
-                PulseWorkerProfile.company_id == cid,
-            )
-        )
-        prof = pq.scalar_one_or_none()
-        certs = list(prof.certifications or []) if prof else []
-        notes = prof.notes if prof else None
-        avail = dict(prof.availability or {}) if prof else {}
-        emp, rec = _worker_scheduling_fields(prof)
-        uid_s = str(u.id)
-        worker_dept = primary_department_slug_from_hr(hr_map.get(uid_s))
-        if dept_filter and worker_dept != dept_filter:
-            continue
-        out.append(
-            WorkerOut(
-                id=uid_s,
-                email=u.email,
-                full_name=u.full_name,
-                role=primary_jwt_role(u).value,
-                roles=list(u.roles),
-                certifications=certs,
-                skills=skills_map.get(uid_s, []),
-                notes=notes,
-                availability=avail,
-                avatar_url=co_worker_avatar_url(uid_s, u.avatar_url),
-                employment_type=emp,
-                recurring_shifts=rec,
-                department_slug=worker_dept,
-            )
-        )
-    return out
+    return await fetch_workers_roster(db, cid, department_slug=department_slug)
 
 
 @router.get("/workers/{user_id}/avatar")

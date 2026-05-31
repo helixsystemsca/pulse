@@ -37,6 +37,11 @@ from app.models.domain import (
     UserRole,
     Zone,
 )
+from app.api.inventory_query_helpers import (
+    collect_item_reference_ids,
+    ctx_maps_for_ids,
+    last_used_at_map,
+)
 from app.repositories import inventory_scope_repository as inv_scope_repo
 from app.models.pulse_models import PulseWorkRequest
 from app.modules.pulse import service as pulse_svc
@@ -199,33 +204,6 @@ async def _log_movement(
     )
 
 
-async def _ctx_maps(db: AsyncSession, cid: str) -> tuple[dict[str, User], dict[str, Zone], dict[str, Tool]]:
-    uq = await db.execute(select(User).where(User.company_id == cid))
-    users = {u.id: u for u in uq.scalars().all()}
-    zq = await db.execute(select(Zone).where(Zone.company_id == cid))
-    zones = {z.id: z for z in zq.scalars().all()}
-    tq = await db.execute(select(Tool).where(Tool.company_id == cid))
-    tools = {t.id: t for t in tq.scalars().all()}
-    return users, zones, tools
-
-
-async def _last_used_at(db: AsyncSession, item_id: str) -> Optional[datetime]:
-    uq = await db.execute(
-        select(func.max(InventoryUsage.created_at)).where(InventoryUsage.item_id == item_id)
-    )
-    umax = uq.scalar_one_or_none()
-    mq = await db.execute(
-        select(func.max(InventoryMovement.created_at)).where(
-            InventoryMovement.item_id == item_id,
-            InventoryMovement.action == "used",
-        )
-    )
-    mmax = mq.scalar_one_or_none()
-    if umax and mmax:
-        return max(umax, mmax)
-    return umax or mmax
-
-
 def _row(
     item: InventoryItem,
     *,
@@ -234,9 +212,9 @@ def _row(
     tools: dict[str, Tool],
     last_used: Optional[datetime],
 ) -> InventoryRowOut:
-    au = users.get(item.assigned_user_id) if item.assigned_user_id else None
-    z = zones.get(item.zone_id) if item.zone_id else None
-    t = tools.get(item.linked_tool_id) if item.linked_tool_id else None
+    au = users.get(str(item.assigned_user_id)) if item.assigned_user_id else None
+    z = zones.get(str(item.zone_id)) if item.zone_id else None
+    t = tools.get(str(item.linked_tool_id)) if item.linked_tool_id else None
     return InventoryRowOut(
         id=item.id,
         sku=item.sku,
@@ -266,26 +244,64 @@ def _row(
 
 
 async def _inventory_detail_payload(db: AsyncSession, cid: str, item: InventoryItem) -> InventoryDetailOut:
-    users, zones, tools = await _ctx_maps(db, cid)
-    lu = await _last_used_at(db, item.id)
-    base = _row(item, users=users, zones=zones, tools=tools, last_used=lu)
-
-    mq = await db.execute(
-        select(InventoryMovement)
-        .where(InventoryMovement.item_id == item.id)
-        .order_by(InventoryMovement.created_at.desc())
-        .limit(80)
+    movement_rows = list(
+        (
+            await db.execute(
+                select(InventoryMovement)
+                .where(InventoryMovement.item_id == item.id)
+                .order_by(InventoryMovement.created_at.desc())
+                .limit(80)
+            )
+        ).scalars().all()
     )
-    movements: list[InventoryMovementOut] = []
+    usage_rows = list(
+        (
+            await db.execute(
+                select(InventoryUsage)
+                .where(InventoryUsage.item_id == item.id)
+                .order_by(InventoryUsage.created_at.desc())
+                .limit(50)
+            )
+        ).scalars().all()
+    )
+
+    user_ids, zone_ids, tool_ids = collect_item_reference_ids([item])
     wr_ids: set[str] = set()
-    for m in mq.scalars().all():
-        pu = users.get(m.performed_by) if m.performed_by else None
-        zn = zones.get(m.zone_id).name if m.zone_id and m.zone_id in zones else None
+    for m in movement_rows:
+        if m.performed_by:
+            user_ids.add(str(m.performed_by))
+        if m.zone_id:
+            zone_ids.add(str(m.zone_id))
+        if m.work_request_id:
+            wr_ids.add(str(m.work_request_id))
+    for u in usage_rows:
+        if u.work_request_id:
+            wr_ids.add(str(u.work_request_id))
+
+    users, zones, tools = await ctx_maps_for_ids(
+        db, cid, user_ids=user_ids, zone_ids=zone_ids, tool_ids=tool_ids
+    )
+    last_used = (await last_used_at_map(db, [str(item.id)])).get(str(item.id))
+    base = _row(item, users=users, zones=zones, tools=tools, last_used=last_used)
+
+    wr_map: dict[str, PulseWorkRequest] = {}
+    if wr_ids:
+        wq = await db.execute(
+            select(PulseWorkRequest).where(
+                PulseWorkRequest.company_id == cid,
+                PulseWorkRequest.id.in_(list(wr_ids)),
+            )
+        )
+        wr_map = {str(w.id): w for w in wq.scalars().all()}
+
+    movements: list[InventoryMovementOut] = []
+    for m in movement_rows:
+        pu = users.get(str(m.performed_by)) if m.performed_by else None
+        zn = zones.get(str(m.zone_id)).name if m.zone_id and str(m.zone_id) in zones else None
         wlabel = None
         if m.work_request_id:
-            wr_ids.add(m.work_request_id)
-            wq = await db.get(PulseWorkRequest, m.work_request_id)
-            wlabel = wq.title[:80] if wq else None
+            w = wr_map.get(str(m.work_request_id))
+            wlabel = w.title[:80] if w else None
         movements.append(
             InventoryMovementOut(
                 id=m.id,
@@ -302,31 +318,20 @@ async def _inventory_detail_payload(db: AsyncSession, cid: str, item: InventoryI
             )
         )
 
-    uq = await db.execute(
-        select(InventoryUsage)
-        .where(InventoryUsage.item_id == item.id)
-        .order_by(InventoryUsage.created_at.desc())
-        .limit(50)
-    )
     usage_out: list[InventoryUsageOut] = []
-    for u in uq.scalars().all():
-        wr_ids.add(u.work_request_id)
-        wq = await db.get(PulseWorkRequest, u.work_request_id)
+    for u in usage_rows:
+        w = wr_map.get(str(u.work_request_id)) if u.work_request_id else None
         usage_out.append(
             InventoryUsageOut(
                 id=u.id,
                 work_request_id=u.work_request_id,
-                work_request_title=wq.title if wq else None,
+                work_request_title=w.title if w else None,
                 quantity=u.quantity,
                 created_at=u.created_at,
             )
         )
 
-    linked_wr: list[dict[str, str]] = []
-    for wid in wr_ids:
-        w = await db.get(PulseWorkRequest, wid)
-        if w and w.company_id == cid:
-            linked_wr.append({"id": w.id, "title": w.title})
+    linked_wr = [{"id": w.id, "title": w.title} for w in wr_map.values()]
 
     return InventoryDetailOut(
         **base.model_dump(),
@@ -789,65 +794,29 @@ async def _summary(
         if conds
         else and_(InventoryItem.company_id == cid, scope_pred)
     )
-    total = int(
-        (await db.execute(select(func.count()).select_from(InventoryItem).where(where_base))).scalar_one() or 0
-    )
-    in_stock = int(
-        (
-            await db.execute(
-                select(func.count())
-                .select_from(InventoryItem)
-                .where(and_(where_base, InventoryItem.inv_status == "in_stock"))
-            )
-        ).scalar_one()
-        or 0
-    )
-    low_stock = int(
-        (
-            await db.execute(
-                select(func.count())
-                .select_from(InventoryItem)
-                .where(and_(where_base, InventoryItem.inv_status == "low_stock"))
-            )
-        ).scalar_one()
-        or 0
-    )
-    assigned = int(
-        (
-            await db.execute(
-                select(func.count())
-                .select_from(InventoryItem)
-                .where(and_(where_base, InventoryItem.inv_status == "assigned"))
-            )
-        ).scalar_one()
-        or 0
-    )
-    missing = int(
-        (
-            await db.execute(
-                select(func.count())
-                .select_from(InventoryItem)
-                .where(and_(where_base, InventoryItem.inv_status == "missing"))
-            )
-        ).scalar_one()
-        or 0
-    )
-    maint = int(
-        (
-            await db.execute(
-                select(func.count())
-                .select_from(InventoryItem)
-                .where(and_(where_base, InventoryItem.inv_status == "maintenance"))
-            )
-        ).scalar_one()
-        or 0
-    )
-    val_q = await db.execute(
-        select(func.coalesce(func.sum(InventoryItem.quantity * func.coalesce(InventoryItem.unit_cost, 0)), 0)).where(
-            where_base
+    agg = (
+        await db.execute(
+            select(
+                func.count().label("total"),
+                func.count().filter(InventoryItem.inv_status == "in_stock").label("in_stock"),
+                func.count().filter(InventoryItem.inv_status == "low_stock").label("low_stock"),
+                func.count().filter(InventoryItem.inv_status == "assigned").label("assigned"),
+                func.count().filter(InventoryItem.inv_status == "missing").label("missing"),
+                func.count().filter(InventoryItem.inv_status == "maintenance").label("maintenance"),
+                func.coalesce(
+                    func.sum(InventoryItem.quantity * func.coalesce(InventoryItem.unit_cost, 0)),
+                    0,
+                ).label("estimated_value"),
+            ).where(where_base)
         )
-    )
-    ev = float(val_q.scalar_one() or 0)
+    ).one()
+    total = int(agg.total or 0)
+    in_stock = int(agg.in_stock or 0)
+    low_stock = int(agg.low_stock or 0)
+    assigned = int(agg.assigned or 0)
+    missing = int(agg.missing or 0)
+    maint = int(agg.maintenance or 0)
+    ev = float(agg.estimated_value or 0)
     top_used_rows = (
         await db.execute(
             select(InventoryItem.id, InventoryItem.name, InventoryItem.sku, InventoryItem.usage_count)
@@ -978,11 +947,21 @@ async def list_inventory(
         .limit(limit)
     )
     rows = list((await db.execute(stmt)).scalars().all())
-    users, zones, tools = await _ctx_maps(db, cid)
-    items: list[InventoryRowOut] = []
-    for it in rows:
-        lu = await _last_used_at(db, it.id)
-        items.append(_row(it, users=users, zones=zones, tools=tools, last_used=lu))
+    user_ids, zone_ids, tool_ids = collect_item_reference_ids(rows)
+    users, zones, tools = await ctx_maps_for_ids(
+        db, cid, user_ids=user_ids, zone_ids=zone_ids, tool_ids=tool_ids
+    )
+    last_used = await last_used_at_map(db, [str(r.id) for r in rows])
+    items = [
+        _row(
+            it,
+            users=users,
+            zones=zones,
+            tools=tools,
+            last_used=last_used.get(str(it.id)),
+        )
+        for it in rows
+    ]
 
     return InventoryListOut(items=items, total=total, summary=summ)
 
@@ -1042,7 +1021,10 @@ async def lookup_inventory_by_sku(
     sku: str,
 ) -> InventoryScanLookupOut:
     item = await _lookup_item_by_sku(db, cid, policy, sku)
-    users, zones, tools = await _ctx_maps(db, cid)
+    user_ids, zone_ids, tool_ids = collect_item_reference_ids([item])
+    users, zones, tools = await ctx_maps_for_ids(
+        db, cid, user_ids=user_ids, zone_ids=zone_ids, tool_ids=tool_ids
+    )
     return _scan_lookup_out(item, users=users, zones=zones, tools=tools)
 
 
@@ -1099,7 +1081,10 @@ async def post_inventory_scan_transaction(
     )
     await db.commit()
     await db.refresh(item)
-    users, zones, tools = await _ctx_maps(db, cid)
+    user_ids, zone_ids, tool_ids = collect_item_reference_ids([item])
+    users, zones, tools = await ctx_maps_for_ids(
+        db, cid, user_ids=user_ids, zone_ids=zone_ids, tool_ids=tool_ids
+    )
     mv = await db.get(InventoryMovement, movement_id)
     return InventoryScanTransactionOut(
         item=_scan_lookup_out(item, users=users, zones=zones, tools=tools),

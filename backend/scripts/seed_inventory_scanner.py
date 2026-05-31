@@ -8,6 +8,8 @@ Env:
   SCANNER_USER_EMAIL (default: scanner@panorama.ca)
   SCANNER_USER_PASSWORD (required; min 8 chars)
   SCANNER_COMPANY_ID (optional — first company when unset)
+  SCANNER_RESTORE_FULL_CONTRACT=1 — when set, re-enable the full product catalog on the tenant
+    (use once if a prior seed run replaced company features with only inventory modules)
 """
 
 from __future__ import annotations
@@ -30,7 +32,10 @@ from sqlalchemy import func, select
 from app.core.auth.security import hash_password
 from app.core.equipment_roster import EQUIPMENT_ROSTER_DEPARTMENT
 from app.core.database import AsyncSessionLocal
+from app.core.features.cache import invalidate
 from app.core.features.service import sync_enabled_features
+from app.core.features.system_catalog import GLOBAL_SYSTEM_FEATURES
+from app.core.company_features import tenant_enabled_feature_names_with_legacy
 from app.core.tenant_roles import assign_user_tenant_role, create_or_fetch_tenant_role
 from app.models.domain import Company, User, UserRole
 from app.models.pulse_models import PulseWorkerHR
@@ -43,6 +48,11 @@ async def main() -> None:
         raise RuntimeError("Set SCANNER_USER_PASSWORD (min 8 chars)")
 
     company_id = (os.getenv("SCANNER_COMPANY_ID") or "").strip()
+    restore_full_contract = (os.getenv("SCANNER_RESTORE_FULL_CONTRACT") or "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
 
     async with AsyncSessionLocal() as db:
         if not company_id:
@@ -55,7 +65,18 @@ async def main() -> None:
         if company is None:
             raise RuntimeError(f"Unknown company_id={company_id}")
 
-        await sync_enabled_features(db, company_id, ["inventory", "inventory_scanner"])
+        if restore_full_contract:
+            contract_names = list(GLOBAL_SYSTEM_FEATURES)
+        else:
+            existing = await tenant_enabled_feature_names_with_legacy(db, company_id)
+            contract_names = sorted(set(existing) | {"inventory", "inventory_scanner"})
+            if len(contract_names) <= 2 and set(contract_names) <= {"inventory", "inventory_scanner"}:
+                print(
+                    "WARNING: tenant contract looks stripped to inventory only — "
+                    "re-run with SCANNER_RESTORE_FULL_CONTRACT=1 to restore the full module catalog.",
+                )
+        await sync_enabled_features(db, company_id, contract_names)
+        invalidate(company_id)
 
         role = await create_or_fetch_tenant_role(
             db,
