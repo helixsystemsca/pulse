@@ -52,12 +52,12 @@ export async function searchInventoryProducts(
 ): Promise<InventoryScanProduct[]> {
   const q = query.trim();
   if (!q) return [];
-  const res = await fetchInventoryList({ q, limit });
+  const res = await fetchInventoryList({ companyId: null, q, limit });
   return res.items.map(rowToScanProduct);
 }
 
 export async function fetchPopularInventoryProducts(limit = 6): Promise<InventoryScanProduct[]> {
-  const res = await fetchInventoryList({ limit: 1 });
+  const res = await fetchInventoryList({ companyId: null, limit: 1 });
   const top = res.summary?.most_used ?? [];
   if (!top.length) return [];
   const rows = await Promise.all(
