@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ComponentPropsWithoutRef } from "react";
 import { Clock, LogOut, Minus, Plus, Search, TrendingUp } from "lucide-react";
 
 import {
@@ -29,29 +29,52 @@ type ScanAction = "receive" | "issue";
 
 const SCANNER_LOBSTER = "#e85d6f";
 
-const bubbleBase =
-  "relative overflow-hidden border border-white/50 shadow-[0_8px_32px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.65)] backdrop-blur-xl transition-all duration-200 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-45";
+/** Short tap — works on Android tablets; no-op where unsupported. */
+function scannerHaptic(ms = 14) {
+  if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+    navigator.vibrate(ms);
+  }
+}
+
+const bubbleStroke = "border-2 border-[color-mix(in_srgb,var(--ds-text-primary)_32%,var(--ds-border))]";
+
+const bubbleDepth =
+  "shadow-[inset_0_2px_0_rgba(255,255,255,0.72),inset_0_-3px_6px_rgba(15,23,42,0.1)] active:translate-y-[2px] active:shadow-[inset_0_4px_10px_rgba(15,23,42,0.18),inset_0_1px_2px_rgba(15,23,42,0.1)]";
+
+const bubbleBase = cn(
+  "relative overflow-hidden backdrop-blur-xl transition-[transform,box-shadow] duration-75 disabled:pointer-events-none disabled:opacity-45",
+  bubbleStroke,
+  bubbleDepth,
+);
 
 const bubbleIdle = cn(
   bubbleBase,
   "bg-gradient-to-br from-white/75 via-white/45 to-[color-mix(in_srgb,var(--ds-accent)_10%,transparent)]",
-  "hover:from-white/85 hover:to-[color-mix(in_srgb,var(--ds-accent)_16%,transparent)]",
 );
 
 const bubbleActiveReceive = cn(
   bubbleBase,
-  "border-[color-mix(in_srgb,var(--ds-success)_35%,white)]",
+  "border-[var(--ds-success)]",
   "bg-gradient-to-br from-[color-mix(in_srgb,var(--ds-success)_28%,white)] via-[color-mix(in_srgb,var(--ds-success)_16%,white/60)] to-[color-mix(in_srgb,var(--ds-success)_8%,transparent)]",
-  "shadow-[0_10px_40px_color-mix(in_srgb,var(--ds-success)_22%,transparent),inset_0_1px_0_rgba(255,255,255,0.7)]",
-  "ring-2 ring-[color-mix(in_srgb,var(--ds-success)_25%,transparent)]",
+  "shadow-[inset_0_2px_0_rgba(255,255,255,0.75),inset_0_-2px_5px_color-mix(in_srgb,var(--ds-success)_18%,transparent)]",
+  "active:shadow-[inset_0_4px_10px_color-mix(in_srgb,var(--ds-success)_22%,transparent),inset_0_1px_2px_rgba(15,23,42,0.08)]",
 );
 
 const bubbleActiveIssue = cn(
   bubbleBase,
-  "border-[color-mix(in_srgb,#e85d6f_35%,white)]",
+  "border-[#e85d6f]",
   "bg-gradient-to-br from-[color-mix(in_srgb,#e85d6f_24%,white)] via-[color-mix(in_srgb,#e85d6f_14%,white/60)] to-[color-mix(in_srgb,#e85d6f_8%,transparent)]",
-  "shadow-[0_10px_40px_color-mix(in_srgb,#e85d6f_20%,transparent),inset_0_1px_0_rgba(255,255,255,0.7)]",
-  "ring-2 ring-[color-mix(in_srgb,#e85d6f_22%,transparent)]",
+  "shadow-[inset_0_2px_0_rgba(255,255,255,0.75),inset_0_-2px_5px_color-mix(in_srgb,#e85d6f_16%,transparent)]",
+  "active:shadow-[inset_0_4px_10px_color-mix(in_srgb,#e85d6f_20%,transparent),inset_0_1px_2px_rgba(15,23,42,0.08)]",
+);
+
+const bubblePrimary = cn(
+  bubbleBase,
+  "border-[color-mix(in_srgb,var(--ds-accent)_80%,#0f172a)]",
+  "bg-gradient-to-br from-[color-mix(in_srgb,var(--ds-accent)_55%,#ffffff)] via-[color-mix(in_srgb,var(--ds-accent)_35%,#ffffff)] to-[color-mix(in_srgb,var(--ds-accent)_20%,transparent)]",
+  "text-white",
+  "shadow-[inset_0_2px_0_rgba(255,255,255,0.38),inset_0_-4px_8px_rgba(0,0,0,0.22)]",
+  "active:shadow-[inset_0_5px_12px_rgba(0,0,0,0.3),inset_0_1px_2px_rgba(0,0,0,0.15)]",
 );
 
 const bubbleCircle = cn(
@@ -61,23 +84,41 @@ const bubbleCircle = cn(
 
 const scannerSearchClass = cn(
   dsInputClass,
-  "h-[4.5rem] w-full rounded-[2rem] border-white/50 bg-white/60 pl-14 pr-6 text-2xl text-ds-foreground shadow-[0_8px_32px_rgba(15,23,42,0.06)] backdrop-blur-md placeholder:text-ds-muted",
+  bubbleStroke,
+  "h-[4.5rem] w-full rounded-[2rem] bg-white/60 pl-14 pr-6 text-2xl text-ds-foreground backdrop-blur-md placeholder:text-ds-muted",
+  "shadow-[inset_0_2px_0_rgba(255,255,255,0.65),inset_0_-2px_4px_rgba(15,23,42,0.06)]",
 );
 
 const dropdownClass =
-  "rounded-[1.5rem] border border-white/50 bg-white/80 py-2 shadow-xl backdrop-blur-xl";
+  "rounded-[1.5rem] border-2 border-[color-mix(in_srgb,var(--ds-text-primary)_28%,var(--ds-border))] bg-white/80 py-2 backdrop-blur-xl";
 
 const quickPickClass = cn(
   bubbleIdle,
   "flex min-w-0 flex-col rounded-[1.25rem] px-5 py-4 text-left",
 );
 
+type ScannerBubbleButtonProps = ComponentPropsWithoutRef<"button">;
+
+function ScannerBubbleButton({ className, disabled, onPointerDown, ...rest }: ScannerBubbleButtonProps) {
+  return (
+    <button
+      {...rest}
+      disabled={disabled}
+      className={className}
+      onPointerDown={(e) => {
+        if (!disabled) scannerHaptic();
+        onPointerDown?.(e);
+      }}
+    />
+  );
+}
+
 function ScannerConnectionBadge({ status }: { status: ScannerConnectionStatus }) {
   const connected = status === "connected";
   return (
     <div
       className={cn(
-        "pointer-events-none fixed bottom-4 right-4 z-30 flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold shadow-md backdrop-blur-sm sm:bottom-5 sm:right-5",
+        "pointer-events-none fixed bottom-4 right-4 z-30 flex items-center gap-2 rounded-full border-2 px-3 py-1.5 text-xs font-semibold backdrop-blur-sm sm:bottom-5 sm:right-5",
         connected
           ? "border-[color-mix(in_srgb,var(--ds-success)_40%,var(--ds-border))] bg-[color-mix(in_srgb,var(--ds-success)_14%,var(--ds-bg))] text-[var(--ds-success)]"
           : "border-[color-mix(in_srgb,#e85d6f_40%,var(--ds-border))] bg-[color-mix(in_srgb,#e85d6f_14%,var(--ds-bg))] text-[#e85d6f]",
@@ -110,13 +151,13 @@ function QuickPickButton({
   onSelect: () => void;
 }) {
   return (
-    <button type="button" onClick={onSelect} className={quickPickClass}>
+    <ScannerBubbleButton type="button" onClick={onSelect} className={quickPickClass}>
       <span className="truncate text-lg font-semibold text-ds-foreground">{item.name}</span>
       <span className="truncate text-base text-ds-muted">
         {item.sku}
         {meta ? ` · ${meta}` : ""}
       </span>
-    </button>
+    </ScannerBubbleButton>
   );
 }
 
@@ -305,7 +346,7 @@ export function InventoryScannerKiosk() {
             <p className="hidden text-sm text-ds-muted sm:block">Search or scan to receive / issue stock</p>
           </div>
         </div>
-        <button
+        <ScannerBubbleButton
           type="button"
           onClick={onLogout}
           disabled={logoutBusy || busy}
@@ -317,7 +358,7 @@ export function InventoryScannerKiosk() {
         >
           <LogOut className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
           Log out
-        </button>
+        </ScannerBubbleButton>
       </header>
 
       <main className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-4 py-6 sm:px-8 sm:py-8">
@@ -420,7 +461,7 @@ export function InventoryScannerKiosk() {
           {product ? (
             <section className="flex w-full flex-col items-center gap-8 sm:gap-10">
               <div className="relative w-full text-center">
-                <button
+                <ScannerBubbleButton
                   type="button"
                   disabled={busy}
                   onClick={clearProduct}
@@ -430,7 +471,7 @@ export function InventoryScannerKiosk() {
                   )}
                 >
                   Change
-                </button>
+                </ScannerBubbleButton>
                 <p className="text-base font-medium uppercase tracking-widest text-ds-muted sm:text-lg">{product.sku}</p>
                 <h2 className="mt-2 text-4xl font-bold leading-tight text-ds-foreground sm:text-5xl">{product.name}</h2>
                 <p className="mt-3 text-lg text-ds-muted sm:text-xl">
@@ -448,7 +489,7 @@ export function InventoryScannerKiosk() {
 
               <div className="grid w-full grid-cols-2 gap-4 sm:gap-5">
                 {(["receive", "issue"] as const).map((kind) => (
-                  <button
+                  <ScannerBubbleButton
                     key={kind}
                     type="button"
                     disabled={busy}
@@ -463,12 +504,12 @@ export function InventoryScannerKiosk() {
                     )}
                   >
                     {kind}
-                  </button>
+                  </ScannerBubbleButton>
                 ))}
               </div>
 
               <div className="flex w-full max-w-md items-center justify-center gap-5 sm:gap-6">
-                <button
+                <ScannerBubbleButton
                   type="button"
                   aria-label="Decrease quantity"
                   disabled={busy}
@@ -476,7 +517,7 @@ export function InventoryScannerKiosk() {
                   className={cn(bubbleCircle, "h-20 w-20 sm:h-24 sm:w-24")}
                 >
                   <Minus className="h-9 w-9 sm:h-10 sm:w-10" />
-                </button>
+                </ScannerBubbleButton>
                 <input
                   type="number"
                   min={1}
@@ -494,7 +535,7 @@ export function InventoryScannerKiosk() {
                     "h-20 w-32 text-center text-4xl font-bold sm:h-24 sm:w-36 sm:text-5xl",
                   )}
                 />
-                <button
+                <ScannerBubbleButton
                   type="button"
                   aria-label="Increase quantity"
                   disabled={busy}
@@ -502,7 +543,7 @@ export function InventoryScannerKiosk() {
                   className={cn(bubbleCircle, "h-20 w-20 sm:h-24 sm:w-24")}
                 >
                   <Plus className="h-9 w-9 sm:h-10 sm:w-10" />
-                </button>
+                </ScannerBubbleButton>
               </div>
 
               {submitErr ? (
@@ -518,17 +559,14 @@ export function InventoryScannerKiosk() {
                 </p>
               ) : null}
 
-              <button
+              <ScannerBubbleButton
                 type="button"
                 disabled={busy}
                 onClick={() => void submit()}
-                className={cn(
-                  bubbleBase,
-                  "w-full rounded-[2rem] border-[color-mix(in_srgb,var(--ds-accent)_40%,white)] bg-gradient-to-br from-[color-mix(in_srgb,var(--ds-accent)_55%,#ffffff)] via-[color-mix(in_srgb,var(--ds-accent)_35%,#ffffff)] to-[color-mix(in_srgb,var(--ds-accent)_20%,transparent)] py-6 text-2xl font-bold text-white shadow-[0_12px_40px_color-mix(in_srgb,var(--ds-accent)_35%,transparent),inset_0_1px_0_rgba(255,255,255,0.35)] sm:py-7 sm:text-3xl",
-                )}
+                className={cn(bubblePrimary, "w-full rounded-[2rem] py-6 text-2xl font-bold sm:py-7 sm:text-3xl")}
               >
                 {busy ? "Saving…" : "Complete transaction"}
-              </button>
+              </ScannerBubbleButton>
             </section>
           ) : (
             <>
