@@ -100,6 +100,7 @@ class WorkerRowOut(BaseModel):
     assignment_status: Optional[str] = None
     assigned_department_slug: Optional[str] = None
     assigned_role_key: Optional[str] = None
+    is_equipment_account: bool = False
 
 
 class WorkerSlotAccessAuditRowOut(BaseModel):
@@ -175,6 +176,12 @@ class WorkerDetailOut(BaseModel):
     compliance_summary: WorkerComplianceSummaryOut
     work_summary: WorkerWorkSummaryOut
     created_at: datetime
+    assigned_role_key: Optional[str] = None
+    is_equipment_account: bool = False
+
+
+class WorkerSetPasswordIn(BaseModel):
+    new_password: str = Field(..., min_length=12, max_length=128)
 
 
 class WorkerCreateIn(BaseModel):

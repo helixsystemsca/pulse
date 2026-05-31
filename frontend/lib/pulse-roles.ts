@@ -169,6 +169,7 @@ const ROSTER_DEPT_ORDER = [
   "fitness",
   "racquets",
   "admin",
+  "equipment",
   "__other__",
 ] as const;
 
@@ -181,12 +182,19 @@ const ROSTER_DEPT_TITLE: Record<(typeof ROSTER_DEPT_ORDER)[number], string> = {
   fitness: "Fitness",
   racquets: "Racquets",
   admin: "Administration",
+  equipment: "Equipment",
   __other__: "Other departments",
 };
 
 export function rosterDepartmentSlug(
-  worker: Pick<{ department?: string | null; roles?: string[]; role?: string }, "department" | "roles" | "role">,
+  worker: Pick<
+    { department?: string | null; roles?: string[]; role?: string; is_equipment_account?: boolean },
+    "department" | "roles" | "role" | "is_equipment_account"
+  >,
 ): string {
+  if (worker.is_equipment_account || (worker.department ?? "").trim().toLowerCase() === "equipment") {
+    return "equipment";
+  }
   const raw = (worker.department ?? "").trim().toLowerCase();
   if (!raw) {
     // Off-site / IT-style company admins: no facility department slug — not part of Maintenance roster.
@@ -214,6 +222,7 @@ export function rosterDepartmentTitle(slug: string): string {
 /** Plural section title for the `worker` API tier under a department (Maintenance → Operations, Communications → Coordinators). */
 export function rosterWorkerTierSectionTitle(departmentSlug: string): string {
   const d = departmentSlug.trim().toLowerCase();
+  if (d === "equipment") return "Kiosk accounts";
   if (d === "unset") return "Staff";
   if (d === "maintenance") return "Operations";
   if (d === "communications" || d === "reception") return "Coordinators";
@@ -225,6 +234,7 @@ export function rosterWorkerTierSectionTitle(departmentSlug: string): string {
 export function workerRoleDisplayLabel(departmentSlug: string | null | undefined, role: string): string {
   if (role !== "worker") return humanizeRole(role);
   const d = (departmentSlug ?? "").trim().toLowerCase();
+  if (d === "equipment") return "Scanner kiosk";
   if (!d || d === "unset") return "Staff";
   if (d === "maintenance") return "Operations";
   if (d === "communications" || d === "reception") return "Coordinator";
@@ -289,6 +299,9 @@ export function sortRolesForDisplay(roles: string[]): string[] {
  */
 export function rosterRoleGroupOrder(departmentSlug: string): RosterGroupRoleKey[] {
   const d = departmentSlug.trim().toLowerCase();
+  if (d === "equipment") {
+    return ["worker"];
+  }
   if (d === "admin" || d === "unset") {
     return ["company_admin", "manager", "supervisor", "lead", "worker"];
   }

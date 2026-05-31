@@ -67,6 +67,8 @@ from app.core.workers_settings_merge import (
 )
 from app.core.email_smtp import send_employee_invite
 from app.core.auth.security import bump_access_token_version, hash_password
+from app.core.auth.password_policy import validate_new_password
+from app.core.equipment_roster import is_equipment_roster_account
 from app.core.system_tokens import generate_raw_token, hash_system_token
 from app.models.domain import (
     Company,
@@ -76,7 +78,7 @@ from app.models.domain import (
     UserAccountStatus,
     UserRole,
 )
-from app.models.rbac_models import TenantRoleAssignment
+from app.models.rbac_models import TenantRoleAssignment, TenantRole
 from app.core.department_matrix_baselines import operational_matrix_slot_label
 from app.models.pulse_models import (
     PulseWorkerCertification,
@@ -107,6 +109,7 @@ from app.schemas.pulse_workers import (
     WorkerListOut,
     WorkerPatchIn,
     WorkerRowOut,
+    WorkerSetPasswordIn,
     ApplyDepartmentBaselinesOut,
     WorkerSlotAccessAuditOut,
     WorkerSlotAccessAuditRowOut,
@@ -378,6 +381,40 @@ async def _get_hr(db: AsyncSession, user_id: str) -> Optional[PulseWorkerHR]:
     return await db.get(PulseWorkerHR, user_id)
 
 
+async def _tenant_role_slug_map(db: AsyncSession, users: list[User]) -> dict[str, str]:
+    ids = [str(u.tenant_role_id) for u in users if getattr(u, "tenant_role_id", None)]
+    if not ids:
+        return {}
+    q = await db.execute(select(TenantRole).where(TenantRole.id.in_(ids)))
+    return {str(r.id): r.slug for r in q.scalars().all()}
+
+
+async def _tenant_role_slug_for_user(db: AsyncSession, user: User) -> str | None:
+    tr_id = getattr(user, "tenant_role_id", None)
+    if not tr_id:
+        return None
+    role = await db.get(TenantRole, str(tr_id))
+    return role.slug if role else None
+
+
+async def _equipment_flag_for_user(
+    db: AsyncSession,
+    user: User,
+    hr: PulseWorkerHR | None,
+    *,
+    assigned_role_key: str | None = None,
+    tenant_role_slug: str | None = None,
+) -> bool:
+    slug = tenant_role_slug
+    if slug is None:
+        slug = await _tenant_role_slug_for_user(db, user)
+    return is_equipment_roster_account(
+        hr_department=hr.department if hr else None,
+        tenant_role_slug=slug,
+        assigned_role_key=assigned_role_key,
+    )
+
+
 async def _ensure_profile(db: AsyncSession, cid: str, user_id: str) -> PulseWorkerProfile:
     q = await db.execute(
         select(PulseWorkerProfile).where(
@@ -569,6 +606,14 @@ async def _build_detail(db: AsyncSession, cid: str, u: User, users_map: dict[str
     gg_assignable = bool(sched.get("gg_assignable"))
 
     tr_id = getattr(u, "tenant_role_id", None)
+    asn = await get_active_assignment(db, company_id=cid, user_id=uid_s)
+    assigned_role_key = asn.role_key if asn else None
+    tenant_role_slug = await _tenant_role_slug_for_user(db, u)
+    equipment_account = is_equipment_roster_account(
+        hr_department=hr.department if hr else None,
+        tenant_role_slug=tenant_role_slug,
+        assigned_role_key=assigned_role_key,
+    )
     return WorkerDetailOut(
         id=uid_s,
         company_id=str(u.company_id) if u.company_id else cid,
@@ -608,6 +653,8 @@ async def _build_detail(db: AsyncSession, cid: str, u: User, users_map: dict[str
         compliance_summary=co,
         work_summary=wo,
         created_at=u.created_at,
+        assigned_role_key=assigned_role_key,
+        is_equipment_account=equipment_account,
     )
 
 
@@ -885,6 +932,8 @@ async def list_workers(
         for a in aq.scalars().all():
             assign_map[str(a.user_id)] = a
 
+    tenant_role_slug_by_id = await _tenant_role_slug_map(db, users)
+
     items: list[WorkerRowOut] = []
     for u in users:
         h = hr_map.get(u.id)
@@ -913,6 +962,13 @@ async def list_workers(
             matrix_source = "unresolved"
             matrix_inferred = True
             is_unresolved = True
+        tr_id = getattr(u, "tenant_role_id", None)
+        tenant_role_slug = tenant_role_slug_by_id.get(str(tr_id)) if tr_id else None
+        equipment_account = is_equipment_roster_account(
+            hr_department=h.department if h else None,
+            tenant_role_slug=tenant_role_slug,
+            assigned_role_key=role_key,
+        )
         items.append(
             WorkerRowOut(
                 id=uid_s,
@@ -947,6 +1003,7 @@ async def list_workers(
                 assignment_status=assignment_status,
                 assigned_department_slug=dept_slug,
                 assigned_role_key=role_key,
+                is_equipment_account=equipment_account,
             )
         )
     return WorkerListOut(items=items)
@@ -1601,6 +1658,53 @@ async def patch_worker(
     assert u2
     users_map = await _users_by_company(db, cid)
     return await _build_detail(db, cid, u2, users_map)
+
+
+@router.post("/{user_id}/set-password", status_code=status.HTTP_204_NO_CONTENT)
+async def set_equipment_account_password(
+    request: Request,
+    db: Db,
+    actor: WorkersSettingsAdminUser,
+    cid: CompanyId,
+    user_id: str,
+    body: WorkerSetPasswordIn,
+) -> None:
+    """Company admin: set sign-in password for dedicated equipment/kiosk roster accounts."""
+    target = await _roster_user_in_company_any_status(db, cid, user_id)
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    hr = await _get_hr(db, user_id)
+    asn = await get_active_assignment(db, company_id=cid, user_id=user_id)
+    if not await _equipment_flag_for_user(
+        db,
+        target,
+        hr,
+        assigned_role_key=asn.role_key if asn else None,
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Password can only be set here for equipment roster accounts (e.g. inventory scanner kiosk).",
+        )
+
+    settings = get_settings()
+    try:
+        validate_new_password(body.new_password, settings)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    target.hashed_password = hash_password(body.new_password)
+    bump_access_token_version(target)
+    await record_permission_change(
+        db,
+        action="user.equipment_password.updated",
+        actor_user_id=str(actor.id),
+        company_id=cid,
+        target_user_id=str(target.id),
+        payload={"email": target.email},
+        request_id=getattr(getattr(request, "state", None), "request_id", None),
+    )
+    await db.commit()
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)

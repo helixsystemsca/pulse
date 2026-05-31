@@ -37,6 +37,8 @@ export type WorkerRow = {
   last_login_city?: string | null;
   last_login_region?: string | null;
   last_login_user_agent?: string | null;
+  assigned_role_key?: string | null;
+  is_equipment_account?: boolean;
 };
 
 export type LoginEventRow = {
@@ -123,6 +125,7 @@ export type WorkerDetail = {
   compliance_summary: WorkerComplianceSummary;
   work_summary: WorkerWorkSummary;
   created_at: string;
+  is_equipment_account?: boolean;
 };
 
 export type WorkersSettings = {
@@ -272,6 +275,17 @@ export async function patchWorker(
   return apiFetch<WorkerDetail>(withCompany(`/api/workers/${id}`, companyId), {
     method: "PATCH",
     json: body,
+  });
+}
+
+export async function setEquipmentAccountPassword(
+  companyId: string | null,
+  userId: string,
+  newPassword: string,
+): Promise<void> {
+  await apiFetch<undefined>(withCompany(`/api/workers/${encodeURIComponent(userId)}/set-password`, companyId), {
+    method: "POST",
+    json: { new_password: newPassword },
   });
 }
 

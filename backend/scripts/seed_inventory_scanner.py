@@ -28,10 +28,12 @@ load_dotenv(_ROOT / ".env")
 from sqlalchemy import func, select
 
 from app.core.auth.security import hash_password
+from app.core.equipment_roster import EQUIPMENT_ROSTER_DEPARTMENT
 from app.core.database import AsyncSessionLocal
 from app.core.features.service import sync_enabled_features
 from app.core.tenant_roles import assign_user_tenant_role, create_or_fetch_tenant_role
 from app.models.domain import Company, User, UserRole
+from app.models.pulse_models import PulseWorkerHR
 
 
 async def main() -> None:
@@ -102,6 +104,21 @@ async def main() -> None:
             user.ui_preferences = prefs
 
         await assign_user_tenant_role(db, user, role)
+
+        hr = await db.get(PulseWorkerHR, user.id)
+        if hr is None:
+            db.add(
+                PulseWorkerHR(
+                    user_id=user.id,
+                    company_id=company_id,
+                    department=EQUIPMENT_ROSTER_DEPARTMENT,
+                    job_title="Inventory Scanner",
+                )
+            )
+        else:
+            hr.department = EQUIPMENT_ROSTER_DEPARTMENT
+            hr.job_title = "Inventory Scanner"
+
         await db.commit()
 
     print(f"Seeded inventory scanner user: {email} (company_id={company_id})")

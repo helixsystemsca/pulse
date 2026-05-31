@@ -105,6 +105,7 @@ import {
   patchWorker,
   patchWorkerSettings,
   resendWorkerInvite,
+  setEquipmentAccountPassword,
 } from "@/lib/workersService";
 import { WorkerTrainingMatrixPanel } from "@/components/training/WorkerTrainingMatrixPanel";
 import { AccessDebugModal } from "@/components/workers/AccessDebugModal";
@@ -550,6 +551,9 @@ export function WorkersApp() {
   const [noteDraft, setNoteDraft] = useState("");
   const [supervisorNoteDraft, setSupervisorNoteDraft] = useState("");
   const [profileBusy, setProfileBusy] = useState(false);
+  const [equipmentPasswordDraft, setEquipmentPasswordDraft] = useState("");
+  const [equipmentPasswordConfirm, setEquipmentPasswordConfirm] = useState("");
+  const [equipmentPasswordBusy, setEquipmentPasswordBusy] = useState(false);
   const [tenantRolesList, setTenantRolesList] = useState<TenantRoleRow[]>([]);
   const [profileTenantRoleDraft, setProfileTenantRoleDraft] = useState<string>("");
   const [permissionBypassEnabled, setPermissionBypassEnabled] = useState(false);
@@ -811,6 +815,8 @@ export function WorkersApp() {
   useEffect(() => {
     if (profileId) void loadProfile();
     else setProfile(null);
+    setEquipmentPasswordDraft("");
+    setEquipmentPasswordConfirm("");
   }, [profileId, loadProfile]);
 
   useEffect(() => {
@@ -896,6 +902,8 @@ export function WorkersApp() {
     if (principalHasAnyRole(profile, "company_admin")) return false;
     return isTenantFullAdmin || isSystemAdmin;
   }, [profile, session, isTenantFullAdmin, isSystemAdmin]);
+
+  const profileIsEquipmentAccount = Boolean(profile?.is_equipment_account);
 
   const clearProfileQueryFromUrl = useCallback(() => {
     const q = new URLSearchParams(searchParams.toString());
@@ -1434,6 +1442,31 @@ export function WorkersApp() {
       refresh();
     } finally {
       setProfileBusy(false);
+    }
+  }
+
+  async function saveEquipmentAccountPassword() {
+    if (!profileId || !profile || !isTenantFullAdmin || !profileIsEquipmentAccount) return;
+    const next = equipmentPasswordDraft.trim();
+    const confirm = equipmentPasswordConfirm.trim();
+    if (!next) {
+      window.alert("Enter a new password.");
+      return;
+    }
+    if (next !== confirm) {
+      window.alert("Passwords do not match.");
+      return;
+    }
+    setEquipmentPasswordBusy(true);
+    try {
+      await setEquipmentAccountPassword(apiCompany, profileId, next);
+      setEquipmentPasswordDraft("");
+      setEquipmentPasswordConfirm("");
+      setCreateToast({ message: "Scanner sign-in password updated.", variant: "success" });
+    } catch (e: unknown) {
+      setCreateToast({ message: parseClientApiError(e).message, variant: "error" });
+    } finally {
+      setEquipmentPasswordBusy(false);
     }
   }
 
@@ -2978,6 +3011,7 @@ export function WorkersApp() {
                 >
                   Profile
                 </button>
+                {!profileIsEquipmentAccount ? (
                 <button
                   type="button"
                   role="tab"
@@ -2992,6 +3026,7 @@ export function WorkersApp() {
                 >
                   Training matrix
                 </button>
+                ) : null}
               </div>
               {canDebugWorkerAccess ? (
                 <button
@@ -3009,7 +3044,7 @@ export function WorkersApp() {
               ) : null}
             </div>
 
-            {profileDrawerTab === "training" ? (
+            {profileDrawerTab === "training" && !profileIsEquipmentAccount ? (
               <WorkerTrainingMatrixPanel
                 employeeId={profile.id}
                 employeeName={profile.full_name?.trim() || profile.email}
@@ -3021,8 +3056,9 @@ export function WorkersApp() {
             <section>
               <h3 className={SECTION_KICKER}>Basic info</h3>
               <p className="mt-1 max-w-prose text-xs text-pulse-muted">
-                Changes here update this person&apos;s roster record for Pulse (schedule assignments, projects, device
-                ownership where linked by user, and permissions).
+                {profileIsEquipmentAccount
+                  ? "Dedicated equipment sign-in used on the inventory scanner kiosk tablet. Update the password when rotating kiosk credentials."
+                  : "Changes here update this person's roster record for Pulse (schedule assignments, projects, device ownership where linked by user, and permissions)."}
               </p>
               <div className="mt-3 flex items-center gap-3 sm:col-span-2">
                 <UserProfileAvatarPreview
@@ -3082,9 +3118,12 @@ export function WorkersApp() {
                           value={basicDraft.email}
                           onChange={(e) => setBasicDraft((d) => ({ ...d, email: e.target.value }))}
                           autoComplete="email"
+                          readOnly={profileIsEquipmentAccount}
                         />
                         <p className="mt-1 text-xs text-pulse-muted">
-                          This is the address they use to sign in; changing it updates their login identity.
+                          {profileIsEquipmentAccount
+                            ? "Fixed kiosk sign-in address for this tenant."
+                            : "This is the address they use to sign in; changing it updates their login identity."}
                         </p>
                       </div>
                     ) : (
@@ -3093,6 +3132,8 @@ export function WorkersApp() {
                         {profile.email}
                       </p>
                     )}
+                    {!profileIsEquipmentAccount ? (
+                    <>
                     <div>
                       <label className={LABEL} htmlFor="worker-profile-phone">
                         Phone
@@ -3143,6 +3184,8 @@ export function WorkersApp() {
                         Used on the schedule roster and worker profile; matches invite defaults when left unset.
                       </p>
                     </div>
+                    </>
+                    ) : null}
                   </>
                 ) : (
                   <>
@@ -3173,14 +3216,71 @@ export function WorkersApp() {
               </div>
             </section>
 
+            {profileIsEquipmentAccount && isTenantFullAdmin ? (
+              <section>
+                <h3 className={SECTION_KICKER}>Sign-in password</h3>
+                <p className="mt-1 max-w-prose text-xs text-pulse-muted">
+                  Set the password used on the kiosk tablet at{" "}
+                  <span className="font-mono text-ds-foreground">/kiosk/inventory-scanner</span>. Minimum 12 characters.
+                </p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div className="sm:col-span-2">
+                    <label className={LABEL} htmlFor="equipment-account-password">
+                      New password
+                    </label>
+                    <input
+                      id="equipment-account-password"
+                      type="password"
+                      className={FIELD}
+                      value={equipmentPasswordDraft}
+                      onChange={(e) => setEquipmentPasswordDraft(e.target.value)}
+                      autoComplete="new-password"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className={LABEL} htmlFor="equipment-account-password-confirm">
+                      Confirm password
+                    </label>
+                    <input
+                      id="equipment-account-password-confirm"
+                      type="password"
+                      className={FIELD}
+                      value={equipmentPasswordConfirm}
+                      onChange={(e) => setEquipmentPasswordConfirm(e.target.value)}
+                      autoComplete="new-password"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <button
+                      type="button"
+                      className={cn(buttonVariants({ surface: "light", intent: "primary" }), "px-4 py-2.5 text-sm")}
+                      disabled={equipmentPasswordBusy || !equipmentPasswordDraft.trim()}
+                      onClick={() => void saveEquipmentAccountPassword()}
+                    >
+                      {equipmentPasswordBusy ? (
+                        <span className="inline-flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                          Updating…
+                        </span>
+                      ) : (
+                        "Update password"
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </section>
+            ) : null}
 
-            {profile && list.find((r) => r.id === profile.id)?.is_unresolved ? (
+
+            {profile && !profileIsEquipmentAccount && list.find((r) => r.id === profile.id)?.is_unresolved ? (
               <div className="mb-4 rounded-lg border border-red-500/50 bg-red-500/15 px-3 py-2.5 text-sm text-red-50">
                 Authorization is unresolved for this worker. Set HR department and matrix slot, or use Apply department
                 baselines in Permissions.
               </div>
             ) : null}
 
+            {!profileIsEquipmentAccount ? (
+            <>
             <section>
               <h3 className={SECTION_KICKER}>Position &amp; shift</h3>
               {canEditWorkerBasics ? (
@@ -3608,11 +3708,33 @@ export function WorkersApp() {
               </div>
             </section>
 
-            {isTenantFullAdmin || canDeactivateProfile ? (
+            </>
+            ) : null}
+
+            {profileIsEquipmentAccount && isTenantFullAdmin ? (
+              <section>
+                <h3 className={SECTION_KICKER}>Account</h3>
+                <button
+                  type="button"
+                  className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-4 py-2 text-sm font-semibold")}
+                  onClick={() =>
+                    void openLoginActivity({
+                      id: profile.id,
+                      full_name: profile.full_name,
+                      email: profile.email,
+                    })
+                  }
+                >
+                  View login activity
+                </button>
+              </section>
+            ) : null}
+
+            {!profileIsEquipmentAccount && (isTenantFullAdmin || canDeactivateProfile) ? (
               <section>
                 <h3 className={SECTION_KICKER}>Account</h3>
                 <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                  {isTenantFullAdmin ? (
+                  {isTenantFullAdmin && !profileIsEquipmentAccount ? (
                     <button
                       type="button"
                       className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-4 py-2 text-sm font-semibold")}
@@ -3668,6 +3790,7 @@ export function WorkersApp() {
               </section>
             ) : null}
 
+            {!profileIsEquipmentAccount ? (
             <section>
               <h3 className={SECTION_KICKER}>Notes / supervisor comments</h3>
               <div className="mt-2 space-y-3">
@@ -3689,6 +3812,7 @@ export function WorkersApp() {
                 </div>
               </div>
             </section>
+            ) : null}
               </>
             ) : null}
           </div>
