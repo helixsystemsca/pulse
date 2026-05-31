@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -291,3 +291,36 @@ class InventoryContractorPatchIn(BaseModel):
     postal_code: Optional[str] = Field(None, max_length=32)
     country: Optional[str] = Field(None, max_length=128)
     is_active: Optional[bool] = None
+
+
+class InventoryScanLookupOut(BaseModel):
+    """Product summary for kiosk scanner modal."""
+
+    id: str
+    sku: str
+    name: str
+    item_type: str
+    category: Optional[str] = None
+    inv_status: str
+    quantity: float
+    unit: str
+    low_stock_threshold: float
+    location_name: Optional[str] = None
+    department_slug: str = "maintenance"
+
+
+class InventoryScanTransactionIn(BaseModel):
+    sku: str = Field(min_length=1, max_length=128)
+    action: Literal["receive", "issue"]
+    quantity: float = Field(gt=0)
+    notes: Optional[str] = Field(None, max_length=512)
+
+
+class InventoryScanTransactionOut(BaseModel):
+    item: InventoryScanLookupOut
+    action: Literal["receive", "issue"]
+    quantity_delta: float
+    quantity_before: float
+    quantity_after: float
+    movement_id: str
+    created_at: datetime

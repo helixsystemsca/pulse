@@ -28,6 +28,7 @@ import {
   stepHasTourTarget,
 } from "@/lib/onboarding/tour-target";
 import { buildNavigationTree } from "@/lib/navigation/build-navigation-tree";
+import { isInventoryScannerOnlySession } from "@/lib/inventory-scanner/scanner-session";
 import { useOnboardingFlyoutBridge } from "@/lib/onboarding/onboarding-flyout-bridge";
 import { hasProductTour, resolveProductTour } from "@/lib/onboarding/tour-registry";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
@@ -128,7 +129,8 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
     () => resolveProductTour(pathname, navigationTree),
     [pathname, navigationTree],
   );
-  const tourEnabled = hasProductTour(pathname, navigationTree);
+  const tourEnabled =
+    hasProductTour(pathname, navigationTree) && !isInventoryScannerOnlySession(session);
   const tourId = activeTour?.id ?? null;
   const showsCompletionScreen = Boolean(activeTour?.showCompletionScreen);
   const steps = useMemo(
@@ -445,7 +447,7 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
               </div>
             ) : (
               <div className="start-icon" aria-hidden>
-                <img src="/images/panoramalogo.png" alt="" className="start-icon__logo" />
+                <img src="/images/panoramalogo2.png" alt="" className="start-icon__logo" />
               </div>
             )}
             <h2 id="tour-welcome-title" className="start-title">

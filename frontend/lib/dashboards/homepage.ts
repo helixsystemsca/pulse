@@ -4,6 +4,7 @@
  */
 import { DASHBOARD_CATALOG, getDashboardCatalogEntry, type DashboardCatalogEntry } from "@/lib/dashboards/catalog";
 import type { PulseAuthSession } from "@/lib/pulse-session";
+import { isInventoryScannerOnlySession } from "@/lib/inventory-scanner/scanner-session";
 import { sessionPrimaryRole } from "@/lib/pulse-roles";
 import { canAccessClassicNavHref } from "@/lib/rbac/session-access";
 
@@ -99,6 +100,13 @@ export function accessibleDashboardsForSession(session: PulseAuthSession | null)
 export function resolvePostLoginLandingPath(session: PulseAuthSession | null): string {
   if (!session) return "/login";
   if (session.is_system_admin || session.role === "system_admin") return "/system";
+
+  if (
+    isInventoryScannerOnlySession(session) &&
+    canAccessClassicNavHref(session, "/kiosk/inventory-scanner")
+  ) {
+    return "/kiosk/inventory-scanner";
+  }
 
   if (canAccessClassicNavHref(session, "/overview")) {
     return "/overview";

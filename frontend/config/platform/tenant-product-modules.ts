@@ -18,7 +18,7 @@ export const PRODUCT_MODULE_PERMISSION_SECTIONS: readonly {
     id: "operations",
     label: "Maintenance & operations",
     description: "Work requests, inspections & logs, inventory, equipment, and projects.",
-    keys: ["work_requests", "logs_inspections", "inventory", "equipment", "projects"],
+    keys: ["work_requests", "logs_inspections", "inventory", "inventory_scanner", "equipment", "projects"],
   },
   {
     id: "training",
@@ -75,6 +75,7 @@ export const MODULE_LABEL: Record<CanonicalFeatureKey, string> = {
   monitoring: "Monitoring",
   logs_inspections: "Inspections & logs",
   inventory: "Inventory",
+  inventory_scanner: "Inventory scanner",
   standards: "Standards",
   team_management: "Permissions",
   team_insights: "Team Insights",

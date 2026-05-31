@@ -95,6 +95,7 @@ const MAINTENANCE_OPS_KEYS = [
   "work_requests",
   "logs_inspections",
   "inventory",
+  "inventory_scanner",
   "equipment",
   "monitoring",
   "projects",
@@ -171,7 +172,7 @@ export const MASTER_PERMISSION_FEATURE_GROUPS: PermissionFeatureGroup[] = [
     id: "ops",
     label: "Maintenance & operations",
     description: "Work requests, inspections & logs, inventory, equipment, monitoring, and projects.",
-    keys: [...MAINTENANCE_OPS_KEYS],
+    keys: ["work_requests", "logs_inspections", "inventory", "inventory_scanner", "equipment", "monitoring", "projects"],
   },
   {
     id: "comms",

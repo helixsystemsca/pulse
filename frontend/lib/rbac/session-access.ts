@@ -130,6 +130,13 @@ function classicNavGate(href: string): NavGate {
       rbacAnyOf: [`dashboard.dept.${slug}.view`, "dashboard.view"],
     };
   }
+  if (h.startsWith("/kiosk/inventory-scanner")) {
+    return {
+      kind: "module",
+      companyModules: ["inventory_scanner"],
+      rbacAnyOf: ["inventory.scan", "inventory.manage"],
+    };
+  }
   if (h.startsWith("/kiosk/")) {
     return {
       kind: "module",

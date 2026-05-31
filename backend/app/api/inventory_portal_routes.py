@@ -62,6 +62,9 @@ from app.schemas.inventory_portal import (
     InventoryVendorCreateIn,
     InventoryVendorOut,
     InventoryVendorPatchIn,
+    InventoryScanLookupOut,
+    InventoryScanTransactionIn,
+    InventoryScanTransactionOut,
 )
 
 router = APIRouter(prefix="/inventory", tags=["inventory"])
@@ -123,8 +126,9 @@ async def resolve_inv_company_id(
 
 CompanyId = Annotated[str, Depends(resolve_inv_company_id)]
 Db = Annotated[AsyncSession, Depends(get_db)]
-InvUser = Annotated[User, Depends(require_any_rbac("inventory.view", "inventory.manage"))]
-InvManageUser = Annotated[User, Depends(require_any_rbac("inventory.manage"))]
+InvUser = Annotated[User, Depends(require_any_rbac("inventory.view", "inventory.manage", "inventory.scan"))]
+InvManageUser = Annotated[User, Depends(require_any_rbac("inventory.manage", "inventory.scan"))]
+InvScanUser = Annotated[User, Depends(require_any_rbac("inventory.scan", "inventory.manage"))]
 
 
 async def resolve_inventory_policy(
@@ -981,6 +985,131 @@ async def list_inventory(
         items.append(_row(it, users=users, zones=zones, tools=tools, last_used=lu))
 
     return InventoryListOut(items=items, total=total, summary=summ)
+
+
+async def _lookup_item_by_sku(
+    db: AsyncSession,
+    cid: str,
+    policy: EffectiveInventoryPolicy,
+    sku: str,
+) -> InventoryItem:
+    normalized = sku.strip()
+    if not normalized:
+        raise HTTPException(status_code=400, detail="SKU is required")
+    stmt = select(InventoryItem).where(
+        InventoryItem.company_id == cid,
+        func.lower(InventoryItem.sku) == normalized.lower(),
+    )
+    if not policy.is_company_admin and policy.readable_scope_ids:
+        stmt = stmt.where(InventoryItem.scope_id.in_(list(policy.readable_scope_ids)))
+    item = (await db.execute(stmt)).scalar_one_or_none()
+    if item is None:
+        raise HTTPException(status_code=404, detail="No inventory item for this SKU")
+    if not inv_scope_repo.can_read_inventory_item(policy, item):
+        raise HTTPException(status_code=404, detail="No inventory item for this SKU")
+    return item
+
+
+def _scan_lookup_out(
+    item: InventoryItem,
+    *,
+    users: dict[str, User],
+    zones: dict[str, Zone],
+    tools: dict[str, Tool],
+) -> InventoryScanLookupOut:
+    z = zones.get(item.zone_id) if item.zone_id else None
+    return InventoryScanLookupOut(
+        id=item.id,
+        sku=item.sku,
+        name=item.name,
+        item_type=item.item_type,
+        category=item.category,
+        inv_status=item.inv_status,
+        quantity=item.quantity,
+        unit=item.unit,
+        low_stock_threshold=item.low_stock_threshold,
+        location_name=z.name if z else None,
+        department_slug=item.department_slug or "maintenance",
+    )
+
+
+@router.get("/scan/by-sku/{sku}", response_model=InventoryScanLookupOut)
+async def lookup_inventory_by_sku(
+    db: Db,
+    _: InvScanUser,
+    cid: CompanyId,
+    policy: InventoryPolicyDep,
+    sku: str,
+) -> InventoryScanLookupOut:
+    item = await _lookup_item_by_sku(db, cid, policy, sku)
+    users, zones, tools = await _ctx_maps(db, cid)
+    return _scan_lookup_out(item, users=users, zones=zones, tools=tools)
+
+
+@router.post("/scan/transaction", response_model=InventoryScanTransactionOut)
+async def post_inventory_scan_transaction(
+    db: Db,
+    user: InvManageUser,
+    cid: CompanyId,
+    policy: InventoryPolicyDep,
+    body: InventoryScanTransactionIn,
+) -> InventoryScanTransactionOut:
+    item = await _lookup_item_by_sku(db, cid, policy, body.sku)
+    if not inv_scope_repo.can_write_inventory_item(policy, item):
+        raise HTTPException(status_code=403, detail="Inventory write denied")
+
+    qty = float(body.quantity)
+    before = float(item.quantity)
+    if body.action == "receive":
+        after = before + qty
+        delta = qty
+        action = "scanner_received"
+    else:
+        after = before - qty
+        if after < 0:
+            raise HTTPException(status_code=400, detail="Insufficient stock for issue")
+        delta = -qty
+        action = "scanner_issued"
+
+    item.quantity = after
+    _recompute_status(item)
+    item.last_movement_at = datetime.now(timezone.utc)
+    movement_id = str(uuid4())
+    db.add(
+        InventoryMovement(
+            id=movement_id,
+            company_id=cid,
+            item_id=item.id,
+            action=action,
+            performed_by=user.id,
+            zone_id=item.zone_id,
+            quantity=abs(qty),
+            meta={
+                "channel": "inventory_scanner_kiosk",
+                "transaction": body.action,
+                "quantity_before": before,
+                "quantity_after": after,
+                "quantity_delta": delta,
+                "sku": item.sku,
+                "category": item.category,
+                "item_type": item.item_type,
+                "notes": (body.notes or "").strip() or None,
+            },
+        )
+    )
+    await db.commit()
+    await db.refresh(item)
+    users, zones, tools = await _ctx_maps(db, cid)
+    mv = await db.get(InventoryMovement, movement_id)
+    return InventoryScanTransactionOut(
+        item=_scan_lookup_out(item, users=users, zones=zones, tools=tools),
+        action=body.action,
+        quantity_delta=delta,
+        quantity_before=before,
+        quantity_after=after,
+        movement_id=movement_id,
+        created_at=mv.created_at if mv else datetime.now(timezone.utc),
+    )
 
 
 @router.get("/{item_id}", response_model=InventoryDetailOut)

@@ -24,6 +24,7 @@ GLOBAL_SYSTEM_FEATURES: tuple[str, ...] = (
     "team_management",
     "messaging",
     "inventory",
+    "inventory_scanner",
     "equipment",
     "drawings",
     "zones_devices",

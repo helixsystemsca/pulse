@@ -108,6 +108,7 @@ export const RBAC_PERMISSION_CATALOG: readonly RbacPermissionMeta[] = [
   { key: "compliance.manage", label: "Manage compliance", description: "Review, resend, flag, and update compliance records.", module: "compliance", category: "Operations" },
   { key: "inventory.view", label: "View inventory", description: "Browse inventory catalog.", module: "inventory", category: "Operations" },
   { key: "inventory.manage", label: "Manage inventory", description: "Adjust stock and inventory configuration.", module: "inventory", category: "Operations" },
+  { key: "inventory.scan", label: "Inventory scanner kiosk", description: "Receive and issue stock from the tablet scanner kiosk.", module: "inventory_scanner", category: "Operations" },
   { key: "equipment.view", label: "View equipment", description: "Equipment registry and tool tracking.", module: "equipment", category: "Operations" },
   { key: "equipment.manage", label: "Manage equipment", description: "Create, update, and delete equipment and parts.", module: "equipment", category: "Operations" },
   { key: "procedures.view", label: "View procedures", description: "Standards procedures, SOP sign-offs, and quizzes.", module: "procedures", category: "People & Quality" },

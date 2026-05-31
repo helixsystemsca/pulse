@@ -117,8 +117,9 @@ async def resolve_effective_inventory_policy(
             effective_feature_names=eff,
         )
     )
-    has_inventory_access = "*" in rbac_keys or "inventory.view" in rbac_keys or "inventory.manage" in rbac_keys
-    has_manage = "*" in rbac_keys or "inventory.manage" in rbac_keys
+    has_scan = "*" in rbac_keys or "inventory.scan" in rbac_keys
+    has_inventory_access = "*" in rbac_keys or "inventory.view" in rbac_keys or "inventory.manage" in rbac_keys or has_scan
+    has_manage = "*" in rbac_keys or "inventory.manage" in rbac_keys or has_scan
 
     if not has_inventory_access:
         return empty
@@ -137,6 +138,13 @@ async def resolve_effective_inventory_policy(
         read, write = _apply_overrides(read, write, overrides)
         xfer = set(write)
         return EffectiveInventoryPolicy(read, write, xfer, True)
+
+    if has_scan:
+        read = set(all_ids)
+        write = set(all_ids)
+        read, write = _apply_overrides(read, write, overrides)
+        xfer = set(write)
+        return EffectiveInventoryPolicy(read, write, xfer, False)
 
     hr_row = await db.execute(select(PulseWorkerHR).where(PulseWorkerHR.user_id == user.id))
     hr = hr_row.scalar_one_or_none()

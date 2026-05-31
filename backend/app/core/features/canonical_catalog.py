@@ -21,6 +21,7 @@ CANONICAL_PRODUCT_FEATURES: tuple[str, ...] = (
     "monitoring",
     "logs_inspections",
     "inventory",
+    "inventory_scanner",
     "standards",
     "team_management",
     "team_insights",

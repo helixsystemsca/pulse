@@ -20,6 +20,7 @@ export const CANONICAL_PRODUCT_FEATURES = [
   "monitoring",
   "logs_inspections",
   "inventory",
+  "inventory_scanner",
   "standards",
   "team_management",
   "team_insights",
