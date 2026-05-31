@@ -1,5 +1,5 @@
 import type { PulseAuthSession } from "@/lib/pulse-session";
-import { hasRbacPermission } from "@/lib/rbac/session-access";
+import { can, hasRbacPermission } from "@/lib/rbac/session-access";
 
 /** Tablet scanner kiosk account — scan permission without full inventory UI access. */
 export function isInventoryScannerOnlySession(session: PulseAuthSession | null): boolean {
@@ -9,4 +9,10 @@ export function isInventoryScannerOnlySession(session: PulseAuthSession | null):
     return false;
   }
   return true;
+}
+
+/** Receive/issue kiosk — dedicated scanner role or staff with inventory access. */
+export function canAccessInventoryScanner(session: PulseAuthSession | null): boolean {
+  if (!session) return false;
+  return can(session, "inventory.scan") || can(session, "inventory.manage");
 }

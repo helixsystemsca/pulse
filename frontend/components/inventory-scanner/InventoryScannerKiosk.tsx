@@ -1,7 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import { useCallback, useEffect, useRef, useState, type ComponentPropsWithoutRef } from "react";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, Clock, LogOut, MapPin, Minus, Package, Plus, Search, TrendingUp } from "lucide-react";
 
 import { Card } from "@/components/pulse/Card";
@@ -24,12 +24,20 @@ import {
   type ScannerRecentItem,
 } from "@/lib/inventory-scanner/scanner-recent";
 import { performPulseLogout } from "@/lib/pulse-auth-lifecycle";
+import { pulseAppHref } from "@/lib/pulse-app";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { cn } from "@/lib/cn";
 import { dsInputClass } from "@/components/ui/ds-form-classes";
 import { useResolvedProtectedAssetSrc } from "@/lib/useResolvedProtectedAssetSrc";
 
 type ScanAction = "receive" | "issue";
+
+/** Dedicated tablet login vs staff opening scanner from Inventory. */
+export type InventoryScannerPresentation = "dedicated" | "staff";
+
+type InventoryScannerKioskProps = {
+  presentation?: InventoryScannerPresentation;
+};
 
 const SCANNER_LOBSTER = "#e85d6f";
 const BTN_RADIUS = "rounded-xl";
@@ -260,7 +268,8 @@ function QuickPickButton({
   );
 }
 
-export function InventoryScannerKiosk() {
+export function InventoryScannerKiosk({ presentation = "dedicated" }: InventoryScannerKioskProps) {
+  const router = useRouter();
   const [product, setProduct] = useState<InventoryScanProduct | null>(null);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -412,6 +421,14 @@ export function InventoryScannerKiosk() {
     void performPulseLogout("user").finally(() => setLogoutBusy(false));
   };
 
+  const onBackToInventory = () => {
+    if (typeof window !== "undefined" && window.opener && !window.opener.closed) {
+      window.close();
+      return;
+    }
+    router.push(pulseAppHref("/dashboard/inventory"));
+  };
+
   return (
     <div className="relative flex min-h-0 flex-1 flex-col bg-ds-bg text-ds-foreground">
       <ScannerConnectionBadge status={connectionStatus} />
@@ -438,20 +455,37 @@ export function InventoryScannerKiosk() {
             <p className="hidden text-sm text-ds-muted sm:block">Search or scan to receive / issue stock</p>
           </div>
         </div>
-        <ScannerBubbleButton
-          type="button"
-          onClick={onLogout}
-          disabled={logoutBusy || busy}
-          className={cn(
-            bubbleIdle,
-            BTN_RADIUS_SM,
-            "inline-flex shrink-0 items-center gap-2 px-4 py-2.5 text-sm font-semibold sm:px-5 sm:py-3 sm:text-base",
-          )}
-          title="Sign out (testing)"
-        >
-          <LogOut className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
-          Log out
-        </ScannerBubbleButton>
+        {presentation === "dedicated" ? (
+          <ScannerBubbleButton
+            type="button"
+            onClick={onLogout}
+            disabled={logoutBusy || busy}
+            className={cn(
+              bubbleIdle,
+              BTN_RADIUS_SM,
+              "inline-flex shrink-0 items-center gap-2 px-4 py-2.5 text-sm font-semibold sm:px-5 sm:py-3 sm:text-base",
+            )}
+            title="Sign out kiosk account"
+          >
+            <LogOut className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
+            Log out
+          </ScannerBubbleButton>
+        ) : (
+          <ScannerBubbleButton
+            type="button"
+            onClick={onBackToInventory}
+            disabled={busy}
+            className={cn(
+              bubbleIdle,
+              BTN_RADIUS_SM,
+              "inline-flex shrink-0 items-center gap-2 px-4 py-2.5 text-sm font-semibold sm:px-5 sm:py-3 sm:text-base",
+            )}
+            title="Return to Inventory"
+          >
+            <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
+            Back to inventory
+          </ScannerBubbleButton>
+        )}
       </header>
 
       <main className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-4 py-6 sm:px-8 sm:py-8">

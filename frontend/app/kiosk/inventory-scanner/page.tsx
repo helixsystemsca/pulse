@@ -1,10 +1,11 @@
 "use client";
 
 import { InventoryScannerKiosk } from "@/components/inventory-scanner/InventoryScannerKiosk";
+import { useInventoryScannerFullscreen } from "@/hooks/useInventoryScannerFullscreen";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { isApiMode } from "@/lib/api";
+import { canAccessInventoryScanner, isInventoryScannerOnlySession } from "@/lib/inventory-scanner/scanner-session";
 import { navigateToPulseLogin } from "@/lib/pulse-app";
-import { can } from "@/lib/rbac/session-access";
 import { readSession } from "@/lib/pulse-session";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -13,6 +14,9 @@ export default function InventoryScannerKioskPage() {
   const router = useRouter();
   const { session } = usePulseAuth();
   const [ready, setReady] = useState(false);
+  const dedicatedKiosk = isInventoryScannerOnlySession(session ?? null);
+
+  useInventoryScannerFullscreen(ready && Boolean(session));
 
   useEffect(() => {
     const s = readSession();
@@ -29,7 +33,7 @@ export default function InventoryScannerKioskPage() {
 
   useEffect(() => {
     if (!ready || !session) return;
-    if (!can(session, "inventory.scan") && !can(session, "inventory.manage")) {
+    if (!canAccessInventoryScanner(session)) {
       router.replace("/overview");
     }
   }, [ready, router, session]);
@@ -42,9 +46,9 @@ export default function InventoryScannerKioskPage() {
     );
   }
 
-  if (!can(session, "inventory.scan") && !can(session, "inventory.manage")) {
+  if (!canAccessInventoryScanner(session)) {
     return null;
   }
 
-  return <InventoryScannerKiosk />;
+  return <InventoryScannerKiosk presentation={dedicatedKiosk ? "dedicated" : "staff"} />;
 }

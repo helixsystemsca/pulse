@@ -54,6 +54,15 @@ function canShowTeamManagement(session: PulseAuthSession | null, isSystemAdmin: 
   return isUserFeatureEnabled(session, "team_management") && hasRbacPermission(session, "team_management.view");
 }
 
+/** Staff with full Inventory use the header kiosk button; sidebar Scanner is for scan-only accounts. */
+function inventoryScannerSidebarHiddenForInventoryStaff(
+  session: PulseAuthSession | null,
+  isSystemAdmin: boolean,
+): boolean {
+  if (isSystemAdmin || !session) return false;
+  return isUserFeatureEnabled(session, "inventory") && hasRbacPermission(session, "inventory.view");
+}
+
 export type TenantSidebarNavItem = {
   key: string;
   href: string;
@@ -135,6 +144,14 @@ export function explainMasterFeatureVisibility(
     }
     return { visible: false, reason: "Missing RBAC key `team_management.view`." };
   }
+  if (feature.key === "inventory_scanner") {
+    if (inventoryScannerSidebarHiddenForInventoryStaff(session, isSystemAdmin)) {
+      return {
+        visible: false,
+        reason: "Inventory staff open the scanner from the Inventory page header (Scanner kiosk).",
+      };
+    }
+  }
   if (!session) {
     return { visible: false, reason: "No session." };
   }
@@ -204,6 +221,9 @@ export function isMasterFeatureVisibleForSession(
   }
   if (feature.key === "team_management" || feature.key === "permissions") {
     return canShowTeamManagement(session, isSystemAdmin);
+  }
+  if (feature.key === "inventory_scanner" && inventoryScannerSidebarHiddenForInventoryStaff(session, isSystemAdmin)) {
+    return false;
   }
   if (!session) return false;
   if (session.is_system_admin || session.role === "system_admin") return true;

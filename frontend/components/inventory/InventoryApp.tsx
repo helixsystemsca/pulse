@@ -17,6 +17,7 @@ import {
   MapPin,
   MoreVertical,
   Package,
+  ScanBarcode,
   Search,
   Settings,
   TrendingUp,
@@ -27,6 +28,8 @@ import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from "r
 import { PulseDrawer } from "@/components/schedule/PulseDrawer";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { apiFetch } from "@/lib/api";
+import { pulseAppHref } from "@/lib/pulse-app";
+import { INVENTORY_SCANNER_KIOSK_PATH } from "@/lib/inventory-scanner/scanner-kiosk";
 import {
   fetchPulseAssetsCached,
   fetchPulseWorkersOptsCached,
@@ -253,6 +256,7 @@ export function InventoryApp() {
   const sessionCompanyId = session?.company_id ?? null;
   const canViewInventory = can("inventory.view") || can("inventory.manage");
   const canMutateInventory = can("inventory.manage");
+  const canOpenScannerKiosk = can("inventory.scan") || can("inventory.manage");
   const userInventoryDepartment = defaultInventoryDepartmentFromSession(session);
 
   const [companyPick, setCompanyPick] = useState<string | null>(null);
@@ -925,6 +929,21 @@ export function InventoryApp() {
         }
         actions={
           <>
+            {canOpenScannerKiosk ? (
+              <a
+                href={pulseAppHref(INVENTORY_SCANNER_KIOSK_PATH)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(
+                  buttonVariants({ surface: "light", intent: "secondary" }),
+                  "inline-flex items-center gap-2 px-4 py-2.5",
+                )}
+                title="Open fullscreen scanner kiosk in a new tab"
+              >
+                <ScanBarcode className="h-4 w-4" aria-hidden />
+                Scanner kiosk
+              </a>
+            ) : null}
             {inventoryTab === "items" ? (
               <>
                 <button
