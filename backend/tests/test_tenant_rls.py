@@ -53,7 +53,7 @@ async def test_pulse_rls_policy_functions_exist(db_session):
 
 
 @pytest.mark.asyncio
-async def test_cross_tenant_select_blocked_when_rls_enforced(db_session, tenant_seed):
+async def test_cross_tenant_select_blocked_when_rls_enforced(db_session, seeded_tenant):
     """
     Optional integration: set TEST_DATABASE_RLS_ROLE to a non-superuser role with SELECT on jobs.
 
@@ -67,7 +67,7 @@ async def test_cross_tenant_select_blocked_when_rls_enforced(db_session, tenant_
 
     other_company = "99999999-9999-9999-9999-999999999999"
     await db_session.execute(text(f"SET ROLE {rls_role}"))
-    await apply_pulse_rls_context(db_session, company_id=tenant_seed.company_id, is_system_admin=False)
+    await apply_pulse_rls_context(db_session, company_id=seeded_tenant.company_id, is_system_admin=False)
     count = (
         await db_session.execute(
             text("SELECT count(*) FROM jobs WHERE company_id = :cid"),
