@@ -54,6 +54,7 @@ export const MATRIX_LICENSABLE_CHILDREN: Partial<Record<string, readonly Canonic
     "dashboard_dept_racquets",
     "dashboard_dept_admin",
   ],
+  inventory: ["inventory", "inventory_scanner"],
 };
 
 export function expandMatrixLicensableKeys(rawCatalog: readonly string[]): Set<string> {

@@ -11,6 +11,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/cn";
 import {
+  dispatchWelcomeOverlayClosed,
   isWelcomeOverlayDismissed,
   markWelcomeOverlayDismissed,
   PULSE_WELCOME_SESSION_KEY,
@@ -139,7 +140,10 @@ export function WelcomeLoaderModal({
 
   useEffect(() => {
     setHydrated(true);
-  }, []);
+    if (dismissedOnMount) {
+      dispatchWelcomeOverlayClosed();
+    }
+  }, [dismissedOnMount]);
 
   useEffect(() => {
     if (open) overlayVisitedRef.current = true;
@@ -214,6 +218,7 @@ export function WelcomeLoaderModal({
       markWelcomeOverlayDismissed(storageKey);
       setSkipEntirely(true);
       setOpen(false);
+      dispatchWelcomeOverlayClosed();
       onWelcomeComplete?.();
     }, WELCOME_PHASE_MS);
     return () => {

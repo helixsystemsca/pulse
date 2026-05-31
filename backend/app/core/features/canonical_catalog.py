@@ -118,6 +118,7 @@ _MATRIX_LICENSABLE_CHILDREN: dict[str, tuple[str, ...]] = {
     ),
     "drawings": ("drawings", "facilities_spatial", "spatial_infrastructure"),
     "dashboard": tuple(k for k in CANONICAL_PRODUCT_FEATURES if k == "dashboard" or k.startswith("dashboard_")),
+    "inventory": ("inventory", "inventory_scanner"),
 }
 
 

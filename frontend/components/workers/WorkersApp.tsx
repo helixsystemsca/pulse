@@ -498,6 +498,14 @@ export function WorkersApp() {
     [contractCatalog],
   );
 
+  const contractHasModule = useCallback(
+    (keys: string | readonly string[]) => {
+      const list = typeof keys === "string" ? [keys] : keys;
+      return list.some((k) => matrixContractKeySet.has(k));
+    },
+    [matrixContractKeySet],
+  );
+
   const [companyPick, setCompanyPick] = useState<string | null>(null);
   const [companies, setCompanies] = useState<CompanyOption[]>([]);
   const effectiveCompanyId = isSystemAdmin ? companyPick : sessionCompanyId;
@@ -1927,7 +1935,7 @@ export function WorkersApp() {
             ) : null}
 
 
-            {isTenantFullAdmin ? (
+            {isTenantFullAdmin && contractHasModule(["procedures", "standards"]) ? (
               <Card variant="secondary" padding="md">
                 <h2 className="text-sm font-bold tracking-tight text-ds-foreground">Procedure editing</h2>
                 <p className="mt-1 text-xs text-ds-muted">
@@ -1963,7 +1971,7 @@ export function WorkersApp() {
               </Card>
             ) : null}
 
-            {isTenantFullAdmin ? (
+            {isTenantFullAdmin && contractHasModule("work_requests") ? (
               <Card variant="secondary" padding="md">
                 <h2 className="text-sm font-bold tracking-tight text-ds-foreground">Work request editing</h2>
                 <p className="mt-1 text-xs text-ds-muted">
@@ -1997,7 +2005,7 @@ export function WorkersApp() {
               </Card>
             ) : null}
 
-            {isTenantFullAdmin ? (
+            {isTenantFullAdmin && contractHasModule("work_requests") ? (
               <Card variant="secondary" padding="md">
                 <h2 className="text-sm font-bold tracking-tight text-ds-foreground">Facility locations (zones)</h2>
                 <p className="mt-1 text-xs text-ds-muted">

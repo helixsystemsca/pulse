@@ -133,7 +133,7 @@ function classicNavGate(href: string): NavGate {
   if (h.startsWith("/kiosk/inventory-scanner")) {
     return {
       kind: "module",
-      companyModules: ["inventory_scanner"],
+      companyModules: ["inventory", "inventory_scanner"],
       rbacAnyOf: ["inventory.scan", "inventory.manage"],
     };
   }
@@ -236,9 +236,6 @@ export function canAccessClassicNavHref(session: PulseAuthSession | null, href: 
   const h = normalizeHref(href);
   if (isPmProjectManagementHref(h)) {
     return canAccessProjectManagement(session);
-  }
-  if ((h === "/overview" || h.startsWith("/overview/")) && isTenantFullAdminSession(session)) {
-    return true;
   }
   if (h === "/admin") {
     return isTenantFullAdminSession(session);

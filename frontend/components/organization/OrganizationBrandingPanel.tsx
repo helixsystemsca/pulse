@@ -198,7 +198,7 @@ export function OrganizationBrandingPanel({ initialCompany, onCompanyUpdated }: 
       <Card variant="secondary" padding="lg">
         <SectionHeader
           title="Organization logo"
-          description="Shown in the sidebar and headers. Upload an image (max 2MB) or set a public https URL."
+          description="Shown in the sidebar, headers, and the inventory scanner kiosk. Upload an image (max 2MB) or set a public https URL."
         />
 
         <div className="mt-4 flex flex-wrap items-center gap-4">

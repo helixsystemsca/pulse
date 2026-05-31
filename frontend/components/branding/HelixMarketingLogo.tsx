@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { PLATFORM_DEFAULT_LOGO_SRC } from "@/lib/branding/platform-defaults";
 
 type Variant = "header" | "compact";
 
@@ -39,7 +40,7 @@ export function HelixMarketingLogo({
   return (
     <span className={`${frameClass[variant]} ${className}`.trim()}>
       <Image
-        src="/images/helix_cropped_tight.png"
+        src={PLATFORM_DEFAULT_LOGO_SRC}
         alt="Helix Systems"
         width={1920}
         height={640}

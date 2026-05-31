@@ -6,7 +6,7 @@ import { DASHBOARD_CATALOG, getDashboardCatalogEntry, type DashboardCatalogEntry
 import type { PulseAuthSession } from "@/lib/pulse-session";
 import { isInventoryScannerOnlySession } from "@/lib/inventory-scanner/scanner-session";
 import { sessionPrimaryRole } from "@/lib/pulse-roles";
-import { canAccessClassicNavHref } from "@/lib/rbac/session-access";
+import { canAccessClassicNavHref, tenantHasAnyCompanyModule } from "@/lib/rbac/session-access";
 
 const STORAGE_KEY = "pulse.dashboard.homepage.override.v1";
 
@@ -34,6 +34,18 @@ const DEPARTMENT_DEFAULT_DASHBOARD_ID: Record<string, string> = {
   racquets: "dashboard_dept_racquets",
   admin: "dashboard_dept_admin",
 };
+
+/** Product module homes when the tenant has no dashboard routes. */
+const CONTRACT_MODULE_HOME_ROUTES: readonly { contractKeys: readonly string[]; route: string }[] = [
+  { contractKeys: ["inventory", "inventory_scanner"], route: "/dashboard/inventory" },
+  { contractKeys: ["work_requests"], route: "/dashboard/maintenance" },
+  { contractKeys: ["monitoring"], route: "/monitoring" },
+  { contractKeys: ["equipment", "tool_tracking", "rtls_tracking"], route: "/dashboard/equipment" },
+  { contractKeys: ["projects"], route: "/planning" },
+  { contractKeys: ["schedule"], route: "/schedule" },
+  { contractKeys: ["procedures", "standards"], route: "/standards" },
+  { contractKeys: ["team_management"], route: "/team-management" },
+];
 
 export type DashboardHomepagePreference = {
   dashboardId: string;
@@ -159,6 +171,11 @@ export function resolveAssignedDashboardHomepage(session: PulseAuthSession | nul
   for (const d of DASHBOARD_CATALOG) {
     const route = routeForCatalogEntry(session, d);
     if (route) return route;
+  }
+
+  for (const entry of CONTRACT_MODULE_HOME_ROUTES) {
+    if (!tenantHasAnyCompanyModule(session, entry.contractKeys)) continue;
+    if (canAccessClassicNavHref(session, entry.route)) return entry.route;
   }
 
   return "/settings";

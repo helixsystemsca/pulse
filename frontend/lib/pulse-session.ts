@@ -58,6 +58,21 @@ export function markWelcomeOverlayDismissed(
   }
 }
 
+/** Fired when the post-login welcome overlay fully closes (overview / worker landing). */
+export const PULSE_WELCOME_OVERLAY_CLOSED_EVENT = "pulse-welcome-overlay-closed";
+
+export function dispatchWelcomeOverlayClosed(): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(PULSE_WELCOME_OVERLAY_CLOSED_EVENT));
+}
+
+/** Routes that show {@link WelcomeLoaderModal} before product tours may start. */
+export function isWelcomeGatedLandingPath(pathname: string): boolean {
+  const base = pathname.split("?")[0] ?? pathname;
+  const normalized = base.endsWith("/") && base.length > 1 ? base.slice(0, -1) : base;
+  return normalized === "/overview" || normalized === "/worker";
+}
+
 /** Populated from `/api/v1/auth/me` for tenant users. */
 import type { OrganizationTheme } from "@/lib/theme/organization-branding"; // type-only
 

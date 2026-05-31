@@ -5,6 +5,7 @@
  */
 import {
   canonicalizeFeatureKeys,
+  canonicalKeysFromContractExpanded,
   contractKeyForCanonical,
   contractKeysForCanonical,
   toCanonicalFeatureKey,
@@ -69,6 +70,8 @@ function canonicalFeatureOnContract(session: PulseAuthSession | null, featureKey
   if (isTenantFeatureOnContract(session, featureKey)) return true;
   const canonical = toCanonicalFeatureKey(featureKey);
   if (!canonical) return false;
+  const expanded = new Set(canonicalKeysFromContractExpanded(tenantEnabledFeatures(session)));
+  if (expanded.has(canonical)) return true;
   for (const contractKey of contractKeysForCanonical([canonical])) {
     if (isTenantFeatureOnContract(session, contractKey)) return true;
   }

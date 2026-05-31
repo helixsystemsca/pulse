@@ -15,6 +15,13 @@ def test_contract_schedule_expands_flyout_keys() -> None:
     assert "pm_workspace" not in keys
 
 
+def test_contract_inventory_expands_scanner_key() -> None:
+    keys = canonical_keys_from_contract(["inventory"])
+    assert "inventory" in keys
+    assert "inventory_scanner" in keys
+    assert "equipment" not in keys
+
+
 def test_matrix_may_store_flyout_keys() -> None:
     allowed = matrix_feature_keys_allowed_in_settings()
     assert "schedule_availability" in allowed

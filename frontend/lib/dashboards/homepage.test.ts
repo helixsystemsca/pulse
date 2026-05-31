@@ -69,6 +69,19 @@ describe("resolveAssignedDashboardHomepage", () => {
       ),
     ).toBe("/dashboard/maintenance");
   });
+
+  it("falls back to inventory when dashboard is not on contract", () => {
+    expect(
+      resolveAssignedDashboardHomepage(
+        session({
+          role: "company_admin",
+          contract_features: ["inventory"],
+          enabled_features: ["inventory"],
+          rbac_permissions: ["inventory.view", "inventory.manage"],
+        }),
+      ),
+    ).toBe("/dashboard/inventory");
+  });
 });
 
 describe("resolvePostLoginLandingPath", () => {
@@ -98,5 +111,18 @@ describe("resolvePostLoginLandingPath", () => {
         }),
       ),
     ).toBe("/dashboard/maintenance");
+  });
+
+  it("sends inventory-only company admins to inventory instead of overview", () => {
+    expect(
+      resolvePostLoginLandingPath(
+        session({
+          role: "company_admin",
+          contract_features: ["inventory"],
+          enabled_features: ["inventory"],
+          rbac_permissions: ["inventory.view", "inventory.manage"],
+        }),
+      ),
+    ).toBe("/dashboard/inventory");
   });
 });

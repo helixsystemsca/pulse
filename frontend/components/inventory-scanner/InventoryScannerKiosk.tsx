@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState, type ComponentPropsWithoutRef
 import { ArrowLeft, Clock, LogOut, MapPin, Minus, Package, Plus, Search, TrendingUp } from "lucide-react";
 
 import { Card } from "@/components/pulse/Card";
+import { TenantBrandMark } from "@/components/branding/TenantBrandMark";
 
 import {
   useBarcodeScannerInput,
@@ -128,13 +129,14 @@ function ScannerBubbleButton({ className, disabled, onPointerDown, ...rest }: Sc
 
 function ScannerConnectionBadge({ status }: { status: ScannerConnectionStatus }) {
   const connected = status === "connected";
+  const statusColor = connected ? "var(--ds-success)" : SCANNER_LOBSTER;
   return (
     <div
       className={cn(
         "pointer-events-none fixed bottom-4 right-4 z-30 flex items-center gap-2 rounded-full border-2 px-3 py-1.5 text-xs font-semibold backdrop-blur-sm sm:bottom-5 sm:right-5",
         connected
-          ? "border-[color-mix(in_srgb,var(--ds-success)_40%,var(--ds-border))] bg-[color-mix(in_srgb,var(--ds-success)_14%,var(--ds-bg))] text-[var(--ds-success)]"
-          : "border-[color-mix(in_srgb,#e85d6f_40%,var(--ds-border))] bg-[color-mix(in_srgb,#e85d6f_14%,var(--ds-bg))] text-[#e85d6f]",
+          ? "border-[color-mix(in_srgb,var(--ds-success)_40%,var(--ds-border))] bg-[color-mix(in_srgb,var(--ds-success)_14%,var(--ds-bg))]"
+          : "border-[color-mix(in_srgb,#e85d6f_40%,var(--ds-border))] bg-[color-mix(in_srgb,#e85d6f_14%,var(--ds-bg))]",
       )}
       role="status"
       aria-live="polite"
@@ -142,10 +144,13 @@ function ScannerConnectionBadge({ status }: { status: ScannerConnectionStatus })
     >
       <span
         className="h-2 w-2 shrink-0 rounded-full"
-        style={{ backgroundColor: connected ? "var(--ds-success)" : SCANNER_LOBSTER }}
+        style={{ backgroundColor: statusColor }}
         aria-hidden
       />
-      Scanner: {connected ? "Connected" : "Disconnected"}
+      <span className="text-black dark:text-ds-foreground">
+        Scanner:{" "}
+        <span style={{ color: statusColor }}>{connected ? "Connected" : "Disconnected"}</span>
+      </span>
     </div>
   );
 }
@@ -427,14 +432,7 @@ export function InventoryScannerKiosk() {
 
       <header className="flex shrink-0 items-center justify-between gap-4 border-b border-ds-border/80 bg-ds-primary/90 px-4 py-3 backdrop-blur-sm sm:px-6 sm:py-4">
         <div className="flex min-w-0 items-center gap-3 sm:gap-5">
-          <Image
-            src="/images/panoramalogo2.png"
-            alt="Panorama"
-            width={140}
-            height={56}
-            priority
-            className="h-11 w-auto shrink-0 object-contain sm:h-12"
-          />
+          <TenantBrandMark className="h-11 w-auto shrink-0 sm:h-12" />
           <div className="min-w-0">
             <h1 className="text-2xl font-bold tracking-tight text-ds-foreground sm:text-3xl">Inventory</h1>
             <p className="hidden text-sm text-ds-muted sm:block">Search or scan to receive / issue stock</p>

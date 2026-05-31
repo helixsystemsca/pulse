@@ -29,6 +29,11 @@ import {
 } from "@/lib/onboarding/tour-target";
 import { buildNavigationTree } from "@/lib/navigation/build-navigation-tree";
 import { isInventoryScannerOnlySession } from "@/lib/inventory-scanner/scanner-session";
+import {
+  isWelcomeGatedLandingPath,
+  isWelcomeOverlayDismissed,
+  PULSE_WELCOME_OVERLAY_CLOSED_EVENT,
+} from "@/lib/pulse-session";
 import { useOnboardingFlyoutBridge } from "@/lib/onboarding/onboarding-flyout-bridge";
 import { hasProductTour, resolveProductTour } from "@/lib/onboarding/tour-registry";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
@@ -148,11 +153,27 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
   const [spotlightStyle, setSpotlightStyle] = useState<SpotlightStyle | null>(null);
   const [cardStyle, setCardStyle] = useState<CardStyle | null>(null);
   const [rotateIndex, setRotateIndex] = useState(0);
+  const welcomeGated = isWelcomeGatedLandingPath(pathname);
+  const [welcomeGateReady, setWelcomeGateReady] = useState(() => !welcomeGated);
 
   useEffect(() => {
     setMounted(true);
     void loadOnboardingToursFromServer().finally(() => setToursHydrated(true));
   }, []);
+
+  useEffect(() => {
+    if (!welcomeGated) {
+      setWelcomeGateReady(true);
+      return;
+    }
+    setWelcomeGateReady(false);
+    if (isWelcomeOverlayDismissed()) {
+      setWelcomeGateReady(true);
+    }
+    const onWelcomeClosed = () => setWelcomeGateReady(true);
+    window.addEventListener(PULSE_WELCOME_OVERLAY_CLOSED_EVENT, onWelcomeClosed);
+    return () => window.removeEventListener(PULSE_WELCOME_OVERLAY_CLOSED_EVENT, onWelcomeClosed);
+  }, [welcomeGated, pathname]);
 
   useEffect(() => {
     setIsActive(false);
@@ -168,13 +189,13 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
   }, [currentStep]);
 
   useEffect(() => {
-    if (!mounted || !toursHydrated || !tourEnabled || !tourId) return;
+    if (!mounted || !toursHydrated || !tourEnabled || !tourId || !welcomeGateReady) return;
     if (!isTourCompletedMerged(tourId)) {
       setCurrentStep(0);
       setShowWelcome(true);
       setIsActive(false);
     }
-  }, [mounted, toursHydrated, tourEnabled, tourId]);
+  }, [mounted, toursHydrated, tourEnabled, tourId, welcomeGateReady]);
 
   useEffect(() => {
     flyoutBridge?.setTourActive(isActive);
@@ -454,9 +475,14 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
               {welcomeTitle}
             </h2>
             <p className="start-subtitle">{welcomeSubtitle}</p>
-            <button type="button" className="btn-start" onClick={beginTourFromWelcome}>
-              Get started
-            </button>
+            <div className="tour-start-actions">
+              <button type="button" className="btn-start" onClick={beginTourFromWelcome}>
+                Get started
+              </button>
+              <button type="button" className="btn-tour-skip" onClick={endTour}>
+                Skip tour
+              </button>
+            </div>
           </div>
         ) : null}
 
@@ -528,6 +554,9 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
               ) : null}
               <button type="button" className="tour-btn tour-btn-primary" onClick={nextStep}>
                 {currentStep === steps.length - 1 ? "Finish" : "Next"}
+              </button>
+              <button type="button" className="tour-btn tour-btn-skip" onClick={endTour}>
+                Skip
               </button>
             </div>
             {steps.length > 1 ? (

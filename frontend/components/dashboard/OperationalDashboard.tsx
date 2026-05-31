@@ -86,7 +86,7 @@ import { isUserFeatureEnabled } from "@/lib/features/tenant-features";
 import { fetchDashboardBootstrap } from "@/lib/pulse/dashboard-bootstrap";
 import { primePulseReferenceFromBootstrap } from "@/lib/pulse/pulse-reference-data";
 import { fetchWorkRequestKpiSummary } from "@/lib/work-requests/kpi-summary";
-import { hasRbacPermission } from "@/lib/rbac/session-access";
+import { hasRbacPermission, tenantHasAnyCompanyModule } from "@/lib/rbac/session-access";
 import {
   buildOperationalNotificationItems,
   notificationCountsFromAlerts,
@@ -98,6 +98,26 @@ const OPS_DASH_HEADER_TOOL = "ops-dash-header-icon-btn";
 const OPS_DASH_HEADER_TOOL_ACTIVE = "ops-dash-header-icon-btn--active";
 
 const BC_TZ = "America/Vancouver";
+
+/** Built-in ops widgets require matching tenant contract modules (not demo filler). */
+const OPS_WIDGET_CONTRACT: Record<string, readonly string[]> = {
+  notifications_work_orders: ["work_requests"],
+  training_compliance: ["procedures", "standards"],
+  co2_monitoring: ["monitoring"],
+  workforce: ["schedule", "team_management"],
+  routine_assignments: ["procedures", "standards"],
+  facility_schedule: ["schedule"],
+  important_dates: ["dashboard"],
+  low_inventory: ["inventory"],
+  pool_readings: ["monitoring"],
+};
+
+function opsWidgetAllowed(session: PulseAuthSession | null, widgetId: string): boolean {
+  const required = OPS_WIDGET_CONTRACT[widgetId];
+  if (!required?.length) return true;
+  if (!session) return false;
+  return tenantHasAnyCompanyModule(session, required);
+}
 
 function timeInBc(d: Date): string {
   return d.toLocaleTimeString(undefined, { timeZone: BC_TZ, hour: "2-digit", minute: "2-digit" });
@@ -1402,8 +1422,11 @@ function DashboardBody({
   }, [model, workOrdersHref, workRequestKpiLoading]);
 
   const allWidgetKeys = useMemo(() => {
-    return Object.keys(widgetRegistry).filter((k) => (widgetRegistry as Record<string, unknown>)[k] != null);
-  }, [widgetRegistry]);
+    return Object.keys(widgetRegistry).filter((k) => {
+      if ((widgetRegistry as Record<string, unknown>)[k] == null) return false;
+      return opsWidgetAllowed(session, k);
+    });
+  }, [widgetRegistry, session]);
 
   /** Stable while the set of built-in widget ids is unchanged — avoids re-hydrating layout on every `model` tick. */
   const builtinWidgetIdsSignature = [...allWidgetKeys].sort().join("|");
