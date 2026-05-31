@@ -4,7 +4,10 @@ import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Clock, LogOut, Minus, Plus, Search, TrendingUp } from "lucide-react";
 
-import { useBarcodeScannerInput } from "@/lib/inventory-scanner/useBarcodeScannerInput";
+import {
+  useBarcodeScannerInput,
+  type ScannerConnectionStatus,
+} from "@/lib/inventory-scanner/useBarcodeScannerInput";
 import {
   fetchPopularInventoryProducts,
   postInventoryScanTransaction,
@@ -31,6 +34,32 @@ const scannerSearchClass = cn(
 );
 
 const panelClass = "rounded-2xl border border-ds-border bg-ds-secondary shadow-sm";
+
+const SCANNER_LOBSTER = "#e85d6f";
+
+function ScannerConnectionBadge({ status }: { status: ScannerConnectionStatus }) {
+  const connected = status === "connected";
+  return (
+    <div
+      className={cn(
+        "pointer-events-none fixed bottom-4 right-4 z-30 flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold shadow-md backdrop-blur-sm sm:bottom-6 sm:right-6",
+        connected
+          ? "border-[color-mix(in_srgb,var(--ds-success)_40%,var(--ds-border))] bg-[color-mix(in_srgb,var(--ds-success)_14%,var(--ds-bg))] text-[var(--ds-success)]"
+          : "border-[color-mix(in_srgb,#e85d6f_40%,var(--ds-border))] bg-[color-mix(in_srgb,#e85d6f_14%,var(--ds-bg))] text-[#e85d6f]",
+      )}
+      role="status"
+      aria-live="polite"
+      aria-label={connected ? "Scanner connected" : "Scanner disconnected"}
+    >
+      <span
+        className="h-2 w-2 shrink-0 rounded-full"
+        style={{ backgroundColor: connected ? "var(--ds-success)" : SCANNER_LOBSTER }}
+        aria-hidden
+      />
+      Scanner: {connected ? "Connected" : "Disconnected"}
+    </div>
+  );
+}
 
 function statusLabel(status: string): string {
   return status.replace(/_/g, " ");
@@ -142,10 +171,11 @@ export function InventoryScannerKiosk() {
     [busy, selectProduct],
   );
 
-  const { inputRef: scannerInputRef, handleKeyDown, handleChange } = useBarcodeScannerInput({
-    enabled: true,
-    onScan: handleScan,
-  });
+  const { inputRef: scannerInputRef, handleKeyDown, handleChange, connectionStatus } =
+    useBarcodeScannerInput({
+      enabled: true,
+      onScan: handleScan,
+    });
 
   useEffect(() => {
     if (!flash) return;
@@ -217,6 +247,7 @@ export function InventoryScannerKiosk() {
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col bg-ds-bg text-ds-foreground">
+      <ScannerConnectionBadge status={connectionStatus} />
       <input
         ref={scannerInputRef}
         type="text"

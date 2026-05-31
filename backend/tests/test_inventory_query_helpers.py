@@ -9,6 +9,7 @@ import pytest
 
 from app.api.inventory_query_helpers import last_used_at_map
 from app.models.domain import InventoryItem, InventoryMovement, InventoryUsage
+from app.models.pulse_models import PulseWorkRequest
 from app.repositories.inventory_scope_repository import ensure_scope_for_company_slug
 
 
@@ -52,12 +53,21 @@ async def test_last_used_at_map_batches(db_session, seeded_tenant) -> None:
     )
     t1 = datetime(2025, 1, 1, tzinfo=timezone.utc)
     t2 = datetime(2025, 6, 1, tzinfo=timezone.utc)
+    wr_id = str(uuid4())
+    db_session.add(
+        PulseWorkRequest(
+            id=wr_id,
+            company_id=cid,
+            work_order_number=1,
+            title="Test usage WO",
+        )
+    )
     db_session.add(
         InventoryUsage(
             id=str(uuid4()),
             company_id=cid,
             item_id=i1,
-            work_request_id=str(uuid4()),
+            work_request_id=wr_id,
             quantity=1,
             created_at=t1,
         )

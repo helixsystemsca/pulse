@@ -1,6 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+export type ScannerConnectionStatus = "connected" | "disconnected";
+
+/** Recent scan / HID activity keeps the badge green. */
+const SCANNER_ACTIVITY_TTL_MS = 45_000;
 
 type Options = {
   enabled?: boolean;
@@ -21,10 +26,21 @@ function isManualInputFocused(): boolean {
  * USB/BLE HID scanners behave like a keyboard: rapid chars ending with Enter.
  * Uses a hidden input kept focused for reliability on tablets.
  */
+function isListeningForScanner(input: HTMLInputElement | null): boolean {
+  if (!input || typeof document === "undefined") return false;
+  return document.activeElement === input && !isManualInputFocused();
+}
+
 export function useBarcodeScannerInput({ enabled = true, maxInterKeyMs = 50, onScan }: Options) {
   const inputRef = useRef<HTMLInputElement>(null);
   const bufferRef = useRef("");
   const lastKeyAtRef = useRef(0);
+  const lastActivityAtRef = useRef(0);
+  const [connectionStatus, setConnectionStatus] = useState<ScannerConnectionStatus>("disconnected");
+
+  const touchScannerActivity = useCallback(() => {
+    lastActivityAtRef.current = Date.now();
+  }, []);
 
   const focusInput = useCallback(() => {
     if (!enabled || isManualInputFocused()) return;
@@ -45,6 +61,27 @@ export function useBarcodeScannerInput({ enabled = true, maxInterKeyMs = 50, onS
     };
   }, [enabled, focusInput]);
 
+  useEffect(() => {
+    if (!enabled) {
+      setConnectionStatus("disconnected");
+      return;
+    }
+    const evaluate = () => {
+      const now = Date.now();
+      const recentActivity = now - lastActivityAtRef.current < SCANNER_ACTIVITY_TTL_MS;
+      const listening = isListeningForScanner(inputRef.current);
+      setConnectionStatus(recentActivity || listening ? "connected" : "disconnected");
+    };
+    evaluate();
+    const id = window.setInterval(evaluate, 500);
+    const onFocusIn = () => evaluate();
+    document.addEventListener("focusin", onFocusIn);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("focusin", onFocusIn);
+    };
+  }, [enabled]);
+
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (!enabled) return;
@@ -59,14 +96,18 @@ export function useBarcodeScannerInput({ enabled = true, maxInterKeyMs = 50, onS
         const raw = bufferRef.current.trim();
         bufferRef.current = "";
         if (inputRef.current) inputRef.current.value = "";
-        if (raw) onScan(raw);
+        if (raw) {
+          touchScannerActivity();
+          onScan(raw);
+        }
         return;
       }
       if (e.key.length === 1) {
+        touchScannerActivity();
         bufferRef.current += e.key;
       }
     },
-    [enabled, maxInterKeyMs, onScan],
+    [enabled, maxInterKeyMs, onScan, touchScannerActivity],
   );
 
   const handleChange = useCallback(
@@ -77,11 +118,14 @@ export function useBarcodeScannerInput({ enabled = true, maxInterKeyMs = 50, onS
         const raw = v.replace(/[\r\n]+/g, "").trim();
         e.target.value = "";
         bufferRef.current = "";
-        if (raw) onScan(raw);
+        if (raw) {
+          touchScannerActivity();
+          onScan(raw);
+        }
       }
     },
-    [enabled, onScan],
+    [enabled, onScan, touchScannerActivity],
   );
 
-  return { inputRef, handleKeyDown, handleChange, focusInput };
+  return { inputRef, handleKeyDown, handleChange, focusInput, connectionStatus };
 }
