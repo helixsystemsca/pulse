@@ -155,7 +155,7 @@ _CHILD_POLICIES: dict[str, str] = {
     "planning_idea_approvals": """
         EXISTS (
           SELECT 1 FROM planning_ideas i
-          WHERE i.id = planning_idea_approvals.idea_id AND pulse_rls_tenant_visible(i.company_id)
+          WHERE i.id = planning_idea_approvals.planning_idea_id AND pulse_rls_tenant_visible(i.company_id)
         )
     """,
     "pm_coord_task_dependencies": """
