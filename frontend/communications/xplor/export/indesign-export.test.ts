@@ -38,4 +38,12 @@ describe("InDesign export", () => {
     expect(exp.taggedRtf).toMatch(/^\{\\rtf1/);
     expect(exp.paragraphCount).toBeGreaterThan(5);
   });
+
+  it("emits Xplor-native paragraph style tags for InDesign libraries", () => {
+    const { export: exp } = runPublicationPipeline(SAMPLE);
+    expect(exp.xplorNativeTxt).toContain("<pstyle:Eventname>");
+    expect(exp.xplorNativeTxt).toContain("<pstyle:Eventage>");
+    expect(exp.xplorNativeTxt).toContain("<pstyle:Eventdetail>");
+    expect(exp.xplorNativeTxt).not.toContain("<pstyle:ProgramTitle>");
+  });
 });

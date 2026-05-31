@@ -3,7 +3,7 @@
  */
 
 import { attachSessionGroups } from "./export/group-sessions";
-import { countExportParagraphs, exportPublicationToIndesignTxt } from "./export/indesign-tagged";
+import { countExportParagraphs, exportLegacyXplorTaggedText, exportPublicationToIndesignTxt } from "./export/indesign-tagged";
 import { exportPublicationToIndesignRtf } from "./export/indesign-rtf";
 import { preprocessInput } from "./ingest";
 import { normalizePublicationEntries } from "./normalize/publication";
@@ -65,12 +65,13 @@ export function runPublicationPipeline(
       plainText,
       isXplorTagged: false,
       document: { preamble: "", entries: [], warnings: [], confidence: 0 },
-      export: { taggedTxt: plainText, taggedRtf: "", paragraphCount: 0 },
+      export: { taggedTxt: plainText, xplorNativeTxt: plainText, taggedRtf: "", paragraphCount: 0 },
     };
   }
 
   const document = buildDocument(plainText);
   const taggedTxt = exportPublicationToIndesignTxt(document);
+  const xplorNativeTxt = exportLegacyXplorTaggedText(document.entries, document.preamble);
   const taggedRtf = exportPublicationToIndesignRtf(document);
 
   return {
@@ -79,6 +80,7 @@ export function runPublicationPipeline(
     document,
     export: {
       taggedTxt,
+      xplorNativeTxt,
       taggedRtf,
       paragraphCount: countExportParagraphs(document),
     },

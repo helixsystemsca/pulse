@@ -2,7 +2,7 @@
  * Deterministic InDesign-tagged TXT export — paragraph styles for GREP / import automation.
  */
 
-import { formatInstructor, formatSessionDateRange, hasInstructorName } from "../normalize/brochure-format";
+import { formatInstructor, formatSessionDateRange, formatSessionPrice, hasInstructorName } from "../normalize/brochure-format";
 import type { PublicationDocument, PublicationEntry, PublicationSession } from "../schema/publication";
 
 const BLANK_BETWEEN_PARAGRAPHS = "\n";
@@ -90,7 +90,7 @@ export function countExportParagraphs(doc: PublicationDocument): number {
   return text.split("\n").filter((l) => l.trim().length > 0).length;
 }
 
-/** Legacy Xplor tag export (Event* styles) for backward compatibility. */
+/** Legacy Xplor tag export (Event* styles) for InDesign templates mapped to Xplor/OCR style names. */
 export function exportLegacyXplorTaggedText(
   entries: PublicationEntry[],
   preamble = "",
@@ -103,13 +103,20 @@ export function exportLegacyXplorTaggedText(
     if (e.title) lines.push(`<pstyle:Eventname>${e.title}`);
     if (e.description) lines.push(`<pstyle:Eventdescription>${e.description}`);
     if (e.location) lines.push(`<pstyle:Location>${e.location}`);
-    if (e.instructor) lines.push(`<pstyle:Instructor>${e.instructor}`);
+    if (hasInstructorName(e.instructor)) {
+      lines.push(`<pstyle:Instructor>${formatInstructor(e.instructor)}`);
+    }
     for (const s of e.sessions) {
-      const parts = [s.days, s.time, s.startDate, s.endDate, s.price, s.programCode].filter(Boolean);
+      const datePart = formatSessionDateRange(s.startDate, s.endDate);
+      const pricePart = formatSessionPrice(s.price, s.sessionCount);
+      const parts = [s.days, s.time, datePart, pricePart, s.programCode].filter(Boolean);
       if (parts.length) lines.push(`<pstyle:Eventdetail>${parts.join(" ")}`);
       else if (s.rawLine) lines.push(`<pstyle:Eventdetail>${s.rawLine}`);
     }
-    if (e.extraFees) lines.push(`<pstyle:Extrafee>${e.extraFees}`);
+    if (e.extraFees.trim()) lines.push(`<pstyle:Extrafee>${e.extraFees}`);
+    for (const block of e.sourceMetadata.unmappedBlocks ?? []) {
+      if (block.content.trim()) lines.push(`<pstyle:${block.style}>${block.content.trim()}`);
+    }
     if (lines.length) chunks.push(lines.join("\n"));
   }
   return chunks.join("\n\n").trim();

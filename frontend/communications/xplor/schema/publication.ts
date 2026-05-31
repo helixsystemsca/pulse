@@ -61,7 +61,10 @@ export type PublicationDocument = {
 };
 
 export type PublicationExportResult = {
+  /** Canonical paragraph styles (ProgramTitle, SessionDays, …) for GREP-mapped templates. */
   taggedTxt: string;
+  /** Xplor-native paragraph styles (Eventname, Eventdetail, …) for existing InDesign libraries. */
+  xplorNativeTxt: string;
   taggedRtf: string;
   paragraphCount: number;
 };

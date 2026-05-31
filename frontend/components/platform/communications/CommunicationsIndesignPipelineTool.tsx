@@ -21,6 +21,7 @@ export function CommunicationsIndesignPipelineTool() {
   const [sourceName, setSourceName] = useState<string | null>(null);
   const [compareMode, setCompareMode] = useState(false);
   const [showQaPreview, setShowQaPreview] = useState(true);
+  const [exportPreviewMode, setExportPreviewMode] = useState<"canonical" | "xplor">("xplor");
 
   const preprocessed = useMemo(() => (body.trim() ? preprocessInput(body, { filename: sourceName }) : null), [body, sourceName]);
 
@@ -30,8 +31,28 @@ export function CommunicationsIndesignPipelineTool() {
     return runPublicationPipeline(body, { filename: sourceName });
   }, [body, sourceName, preprocessed?.plainText]);
 
-  const exportTxt = pipeline?.export.taggedTxt ?? preprocessed?.plainText ?? "";
+  const canonicalExportTxt = pipeline?.export.taggedTxt ?? preprocessed?.plainText ?? "";
+  const xplorExportTxt = pipeline?.export.xplorNativeTxt ?? preprocessed?.plainText ?? "";
+  const exportTxt = exportPreviewMode === "xplor" ? xplorExportTxt : canonicalExportTxt;
   const hasPublication = Boolean(pipeline?.document.entries.length);
+
+  const downloadBlob = useCallback((text: string, suffix: string) => {
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const a = document.createElement("a");
+    const safe = title.replace(/[^\w\-]+/g, "_").slice(0, 80) || "indesign_handoff";
+    a.href = URL.createObjectURL(blob);
+    a.download = `${safe}${suffix}.txt`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }, [title]);
+
+  const downloadCanonicalTxt = useCallback(() => {
+    downloadBlob(canonicalExportTxt, "_canonical");
+  }, [canonicalExportTxt, downloadBlob]);
+
+  const downloadXplorTxt = useCallback(() => {
+    downloadBlob(xplorExportTxt, "_xplor");
+  }, [downloadBlob, xplorExportTxt]);
 
   const onFile = useCallback(async (file: File | null) => {
     if (!file) return;
@@ -44,25 +65,16 @@ export function CommunicationsIndesignPipelineTool() {
     }
   }, []);
 
-  const downloadTxt = useCallback(() => {
-    const blob = new Blob([exportTxt], { type: "text/plain;charset=utf-8" });
-    const a = document.createElement("a");
-    const safe = title.replace(/[^\w\-]+/g, "_").slice(0, 80) || "indesign_handoff";
-    a.href = URL.createObjectURL(blob);
-    a.download = `${safe}.txt`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  }, [exportTxt, title]);
-
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <div>
         <h1 className="text-xl font-bold tracking-tight text-ds-foreground">Xplor → InDesign publication pipeline</h1>
         <p className="mt-1 text-sm text-ds-muted">
-          Normalize Xplor/OCR tagged text into deterministic paragraph-style export for Adobe InDesign (File → Place).
-          React preview is for QA only — final output is tagged <span className="font-mono">.txt</span> for InDesign
-          (File → Place). Upload <span className="font-mono">.rtf</span> or <span className="font-mono">.txt</span> from
-          Xplor.
+          Parse and clean Xplor tagged text, then export for Adobe InDesign (File → Place). The brochure preview below
+          is React layout only — it is not written into the <span className="font-mono">.txt</span>. InDesign only
+          recognizes <span className="font-mono">pstyle:</span> paragraph style names in the export file; use the
+          Xplor-native download if your template uses <span className="font-mono">Eventname</span> /{" "}
+          <span className="font-mono">Eventdetail</span> styles.
         </p>
       </div>
 
@@ -116,13 +128,54 @@ export function CommunicationsIndesignPipelineTool() {
       <Card className="space-y-4 p-5 border-[color-mix(in_srgb,var(--ds-accent)_22%,transparent)]">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-bold uppercase tracking-wide text-ds-foreground">InDesign export</h2>
-          {hasPublication ? (
-            <span className="text-xs text-ds-muted">
-              {pipeline!.export.paragraphCount} paragraphs · confidence{" "}
-              {(pipeline!.document.confidence * 100).toFixed(0)}%
-            </span>
-          ) : null}
+          <div className="flex flex-wrap items-center gap-2">
+            {hasPublication ? (
+              <span className="text-xs text-ds-muted">
+                {pipeline!.export.paragraphCount} paragraphs · confidence{" "}
+                {(pipeline!.document.confidence * 100).toFixed(0)}%
+              </span>
+            ) : null}
+            <div className="inline-flex rounded-lg border border-ds-border p-0.5 text-xs">
+              <button
+                type="button"
+                className={cn(
+                  "rounded-md px-2.5 py-1 font-semibold",
+                  exportPreviewMode === "xplor"
+                    ? "bg-[var(--ds-accent)] text-white"
+                    : "text-ds-muted hover:text-ds-foreground",
+                )}
+                onClick={() => setExportPreviewMode("xplor")}
+              >
+                Xplor styles
+              </button>
+              <button
+                type="button"
+                className={cn(
+                  "rounded-md px-2.5 py-1 font-semibold",
+                  exportPreviewMode === "canonical"
+                    ? "bg-[var(--ds-accent)] text-white"
+                    : "text-ds-muted hover:text-ds-foreground",
+                )}
+                onClick={() => setExportPreviewMode("canonical")}
+              >
+                Canonical styles
+              </button>
+            </div>
+          </div>
         </div>
+        <p className="text-xs text-ds-muted">
+          {exportPreviewMode === "xplor" ? (
+            <>
+              Uses original Xplor style names (<span className="font-mono">Eventname</span>,{" "}
+              <span className="font-mono">Eventdetail</span>, …) — best for existing InDesign paragraph style libraries.
+            </>
+          ) : (
+            <>
+              Uses normalized style names (<span className="font-mono">ProgramTitle</span>,{" "}
+              <span className="font-mono">SessionDays</span>, …) — best for GREP templates built for this pipeline.
+            </>
+          )}
+        </p>
         <pre
           className={cn(
             "max-h-[320px] overflow-auto whitespace-pre-wrap rounded-lg border border-ds-border bg-ds-secondary p-3",
@@ -135,11 +188,20 @@ export function CommunicationsIndesignPipelineTool() {
           <button
             type="button"
             className="inline-flex items-center gap-2 rounded-lg bg-[var(--ds-accent)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-            disabled={!exportTxt.trim()}
-            onClick={downloadTxt}
+            disabled={!xplorExportTxt.trim()}
+            onClick={downloadXplorTxt}
           >
             <FileDown className="h-4 w-4" aria-hidden />
-            Download tagged .txt
+            Download Xplor-native .txt
+          </button>
+          <button
+            type="button"
+            className="inline-flex items-center gap-2 rounded-lg border border-ds-border bg-ds-secondary px-4 py-2 text-sm font-semibold text-ds-foreground disabled:opacity-50"
+            disabled={!canonicalExportTxt.trim()}
+            onClick={downloadCanonicalTxt}
+          >
+            <FileDown className="h-4 w-4" aria-hidden />
+            Download canonical .txt
           </button>
         </div>
       </Card>

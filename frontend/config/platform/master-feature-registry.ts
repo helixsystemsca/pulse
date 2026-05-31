@@ -38,6 +38,7 @@ export type MasterFeatureIcon =
   | "users"
   | "map-pin"
   | "radio"
+  | "scan-barcode"
   | "settings"
   | "layers";
 
