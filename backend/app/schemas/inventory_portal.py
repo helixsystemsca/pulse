@@ -306,6 +306,7 @@ class InventoryScanLookupOut(BaseModel):
     unit: str
     low_stock_threshold: float
     location_name: Optional[str] = None
+    image_url: Optional[str] = None
     department_slug: str = "maintenance"
 
 

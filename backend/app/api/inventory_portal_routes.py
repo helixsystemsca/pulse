@@ -997,6 +997,7 @@ def _scan_lookup_out(
     tools: dict[str, Tool],
 ) -> InventoryScanLookupOut:
     z = zones.get(item.zone_id) if item.zone_id else None
+    t = tools.get(item.linked_tool_id) if item.linked_tool_id else None
     return InventoryScanLookupOut(
         id=item.id,
         sku=item.sku,
@@ -1008,6 +1009,7 @@ def _scan_lookup_out(
         unit=item.unit,
         low_stock_threshold=item.low_stock_threshold,
         location_name=z.name if z else None,
+        image_url=t.image_url if t else None,
         department_slug=item.department_slug or "maintenance",
     )
 

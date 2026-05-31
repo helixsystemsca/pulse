@@ -2,7 +2,9 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState, type ComponentPropsWithoutRef } from "react";
-import { Clock, LogOut, Minus, Plus, Search, TrendingUp } from "lucide-react";
+import { ArrowLeft, Clock, LogOut, MapPin, Minus, Package, Plus, Search, TrendingUp } from "lucide-react";
+
+import { Card } from "@/components/pulse/Card";
 
 import {
   useBarcodeScannerInput,
@@ -24,10 +26,13 @@ import { performPulseLogout } from "@/lib/pulse-auth-lifecycle";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { cn } from "@/lib/cn";
 import { dsInputClass } from "@/components/ui/ds-form-classes";
+import { useResolvedProtectedAssetSrc } from "@/lib/useResolvedProtectedAssetSrc";
 
 type ScanAction = "receive" | "issue";
 
 const SCANNER_LOBSTER = "#e85d6f";
+const BTN_RADIUS = "rounded-xl";
+const BTN_RADIUS_SM = "rounded-lg";
 
 /** Short tap — works on Android tablets; no-op where unsupported. */
 function scannerHaptic(ms = 14) {
@@ -36,65 +41,73 @@ function scannerHaptic(ms = 14) {
   }
 }
 
-const bubbleStroke = "border-2 border-[color-mix(in_srgb,var(--ds-text-primary)_32%,var(--ds-border))]";
+const bubbleStroke = "border-2 border-[color-mix(in_srgb,var(--ds-text-primary)_28%,var(--ds-border))]";
 
 const bubbleDepth =
-  "shadow-[inset_0_2px_0_rgba(255,255,255,0.72),inset_0_-3px_6px_rgba(15,23,42,0.1)] active:translate-y-[2px] active:shadow-[inset_0_4px_10px_rgba(15,23,42,0.18),inset_0_1px_2px_rgba(15,23,42,0.1)]";
+  "shadow-[inset_0_1px_0_rgba(255,255,255,0.85),inset_0_-2px_4px_rgba(15,23,42,0.07)] active:translate-y-px active:shadow-[inset_0_3px_8px_rgba(15,23,42,0.14)]";
 
 const bubbleBase = cn(
-  "relative overflow-hidden backdrop-blur-xl transition-[transform,box-shadow] duration-75 disabled:pointer-events-none disabled:opacity-45",
+  "relative overflow-hidden transition-[transform,box-shadow,background-color] duration-100 disabled:pointer-events-none disabled:opacity-45",
   bubbleStroke,
   bubbleDepth,
 );
 
 const bubbleIdle = cn(
   bubbleBase,
-  "bg-gradient-to-br from-white/75 via-white/45 to-[color-mix(in_srgb,var(--ds-accent)_10%,transparent)]",
+  BTN_RADIUS,
+  "bg-[color-mix(in_srgb,var(--ds-surface-elevated)_88%,white)] text-ds-foreground",
 );
 
 const bubbleActiveReceive = cn(
   bubbleBase,
+  BTN_RADIUS,
   "border-[var(--ds-success)]",
-  "bg-gradient-to-br from-[color-mix(in_srgb,var(--ds-success)_28%,white)] via-[color-mix(in_srgb,var(--ds-success)_16%,white/60)] to-[color-mix(in_srgb,var(--ds-success)_8%,transparent)]",
-  "shadow-[inset_0_2px_0_rgba(255,255,255,0.75),inset_0_-2px_5px_color-mix(in_srgb,var(--ds-success)_18%,transparent)]",
-  "active:shadow-[inset_0_4px_10px_color-mix(in_srgb,var(--ds-success)_22%,transparent),inset_0_1px_2px_rgba(15,23,42,0.08)]",
+  "bg-gradient-to-b from-[color-mix(in_srgb,var(--ds-success)_22%,white)] to-[color-mix(in_srgb,var(--ds-success)_8%,var(--ds-surface-secondary))]",
+  "text-[color-mix(in_srgb,var(--ds-success)_85%,#0f172a)]",
+  "shadow-[inset_0_1px_0_rgba(255,255,255,0.8),inset_0_-2px_4px_color-mix(in_srgb,var(--ds-success)_14%,transparent)]",
 );
 
 const bubbleActiveIssue = cn(
   bubbleBase,
+  BTN_RADIUS,
   "border-[#e85d6f]",
-  "bg-gradient-to-br from-[color-mix(in_srgb,#e85d6f_24%,white)] via-[color-mix(in_srgb,#e85d6f_14%,white/60)] to-[color-mix(in_srgb,#e85d6f_8%,transparent)]",
-  "shadow-[inset_0_2px_0_rgba(255,255,255,0.75),inset_0_-2px_5px_color-mix(in_srgb,#e85d6f_16%,transparent)]",
-  "active:shadow-[inset_0_4px_10px_color-mix(in_srgb,#e85d6f_20%,transparent),inset_0_1px_2px_rgba(15,23,42,0.08)]",
+  "bg-gradient-to-b from-[color-mix(in_srgb,#e85d6f_20%,white)] to-[color-mix(in_srgb,#e85d6f_8%,var(--ds-surface-secondary))]",
+  "text-[color-mix(in_srgb,#e85d6f_88%,#0f172a)]",
+  "shadow-[inset_0_1px_0_rgba(255,255,255,0.8),inset_0_-2px_4px_color-mix(in_srgb,#e85d6f_12%,transparent)]",
 );
 
 const bubblePrimary = cn(
   bubbleBase,
-  "border-[color-mix(in_srgb,var(--ds-accent)_80%,#0f172a)]",
-  "bg-gradient-to-br from-[color-mix(in_srgb,var(--ds-accent)_55%,#ffffff)] via-[color-mix(in_srgb,var(--ds-accent)_35%,#ffffff)] to-[color-mix(in_srgb,var(--ds-accent)_20%,transparent)]",
+  BTN_RADIUS,
+  "border-[color-mix(in_srgb,var(--ds-accent)_75%,#0f172a)]",
+  "bg-gradient-to-b from-[color-mix(in_srgb,var(--ds-accent)_92%,#38bdf8)] to-[color-mix(in_srgb,var(--ds-accent)_78%,#0284c7)]",
   "text-white",
-  "shadow-[inset_0_2px_0_rgba(255,255,255,0.38),inset_0_-4px_8px_rgba(0,0,0,0.22)]",
-  "active:shadow-[inset_0_5px_12px_rgba(0,0,0,0.3),inset_0_1px_2px_rgba(0,0,0,0.15)]",
+  "shadow-[inset_0_1px_0_rgba(255,255,255,0.35),inset_0_-3px_6px_rgba(0,0,0,0.18)]",
 );
 
 const bubbleCircle = cn(
   bubbleIdle,
-  "flex shrink-0 items-center justify-center rounded-full !p-0",
+  BTN_RADIUS,
+  "flex shrink-0 items-center justify-center !p-0",
 );
 
 const scannerSearchClass = cn(
   dsInputClass,
   bubbleStroke,
-  "h-[4.5rem] w-full rounded-[2rem] bg-white/60 pl-14 pr-6 text-2xl text-ds-foreground backdrop-blur-md placeholder:text-ds-muted",
-  "shadow-[inset_0_2px_0_rgba(255,255,255,0.65),inset_0_-2px_4px_rgba(15,23,42,0.06)]",
+  BTN_RADIUS,
+  "h-[4.5rem] w-full bg-white/70 pl-14 pr-6 text-2xl text-ds-foreground backdrop-blur-sm placeholder:text-ds-muted",
+  "shadow-[inset_0_1px_0_rgba(255,255,255,0.75),inset_0_-2px_4px_rgba(15,23,42,0.05)]",
 );
 
-const dropdownClass =
-  "rounded-[1.5rem] border-2 border-[color-mix(in_srgb,var(--ds-text-primary)_28%,var(--ds-border))] bg-white/80 py-2 backdrop-blur-xl";
+const dropdownClass = cn(
+  BTN_RADIUS,
+  "border-2 border-[color-mix(in_srgb,var(--ds-text-primary)_28%,var(--ds-border))] bg-white/90 py-2 backdrop-blur-sm",
+);
 
 const quickPickClass = cn(
   bubbleIdle,
-  "flex min-w-0 flex-col rounded-[1.25rem] px-5 py-4 text-left",
+  BTN_RADIUS_SM,
+  "flex min-w-0 flex-col px-5 py-4 text-left",
 );
 
 type ScannerBubbleButtonProps = ComponentPropsWithoutRef<"button">;
@@ -139,6 +152,87 @@ function ScannerConnectionBadge({ status }: { status: ScannerConnectionStatus })
 
 function statusLabel(status: string): string {
   return status.replace(/_/g, " ");
+}
+
+function ProductPhoto({ imageUrl, name }: { imageUrl: string | null; name: string }) {
+  const { src, loading } = useResolvedProtectedAssetSrc(imageUrl);
+
+  return (
+    <div
+      className={cn(
+        "relative flex aspect-square w-full max-w-[11rem] shrink-0 items-center justify-center overflow-hidden sm:max-w-[12rem]",
+        BTN_RADIUS,
+        "border-2 border-ds-border bg-[color-mix(in_srgb,var(--ds-surface-secondary)_80%,white)]",
+      )}
+    >
+      {src ? (
+        /* eslint-disable-next-line @next/next/no-img-element -- protected blob / API URL */
+        <img src={src} alt={name} className="h-full w-full object-cover" />
+      ) : loading && imageUrl?.trim() ? (
+        <div className="h-full w-full animate-pulse bg-ds-interactive-hover" aria-hidden />
+      ) : (
+        <Package className="h-16 w-16 text-ds-muted" strokeWidth={1.25} aria-hidden />
+      )}
+    </div>
+  );
+}
+
+function ProductDetailCard({
+  product,
+  busy,
+  onBack,
+}: {
+  product: InventoryScanProduct;
+  busy: boolean;
+  onBack: () => void;
+}) {
+  const meta = [product.category, product.item_type, statusLabel(product.inv_status)].filter(Boolean).join(" · ");
+
+  return (
+    <Card variant="secondary" padding="lg" className="w-full">
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <p className="text-sm font-semibold uppercase tracking-widest text-ds-muted">Product details</p>
+        <ScannerBubbleButton
+          type="button"
+          disabled={busy}
+          onClick={onBack}
+          aria-label="Back to search"
+          className={cn(bubbleIdle, BTN_RADIUS_SM, "flex h-10 w-10 shrink-0 items-center justify-center !p-0 sm:h-11 sm:w-11")}
+        >
+          <ArrowLeft className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden />
+        </ScannerBubbleButton>
+      </div>
+      <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
+        <ProductPhoto imageUrl={product.image_url} name={product.name} />
+        <div className="min-w-0 flex-1 space-y-5">
+          <div>
+            <h2 className="text-3xl font-bold leading-tight text-ds-foreground sm:text-4xl">{product.name}</h2>
+            {meta ? <p className="mt-2 text-base text-ds-muted sm:text-lg">{meta}</p> : null}
+          </div>
+          <dl className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1">
+              <dt className="text-xs font-semibold uppercase tracking-wider text-ds-muted">Item #</dt>
+              <dd className="font-mono text-xl font-semibold text-ds-foreground sm:text-2xl">{product.sku}</dd>
+            </div>
+            <div className="space-y-1">
+              <dt className="text-xs font-semibold uppercase tracking-wider text-ds-muted">On hand</dt>
+              <dd className="text-xl font-semibold text-ds-foreground sm:text-2xl">
+                {product.quantity}{" "}
+                <span className="text-lg font-medium text-ds-muted">{product.unit}</span>
+              </dd>
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <dt className="text-xs font-semibold uppercase tracking-wider text-ds-muted">Location</dt>
+              <dd className="flex items-center gap-2 text-xl font-medium text-ds-foreground sm:text-2xl">
+                <MapPin className="h-5 w-5 shrink-0 text-ds-muted" aria-hidden />
+                {product.location_name?.trim() || "Not assigned"}
+              </dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+    </Card>
+  );
 }
 
 function QuickPickButton({
@@ -352,7 +446,8 @@ export function InventoryScannerKiosk() {
           disabled={logoutBusy || busy}
           className={cn(
             bubbleIdle,
-            "inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold sm:px-5 sm:py-3 sm:text-base",
+            BTN_RADIUS_SM,
+            "inline-flex shrink-0 items-center gap-2 px-4 py-2.5 text-sm font-semibold sm:px-5 sm:py-3 sm:text-base",
           )}
           title="Sign out (testing)"
         >
@@ -460,34 +555,9 @@ export function InventoryScannerKiosk() {
 
           {product ? (
             <section className="flex w-full flex-col items-center gap-8 sm:gap-10">
-              <div className="relative w-full text-center">
-                <ScannerBubbleButton
-                  type="button"
-                  disabled={busy}
-                  onClick={clearProduct}
-                  className={cn(
-                    bubbleIdle,
-                    "absolute right-0 top-0 rounded-full px-4 py-2 text-sm font-semibold sm:text-base",
-                  )}
-                >
-                  Change
-                </ScannerBubbleButton>
-                <p className="text-base font-medium uppercase tracking-widest text-ds-muted sm:text-lg">{product.sku}</p>
-                <h2 className="mt-2 text-4xl font-bold leading-tight text-ds-foreground sm:text-5xl">{product.name}</h2>
-                <p className="mt-3 text-lg text-ds-muted sm:text-xl">
-                  {[product.category, product.item_type, statusLabel(product.inv_status)]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </p>
-                {product.location_name ? (
-                  <p className="mt-1 text-lg text-ds-muted">Location: {product.location_name}</p>
-                ) : null}
-                <p className="mt-5 text-3xl font-semibold text-ds-foreground sm:text-4xl">
-                  On hand: {product.quantity} {product.unit}
-                </p>
-              </div>
+              <ProductDetailCard product={product} busy={busy} onBack={clearProduct} />
 
-              <div className="grid w-full grid-cols-2 gap-4 sm:gap-5">
+              <div className="grid w-full grid-cols-2 gap-3 sm:gap-4">
                 {(["receive", "issue"] as const).map((kind) => (
                   <ScannerBubbleButton
                     key={kind}
@@ -495,7 +565,7 @@ export function InventoryScannerKiosk() {
                     disabled={busy}
                     onClick={() => setAction(kind)}
                     className={cn(
-                      "rounded-[2rem] px-4 py-7 text-2xl font-bold capitalize sm:py-8 sm:text-3xl",
+                      "px-4 py-7 text-2xl font-bold capitalize tracking-tight sm:py-8 sm:text-3xl",
                       action === kind
                         ? kind === "receive"
                           ? bubbleActiveReceive
@@ -563,7 +633,7 @@ export function InventoryScannerKiosk() {
                 type="button"
                 disabled={busy}
                 onClick={() => void submit()}
-                className={cn(bubblePrimary, "w-full rounded-[2rem] py-6 text-2xl font-bold sm:py-7 sm:text-3xl")}
+                className={cn(bubblePrimary, "w-full py-6 text-xl font-bold tracking-tight sm:py-7 sm:text-2xl")}
               >
                 {busy ? "Saving…" : "Complete transaction"}
               </ScannerBubbleButton>
