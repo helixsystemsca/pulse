@@ -30,8 +30,6 @@ import { firstAccessibleClassicTenantHref } from "@/lib/rbac/session-access";
 import { cn } from "@/lib/cn";
 import { isApiMode } from "@/lib/api";
 import { fetchFeedbackUnreadCount } from "@/lib/feedbackApi";
-import { OnboardingTourRestartButton } from "@/lib/onboarding/onboarding-tour-context";
-import "@/components/onboarding/onboarding-tour.css";
 
 const FEEDBACK_HEADER_TIP_DISMISSED_KEY = "pulse_feedback_header_tip_dismissed_v1";
 function IconBadgeCount({ count }: { count: number }) {
@@ -235,10 +233,7 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
                 priority
               />
             </span>
-            <span className="inline-flex items-baseline gap-0.5">
-              <span className="font-normal tracking-[0.04em]">Panorama</span>
-              <span className="font-extralight tracking-[0.04em]">Rec</span>
-            </span>
+            <span className="font-normal tracking-[0.04em]">Pulse</span>
           </Link>
         </div>
 
@@ -271,8 +266,6 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
                   <span className="min-w-0 truncate">Password</span>
                 </Link>
               ) : null}
-
-              <OnboardingTourRestartButton />
 
               <button
                 type="button"

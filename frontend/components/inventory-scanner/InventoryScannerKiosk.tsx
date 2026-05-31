@@ -447,45 +447,47 @@ export function InventoryScannerKiosk({ presentation = "dedicated" }: InventoryS
         onChange={handleChange}
       />
 
-      <header className="flex shrink-0 items-center justify-between gap-4 border-b border-ds-border/80 bg-ds-primary/90 px-4 py-3 backdrop-blur-sm sm:px-6 sm:py-4">
-        <div className="flex min-w-0 items-center gap-3 sm:gap-5">
+      <header className="relative flex shrink-0 items-center justify-between gap-4 border-b border-ds-border/80 bg-ds-primary/90 px-4 py-3 backdrop-blur-sm sm:px-6 sm:py-4">
+        <div className="relative z-10 flex min-w-0 shrink-0 items-center">
           <TenantBrandMark className="h-11 w-auto shrink-0 sm:h-12" />
-          <div className="min-w-0">
-            <h1 className="text-2xl font-bold tracking-tight text-ds-foreground sm:text-3xl">Inventory</h1>
-            <p className="hidden text-sm text-ds-muted sm:block">Search or scan to receive / issue stock</p>
-          </div>
         </div>
-        {presentation === "dedicated" ? (
-          <ScannerBubbleButton
-            type="button"
-            onClick={onLogout}
-            disabled={logoutBusy || busy}
-            className={cn(
-              bubbleIdle,
-              BTN_RADIUS_SM,
-              "inline-flex shrink-0 items-center gap-2 px-4 py-2.5 text-sm font-semibold sm:px-5 sm:py-3 sm:text-base",
-            )}
-            title="Sign out kiosk account"
-          >
-            <LogOut className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
-            Log out
-          </ScannerBubbleButton>
-        ) : (
-          <ScannerBubbleButton
-            type="button"
-            onClick={onBackToInventory}
-            disabled={busy}
-            className={cn(
-              bubbleIdle,
-              BTN_RADIUS_SM,
-              "inline-flex shrink-0 items-center gap-2 px-4 py-2.5 text-sm font-semibold sm:px-5 sm:py-3 sm:text-base",
-            )}
-            title="Return to Inventory"
-          >
-            <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
-            Back to inventory
-          </ScannerBubbleButton>
-        )}
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-28 text-center sm:px-36">
+          <h1 className="text-2xl font-bold tracking-tight text-ds-foreground sm:text-3xl">Inventory</h1>
+          <p className="hidden text-sm text-ds-muted sm:block">Search or scan to receive / issue stock</p>
+        </div>
+        <div className="relative z-10 flex shrink-0 justify-end">
+          {presentation === "dedicated" ? (
+            <ScannerBubbleButton
+              type="button"
+              onClick={onLogout}
+              disabled={logoutBusy || busy}
+              className={cn(
+                bubbleIdle,
+                BTN_RADIUS_SM,
+                "inline-flex shrink-0 items-center gap-2 px-4 py-2.5 text-sm font-semibold sm:px-5 sm:py-3 sm:text-base",
+              )}
+              title="Sign out kiosk account"
+            >
+              <LogOut className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
+              Log out
+            </ScannerBubbleButton>
+          ) : (
+            <ScannerBubbleButton
+              type="button"
+              onClick={onBackToInventory}
+              disabled={busy}
+              className={cn(
+                bubbleIdle,
+                BTN_RADIUS_SM,
+                "inline-flex shrink-0 items-center gap-2 px-4 py-2.5 text-sm font-semibold sm:px-5 sm:py-3 sm:text-base",
+              )}
+              title="Return to Inventory"
+            >
+              <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
+              Back to inventory
+            </ScannerBubbleButton>
+          )}
+        </div>
       </header>
 
       <main className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-4 py-6 sm:px-8 sm:py-8">

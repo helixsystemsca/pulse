@@ -938,10 +938,10 @@ export function InventoryApp() {
                   buttonVariants({ surface: "light", intent: "secondary" }),
                   "inline-flex items-center gap-2 px-4 py-2.5",
                 )}
-                title="Open fullscreen scanner kiosk in a new tab"
+                title="Open checkout scanner in a new tab"
               >
                 <ScanBarcode className="h-4 w-4" aria-hidden />
-                Scanner kiosk
+                Checkout
               </a>
             ) : null}
             {inventoryTab === "items" ? (
