@@ -215,6 +215,7 @@ export function useRoutineAssignmentsBoardState() {
           routines: [],
           handoverSummaries: [],
           loadErr: routineAssignmentsLoadMessage(e),
+          rolloverHint,
         });
       }
     };

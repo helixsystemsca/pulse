@@ -96,7 +96,7 @@ async function fetchWithAuthRefreshRetry(
       } else {
         headers.delete("Authorization");
       }
-      res = await fetch({
+      res = await fetch(url, {
         ...init,
         headers,
         credentials: fetchCredentialsForUrl(url, init),

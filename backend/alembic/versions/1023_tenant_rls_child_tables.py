@@ -102,13 +102,13 @@ _CHILD_POLICIES: dict[str, str] = {
         EXISTS (
           SELECT 1 FROM monitored_systems s
           JOIN monitoring_facilities f ON f.id = s.facility_id
-          WHERE s.id = monitoring_sensors.system_id AND pulse_rls_tenant_visible(f.company_id)
+          WHERE s.id = monitoring_sensors.monitored_system_id AND pulse_rls_tenant_visible(f.company_id)
         )
     """,
     "monitoring_sensor_readings": """
         EXISTS (
           SELECT 1 FROM monitoring_sensors sen
-          JOIN monitored_systems s ON s.id = sen.system_id
+          JOIN monitored_systems s ON s.id = sen.monitored_system_id
           JOIN monitoring_facilities f ON f.id = s.facility_id
           WHERE sen.id = monitoring_sensor_readings.sensor_id AND pulse_rls_tenant_visible(f.company_id)
         )
@@ -116,7 +116,7 @@ _CHILD_POLICIES: dict[str, str] = {
     "monitoring_sensor_thresholds": """
         EXISTS (
           SELECT 1 FROM monitoring_sensors sen
-          JOIN monitored_systems s ON s.id = sen.system_id
+          JOIN monitored_systems s ON s.id = sen.monitored_system_id
           JOIN monitoring_facilities f ON f.id = s.facility_id
           WHERE sen.id = monitoring_sensor_thresholds.sensor_id AND pulse_rls_tenant_visible(f.company_id)
         )
