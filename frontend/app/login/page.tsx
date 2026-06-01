@@ -186,7 +186,7 @@ export default function LoginPage() {
               Access only for verified users.
             </p>
 
-            <div className="login-card mt-3 rounded-[1.15rem] bg-[linear-gradient(145deg,rgba(255,255,255,0.55)_0%,rgba(255,255,255,0.18)_45%,rgba(186,230,255,0.22)_100%)] p-px shadow-[0_28px_64px_rgba(46,90,120,0.16)] ring-1 ring-white/50 backdrop-blur-md dark:bg-[linear-gradient(145deg,rgba(255,255,255,0.14)_0%,rgba(255,255,255,0.05)_100%)] dark:ring-white/15 dark:shadow-[0_24px_52px_rgba(0,0,0,0.4)] sm:mt-4">
+            <div className="login-card rounded-[1.15rem] bg-[linear-gradient(145deg,rgba(255,255,255,0.55)_0%,rgba(255,255,255,0.18)_45%,rgba(186,230,255,0.22)_100%)] p-px shadow-[0_28px_64px_rgba(46,90,120,0.16)] ring-1 ring-white/50 backdrop-blur-md dark:bg-[linear-gradient(145deg,rgba(255,255,255,0.14)_0%,rgba(255,255,255,0.05)_100%)] dark:ring-white/15 dark:shadow-[0_24px_52px_rgba(0,0,0,0.4)]">
                 <div className="relative overflow-hidden rounded-[1.1rem] border border-white/45 bg-white/[0.62] px-4 py-4 shadow-[inset_0_1px_1px_rgba(255,255,255,0.9),inset_0_-1px_0_rgba(255,255,255,0.15),0_8px_32px_rgba(255,255,255,0.12)] backdrop-blur-[28px] backdrop-saturate-[1.35] dark:border-white/18 dark:bg-[color-mix(in_srgb,var(--ds-surface-primary)_58%,transparent)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] sm:px-5 sm:py-5">
                   <div
                     className="pointer-events-none absolute inset-0 bg-[linear-gradient(128deg,rgba(255,255,255,0.72)_0%,rgba(255,255,255,0.08)_38%,transparent_55%,rgba(200,235,255,0.12)_100%)]"

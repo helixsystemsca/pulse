@@ -1,7 +1,8 @@
 /**
  * App host rewrite: for Panorama / Pulse hostnames, `/` → `/login` so the marketing homepage
  * is not served on the app subdomain. Hosts: `PULSE_APP_HOSTNAMES` or defaults in `pulse-host.ts`
- * (includes `panorama.helixsystems.ca`, `pulse.helixsystems.ca`, and `NEXT_PUBLIC_PULSE_APP_URL` host).
+ * (includes `panorama.helixsystems.ca`, `pulse.helixsystems.ca`, `ops.helixsystems.ca`, and
+ * `NEXT_PUBLIC_PULSE_APP_URL` host).
  */
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";

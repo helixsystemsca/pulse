@@ -24,6 +24,7 @@ STANDARD_LOCAL_DEV_ORIGINS: tuple[str, ...] = (
 _PULSE_HOSTED_FRONTEND_ORIGINS: tuple[str, ...] = (
     "https://panorama.helixsystems.ca",
     "https://panorama.helixsystems.co",
+    "https://ops.helixsystems.ca",
     "https://www.helixsystems.ca",
 )
 _DEFAULT_PRODUCTION_FRONTEND_ORIGIN = _PULSE_HOSTED_FRONTEND_ORIGINS[0]

@@ -252,14 +252,14 @@
 .login-hero {
   flex: 1 1 auto;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
   min-height: 0;
   padding-top: max(0.25rem, env(safe-area-inset-top, 0px));
-  padding-bottom: 0.5rem;
+  padding-bottom: 0.35rem;
 }
 
-/* Mobile / tablet: 75% of viewport; desktop (lg+): 33% */
+/* Mobile / tablet: 75% of viewport; desktop (lg+): 50% */
 .login-content,
 .login-content--hero,
 .login-content--stack {
@@ -278,14 +278,15 @@
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
+  gap: 0.5rem;
 }
 
 @media (min-width: 1024px) {
   .login-content,
   .login-content--hero,
   .login-content--stack {
-    width: min(33vw, 100%);
-    max-width: 33%;
+    width: min(50vw, 100%);
+    max-width: 50%;
   }
 }
 

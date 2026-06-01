@@ -7,7 +7,11 @@
  *   `NEXT_PUBLIC_PULSE_APP_URL` so a single env update keeps middleware + login layout aligned.
  */
 
-const DEFAULT_PULSE_APP_HOSTS = ["panorama.helixsystems.ca", "pulse.helixsystems.ca"];
+const DEFAULT_PULSE_APP_HOSTS = [
+  "panorama.helixsystems.ca",
+  "pulse.helixsystems.ca",
+  "ops.helixsystems.ca",
+];
 
 function hostnameFromPulseAppUrl(): string | null {
   if (typeof process === "undefined") return null;
