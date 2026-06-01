@@ -157,29 +157,122 @@ export function InventoryItemPhotoUpload({
   );
 }
 
-/** Read-only product photo for the inventory item detail profile. */
+type ProfilePhotoProps = {
+  imageUrl?: string | null;
+  name: string;
+  itemId?: string;
+  canEdit?: boolean;
+  onUploadComplete?: (imageUrl: string) => void;
+  uploadFile?: (file: File) => Promise<{ image_url: string }>;
+};
+
+/** Product photo on the inventory item detail drawer; empty state is tappable to upload. */
 export function InventoryItemProfilePhoto({
   imageUrl,
   name,
-}: {
-  imageUrl?: string | null;
-  name: string;
-}) {
-  const photo = useResolvedProtectedAssetSrc(imageUrl ?? null);
+  itemId,
+  canEdit,
+  onUploadComplete,
+  uploadFile,
+}: ProfilePhotoProps) {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [localPreview, setLocalPreview] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
 
-  return (
-    <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-slate-50 shadow-sm">
-      {photo.src ? (
+  const photo = useResolvedProtectedAssetSrc(imageUrl ?? null);
+  const displaySrc = localPreview ?? photo.src;
+  const canUpload = Boolean(canEdit && itemId && uploadFile);
+
+  useEffect(() => {
+    return () => {
+      if (localPreview) URL.revokeObjectURL(localPreview);
+    };
+  }, [localPreview]);
+
+  const handleFile = useCallback(
+    async (file: File | null) => {
+      setErr(null);
+      if (!file || !itemId || !uploadFile) return;
+      const ct = (file.type || "").toLowerCase();
+      if (!ALLOWED.has(ct)) {
+        setErr("Upload a JPEG, PNG, or WebP image.");
+        return;
+      }
+      if (file.size > MAX_BYTES) {
+        setErr("Image too large (max 5MB).");
+        return;
+      }
+
+      if (localPreview) URL.revokeObjectURL(localPreview);
+      setLocalPreview(URL.createObjectURL(file));
+      setBusy(true);
+      try {
+        const out = await uploadFile(file);
+        onUploadComplete?.(out.image_url);
+      } catch (e) {
+        setErr(parseClientApiError(e).message);
+        setLocalPreview(null);
+      } finally {
+        setBusy(false);
+      }
+    },
+    [itemId, localPreview, onUploadComplete, uploadFile],
+  );
+
+  const frame = (
+    <div
+      className={cn(
+        "relative overflow-hidden rounded-xl border border-slate-200/90 bg-slate-50 shadow-sm",
+        busy && "opacity-80",
+      )}
+    >
+      {displaySrc ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={photo.src} alt={name} className="aspect-[4/3] w-full object-cover" />
+        <img src={displaySrc} alt={name} className="aspect-[4/3] w-full object-cover" />
       ) : photo.loading && imageUrl?.trim() ? (
         <div className="flex aspect-[4/3] items-center justify-center text-sm text-pulse-muted">Loading photo…</div>
+      ) : canUpload ? (
+        <button
+          type="button"
+          className="flex aspect-[4/3] w-full cursor-pointer flex-col items-center justify-center gap-2 border-0 bg-slate-50 text-pulse-muted transition-colors hover:bg-slate-100/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2B4C7E]/40"
+          disabled={busy}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <ImagePlus className="h-8 w-8 opacity-50" aria-hidden />
+          <p className="text-sm font-semibold text-pulse-navy">No product photo</p>
+          <p className="text-xs text-pulse-muted">Tap to add from your device</p>
+        </button>
       ) : (
         <div className="flex aspect-[4/3] flex-col items-center justify-center gap-2 text-pulse-muted">
           <ImagePlus className="h-8 w-8 opacity-40" aria-hidden />
           <p className="text-sm font-medium">No product photo</p>
         </div>
       )}
+      {busy ? (
+        <span className="absolute inset-0 grid place-items-center bg-black/25">
+          <Loader2 className="h-8 w-8 animate-spin text-white" aria-hidden />
+        </span>
+      ) : null}
+    </div>
+  );
+
+  return (
+    <div className="space-y-2">
+      {frame}
+      {canUpload ? (
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/*"
+          className="hidden"
+          onChange={(e) => {
+            void handleFile(e.target.files?.[0] ?? null);
+            e.target.value = "";
+          }}
+        />
+      ) : null}
+      {err ? <p className="text-sm font-semibold text-rose-700">{err}</p> : null}
     </div>
   );
 }

@@ -1590,7 +1590,19 @@ export function InventoryApp() {
               </div>
             ) : null}
 
-            <InventoryItemProfilePhoto imageUrl={detail.image_url} name={detail.name} />
+            <InventoryItemProfilePhoto
+              imageUrl={detail.image_url}
+              name={detail.name}
+              itemId={detail.id}
+              canEdit={canMutateInventory}
+              uploadFile={(file) => uploadInventoryItemImage(apiCompany, detail.id, file)}
+              onUploadComplete={(url) => {
+                setDetail((d) => (d ? { ...d, image_url: url } : d));
+                setRows((prev) =>
+                  prev.map((r) => (r.id === detail.id ? { ...r, image_url: url } : r)),
+                );
+              }}
+            />
 
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
