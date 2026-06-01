@@ -4,6 +4,7 @@ import type {
   InventoryFieldInputType,
   InventoryRegisterFieldConfig,
   InventoryRegisterFormConfig,
+  InventorySelectOption,
 } from "@/lib/inventory/register-form-config";
 import {
   canToggleFieldInputType,
@@ -42,21 +43,135 @@ type Props = {
   onChange: (next: InventoryRegisterFormConfig) => void;
 };
 
-function optionsToText(options: { value: string; label: string }[] | undefined): string {
-  return (options ?? []).map((o) => `${o.value} | ${o.label}`).join("\n");
+const OPTION_FIELD = `${FIELD} py-1.5 text-sm`;
+
+/** Stable value stored on the item when a dropdown choice is selected. */
+function optionValueFromLabel(label: string): string {
+  const slug = label
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_|_$/g, "");
+  return slug || "option";
 }
 
-function parseOptions(text: string): { value: string; label: string }[] {
-  return text
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const [value, ...rest] = line.split("|");
-      const label = rest.join("|").trim();
-      const v = value.trim();
-      return { value: v, label: label || v };
+function normalizeDropdownOptions(rows: InventorySelectOption[]): InventorySelectOption[] {
+  return rows
+    .map((o) => {
+      const label = o.label.trim();
+      const value = o.value.trim() || optionValueFromLabel(label);
+      return { label: label || value, value };
+    })
+    .filter((o) => o.label);
+}
+
+function effectiveOptionRows(
+  options: InventorySelectOption[] | undefined,
+  defaults: InventorySelectOption[] | undefined,
+): InventorySelectOption[] {
+  if (options?.length) return options;
+  if (defaults?.length) return defaults.map((o) => ({ ...o }));
+  return [{ label: "", value: "" }];
+}
+
+function InventoryDropdownOptionsEditor({
+  options,
+  defaultOptions,
+  onChange,
+}: {
+  options: InventorySelectOption[] | undefined;
+  defaultOptions?: InventorySelectOption[];
+  onChange: (options: InventorySelectOption[]) => void;
+}) {
+  const rows = effectiveOptionRows(options, defaultOptions);
+
+  function setRows(next: InventorySelectOption[]) {
+    const normalized = normalizeDropdownOptions(next);
+    onChange(normalized.length ? normalized : []);
+  }
+
+  function patchRow(index: number, patch: Partial<InventorySelectOption>) {
+    const next = rows.map((row, i) => {
+      if (i !== index) return row;
+      const merged = { ...row, ...patch };
+      const label = merged.label.trim();
+      const prevAutoValue = optionValueFromLabel(row.label);
+      const valueWasAuto = !row.value.trim() || row.value.trim() === prevAutoValue;
+      if (patch.label !== undefined && valueWasAuto) {
+        merged.value = optionValueFromLabel(label);
+      }
+      return merged;
     });
+    onChange(next);
+  }
+
+  function addRow() {
+    onChange([...rows, { label: "", value: "" }]);
+  }
+
+  function removeRow(index: number) {
+    const next = rows.filter((_, i) => i !== index);
+    setRows(next.length ? next : [{ label: "", value: "" }]);
+  }
+
+  return (
+    <div className="space-y-2 rounded-lg border border-slate-200/80 bg-slate-50/60 p-3 dark:border-ds-border dark:bg-ds-secondary/40">
+      <p className="text-xs leading-relaxed text-pulse-muted">
+        Each row is one choice in the dropdown. <span className="font-semibold text-pulse-navy dark:text-gray-200">Shown as</span>{" "}
+        is what your team reads; <span className="font-semibold text-pulse-navy dark:text-gray-200">Saved value</span> is optional
+        and only needed when it must differ (for example, show &quot;Good&quot; but save <code className="text-[11px]">good</code>).
+      </p>
+      <ul className="space-y-2">
+        {rows.map((row, index) => (
+          <li key={index} className="flex flex-wrap items-end gap-2">
+            <div className="min-w-[10rem] flex-1">
+              <label className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-pulse-muted">
+                Shown as
+              </label>
+              <input
+                className={OPTION_FIELD}
+                value={row.label}
+                placeholder="e.g. Tool"
+                onChange={(e) => patchRow(index, { label: e.target.value })}
+              />
+            </div>
+            <div className="min-w-[8rem] flex-1">
+              <label className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-pulse-muted">
+                Saved value <span className="normal-case font-medium">(optional)</span>
+              </label>
+              <input
+                className={OPTION_FIELD}
+                value={row.value}
+                placeholder={row.label.trim() ? optionValueFromLabel(row.label) : "auto"}
+                onChange={(e) => patchRow(index, { value: e.target.value })}
+                onBlur={() => {
+                  if (!row.value.trim() && row.label.trim()) {
+                    patchRow(index, { value: optionValueFromLabel(row.label) });
+                  }
+                }}
+              />
+            </div>
+            <button
+              type="button"
+              className="mb-0.5 rounded border border-slate-200 px-2 py-1.5 text-xs font-semibold text-pulse-muted hover:bg-white hover:text-red-700 disabled:opacity-30 dark:border-ds-border dark:hover:bg-ds-elevated"
+              disabled={rows.length <= 1 && !row.label.trim() && !row.value.trim()}
+              aria-label={`Remove choice ${index + 1}`}
+              onClick={() => removeRow(index)}
+            >
+              Remove
+            </button>
+          </li>
+        ))}
+      </ul>
+      <button
+        type="button"
+        className="text-xs font-semibold text-[#2B4C7E] hover:underline dark:text-sky-300"
+        onClick={addRow}
+      >
+        + Add choice
+      </button>
+    </div>
+  );
 }
 
 export function InventoryRegisterFieldsEditor({ registerForm, onChange }: Props) {
@@ -209,14 +324,11 @@ export function InventoryRegisterFieldsEditor({ registerForm, onChange }: Props)
                   ) : null}
                   {showOptions ? (
                     <div>
-                      <label className={LABEL} htmlFor={`inv-field-opts-${field.id}`}>
-                        Dropdown options (value | label per line)
-                      </label>
-                      <textarea
-                        id={`inv-field-opts-${field.id}`}
-                        className={`${FIELD} min-h-[72px] font-mono text-xs`}
-                        value={optionsToText(field.options ?? defaultField?.options)}
-                        onChange={(e) => patchField(field.id, { options: parseOptions(e.target.value) })}
+                      <p className={LABEL}>Dropdown choices</p>
+                      <InventoryDropdownOptionsEditor
+                        options={field.options}
+                        defaultOptions={defaultField?.options}
+                        onChange={(options) => patchField(field.id, { options })}
                       />
                     </div>
                   ) : null}
@@ -271,4 +383,4 @@ export function InventoryRegisterFieldsEditor({ registerForm, onChange }: Props)
     </div>
   );
 }
-
+

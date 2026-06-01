@@ -168,6 +168,17 @@ function typeIcon(t: string) {
   return Package;
 }
 
+/** Short labels so KPI tiles fit in one mobile row. */
+function inventoryMetricShortLabel(label: string): string {
+  if (label === "Total items") return "Items";
+  if (label === "In stock") return "Stock";
+  if (label === "Low stock") return "Low";
+  if (label === "Inventory value") return "Value";
+  const top = /^Top (\d) by uses$/.exec(label);
+  if (top) return `Top ${top[1]}`;
+  return label;
+}
+
 const QTY_STEP_BTN =
   "inline-flex h-7 w-7 shrink-0 select-none items-center justify-center rounded-md border border-slate-200/90 bg-white text-sm font-medium text-pulse-navy shadow-sm outline-none transition-[transform,colors] hover:bg-ds-interactive-hover active:bg-ds-interactive-active focus-visible:ring-2 focus-visible:ring-sky-400/35 active:scale-95 disabled:pointer-events-none disabled:opacity-40 dark:border-ds-border dark:bg-ds-secondary dark:hover:bg-ds-interactive-hover dark:active:bg-ds-interactive-active";
 
@@ -1028,7 +1039,7 @@ export function InventoryApp() {
           ) : null}
 
           {inventoryTab === "items" && sum ? (
-            <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7">
+            <div className="mt-4 grid grid-cols-7 gap-1.5 sm:mt-6 sm:gap-2 lg:gap-3">
               {[
                 {
                   label: "Total items",
@@ -1074,26 +1085,42 @@ export function InventoryApp() {
               ].map((card) => (
                 <div
                   key={card.label}
-                  className={`rounded-md border bg-white p-4 shadow-sm ring-1 dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)] ${
+                  className={cn(
+                    "flex aspect-square min-w-0 flex-col items-center justify-center rounded-md border bg-white p-1.5 text-center shadow-sm ring-1 dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)] sm:p-2",
+                    "lg:aspect-auto lg:items-stretch lg:justify-start lg:p-4 lg:text-left",
                     "alert" in card && card.alert
                       ? "border-amber-200 ring-amber-100/90 dark:border-amber-500/35 dark:ring-amber-500/20"
-                      : "border-pulse-border ring-slate-100/80 dark:border-ds-border dark:ring-white/[0.06]"
-                  }`}
+                      : "border-pulse-border ring-slate-100/80 dark:border-ds-border dark:ring-white/[0.06]",
+                  )}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="text-xs font-bold uppercase tracking-wide text-pulse-muted">{card.label}</p>
-                    <card.icon className={`h-5 w-5 shrink-0 opacity-80 ${card.tone}`} aria-hidden />
-                  </div>
-                  <p className="mt-2 text-2xl font-bold tracking-tight text-pulse-navy dark:text-gray-100">{card.value}</p>
-                  {card.sub ? (
-                    <p
-                      className={`mt-0.5 text-xs font-semibold ${
-                        "alert" in card && card.alert ? "text-rose-600" : "text-pulse-muted"
-                      }`}
-                    >
-                      {card.sub}
+                  <div className="flex min-w-0 flex-col items-center justify-center gap-0.5 lg:hidden">
+                    <card.icon className={cn("h-3.5 w-3.5 shrink-0 opacity-80", card.tone)} aria-hidden />
+                    <p className="line-clamp-2 text-[9px] font-bold uppercase leading-tight tracking-wide text-pulse-muted sm:text-[10px]">
+                      {inventoryMetricShortLabel(card.label)}
                     </p>
-                  ) : null}
+                    <p className="max-w-full truncate text-sm font-bold tabular-nums text-pulse-navy dark:text-gray-100">
+                      {card.value}
+                    </p>
+                  </div>
+                  <div className="hidden min-w-0 lg:block">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-xs font-bold uppercase tracking-wide text-pulse-muted">{card.label}</p>
+                      <card.icon className={cn("h-5 w-5 shrink-0 opacity-80", card.tone)} aria-hidden />
+                    </div>
+                    <p className="mt-2 text-2xl font-bold tracking-tight text-pulse-navy dark:text-gray-100">
+                      {card.value}
+                    </p>
+                    {card.sub ? (
+                      <p
+                        className={cn(
+                          "mt-0.5 text-xs font-semibold",
+                          "alert" in card && card.alert ? "text-rose-600" : "text-pulse-muted",
+                        )}
+                      >
+                        {card.sub}
+                      </p>
+                    ) : null}
+                  </div>
                 </div>
               ))}
             </div>
@@ -1280,12 +1307,14 @@ export function InventoryApp() {
                             setDetailId(row.id);
                           }}
                         >
-                          <td className="px-4 py-3 align-top">
-                            <div className="flex items-start gap-2">
-                              <span className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg bg-[#ebf8ff] text-[#2B4C7E] dark:bg-[#1e3a5f] dark:text-sky-300">
-                                <Icon className="h-4 w-4" aria-hidden />
-                              </span>
-                              <div>
+                          <td className="px-4 py-3 align-middle">
+                            <div className="flex min-h-14 items-stretch gap-3">
+                              <InventoryItemListThumb
+                                imageUrl={row.image_url}
+                                name={row.name}
+                                FallbackIcon={Icon}
+                              />
+                              <div className="min-w-0 py-0.5">
                                 <p className="font-semibold text-pulse-navy">{row.name}</p>
                                 <p className="text-xs text-pulse-muted">{row.sku}</p>
                                 {row.linked_asset_name ? (
