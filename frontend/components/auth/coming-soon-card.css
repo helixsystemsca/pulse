@@ -253,7 +253,7 @@
   padding-top: max(2.75rem, env(safe-area-inset-top, 0px));
 }
 
-/* Mobile / tablet: 75% width; desktop (lg+): 50% */
+/* Mobile / tablet: 75% width; desktop (lg+): 35% */
 .login-panel {
   display: flex;
   flex-direction: column;
@@ -267,8 +267,8 @@
 
 @media (min-width: 1024px) {
   .login-panel {
-    width: min(50vw, 100%);
-    max-width: 50%;
+    width: min(35vw, 100%);
+    max-width: 35%;
   }
 }
 
@@ -284,6 +284,7 @@
 .login-panel__logo .login-cinematic-logo__mark {
   height: clamp(4.5rem, 28vmin, 9.5rem) !important;
   width: min(24rem, calc(100vw - 2rem)) !important;
+  transform: translateY(-0.4rem);
 }
 
 .login-card {

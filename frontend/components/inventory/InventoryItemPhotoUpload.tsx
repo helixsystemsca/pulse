@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, ImagePlus, Loader2 } from "lucide-react";
+import { Camera, ImagePlus, Loader2, type LucideIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
@@ -165,6 +165,36 @@ type ProfilePhotoProps = {
   onUploadComplete?: (imageUrl: string) => void;
   uploadFile?: (file: File) => Promise<{ image_url: string }>;
 };
+
+/** Square list-row thumbnail (90% of row height) for inventory tables and pickers. */
+export function InventoryItemListThumb({
+  imageUrl,
+  name,
+  FallbackIcon,
+}: {
+  imageUrl?: string | null;
+  name: string;
+  FallbackIcon: LucideIcon;
+}) {
+  const { src, loading } = useResolvedProtectedAssetSrc(imageUrl ?? null);
+
+  return (
+    <div className="flex shrink-0 self-stretch items-center py-[5%]" aria-hidden>
+      <div className="aspect-square h-full max-h-16 border border-slate-200/90 bg-slate-50 dark:border-ds-border dark:bg-ds-secondary">
+        {src ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={src} alt="" className="h-full w-full object-cover" />
+        ) : loading && imageUrl?.trim() ? (
+          <div className="h-full w-full animate-pulse bg-slate-100 dark:bg-ds-interactive-hover" />
+        ) : (
+          <span className="flex h-full w-full items-center justify-center text-[#2B4C7E] dark:text-sky-300">
+            <FallbackIcon className="h-[42%] w-[42%] min-h-4 min-w-4" strokeWidth={1.75} />
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
 
 /** Product photo on the inventory item detail drawer; empty state is tappable to upload. */
 export function InventoryItemProfilePhoto({

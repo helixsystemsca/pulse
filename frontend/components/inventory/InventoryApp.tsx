@@ -66,7 +66,10 @@ import {
   emptyRegisterFormState,
   type InventoryRegisterFormState,
 } from "@/components/inventory/InventoryRegisterItemForm";
-import { InventoryItemProfilePhoto } from "@/components/inventory/InventoryItemPhotoUpload";
+import {
+  InventoryItemListThumb,
+  InventoryItemProfilePhoto,
+} from "@/components/inventory/InventoryItemPhotoUpload";
 import { InventoryRegisterFieldsEditor } from "@/components/inventory/InventoryRegisterFieldsEditor";
 import {
   InventorySetupWizard,
@@ -886,13 +889,6 @@ export function InventoryApp() {
     <div className="space-y-6">
       <PageHeader
         title="Inventory"
-        description={
-          inventoryTab === "items"
-            ? "Tools, spare parts, and consumables — locations, assignments, and work request usage."
-            : inventoryTab === "vendors"
-              ? "Vendor directory — contacts, account references, specialties, and addresses. Filter any column in the grid."
-              : "Contractor directory — contacts, account references, trade or specialty, and addresses. Filter any column in the grid."
-        }
         icon={
           inventoryTab === "items" ? Package : inventoryTab === "vendors" ? Truck : HardHat
         }

@@ -152,10 +152,6 @@ const BUILTIN_FIELD_IDS = new Set<string>([
 
 
 
-const TOGGLEABLE_BUILTIN_IDS = new Set<InventoryBuiltinFieldId>(["sku", "category", "unit", "vendor"]);
-
-
-
 const DEFAULT_INPUT_TYPES: Record<InventoryBuiltinFieldId, InventoryFieldInputType> = {
 
   photo: "photo",
@@ -494,12 +490,12 @@ export function isBuiltinFieldId(id: string): id is InventoryBuiltinFieldId {
 
 
 
+/** Built-in fields that can switch between free-text input and a configured dropdown. */
 export function canToggleFieldInputType(field: InventoryRegisterFieldConfig): boolean {
-
   if (field.is_custom) return true;
-
-  return TOGGLEABLE_BUILTIN_IDS.has(field.id as InventoryBuiltinFieldId);
-
+  if (!isBuiltinFieldId(field.id)) return false;
+  const defaultType = DEFAULT_INPUT_TYPES[field.id];
+  return defaultType === "text" || defaultType === "select";
 }
 
 

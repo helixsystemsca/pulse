@@ -100,11 +100,13 @@ export function InventoryRegisterItemForm({
     field: InventoryRegisterFieldConfig,
     value: string,
     onValue: (v: string) => void,
+    fallbackOptions?: { value: string; label: string }[],
+    selectPlaceholder = "—",
   ) {
     const inputType = effectiveInputType(field);
     if (inputType === "select") {
-      const options = field.options ?? [];
-      return renderSelect(value, onValue, options);
+      const options = field.options?.length ? field.options : (fallbackOptions ?? []);
+      return renderSelect(value, onValue, options, selectPlaceholder);
     }
     return (
       <input
@@ -178,25 +180,20 @@ export function InventoryRegisterItemForm({
           />
         );
       case "name":
-        return (
-          <input
-            className={FIELD}
-            value={form.name}
-            onChange={(e) => setForm({ name: e.target.value })}
-            placeholder={field.placeholder}
-          />
-        );
+        return renderTextOrSelect(field, form.name, (name) => setForm({ name }));
       case "sku":
         return renderTextOrSelect(field, form.sku, (sku) => setForm({ sku }));
       case "item_type":
-        return renderSelect(
+        return renderTextOrSelect(
+          field,
           form.item_type,
           (item_type) => setForm({ item_type }),
-          field.options ?? [
+          [
             { value: "tool", label: "Tool" },
             { value: "part", label: "Part" },
             { value: "consumable", label: "Consumable" },
           ],
+          "Select…",
         );
       case "category":
         return renderTextOrSelect(field, form.category, (category) => setForm({ category }));
@@ -228,15 +225,11 @@ export function InventoryRegisterItemForm({
           PLATFORM_DEPARTMENTS.map((d) => ({ value: d.slug, label: d.name })),
         );
       case "condition":
-        return renderSelect(
-          form.condition,
-          (condition) => setForm({ condition }),
-          field.options ?? [
-            { value: "good", label: "Good" },
-            { value: "needs_maintenance", label: "Needs maintenance" },
-            { value: "critical", label: "Critical / out of service" },
-          ],
-        );
+        return renderTextOrSelect(field, form.condition, (condition) => setForm({ condition }), [
+          { value: "good", label: "Good" },
+          { value: "needs_maintenance", label: "Needs maintenance" },
+          { value: "critical", label: "Critical / out of service" },
+        ]);
       case "zone_id":
         return renderSelect(
           form.zone_id,

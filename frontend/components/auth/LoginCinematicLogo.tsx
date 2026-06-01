@@ -25,7 +25,7 @@ export function LoginCinematicLogo({ layoutClassName }: Props) {
           className="object-contain object-center [image-rendering:auto]"
         />
       </div>
-      <p className="mt-3 text-center text-sm font-semibold uppercase tracking-[0.18em] text-[#4c6085] dark:text-ds-muted sm:mt-3.5">
+      <p className="mt-2 text-center text-sm font-semibold uppercase tracking-[0.18em] text-[#4c6085] dark:text-ds-muted sm:mt-2.5">
         Operations Platform
       </p>
     </div>
