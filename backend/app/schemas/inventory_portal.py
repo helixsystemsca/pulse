@@ -108,6 +108,7 @@ class InventoryCreateIn(BaseModel):
     quantity: float = Field(0, ge=0)
     unit: str = Field("count", max_length=32)
     low_stock_threshold: float = Field(0, ge=0)
+    maximum_qty: Optional[float] = Field(None, ge=0)
     inv_status: Optional[str] = None
     zone_id: Optional[str] = None
     assigned_user_id: Optional[str] = None
@@ -132,6 +133,7 @@ class InventoryPatchIn(BaseModel):
     quantity: Optional[float] = Field(None, ge=0)
     unit: Optional[str] = Field(None, max_length=32)
     low_stock_threshold: Optional[float] = Field(None, ge=0)
+    maximum_qty: Optional[float] = Field(None, ge=0)
     inv_status: Optional[str] = None
     zone_id: Optional[str] = None
     assigned_user_id: Optional[str] = None

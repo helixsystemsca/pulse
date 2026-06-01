@@ -63,6 +63,7 @@ import {
   workerRoleDisplayLabel,
 } from "@/lib/pulse-roles";
 import { canShowTeamManagementNavItem, isTenantFullAdminSession } from "@/lib/rbac/session-access";
+import { InventoryLowStockAlertsSection } from "@/components/organization/InventoryLowStockAlertsSection";
 import { TenantRolesPanel } from "@/components/workers/TenantRolesPanel";
 import { fetchTenantRoles, type TenantRoleRow } from "@/lib/tenantRolesService";
 import { parseTimeToMinutes } from "@/lib/schedule/calendar";
@@ -165,7 +166,14 @@ const ROTATION_PRESET_BUTTONS: { label: string; days: boolean[] }[] = [
   { label: "All week", days: [true, true, true, true, true, true, true] },
 ];
 
-const SETTINGS_TABS = ["Roles", "Shifts", "Skill categories", "Certification rules", "Login activity"] as const;
+const SETTINGS_TABS = [
+  "Roles",
+  "Shifts",
+  "Skill categories",
+  "Certification rules",
+  "Notifications",
+  "Login activity",
+] as const;
 type SettingsTab = (typeof SETTINGS_TABS)[number];
 
 /** Shown when the invite exists but email delivery is uncertain or disabled - share link manually. */
@@ -3917,7 +3925,7 @@ export function WorkersApp() {
       <PulseDrawer
         open={settingsOpen}
         title="Workers configuration"
-        subtitle="Roles, shifts, skill categories, and certification rules"
+        subtitle="Roles, shifts, notifications, and certification rules"
         onClose={() => setSettingsOpen(false)}
         belowAppHeader
         wide
@@ -3946,7 +3954,9 @@ export function WorkersApp() {
           <div>
             <p className={LABEL}>Section</p>
             <div className="mt-1.5 flex flex-wrap gap-1 rounded-[10px] border border-ds-border bg-ds-secondary p-1">
-              {SETTINGS_TABS.map((t) => (
+              {SETTINGS_TABS.filter(
+                (t) => t !== "Notifications" || isCompanyAdmin || isTenantFullAdmin,
+              ).map((t) => (
                 <button
                   key={t}
                   type="button"
@@ -4036,6 +4046,10 @@ export function WorkersApp() {
                 onChange={(e) => setCertRulesText(e.target.value)}
               />
             </div>
+          ) : null}
+
+          {settingsTab === "Notifications" && (isCompanyAdmin || isTenantFullAdmin) ? (
+            <InventoryLowStockAlertsSection compact />
           ) : null}
 
           {settingsTab === "Login activity" && isTenantFullAdmin ? (

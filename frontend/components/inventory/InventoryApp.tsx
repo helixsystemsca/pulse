@@ -15,6 +15,7 @@ import {
   Loader2,
   MoreVertical,
   Package,
+  Monitor,
   ScanBarcode,
   Search,
   Settings,
@@ -22,12 +23,13 @@ import {
   Truck,
   Wrench,
 } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PulseDrawer } from "@/components/schedule/PulseDrawer";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { apiFetch } from "@/lib/api";
 import { pulseAppHref } from "@/lib/pulse-app";
-import { INVENTORY_SCANNER_KIOSK_PATH } from "@/lib/inventory-scanner/scanner-kiosk";
+import { inventoryScannerHref } from "@/lib/inventory-scanner/scanner-kiosk";
 import {
   fetchPulseAssetsCached,
   fetchPulseWorkersOptsCached,
@@ -70,6 +72,7 @@ import {
 } from "@/components/inventory/InventoryItemPhotoUpload";
 import { InventoryRegisterFieldsEditor } from "@/components/inventory/InventoryRegisterFieldsEditor";
 import { InventoryLocationsPanel } from "@/components/inventory/InventoryLocationsPanel";
+import { InventoryMaterialRequestsPanel } from "@/components/inventory/InventoryMaterialRequestsPanel";
 import { InventoryItemDetailFields } from "@/components/inventory/InventoryItemDetailFields";
 import { InventoryTableFieldCell } from "@/components/inventory/InventoryTableFieldCell";
 import {
@@ -166,7 +169,9 @@ export function InventoryApp() {
   const dataEnabled = Boolean(effectiveCompanyId) && canViewInventory;
   const apiCompany = isSystemAdmin ? effectiveCompanyId : null;
 
-  const [inventoryTab, setInventoryTab] = useState<"items" | "vendors" | "contractors">("items");
+  const [inventoryTab, setInventoryTab] = useState<
+    "items" | "vendors" | "contractors" | "material_requests"
+  >("items");
   const [departmentFilter, setDepartmentFilter] = useState(() => (canConfigureOrg ? "" : userInventoryDepartment));
   const directoryDepartmentSlug = canConfigureOrg ? departmentFilter || undefined : userInventoryDepartment;
   const showContractorsTab = inventoryShowsContractorsTab(directoryDepartmentSlug ?? userInventoryDepartment);
@@ -223,7 +228,6 @@ export function InventoryApp() {
   );
 
   const [menuFor, setMenuFor] = useState<string | null>(null);
-  const [qtyPending, setQtyPending] = useState<Record<string, boolean>>({});
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("Register form");
   const [settingsDraft, setSettingsDraft] = useState<MergedInventorySettings>(() => mergeInventoryModuleSettings({}));
@@ -691,65 +695,6 @@ export function InventoryApp() {
     }
   }
 
-  const updateQuantity = useCallback(
-    async (id: string, newQuantity: number) => {
-      if (!effectiveCompanyId || !canMutateInventory) return;
-      const clamped = Math.max(0, newQuantity);
-
-      let snapshotRow: InventoryRow | null = null;
-      let snapshotDetail: InventoryDetail | null = null;
-
-      setRows((rs) => {
-        const cur = rs.find((r) => r.id === id);
-        if (cur) snapshotRow = { ...cur };
-        return rs.map((r) => (r.id === id ? { ...r, quantity: clamped } : r));
-      });
-
-      setDetail((d) => {
-        if (d?.id === id) {
-          snapshotDetail = d;
-          return { ...d, quantity: clamped };
-        }
-        return d;
-      });
-
-      setQtyPending((m) => ({ ...m, [id]: true }));
-      try {
-        const updated = await patchInventoryItem(apiCompany, id, { quantity: clamped });
-        setRows((rs) =>
-          rs.map((r) =>
-            r.id === id
-              ? {
-                  ...r,
-                  quantity: updated.quantity,
-                  inv_status: updated.inv_status,
-                  reorder_flag: updated.reorder_flag,
-                  last_movement_at: updated.last_movement_at,
-                  department_slug: updated.department_slug,
-                  condition: updated.condition,
-                }
-              : r,
-          ),
-        );
-        setDetail((d) => (d?.id === id ? updated : d));
-      } catch {
-        if (snapshotRow) {
-          setRows((rs) => rs.map((r) => (r.id === id ? snapshotRow! : r)));
-        }
-        if (snapshotDetail) {
-          setDetail(snapshotDetail);
-        }
-      } finally {
-        setQtyPending((m) => {
-          const next = { ...m };
-          delete next[id];
-          return next;
-        });
-      }
-    },
-    [apiCompany, effectiveCompanyId, canMutateInventory],
-  );
-
   function exportCsv() {
     const headers = [
       "SKU",
@@ -808,24 +753,43 @@ export function InventoryApp() {
       <PageHeader
         title="Inventory"
         icon={
-          inventoryTab === "items" ? Package : inventoryTab === "vendors" ? Truck : HardHat
+          inventoryTab === "items"
+            ? Package
+            : inventoryTab === "vendors"
+              ? Truck
+              : inventoryTab === "material_requests"
+                ? ClipboardList
+                : HardHat
         }
         actions={
           <>
             {canOpenScannerKiosk ? (
-              <a
-                href={pulseAppHref(INVENTORY_SCANNER_KIOSK_PATH)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={cn(
-                  buttonVariants({ surface: "light", intent: "secondary" }),
-                  "inline-flex items-center gap-2 px-4 py-2.5",
-                )}
-                title="Open checkout scanner in a new tab"
-              >
-                <ScanBarcode className="h-4 w-4" aria-hidden />
-                Checkout
-              </a>
+              <>
+                <Link
+                  href={pulseAppHref(inventoryScannerHref())}
+                  className={cn(
+                    buttonVariants({ surface: "light", intent: "secondary" }),
+                    "inline-flex items-center gap-2 px-4 py-2.5",
+                  )}
+                  title="Open self checkout in this window"
+                >
+                  <ScanBarcode className="h-4 w-4" aria-hidden />
+                  Checkout
+                </Link>
+                <a
+                  href={pulseAppHref(inventoryScannerHref({ kioskDisplay: true }))}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    buttonVariants({ surface: "light", intent: "secondary" }),
+                    "inline-flex items-center gap-2 px-4 py-2.5",
+                  )}
+                  title="Open fullscreen checkout in a new window for a fixed tablet"
+                >
+                  <Monitor className="h-4 w-4" aria-hidden />
+                  Kiosk display
+                </a>
+              </>
             ) : null}
             {inventoryTab === "items" ? (
               <>
@@ -935,7 +899,23 @@ export function InventoryApp() {
                 Contractors
               </button>
             ) : null}
+            <button
+              type="button"
+              onClick={() => setInventoryTab("material_requests")}
+              className={`inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition ${
+                inventoryTab === "material_requests"
+                  ? "bg-ds-accent text-ds-accent-foreground shadow-sm"
+                  : "text-pulse-muted hover:bg-ds-interactive-hover dark:hover:bg-ds-interactive-hover"
+              }`}
+            >
+              <ClipboardList className="h-4 w-4" aria-hidden />
+              Material requests
+            </button>
           </div>
+
+          {inventoryTab === "material_requests" ? (
+            <InventoryMaterialRequestsPanel apiCompany={apiCompany} canMutate={canMutateInventory} />
+          ) : null}
 
           {inventoryTab === "vendors" ? (
             <InventoryVendorsPanel apiCompany={apiCompany} departmentSlug={directoryDepartmentSlug} />
@@ -1238,9 +1218,6 @@ export function InventoryApp() {
                               key={col.kind === "field" ? col.field.id : col.kind}
                               column={col}
                               row={row}
-                              pending={Boolean(qtyPending[row.id])}
-                              canMutate={canMutateInventory}
-                              onUpdateQuantity={updateQuantity}
                             />
                           ))}
                           <td className="relative px-4 py-3 text-right align-top" onClick={(e) => e.stopPropagation()}>
@@ -1804,6 +1781,17 @@ export function InventoryApp() {
                     />
                     Low stock alerts
                   </label>
+                  <p className="text-xs text-pulse-muted">
+                    Email recipients are configured per organization under{" "}
+                    <a href="/dashboard/organization" className="font-semibold text-pulse-accent underline">
+                      Company branding
+                    </a>{" "}
+                    or{" "}
+                    <a href="/dashboard/permissions" className="font-semibold text-pulse-accent underline">
+                      Permissions → Settings → Notifications
+                    </a>
+                    . Server SMTP must be enabled.
+                  </p>
                   <label className="flex items-center gap-2 text-sm font-semibold text-pulse-navy">
                     <input
                       type="checkbox"

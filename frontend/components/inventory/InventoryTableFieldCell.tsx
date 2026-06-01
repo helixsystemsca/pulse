@@ -47,82 +47,12 @@ function statusLabel(status: string): string {
   return status.replace(/_/g, " ");
 }
 
-type QtyCellProps = {
-  row: InventoryRow;
-  pending: boolean;
-  canMutate: boolean;
-  onUpdateQuantity: (id: string, newQuantity: number) => void;
-};
-
-const QTY_STEP_BTN =
-  "inline-flex h-7 w-7 shrink-0 select-none items-center justify-center rounded-md border border-slate-200/90 bg-white text-sm font-medium text-pulse-navy shadow-sm outline-none transition-[transform,colors] hover:bg-ds-interactive-hover active:bg-ds-interactive-active focus-visible:ring-2 focus-visible:ring-sky-400/35 active:scale-95 disabled:pointer-events-none disabled:opacity-40 dark:border-ds-border dark:bg-ds-secondary dark:hover:bg-ds-interactive-hover dark:active:bg-ds-interactive-active";
-
-function InventoryTableQtyCell({ row, pending, canMutate, onUpdateQuantity }: QtyCellProps) {
-  if (row.item_type === "tool") {
-    return <span className="whitespace-nowrap font-medium text-pulse-navy">1 (tracked)</span>;
-  }
-
-  if (!canMutate) {
-    return (
-      <span className="whitespace-nowrap font-medium text-pulse-navy">
-        {row.quantity}
-        <span className="ml-1 max-w-[4.5rem] truncate text-xs text-pulse-muted" title={row.unit}>
-          {row.unit}
-        </span>
-      </span>
-    );
-  }
-
-  return (
-    <div
-      className="flex items-center gap-2 whitespace-nowrap"
-      onClick={(e) => e.stopPropagation()}
-      onKeyDown={(e) => {
-        if (e.key === "ArrowDown") {
-          e.preventDefault();
-          e.stopPropagation();
-          onUpdateQuantity(row.id, Math.max(0, row.quantity - 1));
-        } else if (e.key === "ArrowUp") {
-          e.preventDefault();
-          e.stopPropagation();
-          onUpdateQuantity(row.id, row.quantity + 1);
-        }
-      }}
-      tabIndex={0}
-      role="group"
-      aria-label={`Adjust quantity for ${row.name}`}
-    >
-      <button
-        type="button"
-        onClick={() => onUpdateQuantity(row.id, Math.max(0, row.quantity - 1))}
-        disabled={pending || row.quantity <= 0 || !canMutate}
-        className={QTY_STEP_BTN}
-        aria-label="Decrease quantity"
-      >
-        -
-      </button>
-      <span className="min-w-[2.25rem] text-center tabular-nums font-medium text-pulse-navy">{row.quantity}</span>
-      <button
-        type="button"
-        onClick={() => onUpdateQuantity(row.id, row.quantity + 1)}
-        disabled={pending || !canMutate}
-        className={QTY_STEP_BTN}
-        aria-label="Increase quantity"
-      >
-        +
-      </button>
-      <span className="max-w-[4.5rem] truncate text-xs text-pulse-muted" title={row.unit}>
-        {row.unit}
-      </span>
-    </div>
-  );
-}
-
-type Props = QtyCellProps & {
+type Props = {
   column: InventoryTableColumn;
+  row: InventoryRow;
 };
 
-export function InventoryTableFieldCell({ column, row, pending, canMutate, onUpdateQuantity }: Props) {
+export function InventoryTableFieldCell({ column, row }: Props) {
   if (column.kind === "type_category") {
     return (
       <td className="px-4 py-3 align-top text-pulse-navy">
@@ -173,14 +103,13 @@ export function InventoryTableFieldCell({ column, row, pending, canMutate, onUpd
   const field = column.field;
 
   if (field.id === "quantity") {
+    const qtyText = formatRegisterFieldValue(field, row);
     return (
-      <td className="px-4 py-3 align-top font-medium text-pulse-navy">
-        <InventoryTableQtyCell
-          row={row}
-          pending={pending}
-          canMutate={canMutate}
-          onUpdateQuantity={onUpdateQuantity}
-        />
+      <td className="whitespace-nowrap px-4 py-3 align-top font-medium tabular-nums text-pulse-navy">
+        {qtyText}
+        {row.item_type !== "tool" && row.unit?.trim() ? (
+          <span className="ml-1 text-xs font-normal text-pulse-muted">{row.unit}</span>
+        ) : null}
       </td>
     );
   }

@@ -556,7 +556,9 @@ export function InventoryScannerKiosk({ presentation = "dedicated" }: InventoryS
       <header className="relative flex shrink-0 items-center justify-between gap-4 border-b border-ds-border/80 bg-ds-primary/90 px-4 py-3 backdrop-blur-sm sm:px-6">
         <TenantBrandMark className="h-11 w-auto shrink-0 sm:h-12" />
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-24 text-center">
-          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Inventory kiosk</h1>
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
+            {presentation === "dedicated" ? "Inventory kiosk" : "Self checkout"}
+          </h1>
           <p className="hidden text-xs text-ds-muted sm:block">Checkout or receive stock</p>
         </div>
         <div className="relative z-10 shrink-0">

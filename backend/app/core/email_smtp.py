@@ -412,3 +412,74 @@ async def send_contact_lead(
     except Exception:
         _log.exception("SMTP contact form failed")
         return False
+
+
+async def send_inventory_low_stock_alert_email(
+    settings: Settings,
+    *,
+    to_emails: list[str],
+    company_name: str,
+    item_name: str,
+    sku: str,
+    current_qty: float,
+    minimum_qty: float,
+    unit: str,
+    vendor: str | None,
+    suggested_reorder_qty: float | None,
+) -> bool:
+    if not settings.smtp_configured or not to_emails:
+        return False
+
+    display = settings.email_from_display.strip() or "Helix Systems"
+    unit_label = f" {unit}".strip() if unit and unit != "count" else ""
+    reorder_line = ""
+    if suggested_reorder_qty is not None and suggested_reorder_qty > 0:
+        reorder_line = f"\nSuggested reorder quantity: {suggested_reorder_qty:g}{unit_label}\n"
+
+    vendor_line = f"\nVendor: {vendor}\n" if vendor and vendor.strip() else ""
+
+    subject = f"[{company_name}] Low stock — {item_name} ({sku})"
+    text = (
+        f"Inventory alert for {company_name}\n\n"
+        f"Item: {item_name}\n"
+        f"SKU: {sku}\n"
+        f"Current quantity: {current_qty:g}{unit_label}\n"
+        f"Minimum level: {minimum_qty:g}{unit_label}\n"
+        f"{vendor_line}"
+        f"{reorder_line}\n"
+        "This item was added to the Material Request queue in Pulse.\n"
+        "Review inventory in Pulse → Material requests or Inventory.\n"
+    )
+
+    safe_name = html.escape(item_name, quote=True)
+    safe_sku = html.escape(sku, quote=True)
+    safe_co = html.escape(company_name, quote=True)
+
+    html_body = f"""<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8" /></head>
+<body style="font-family:system-ui,sans-serif;line-height:1.5;color:#1e293b;">
+  <h2 style="color:#b45309;">Low stock alert</h2>
+  <p><strong>{safe_co}</strong></p>
+  <table style="border-collapse:collapse;margin:16px 0;">
+    <tr><td style="padding:4px 12px 4px 0;font-weight:600;">Item</td><td>{safe_name}</td></tr>
+    <tr><td style="padding:4px 12px 4px 0;font-weight:600;">SKU</td><td>{safe_sku}</td></tr>
+    <tr><td style="padding:4px 12px 4px 0;font-weight:600;">Current qty</td><td>{current_qty:g}{html.escape(unit_label)}</td></tr>
+    <tr><td style="padding:4px 12px 4px 0;font-weight:600;">Minimum</td><td>{minimum_qty:g}{html.escape(unit_label)}</td></tr>
+  </table>
+  <p style="font-size:14px;color:#64748b;">Open Pulse → Material requests to build a purchase draft.</p>
+</body></html>"""
+
+    msg = _build_message(
+        subject=subject,
+        from_addr=settings.email_from_noreply,
+        from_display=display,
+        to_addrs=to_emails,
+        text_body=text,
+        html_body=html_body,
+    )
+    try:
+        await send_smtp_message(settings, msg)
+        return True
+    except Exception:
+        _log.exception("SMTP inventory low stock alert failed sku=%s", sku)
+        return False

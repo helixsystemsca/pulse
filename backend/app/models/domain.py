@@ -132,6 +132,10 @@ class Company(Base):
     security_policy: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, server_default=text("'{}'::jsonb")
     )
+    #: Tenant-wide alert routing, e.g. inventory low-stock email recipients (company admin UI).
+    operational_notifications: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
@@ -557,6 +561,8 @@ class InventoryItem(Base):
     quantity: Mapped[float] = mapped_column(Float, default=0)
     unit: Mapped[str] = mapped_column(String(32), default="count")
     low_stock_threshold: Mapped[float] = mapped_column(Float, default=0)
+    #: Optional par level; when set, suggested reorder uses (maximum_qty - quantity).
+    maximum_qty: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     usage_count: Mapped[int] = mapped_column(Integer, default=0)
     item_type: Mapped[str] = mapped_column(String(32), nullable=False, default="part")
     category: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
@@ -581,6 +587,86 @@ class InventoryItem(Base):
         JSONB, nullable=False, server_default=text("'{}'::jsonb")
     )
     last_movement_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class MaterialRequestQueue(Base):
+    """Low-stock items awaiting review for material request drafts."""
+
+    __tablename__ = "material_request_queue"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    inventory_item_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("inventory_items.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    item_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    sku: Mapped[str] = mapped_column(String(128), nullable=False)
+    category: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    vendor: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    current_qty: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+    minimum_qty: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+    maximum_qty: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    reorder_qty: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+    estimated_unit_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    #: pending | drafted | submitted | ordered | received
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending", index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
+class MaterialRequestDraft(Base):
+    __tablename__ = "material_request_drafts"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    draft_number: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    created_by_user_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
+    )
+    #: draft | submitted | closed
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="draft", index=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
+class MaterialRequestDraftItem(Base):
+    __tablename__ = "material_request_draft_items"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    draft_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("material_request_drafts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    queue_item_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("material_request_queue.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    item_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    sku: Mapped[str] = mapped_column(String(128), nullable=False)
+    vendor: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    qty_requested: Mapped[float] = mapped_column(Float, nullable=False)
+    estimated_unit_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    estimated_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
 
 class InventoryMovement(Base):

@@ -45,6 +45,8 @@ from app.api.inventory_query_helpers import (
 )
 from app.core.pulse_storage import read_inventory_item_image_bytes, write_inventory_item_image_bytes
 from app.repositories import inventory_scope_repository as inv_scope_repo
+from app.services.inventory_alert_service import maybe_send_low_stock_alert
+from app.services.material_request_queue_service import is_item_low_stock, sync_queue_for_inventory_item
 from app.models.pulse_models import PulseWorkRequest
 from app.modules.pulse import service as pulse_svc
 from app.schemas.inventory_portal import (
@@ -231,6 +233,11 @@ def _recompute_status(item: InventoryItem) -> None:
         item.inv_status = "low_stock"
     else:
         item.inv_status = "in_stock"
+
+
+async def _sync_stock_queue_and_alerts(db: AsyncSession, item: InventoryItem) -> None:
+    await sync_queue_for_inventory_item(db, item)
+    await maybe_send_low_stock_alert(db, item, is_low=is_item_low_stock(item))
 
 
 async def _log_movement(
@@ -1116,6 +1123,7 @@ async def post_inventory_scan_transaction(
     item.quantity = after
     _recompute_status(item)
     item.last_movement_at = datetime.now(timezone.utc)
+    await _sync_stock_queue_and_alerts(db, item)
     movement_id = str(uuid4())
     db.add(
         InventoryMovement(
@@ -1217,6 +1225,7 @@ async def create_inventory_item(
         quantity=float(body.quantity),
         unit=body.unit,
         low_stock_threshold=float(body.low_stock_threshold),
+        maximum_qty=float(body.maximum_qty) if body.maximum_qty is not None else None,
         item_type=body.item_type,
         category=body.category,
         inv_status=inv_st or "in_stock",
@@ -1247,6 +1256,7 @@ async def create_inventory_item(
         zone_id=item.zone_id,
         meta={"name": item.name},
     )
+    await _sync_stock_queue_and_alerts(db, item)
     await db.commit()
     await db.refresh(item)
     return await _inventory_detail_payload(db, cid, item)
@@ -1327,9 +1337,13 @@ async def patch_inventory_item(
         item.vendor = None if vraw is None else (str(vraw).strip() or None)
     if "custom_attributes" in data and data["custom_attributes"] is not None:
         item.custom_attributes = dict(data["custom_attributes"])
+    if "maximum_qty" in data:
+        raw_max = data["maximum_qty"]
+        item.maximum_qty = None if raw_max is None else float(raw_max)
     if "inv_status" not in data:
         _recompute_status(item)
     item.last_movement_at = datetime.now(timezone.utc)
+    await _sync_stock_queue_and_alerts(db, item)
     await _log_movement(
         db,
         company_id=cid,
@@ -1493,6 +1507,7 @@ async def use_inventory(
     )
     item.last_movement_at = datetime.now(timezone.utc)
     _recompute_status(item)
+    await _sync_stock_queue_and_alerts(db, item)
     await _log_movement(
         db,
         company_id=cid,

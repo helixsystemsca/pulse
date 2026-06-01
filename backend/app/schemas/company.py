@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
@@ -14,6 +14,19 @@ class CompanyProfilePatch(BaseModel):
     timezone: Optional[str] = Field(None, max_length=128)
     industry: Optional[str] = Field(None, max_length=255)
     default_roster_password: Optional[str] = Field(None, max_length=128)
+    operational_notifications: Optional[dict[str, Any]] = None
+    inventory_low_stock: Optional["InventoryLowStockNotificationPatch"] = None
+
+
+class InventoryLowStockNotificationPatch(BaseModel):
+    enabled: Optional[bool] = None
+    emails: Optional[str] = Field(None, max_length=4096)
+
+
+class InventoryLowStockNotificationOut(BaseModel):
+    enabled: bool = False
+    emails: str = ""
+    email_list: list[str] = Field(default_factory=list)
 
 
 class CompanyBrandingOut(BaseModel):
@@ -24,6 +37,9 @@ class CompanyBrandingOut(BaseModel):
     background_image_url: Optional[str] = None
     header_wordmark: Optional[str] = None
     default_roster_password: Optional[str] = None
+    inventory_low_stock: InventoryLowStockNotificationOut = Field(
+        default_factory=InventoryLowStockNotificationOut
+    )
 
 
 class CompanyLogoUploadOut(BaseModel):
@@ -33,3 +49,6 @@ class CompanyLogoUploadOut(BaseModel):
     header_wordmark: Optional[str] = None
     default_roster_password: Optional[str] = None
     message: str = "Logo updated"
+
+
+CompanyProfilePatch.model_rebuild()

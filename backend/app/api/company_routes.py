@@ -18,7 +18,17 @@ from app.core.pulse_storage import (
     write_company_logo_bytes,
 )
 from app.models.domain import Company, User
-from app.schemas.company import CompanyBrandingOut, CompanyLogoUploadOut, CompanyProfilePatch
+from app.core.operational_notifications import (
+    inventory_low_stock_from_company,
+    inventory_low_stock_to_api,
+    patch_inventory_low_stock,
+)
+from app.schemas.company import (
+    CompanyBrandingOut,
+    CompanyLogoUploadOut,
+    CompanyProfilePatch,
+    InventoryLowStockNotificationOut,
+)
 
 router = APIRouter(prefix="/company", tags=["company"])
 
@@ -26,12 +36,14 @@ _CACHE_PRIVATE = {"Cache-Control": "private, no-store"}
 
 
 def _branding_out(co: Company) -> CompanyBrandingOut:
+    inv_cfg = inventory_low_stock_from_company(getattr(co, "operational_notifications", None))
     return CompanyBrandingOut(
         logo_url=co.logo_url,
         header_image_url=co.header_image_url,
         background_image_url=getattr(co, "background_image_url", None),
         header_wordmark=getattr(co, "header_wordmark", None),
         default_roster_password=getattr(co, "default_roster_password", None),
+        inventory_low_stock=InventoryLowStockNotificationOut(**inventory_low_stock_to_api(inv_cfg)),
     )
 
 
@@ -207,6 +219,20 @@ async def patch_company_profile(
                     detail="Default employee password must be at least 8 characters.",
                 )
             co.default_roster_password = pw or None
+    if "operational_notifications" in data and data["operational_notifications"] is not None:
+        raw = data["operational_notifications"]
+        if not isinstance(raw, dict):
+            raise HTTPException(status_code=400, detail="operational_notifications must be an object")
+        co.operational_notifications = raw
+    if "inventory_low_stock" in data and data["inventory_low_stock"] is not None:
+        inv = data["inventory_low_stock"]
+        if not isinstance(inv, dict):
+            inv = inv.model_dump(exclude_unset=True) if hasattr(inv, "model_dump") else {}
+        co.operational_notifications = patch_inventory_low_stock(
+            getattr(co, "operational_notifications", None),
+            enabled=inv.get("enabled") if "enabled" in inv else None,
+            emails=inv.get("emails") if "emails" in inv else None,
+        )
     await db.commit()
     await db.refresh(co)
     out = _branding_out(co)
