@@ -2,7 +2,7 @@ import { AppLayout } from "@/components/app/AppLayout";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: { absolute: "Settings | Panorama" },
+  title: { absolute: "Settings | Helix" },
   description: "Configure Pulse for your facility.",
 };
 

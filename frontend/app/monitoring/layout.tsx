@@ -3,7 +3,7 @@ import { AmbientPageFrame } from "@/components/motion/AmbientPageFrame";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: { absolute: "Monitoring | Panorama" },
+  title: { absolute: "Monitoring | Helix" },
   description: "Real-time visibility into people and facility systems.",
 };
 

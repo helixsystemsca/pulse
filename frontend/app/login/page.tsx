@@ -179,7 +179,7 @@ export default function LoginPage() {
             <div className="login-content__form">
               <LoginCinematicLogo />
 
-              <p className="mt-3 text-center text-sm font-medium text-[#5a6d82] dark:text-ds-muted sm:mt-3.5">
+              <p className="mt-2 text-center text-sm font-medium text-[#5a6d82] dark:text-ds-muted">
                 Access only for verified users.
               </p>
 

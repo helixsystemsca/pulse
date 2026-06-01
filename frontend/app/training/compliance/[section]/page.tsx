@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { TrainingComplianceShell } from "@/components/training/domain/TrainingComplianceShell";
 
 export const metadata: Metadata = {
-  title: "Compliance | Training | Panorama",
+  title: "Compliance | Training | Helix",
   description: "Workforce qualification matrix, registry, and expiring credentials.",
 };
 

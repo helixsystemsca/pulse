@@ -547,7 +547,7 @@ export function ProjectKioskDisplay({ projectId }: { projectId: string }) {
   useEffect(() => {
     const prev = document.title;
     const name = view?.header.projectName?.trim();
-    document.title = name ? `${name} | Panorama` : "Project kiosk | Panorama";
+    document.title = name ? `${name} | Helix` : "Project kiosk | Helix";
     return () => {
       document.title = prev;
     };

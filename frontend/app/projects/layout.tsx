@@ -2,7 +2,7 @@ import { AppLayout } from "@/components/app/AppLayout";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: { absolute: "Projects | Panorama" },
+  title: { absolute: "Projects | Helix" },
   description: "Projects, tasks, and schedule-linked due dates for Pulse.",
 };
 

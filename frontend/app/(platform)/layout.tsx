@@ -3,7 +3,7 @@ import { AmbientPageFrame } from "@/components/motion/AmbientPageFrame";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: { template: "%s | Panorama", default: "Panorama" },
+  title: { template: "%s | Helix", default: "Helix" },
   description: "Operational modules (canonical routes).",
 };
 

@@ -2,7 +2,7 @@ import { AppLayout } from "@/components/app/AppLayout";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: { absolute: "SOP | Panorama" },
+  title: { absolute: "SOP | Helix" },
   description: "Standard operating procedures (Pulse).",
 };
 

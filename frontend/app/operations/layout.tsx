@@ -2,7 +2,7 @@ import { AppLayout } from "@/components/app/AppLayout";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: { absolute: "Monitoring | Panorama" },
+  title: { absolute: "Monitoring | Helix" },
   description: "Redirects to Monitoring — real-time people and systems visibility.",
 };
 

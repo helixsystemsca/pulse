@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Routines | Standards | Panorama",
+  title: "Routines | Standards | Helix",
   description: "Shift checklists and recurring routine templates for consistent operations.",
 };
 

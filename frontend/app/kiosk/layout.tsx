@@ -2,11 +2,7 @@ import type { Metadata } from "next";
 import { KioskDisplayShell } from "@/components/kiosk/KioskDisplayShell";
 
 export const metadata: Metadata = {
-  title: { template: "%s | Panorama", default: "Kiosk" },
-  icons: {
-    icon: [{ url: "/images/panoramalogo2.png", type: "image/png" }],
-    apple: [{ url: "/images/panoramalogo2.png", type: "image/png" }],
-  },
+  title: { template: "%s | Helix", default: "Kiosk" },
   robots: { index: false, follow: false },
 };
 

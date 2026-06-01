@@ -3,7 +3,7 @@ import { ZonesDevicesChrome } from "@/components/zones-devices/ZonesDevicesChrom
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: { absolute: "Floor Plans | Panorama" },
+  title: { absolute: "Floor Plans | Helix" },
   description: "Zone context and floor plan previews.",
 };
 

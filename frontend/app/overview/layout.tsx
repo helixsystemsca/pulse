@@ -3,7 +3,7 @@ import { AmbientPageFrame } from "@/components/motion/AmbientPageFrame";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: { absolute: "Overview | Panorama" },
+  title: { absolute: "Overview | Helix" },
   description: "Pulse operational dashboard overview.",
 };
 

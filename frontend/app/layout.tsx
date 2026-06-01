@@ -27,17 +27,13 @@ const poppins = Poppins({
 export const metadata: Metadata = {
   metadataBase: new URL("https://helixsystems.ca"),
   title: {
-    default: "Helix Systems | Panorama",
-    template: "%s | Panorama",
+    default: "Helix",
+    template: "%s | Helix",
   },
   description:
-    "Helix Systems builds software for industrial operations—field teams, assets, and real-time intelligence. Panorama is our operational intelligence platform.",
-  icons: {
-    icon: [{ url: "/images/prwhite.png", type: "image/png" }],
-    apple: [{ url: "/images/prwhite.png", type: "image/png" }],
-  },
+    "Helix is the operations platform for industrial sites—field teams, assets, inventory, and real-time intelligence.",
   openGraph: {
-    siteName: "Helix Systems",
+    siteName: "Helix",
     type: "website",
   },
 };

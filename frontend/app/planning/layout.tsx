@@ -2,7 +2,7 @@ import { AppLayout } from "@/components/app/AppLayout";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: { absolute: "Planning | Panorama" },
+  title: { absolute: "Planning | Helix" },
   description: "Portfolio planning, forecasting, and project idea intake.",
 };
 

@@ -2,10 +2,11 @@ import { AppLayout } from "@/components/app/AppLayout";
 import { isPulseAppHost, requestHostnameFromHeaders } from "@/lib/pulse-host";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
+import "@/components/auth/coming-soon-card.css";
 
 export const metadata: Metadata = {
-  title: "Sign in",
-  description: "Sign in to your Panorama operational dashboard.",
+  title: { absolute: "Sign-in | Helix" },
+  description: "Sign in to your Helix operations dashboard.",
 };
 
 /** On app hosts (panorama / pulse subdomain), skip marketing `AppLayout`; apex/www marketing keeps chrome + footer. */

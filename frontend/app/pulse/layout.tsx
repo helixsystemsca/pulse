@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 
 export const metadata: Metadata = {
-  title: { absolute: "Pulse | Panorama" },
+  title: { absolute: "Pulse | Helix" },
   description:
     "Pulse helps you track tools, manage work, and align your team—work requests, equipment, scheduling, mobile field use, and alerts in one system.",
 };

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { TrainingLearningShell } from "@/components/training/domain/TrainingLearningShell";
 
 export const metadata: Metadata = {
-  title: "Learning | Training | Panorama",
+  title: "Learning | Training | Helix",
   description: "My Learning, assignments, bundles, acknowledgements, and completion workflows.",
 };
 

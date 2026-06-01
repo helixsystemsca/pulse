@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: { absolute: "Work Requests | Panorama" },
+  title: { absolute: "Work Requests | Helix" },
   description: "Work request hub — triage, categories, and preventative scheduling.",
 };
 

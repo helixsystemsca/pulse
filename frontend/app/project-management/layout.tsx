@@ -2,7 +2,7 @@ import { AppLayout } from "@/components/app/AppLayout";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: { absolute: "Project Management | Panorama" },
+  title: { absolute: "Project Management | Helix" },
   description: "Internal PM workspace and planning tools.",
 };
 

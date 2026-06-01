@@ -2,7 +2,7 @@ import { AppLayout } from "@/components/app/AppLayout";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: { absolute: "Live Map | Panorama" },
+  title: { absolute: "Live Map | Helix" },
   description: "Real-time beacon positions across your facility.",
 };
 

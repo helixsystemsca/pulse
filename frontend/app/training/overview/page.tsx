@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { TrainingOverviewShell } from "@/components/training/domain/TrainingOverviewShell";
 
 export const metadata: Metadata = {
-  title: "Overview | Training | Panorama",
+  title: "Overview | Training | Helix",
   description: "Workforce readiness and compliance overview.",
 };
 

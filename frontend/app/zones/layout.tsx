@@ -2,7 +2,7 @@ import { AppLayout } from "@/components/app/AppLayout";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: { absolute: "Zones | Panorama" },
+  title: { absolute: "Zones | Helix" },
   description: "Zone and device setup.",
 };
 

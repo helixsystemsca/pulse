@@ -234,11 +234,11 @@
   }
 }
 
-/* Login page: centered form; coming soon docks separately on the left */
+/* Login page: form column at 75% of the viewport */
 .login-content {
   display: flex;
-  width: 75%;
-  max-width: 75vw;
+  width: min(75vw, 100%);
+  max-width: 75%;
   align-items: flex-start;
   justify-content: center;
   margin-left: auto;
@@ -271,8 +271,8 @@
   .login-content {
     flex-direction: column;
     align-items: center;
-    width: 75%;
-    max-width: 75vw;
+    width: min(75vw, 100%);
+    max-width: 75%;
   }
 }
 

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: { absolute: "Planning approval | Panorama" },
+  title: { absolute: "Planning approval | Helix" },
   description: "Review and approve a planning idea.",
   robots: { index: false, follow: false },
 };

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { AppLayout } from "@/components/app/AppLayout";
 import { StandardsLayoutClient } from "@/components/standards/StandardsLayoutClient";
 
-/** Fills root `title.template` (`%s | Panorama`) so the tab is not the marketing default “Helix Systems | Panorama”. */
+/** Fills root `title.template` (`%s | Helix`) so the tab uses the module name, not the root default. */
 export const metadata: Metadata = {
   title: "Standards",
 };
