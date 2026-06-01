@@ -252,6 +252,7 @@ export function InventoryRegisterItemForm({
           form.zone_id,
           (zone_id) => setForm({ zone_id }),
           zones.map((z) => ({ value: z.id, label: z.name })),
+          zones.length ? "Select location…" : "No locations — add in settings",
         );
       case "assigned_user_id":
         return renderSelect(

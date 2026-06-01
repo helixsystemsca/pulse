@@ -69,6 +69,7 @@ import {
   InventoryItemProfilePhoto,
 } from "@/components/inventory/InventoryItemPhotoUpload";
 import { InventoryRegisterFieldsEditor } from "@/components/inventory/InventoryRegisterFieldsEditor";
+import { InventoryLocationsPanel } from "@/components/inventory/InventoryLocationsPanel";
 import { InventoryItemDetailFields } from "@/components/inventory/InventoryItemDetailFields";
 import { InventoryTableFieldCell } from "@/components/inventory/InventoryTableFieldCell";
 import {
@@ -104,6 +105,7 @@ const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-mut
 
 const SETTINGS_TABS = [
   "Register form",
+  "Locations",
   "Status rules",
   "Thresholds",
   "Alerts",
@@ -226,6 +228,7 @@ export function InventoryApp() {
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("Register form");
   const [settingsDraft, setSettingsDraft] = useState<MergedInventorySettings>(() => mergeInventoryModuleSettings({}));
   const [settingsLoading, setSettingsLoading] = useState(false);
+  const [settingsLocationError, setSettingsLocationError] = useState<string | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
 
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -1490,7 +1493,41 @@ export function InventoryApp() {
               <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
                 <p className="text-xs font-bold uppercase text-pulse-muted">Assignment &amp; location</p>
                 <p className="mt-2 text-sm font-semibold text-pulse-navy">{detail.assignee_name ?? "Unassigned"}</p>
-                <p className="text-sm text-pulse-muted">{detail.location_name ?? "—"}</p>
+                <p className={`${LABEL} mt-3`}>Location</p>
+                {canMutateInventory ? (
+                  <select
+                    className={FIELD}
+                    value={detail.zone_id ?? ""}
+                    disabled={actionBusy}
+                    onChange={(e) => {
+                      const zone_id = e.target.value || null;
+                      void (async () => {
+                        setActionBusy(true);
+                        try {
+                          await postInventoryMove(apiCompany, detail.id, zone_id);
+                          await loadDetail();
+                          await loadList();
+                        } finally {
+                          setActionBusy(false);
+                        }
+                      })();
+                    }}
+                  >
+                    <option value="">Unspecified</option>
+                    {zones.map((z) => (
+                      <option key={z.id} value={z.id}>
+                        {z.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <p className="text-sm text-pulse-muted">{detail.location_name ?? "—"}</p>
+                )}
+                {zones.length === 0 && canMutateInventory ? (
+                  <p className="mt-2 text-xs text-pulse-muted">
+                    Add locations under Inventory settings → Locations.
+                  </p>
+                ) : null}
               </div>
             </div>
 
@@ -1696,6 +1733,22 @@ export function InventoryApp() {
                   registerForm={settingsDraft.register_form}
                   onChange={(register_form) => setSettingsDraft((d) => ({ ...d, register_form }))}
                 />
+              ) : null}
+              {settingsTab === "Locations" ? (
+                <div className="space-y-3">
+                  {settingsLocationError ? (
+                    <p className="text-sm text-rose-600">{settingsLocationError}</p>
+                  ) : null}
+                  <InventoryLocationsPanel
+                    companyId={apiCompany}
+                    zones={zones}
+                    onZonesChange={setZones}
+                    canManage={canMutateInventory || canConfigureOrg}
+                    busy={actionBusy}
+                    onBusyChange={setActionBusy}
+                    onError={setSettingsLocationError}
+                  />
+                </div>
               ) : null}
               {settingsTab === "Status rules" ? (
                 <div className="space-y-2">

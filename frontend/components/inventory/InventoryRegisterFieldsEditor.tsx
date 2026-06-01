@@ -23,7 +23,7 @@ const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-mut
 
 const FIELD_HINTS: Partial<Record<string, string>> = {
   photo: "Shown on the item profile when you open an item from the inventory list.",
-  zone_id: "Populated from facility zones.",
+  zone_id: "Dropdown choices come from Inventory settings → Locations (same list as work requests).",
   assigned_user_id: "Populated from your worker roster.",
   linked_tool_id: "Populated from tracked assets.",
   department_slug: "Populated from platform departments.",
