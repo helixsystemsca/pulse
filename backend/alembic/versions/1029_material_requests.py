@@ -54,9 +54,17 @@ def upgrade() -> None:
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
         )
-        op.create_index("ix_material_request_queue_company_id", "material_request_queue", ["company_id"])
-        op.create_index("ix_material_request_queue_inventory_item_id", "material_request_queue", ["inventory_item_id"])
-        op.create_index("ix_material_request_queue_status", "material_request_queue", ["status"])
+        ah.safe_create_index(
+            op, conn, "ix_material_request_queue_company_id", "material_request_queue", ["company_id"]
+        )
+        ah.safe_create_index(
+            op,
+            conn,
+            "ix_material_request_queue_inventory_item_id",
+            "material_request_queue",
+            ["inventory_item_id"],
+        )
+        ah.safe_create_index(op, conn, "ix_material_request_queue_status", "material_request_queue", ["status"])
 
     if not ah.table_exists(conn, "material_request_drafts"):
         ah.safe_create_table(
@@ -81,8 +89,12 @@ def upgrade() -> None:
             sa.Column("status", sa.String(32), nullable=False, server_default="draft"),
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
         )
-        op.create_index("ix_material_request_drafts_company_id", "material_request_drafts", ["company_id"])
-        op.create_index("ix_material_request_drafts_draft_number", "material_request_drafts", ["draft_number"])
+        ah.safe_create_index(
+            op, conn, "ix_material_request_drafts_company_id", "material_request_drafts", ["company_id"]
+        )
+        ah.safe_create_index(
+            op, conn, "ix_material_request_drafts_draft_number", "material_request_drafts", ["draft_number"]
+        )
 
     if not ah.table_exists(conn, "material_request_draft_items"):
         ah.safe_create_table(
@@ -109,7 +121,9 @@ def upgrade() -> None:
             sa.Column("estimated_unit_cost", sa.Float(), nullable=True),
             sa.Column("estimated_cost", sa.Float(), nullable=True),
         )
-        op.create_index("ix_material_request_draft_items_draft_id", "material_request_draft_items", ["draft_id"])
+        ah.safe_create_index(
+            op, conn, "ix_material_request_draft_items_draft_id", "material_request_draft_items", ["draft_id"]
+        )
 
 
 def downgrade() -> None:
