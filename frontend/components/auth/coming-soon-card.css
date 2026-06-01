@@ -259,7 +259,10 @@
   padding-bottom: 0.5rem;
 }
 
-.login-content {
+/* Mobile / tablet: 75% of viewport; desktop (lg+): 33% */
+.login-content,
+.login-content--hero,
+.login-content--stack {
   width: min(75vw, 100%);
   max-width: 75%;
   margin-left: auto;
@@ -269,15 +272,21 @@
 .login-content--hero {
   display: flex;
   justify-content: center;
-  width: 100%;
-  max-width: min(75vw, 28rem);
 }
 
 .login-content--stack {
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
-  width: 100%;
+}
+
+@media (min-width: 1024px) {
+  .login-content,
+  .login-content--hero,
+  .login-content--stack {
+    width: min(33vw, 100%);
+    max-width: 33%;
+  }
 }
 
 .login-stack__subtitle {
@@ -317,11 +326,6 @@
     border-radius: 16px 16px 0 0;
   }
 
-  .login-content--hero,
-  .login-content--stack {
-    width: min(75vw, 100%);
-    max-width: 75%;
-  }
 }
 
 .dark .coming-soon-card {
