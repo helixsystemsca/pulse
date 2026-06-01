@@ -63,18 +63,18 @@ import { InventoryVendorsPanel } from "@/components/inventory/InventoryVendorsPa
 import {
   InventoryRegisterItemForm,
   registerFormStateToPayload,
+  emptyRegisterFormState,
   type InventoryRegisterFormState,
 } from "@/components/inventory/InventoryRegisterItemForm";
-import { InventoryCategoryEditor } from "@/components/inventory/InventoryCategoryEditor";
+import { InventoryItemProfilePhoto } from "@/components/inventory/InventoryItemPhotoUpload";
 import { InventoryRegisterFieldsEditor } from "@/components/inventory/InventoryRegisterFieldsEditor";
 import {
   InventorySetupWizard,
   mergedSettingsForSave,
 } from "@/components/inventory/InventorySetupWizard";
 import {
-  inventoryCategoryLeafOptions,
   mergeInventoryModuleSettings,
-  resolveStoredCategory,
+  registerFormCategoryFilterOptions,
   type MergedInventorySettings,
 } from "@/lib/inventory/register-form-config";
 import {
@@ -96,7 +96,6 @@ const FIELD =
 const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-muted";
 
 const SETTINGS_TABS = [
-  "Categories",
   "Register form",
   "Status rules",
   "Thresholds",
@@ -295,14 +294,18 @@ export function InventoryApp() {
 
   const mergedSettings = useMemo(() => mergeInventoryModuleSettings(settingsBaseline), [settingsBaseline]);
   const categoryFilterOptions = useMemo(
-    () => inventoryCategoryLeafOptions(mergedSettings.categories),
-    [mergedSettings.categories],
+    () =>
+      registerFormCategoryFilterOptions(
+        mergedSettings.register_form,
+        rows.map((r) => r.category ?? ""),
+      ),
+    [mergedSettings.register_form, rows],
   );
 
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [qtyPending, setQtyPending] = useState<Record<string, boolean>>({});
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<SettingsTab>("Categories");
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>("Register form");
   const [settingsDraft, setSettingsDraft] = useState<MergedInventorySettings>(() => mergeInventoryModuleSettings({}));
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
@@ -319,24 +322,7 @@ export function InventoryApp() {
   const [editImageUrl, setEditImageUrl] = useState<string | null>(null);
   const [pendingPhotoFile, setPendingPhotoFile] = useState<File | null>(null);
   const [pendingPhotoPreview, setPendingPhotoPreview] = useState<string | null>(null);
-  const [form, setForm] = useState<InventoryRegisterFormState>({
-    name: "",
-    sku: "",
-    item_type: "part",
-    category_group: "",
-    category: "",
-    quantity: "0",
-    unit: "count",
-    low_stock_threshold: "5",
-    zone_id: "",
-    assigned_user_id: "",
-    linked_tool_id: "",
-    department_slug: "maintenance",
-    condition: "good",
-    unit_cost: "",
-    vendor: "",
-    reorder_flag: false,
-  });
+  const [form, setForm] = useState<InventoryRegisterFormState>(() => emptyRegisterFormState());
 
   const [assignUserId, setAssignUserId] = useState("");
   const [moveZoneId, setMoveZoneId] = useState("");
@@ -580,24 +566,9 @@ export function InventoryApp() {
     setEditImageUrl(null);
     clearPendingPhoto();
     const dept = directoryDepartmentSlug ?? userInventoryDepartment;
-    setForm({
-      name: "",
-      sku: "",
-      item_type: "part",
-      category_group: "",
-      category: "",
-      quantity: "0",
-      unit: "count",
-      low_stock_threshold: String(mergedSettings.threshold_defaults.default_min ?? 5),
-      zone_id: "",
-      assigned_user_id: "",
-      linked_tool_id: "",
-      department_slug: dept,
-      condition: "good",
-      unit_cost: "",
-      vendor: "",
-      reorder_flag: false,
-    });
+    setForm(
+      emptyRegisterFormState(mergedSettings.threshold_defaults.default_min ?? 5, dept),
+    );
     setEditOpen(true);
   }
 
@@ -620,15 +591,20 @@ export function InventoryApp() {
         | "unit_cost"
         | "vendor"
         | "reorder_flag"
+        | "custom_attributes"
       >,
     ) => {
-      const cat = resolveStoredCategory(mergedSettings.categories, row.category);
+      const custom_attributes: Record<string, string | boolean> = {};
+      const attrs = row.custom_attributes ?? {};
+      for (const [k, v] of Object.entries(attrs)) {
+        if (typeof v === "boolean") custom_attributes[k] = v;
+        else if (v != null) custom_attributes[k] = String(v);
+      }
       return {
         name: row.name,
         sku: row.sku,
         item_type: row.item_type,
-        category_group: cat.groupId,
-        category: cat.value,
+        category: row.category ?? "",
         quantity: String(row.quantity),
         unit: row.unit,
         low_stock_threshold: String(row.low_stock_threshold),
@@ -640,9 +616,10 @@ export function InventoryApp() {
         unit_cost: row.unit_cost != null ? String(row.unit_cost) : "",
         vendor: row.vendor ?? "",
         reorder_flag: row.reorder_flag,
+        custom_attributes,
       };
     },
-    [mergedSettings.categories],
+    [],
   );
 
   function openEdit(row: InventoryRow) {
@@ -683,7 +660,7 @@ export function InventoryApp() {
     if (!effectiveCompanyId || !form.name.trim() || !canMutateInventory) return;
     setActionBusy(true);
     try {
-      const payload = registerFormStateToPayload(form, mergedSettings.categories);
+      const payload = registerFormStateToPayload(form, mergedSettings.register_form);
       let savedId: string | null = editTargetId;
       if (editMode === "create") {
         const d = await createInventoryItem(apiCompany, payload);
@@ -1613,6 +1590,8 @@ export function InventoryApp() {
               </div>
             ) : null}
 
+            <InventoryItemProfilePhoto imageUrl={detail.image_url} name={detail.name} />
+
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
                 <p className="text-xs font-bold uppercase text-pulse-muted">Status &amp; quantity</p>
@@ -1751,7 +1730,6 @@ export function InventoryApp() {
         ) : null}
         <InventoryRegisterItemForm
           registerForm={mergedSettings.register_form}
-          categories={mergedSettings.categories}
           form={form}
           onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
           zones={zones}
@@ -1832,12 +1810,6 @@ export function InventoryApp() {
                 >
                   Open setup wizard
                 </button>
-              ) : null}
-              {settingsTab === "Categories" ? (
-                <InventoryCategoryEditor
-                  categories={settingsDraft.categories}
-                  onChange={(categories) => setSettingsDraft((d) => ({ ...d, categories }))}
-                />
               ) : null}
               {settingsTab === "Register form" ? (
                 <InventoryRegisterFieldsEditor

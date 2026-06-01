@@ -5,8 +5,8 @@
  */
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { Bell, ChevronDown, Image as ImageIcon, KeyRound, LogOut, Megaphone, MessageSquare, Settings, X } from "lucide-react";
+import { HelixMarketingLogo } from "@/components/branding/HelixMarketingLogo";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { OperationalNotificationsModal } from "@/components/app/OperationalNotificationsModal";
@@ -213,27 +213,9 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
         <div className="flex min-w-0 flex-1 items-center pl-1.5 sm:pl-2">
           <Link
             href={logoHref}
-            className={cn(
-              "font-panoramaBrand inline-flex min-w-0 items-center gap-2 whitespace-nowrap text-[clamp(1.05rem,2.1vw,1.45rem)] uppercase leading-none text-white",
-            )}
+            className="inline-flex min-w-0 items-center whitespace-nowrap leading-none"
           >
-            <span
-              className="relative flex shrink-0 items-center justify-center"
-              style={{
-                width: "calc(var(--pulse-header-bar-height) - 10px)",
-                height: "calc(var(--pulse-header-bar-height) - 10px)",
-              }}
-            >
-              <Image
-                src="/images/prwhite.png"
-                alt=""
-                width={48}
-                height={48}
-                className="h-full w-full object-contain object-center"
-                priority
-              />
-            </span>
-            <span className="font-normal tracking-[0.04em]">Pulse</span>
+            <HelixMarketingLogo variant="header" priority />
           </Link>
         </div>
 

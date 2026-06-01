@@ -85,6 +85,7 @@ class InventoryRowOut(BaseModel):
     unit_cost: Optional[float] = None
     vendor: Optional[str] = None
     image_url: Optional[str] = None
+    custom_attributes: dict[str, Any] = Field(default_factory=dict)
 
 
 class InventoryDetailOut(InventoryRowOut):
@@ -121,6 +122,7 @@ class InventoryCreateIn(BaseModel):
     unit_cost: Optional[float] = Field(None, ge=0)
     vendor: Optional[str] = Field(None, max_length=255)
     reorder_flag: bool = False
+    custom_attributes: dict[str, Any] = Field(default_factory=dict)
 
 
 class InventoryPatchIn(BaseModel):
@@ -140,6 +142,7 @@ class InventoryPatchIn(BaseModel):
     unit_cost: Optional[float] = Field(None, ge=0)
     vendor: Optional[str] = Field(None, max_length=255)
     reorder_flag: Optional[bool] = None
+    custom_attributes: Optional[dict[str, Any]] = None
 
 
 class InventoryAssignIn(BaseModel):

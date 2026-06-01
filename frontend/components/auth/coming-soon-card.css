@@ -237,8 +237,8 @@
 /* Login page: centered form; coming soon docks separately on the left */
 .login-content {
   display: flex;
-  width: 100%;
-  max-width: 440px;
+  width: 75%;
+  max-width: 75vw;
   align-items: flex-start;
   justify-content: center;
   margin-left: auto;
@@ -247,7 +247,6 @@
 
 .login-content__form {
   width: 100%;
-  max-width: 440px;
   flex-shrink: 0;
 }
 
@@ -272,7 +271,8 @@
   .login-content {
     flex-direction: column;
     align-items: center;
-    max-width: 440px;
+    width: 75%;
+    max-width: 75vw;
   }
 }
 

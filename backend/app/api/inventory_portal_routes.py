@@ -297,6 +297,7 @@ def _row(
         unit_cost=item.unit_cost,
         vendor=item.vendor,
         image_url=item.image_url,
+        custom_attributes=dict(item.custom_attributes or {}),
     )
 
 
@@ -1055,7 +1056,6 @@ def _scan_lookup_out(
 ) -> InventoryScanLookupOut:
     z = zones.get(item.zone_id) if item.zone_id else None
     t = tools.get(item.linked_tool_id) if item.linked_tool_id else None
-    image = item.image_url or (t.image_url if t else None)
     return InventoryScanLookupOut(
         id=item.id,
         sku=item.sku,
@@ -1067,7 +1067,7 @@ def _scan_lookup_out(
         unit=item.unit,
         low_stock_threshold=item.low_stock_threshold,
         location_name=z.name if z else None,
-        image_url=image,
+        image_url=t.image_url if t else None,
         department_slug=item.department_slug or "maintenance",
     )
 
@@ -1228,6 +1228,7 @@ async def create_inventory_item(
         reorder_flag=body.reorder_flag,
         unit_cost=body.unit_cost,
         vendor=(body.vendor or "").strip() or None,
+        custom_attributes=dict(body.custom_attributes or {}),
     )
     if body.assigned_user_id:
         item.inv_status = "assigned"
@@ -1324,6 +1325,8 @@ async def patch_inventory_item(
     if "vendor" in data:
         vraw = data["vendor"]
         item.vendor = None if vraw is None else (str(vraw).strip() or None)
+    if "custom_attributes" in data and data["custom_attributes"] is not None:
+        item.custom_attributes = dict(data["custom_attributes"])
     if "inv_status" not in data:
         _recompute_status(item)
     item.last_movement_at = datetime.now(timezone.utc)

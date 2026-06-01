@@ -1,16 +1,15 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { PremiumModal } from "@/components/ui/premium-modal";
-import { InventoryCategoryEditor } from "@/components/inventory/InventoryCategoryEditor";
 import { InventoryRegisterFieldsEditor } from "@/components/inventory/InventoryRegisterFieldsEditor";
 import type { MergedInventorySettings } from "@/lib/inventory/register-form-config";
-import { settingsPayloadFromMerged } from "@/lib/inventory/register-form-config";
+import { effectiveInputType, settingsPayloadFromMerged } from "@/lib/inventory/register-form-config";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
 
-const STEPS = ["Welcome", "Categories", "Register form", "Review"] as const;
+const STEPS = ["Welcome", "Register form", "Review"] as const;
 type Step = (typeof STEPS)[number];
 
 const PRIMARY = cn(buttonVariants({ surface: "light", intent: "accent" }), "px-4 py-2 text-sm font-bold");
@@ -32,11 +31,8 @@ export function InventorySetupWizard({ open, busy, draft, onDraftChange, onCompl
   const [step, setStep] = useState<Step>("Welcome");
 
   const stepIndex = STEPS.indexOf(step);
-  const categoryNames = useMemo(
-    () => draft.categories.map((c) => c.name.trim()).filter(Boolean),
-    [draft.categories],
-  );
-  const enabledFieldCount = draft.register_form.fields.filter((f) => f.enabled).length;
+  const enabledFields = draft.register_form.fields.filter((f) => f.enabled).sort((a, b) => a.order - b.order);
+  const customFieldCount = enabledFields.filter((f) => f.is_custom).length;
 
   function goNext() {
     const next = STEPS[stepIndex + 1];
@@ -59,7 +55,7 @@ export function InventorySetupWizard({ open, busy, draft, onDraftChange, onCompl
       size="lg"
       className="max-w-3xl"
       title="Inventory setup"
-      subtitle="Configure categories and the register item form for your team."
+      subtitle="Configure the register item form for your team."
       onClose={onSkip}
       footer={
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -111,24 +107,16 @@ export function InventorySetupWizard({ open, busy, draft, onDraftChange, onCompl
       {step === "Welcome" ? (
         <div className="space-y-4 text-sm text-ds-foreground">
           <p>
-            Before your team registers stock, define how inventory is organized — category names, dropdown options,
-            and which fields appear when adding an item.
+            Before your team registers stock, define which fields appear when adding an item — including custom fields
+            with text inputs or dropdowns.
           </p>
           <ul className="list-disc space-y-1 pl-5 text-ds-muted">
-            <li>Group items into categories with optional sub-types</li>
             <li>Show or hide fields like vendor, location, and min stock</li>
-            <li>Rename labels to match your site vocabulary</li>
+            <li>Add custom fields for site-specific data</li>
+            <li>Rename labels and switch between text and dropdown where supported</li>
           </ul>
           <p className="text-ds-muted">You can change these anytime under Inventory settings.</p>
         </div>
-      ) : null}
-
-      {step === "Categories" ? (
-        <InventoryCategoryEditor
-          categories={draft.categories}
-          onChange={(categories) => onDraftChange({ ...draft, categories })}
-          compact
-        />
       ) : null}
 
       {step === "Register form" ? (
@@ -141,23 +129,20 @@ export function InventorySetupWizard({ open, busy, draft, onDraftChange, onCompl
       {step === "Review" ? (
         <div className="space-y-4 text-sm">
           <div className="rounded-xl border border-ds-border bg-ds-secondary/30 p-4">
-            <p className="font-bold text-ds-foreground">Categories ({categoryNames.length})</p>
-            <p className="mt-1 text-ds-muted">
-              {categoryNames.length ? categoryNames.join(", ") : "No categories yet — add at least one."}
-            </p>
-          </div>
-          <div className="rounded-xl border border-ds-border bg-ds-secondary/30 p-4">
             <p className="font-bold text-ds-foreground">Register form</p>
-            <p className="mt-1 text-ds-muted">{enabledFieldCount} fields enabled</p>
+            <p className="mt-1 text-ds-muted">
+              {enabledFields.length} fields enabled
+              {customFieldCount ? ` · ${customFieldCount} custom` : ""}
+            </p>
             <ul className="mt-2 space-y-1 text-ds-foreground">
-              {draft.register_form.fields
-                .filter((f) => f.enabled)
-                .sort((a, b) => a.order - b.order)
-                .map((f) => (
-                  <li key={f.id}>
-                    {f.label} <span className="text-ds-muted">({f.id})</span>
-                  </li>
-                ))}
+              {enabledFields.map((f) => (
+                <li key={f.id}>
+                  {f.label}{" "}
+                  <span className="text-ds-muted">
+                    ({effectiveInputType(f).replace(/_/g, " ")})
+                  </span>
+                </li>
+              ))}
             </ul>
           </div>
           <p className="text-xs text-ds-muted">Saving will mark inventory setup as complete for your organization.</p>
@@ -168,14 +153,5 @@ export function InventorySetupWizard({ open, busy, draft, onDraftChange, onCompl
 }
 
 export function mergedSettingsForSave(merged: MergedInventorySettings) {
-  return settingsPayloadFromMerged({
-    ...merged,
-    categories: merged.categories
-      .map((c) => ({
-        ...c,
-        name: c.name.trim(),
-        options: c.options.map((o) => o.trim()).filter(Boolean),
-      }))
-      .filter((c) => c.name.length > 0),
-  });
+  return settingsPayloadFromMerged(merged);
 }

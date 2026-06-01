@@ -156,3 +156,30 @@ export function InventoryItemPhotoUpload({
     </div>
   );
 }
+
+/** Read-only product photo for the inventory item detail profile. */
+export function InventoryItemProfilePhoto({
+  imageUrl,
+  name,
+}: {
+  imageUrl?: string | null;
+  name: string;
+}) {
+  const photo = useResolvedProtectedAssetSrc(imageUrl ?? null);
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-slate-50 shadow-sm">
+      {photo.src ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={photo.src} alt={name} className="aspect-[4/3] w-full object-cover" />
+      ) : photo.loading && imageUrl?.trim() ? (
+        <div className="flex aspect-[4/3] items-center justify-center text-sm text-pulse-muted">Loading photo…</div>
+      ) : (
+        <div className="flex aspect-[4/3] flex-col items-center justify-center gap-2 text-pulse-muted">
+          <ImagePlus className="h-8 w-8 opacity-40" aria-hidden />
+          <p className="text-sm font-medium">No product photo</p>
+        </div>
+      )}
+    </div>
+  );
+}

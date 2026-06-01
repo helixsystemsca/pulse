@@ -1,9 +1,10 @@
 "use client";
 
-import type { InventoryCategoryConfig, InventoryRegisterFormConfig } from "@/lib/inventory/register-form-config";
+import type { InventoryRegisterFieldConfig, InventoryRegisterFormConfig } from "@/lib/inventory/register-form-config";
 import {
-  categoryValueForSave,
+  effectiveInputType,
   enabledRegisterFields,
+  isBuiltinFieldId,
 } from "@/lib/inventory/register-form-config";
 import { getDepartmentBySlug, PLATFORM_DEPARTMENTS } from "@/config/platform/departments";
 import { InventoryItemPhotoUpload } from "@/components/inventory/InventoryItemPhotoUpload";
@@ -17,7 +18,6 @@ export type InventoryRegisterFormState = {
   name: string;
   sku: string;
   item_type: string;
-  category_group: string;
   category: string;
   quantity: string;
   unit: string;
@@ -30,6 +30,7 @@ export type InventoryRegisterFormState = {
   unit_cost: string;
   vendor: string;
   reorder_flag: boolean;
+  custom_attributes: Record<string, string | boolean>;
 };
 
 type ZoneOpt = { id: string; name: string };
@@ -38,7 +39,6 @@ type WorkerOpt = { id: string; email: string; full_name: string | null };
 
 type Props = {
   registerForm: InventoryRegisterFormConfig;
-  categories: InventoryCategoryConfig[];
   form: InventoryRegisterFormState;
   onChange: (patch: Partial<InventoryRegisterFormState>) => void;
   zones: ZoneOpt[];
@@ -53,9 +53,26 @@ type Props = {
   uploadPhoto?: (file: File) => Promise<{ image_url: string }>;
 };
 
+function renderSelect(
+  value: string,
+  onValue: (v: string) => void,
+  options: { value: string; label: string }[],
+  placeholder = "—",
+) {
+  return (
+    <select className={FIELD} value={value} onChange={(e) => onValue(e.target.value)}>
+      <option value="">{placeholder}</option>
+      {options.map((o) => (
+        <option key={o.value} value={o.value}>
+          {o.label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 export function InventoryRegisterItemForm({
   registerForm,
-  categories,
   form,
   onChange,
   zones,
@@ -70,14 +87,84 @@ export function InventoryRegisterItemForm({
   uploadPhoto,
 }: Props) {
   const fields = enabledRegisterFields(registerForm);
-  const selectedCategory = categories.find((c) => c.id === form.category_group);
 
   function setForm(patch: Partial<InventoryRegisterFormState>) {
     onChange(patch);
   }
 
-  function renderField(fieldId: (typeof fields)[number]["id"]) {
-    switch (fieldId) {
+  function setCustom(id: string, value: string | boolean) {
+    setForm({ custom_attributes: { ...form.custom_attributes, [id]: value } });
+  }
+
+  function renderTextOrSelect(
+    field: InventoryRegisterFieldConfig,
+    value: string,
+    onValue: (v: string) => void,
+  ) {
+    const inputType = effectiveInputType(field);
+    if (inputType === "select") {
+      const options = field.options ?? [];
+      return renderSelect(value, onValue, options);
+    }
+    return (
+      <input
+        className={FIELD}
+        value={value}
+        onChange={(e) => onValue(e.target.value)}
+        placeholder={field.placeholder}
+      />
+    );
+  }
+
+  function renderCustomField(field: InventoryRegisterFieldConfig) {
+    const inputType = effectiveInputType(field);
+    const raw = form.custom_attributes[field.id];
+    if (inputType === "checkbox") {
+      return (
+        <label className="mt-6 flex cursor-pointer items-center gap-2 text-sm font-semibold text-pulse-navy">
+          <input
+            type="checkbox"
+            checked={Boolean(raw)}
+            onChange={(e) => setCustom(field.id, e.target.checked)}
+          />
+          {field.label}
+        </label>
+      );
+    }
+    if (inputType === "number") {
+      return (
+        <input
+          className={FIELD}
+          inputMode="decimal"
+          value={typeof raw === "string" ? raw : raw != null ? String(raw) : ""}
+          onChange={(e) => setCustom(field.id, e.target.value)}
+          placeholder={field.placeholder}
+        />
+      );
+    }
+    if (inputType === "select") {
+      return renderSelect(
+        typeof raw === "string" ? raw : "",
+        (v) => setCustom(field.id, v),
+        field.options ?? [],
+      );
+    }
+    return (
+      <input
+        className={FIELD}
+        value={typeof raw === "string" ? raw : ""}
+        onChange={(e) => setCustom(field.id, e.target.value)}
+        placeholder={field.placeholder}
+      />
+    );
+  }
+
+  function renderField(field: InventoryRegisterFieldConfig) {
+    if (field.is_custom || !isBuiltinFieldId(field.id)) {
+      return renderCustomField(field);
+    }
+
+    switch (field.id) {
       case "photo":
         return (
           <InventoryItemPhotoUpload
@@ -96,72 +183,23 @@ export function InventoryRegisterItemForm({
             className={FIELD}
             value={form.name}
             onChange={(e) => setForm({ name: e.target.value })}
-            placeholder={fields.find((f) => f.id === "name")?.placeholder}
+            placeholder={field.placeholder}
           />
         );
       case "sku":
-        return (
-          <input
-            className={FIELD}
-            value={form.sku}
-            onChange={(e) => setForm({ sku: e.target.value })}
-          />
+        return renderTextOrSelect(field, form.sku, (sku) => setForm({ sku }));
+      case "item_type":
+        return renderSelect(
+          form.item_type,
+          (item_type) => setForm({ item_type }),
+          field.options ?? [
+            { value: "tool", label: "Tool" },
+            { value: "part", label: "Part" },
+            { value: "consumable", label: "Consumable" },
+          ],
         );
-      case "item_type": {
-        const cfg = fields.find((f) => f.id === "item_type");
-        const options = cfg?.options ?? [
-          { value: "tool", label: "Tool" },
-          { value: "part", label: "Part" },
-          { value: "consumable", label: "Consumable" },
-        ];
-        return (
-          <select
-            className={FIELD}
-            value={form.item_type}
-            onChange={(e) => setForm({ item_type: e.target.value })}
-          >
-            {options.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        );
-      }
       case "category":
-        return (
-          <div className="space-y-3">
-            <select
-              className={FIELD}
-              value={form.category_group}
-              onChange={(e) => setForm({ category_group: e.target.value, category: "" })}
-            >
-              <option value="">—</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-            {selectedCategory && selectedCategory.options.length > 0 ? (
-              <div>
-                <label className={LABEL}>{selectedCategory.name} type</label>
-                <select
-                  className={FIELD}
-                  value={form.category}
-                  onChange={(e) => setForm({ category: e.target.value })}
-                >
-                  <option value="">—</option>
-                  {selectedCategory.options.map((o) => (
-                    <option key={o} value={o}>
-                      {o}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ) : null}
-          </div>
-        );
+        return renderTextOrSelect(field, form.category, (category) => setForm({ category }));
       case "quantity":
         return (
           <input
@@ -173,9 +211,7 @@ export function InventoryRegisterItemForm({
           />
         );
       case "unit":
-        return (
-          <input className={FIELD} value={form.unit} onChange={(e) => setForm({ unit: e.target.value })} />
-        );
+        return renderTextOrSelect(field, form.unit, (unit) => setForm({ unit }));
       case "low_stock_threshold":
         return (
           <input
@@ -186,91 +222,44 @@ export function InventoryRegisterItemForm({
           />
         );
       case "department_slug":
-        return (
-          <select
-            className={FIELD}
-            value={form.department_slug}
-            onChange={(e) => setForm({ department_slug: e.target.value })}
-          >
-            {PLATFORM_DEPARTMENTS.map((d) => (
-              <option key={d.slug} value={d.slug}>
-                {d.name}
-              </option>
-            ))}
-          </select>
+        return renderSelect(
+          form.department_slug,
+          (department_slug) => setForm({ department_slug }),
+          PLATFORM_DEPARTMENTS.map((d) => ({ value: d.slug, label: d.name })),
         );
-      case "condition": {
-        const cfg = fields.find((f) => f.id === "condition");
-        const options = cfg?.options ?? [
-          { value: "good", label: "Good" },
-          { value: "needs_maintenance", label: "Needs maintenance" },
-          { value: "critical", label: "Critical / out of service" },
-        ];
-        return (
-          <select
-            className={FIELD}
-            value={form.condition}
-            onChange={(e) => setForm({ condition: e.target.value })}
-          >
-            {options.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
+      case "condition":
+        return renderSelect(
+          form.condition,
+          (condition) => setForm({ condition }),
+          field.options ?? [
+            { value: "good", label: "Good" },
+            { value: "needs_maintenance", label: "Needs maintenance" },
+            { value: "critical", label: "Critical / out of service" },
+          ],
         );
-      }
       case "zone_id":
-        return (
-          <select className={FIELD} value={form.zone_id} onChange={(e) => setForm({ zone_id: e.target.value })}>
-            <option value="">—</option>
-            {zones.map((z) => (
-              <option key={z.id} value={z.id}>
-                {z.name}
-              </option>
-            ))}
-          </select>
+        return renderSelect(
+          form.zone_id,
+          (zone_id) => setForm({ zone_id }),
+          zones.map((z) => ({ value: z.id, label: z.name })),
         );
       case "assigned_user_id":
-        return (
-          <select
-            className={FIELD}
-            value={form.assigned_user_id}
-            onChange={(e) => setForm({ assigned_user_id: e.target.value })}
-          >
-            <option value="">—</option>
-            {workers.map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.full_name || w.email}
-              </option>
-            ))}
-          </select>
+        return renderSelect(
+          form.assigned_user_id,
+          (assigned_user_id) => setForm({ assigned_user_id }),
+          workers.map((w) => ({ value: w.id, label: w.full_name || w.email })),
         );
       case "linked_tool_id":
-        return (
-          <select
-            className={FIELD}
-            value={form.linked_tool_id}
-            onChange={(e) => setForm({ linked_tool_id: e.target.value })}
-          >
-            <option value="">—</option>
-            {assets.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-                {a.tag_id ? ` (${a.tag_id})` : ""}
-              </option>
-            ))}
-          </select>
+        return renderSelect(
+          form.linked_tool_id,
+          (linked_tool_id) => setForm({ linked_tool_id }),
+          assets.map((a) => ({
+            value: a.id,
+            label: `${a.name}${a.tag_id ? ` (${a.tag_id})` : ""}`,
+          })),
         );
       case "vendor":
-        return (
-          <input
-            className={FIELD}
-            value={form.vendor}
-            onChange={(e) => setForm({ vendor: e.target.value })}
-            placeholder={fields.find((f) => f.id === "vendor")?.placeholder}
-          />
-        );
+        return renderTextOrSelect(field, form.vendor, (vendor) => setForm({ vendor }));
       case "unit_cost":
         return (
           <input
@@ -288,7 +277,7 @@ export function InventoryRegisterItemForm({
               checked={form.reorder_flag}
               onChange={(e) => setForm({ reorder_flag: e.target.checked })}
             />
-            {fields.find((f) => f.id === "reorder_flag")?.label ?? "Flag for reorder"}
+            {field.label}
           </label>
         );
       default:
@@ -299,10 +288,13 @@ export function InventoryRegisterItemForm({
   return (
     <div className={cn("grid gap-4 sm:grid-cols-2", disabled && "pointer-events-none opacity-50")}>
       {fields.map((field) => {
-        if (field.id === "reorder_flag") {
+        const inputType = effectiveInputType(field);
+        const isCheckbox = inputType === "checkbox" || field.id === "reorder_flag";
+
+        if (isCheckbox) {
           return (
             <div key={field.id} className="flex items-end sm:col-span-1">
-              {renderField(field.id)}
+              {renderField(field)}
             </div>
           );
         }
@@ -310,7 +302,7 @@ export function InventoryRegisterItemForm({
           return (
             <div key={field.id} className="sm:col-span-2">
               <label className={LABEL}>{field.label}</label>
-              {renderField(field.id)}
+              {renderField(field)}
               {field.help_text ? <p className="mt-1 text-[11px] text-pulse-muted">{field.help_text}</p> : null}
             </div>
           );
@@ -318,7 +310,7 @@ export function InventoryRegisterItemForm({
         return (
           <div key={field.id} className={field.col_span === 2 ? "sm:col-span-2" : undefined}>
             <label className={LABEL}>{field.label}</label>
-            {renderField(field.id)}
+            {renderField(field)}
             {field.help_text ? <p className="mt-1 text-[11px] text-pulse-muted">{field.help_text}</p> : null}
           </div>
         );
@@ -329,14 +321,31 @@ export function InventoryRegisterItemForm({
 
 export function registerFormStateToPayload(
   form: InventoryRegisterFormState,
-  categories: InventoryCategoryConfig[],
+  registerForm: InventoryRegisterFormConfig,
 ) {
   const unit_cost = form.unit_cost.trim() === "" ? null : Number.parseFloat(form.unit_cost);
+  const enabled = enabledRegisterFields(registerForm);
+  const custom_attributes: Record<string, string | number | boolean | null> = {};
+
+  for (const field of enabled) {
+    if (!field.is_custom && isBuiltinFieldId(field.id)) continue;
+    const raw = form.custom_attributes[field.id];
+    const inputType = effectiveInputType(field);
+    if (inputType === "checkbox") {
+      custom_attributes[field.id] = Boolean(raw);
+    } else if (inputType === "number") {
+      const n = Number.parseFloat(String(raw ?? ""));
+      custom_attributes[field.id] = Number.isNaN(n) ? null : n;
+    } else {
+      custom_attributes[field.id] = String(raw ?? "").trim() || null;
+    }
+  }
+
   return {
     name: form.name.trim(),
     sku: form.sku.trim() || null,
     item_type: form.item_type,
-    category: categoryValueForSave(categories, form.category_group, form.category),
+    category: form.category.trim() || null,
     quantity: Number.parseFloat(form.quantity) || 0,
     unit: form.unit.trim() || "count",
     low_stock_threshold: Number.parseFloat(form.low_stock_threshold) || 0,
@@ -348,9 +357,31 @@ export function registerFormStateToPayload(
     unit_cost: unit_cost != null && !Number.isNaN(unit_cost) ? unit_cost : null,
     vendor: form.vendor.trim() || null,
     reorder_flag: form.reorder_flag,
+    custom_attributes,
   };
 }
 
 export function departmentLabel(slug: string): string {
   return getDepartmentBySlug(slug)?.name ?? slug;
+}
+
+export function emptyRegisterFormState(defaultMin = 5, departmentSlug = "maintenance"): InventoryRegisterFormState {
+  return {
+    name: "",
+    sku: "",
+    item_type: "part",
+    category: "",
+    quantity: "0",
+    unit: "count",
+    low_stock_threshold: String(defaultMin),
+    zone_id: "",
+    assigned_user_id: "",
+    linked_tool_id: "",
+    department_slug: departmentSlug,
+    condition: "good",
+    unit_cost: "",
+    vendor: "",
+    reorder_flag: false,
+    custom_attributes: {},
+  };
 }

@@ -72,6 +72,7 @@ export type InventoryRow = {
   unit_cost?: number | null;
   vendor?: string | null;
   image_url?: string | null;
+  custom_attributes?: Record<string, string | number | boolean | null>;
   scope_id?: string;
 };
 
@@ -95,14 +96,12 @@ export type InventoryScopeRow = {
   description?: string | null;
 };
 
-import type {
-  InventoryCategoryConfig,
-  InventoryRegisterFormConfig,
-} from "@/lib/inventory/register-form-config";
+import type { InventoryRegisterFormConfig } from "@/lib/inventory/register-form-config";
 
 export type InventoryModuleSettings = {
   setup_completed?: boolean;
-  categories?: InventoryCategoryConfig[] | string[];
+  /** @deprecated Categories removed — category is configured on the register form field. */
+  categories?: unknown;
   register_form?: InventoryRegisterFormConfig;
   status_rules?: Record<string, boolean>;
   threshold_defaults?: { default_min?: number };
@@ -186,6 +185,7 @@ export async function createInventoryItem(
     unit_cost?: number | null;
     vendor?: string | null;
     reorder_flag?: boolean;
+    custom_attributes?: Record<string, string | number | boolean | null>;
   },
 ): Promise<InventoryDetail> {
   return apiFetch<InventoryDetail>(withCompany(`/api/inventory`, companyId), {

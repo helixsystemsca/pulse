@@ -573,6 +573,9 @@ class InventoryItem(Base):
     unit_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     vendor: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     image_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
+    custom_attributes: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
     last_movement_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
