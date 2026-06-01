@@ -1,7 +1,7 @@
 "use client";
 
 import { Search } from "lucide-react";
-import { useId } from "react";
+import { useId, type Ref } from "react";
 import { cn } from "@/lib/cn";
 import { dsInputClass } from "@/components/ui/ds-form-classes";
 import type { InventoryScanProduct } from "@/lib/inventory-scanner/inventoryScannerService";
@@ -31,7 +31,7 @@ type Props = {
   suggestOpen: boolean;
   onSuggestOpen: (open: boolean) => void;
   busy?: boolean;
-  inputRef?: React.RefObject<HTMLInputElement | null>;
+  inputRef?: Ref<HTMLInputElement>;
   label?: string;
   placeholder?: string;
   className?: string;
