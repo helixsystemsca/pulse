@@ -1,31 +1,31 @@
 "use client";
 
-import { ChevronDown, Loader2, Moon, Sun } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ChevronDown, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { useTheme } from "@/components/theme/ThemeProvider";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/pulse/Card";
+import { DashboardHomepagePicker } from "@/components/dashboards/DashboardHomepagePicker";
 import { REDUCED_EFFECTS_CHANGED_EVENT, REDUCED_EFFECTS_STORAGE_KEY, useReducedEffects } from "@/hooks/useReducedEffects";
 import { apiFetch } from "@/lib/api";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
-import { DashboardHomepagePicker } from "@/components/dashboards/DashboardHomepagePicker";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
 
 const FIELD =
-  "mt-1.5 w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100";
+  "mt-1.5 w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25";
 const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-muted";
 
 export function ProfileAccountSection({
   microsoftAuth,
+  showExtendedSettings = true,
   onToast,
   onError,
 }: {
   microsoftAuth?: boolean;
+  showExtendedSettings?: boolean;
   onToast: (msg: string) => void;
   onError: (msg: string | null) => void;
 }) {
-  const { theme, setTheme } = useTheme();
   const { reduced, setUserReducedEffects } = useReducedEffects();
   const [extraReduced, setExtraReduced] = useState(false);
 
@@ -81,45 +81,16 @@ export function ProfileAccountSection({
       <div>
         <h2 className="font-headline text-lg font-extrabold text-ds-foreground">Settings &amp; account</h2>
         <p className="mt-1 text-sm text-ds-muted">
-          Security and preferences stay here so your identity card stays focused on how you work.
+          {showExtendedSettings
+            ? "Security and preferences stay here so your identity card stays focused on how you work."
+            : "Update your sign-in password and manage your profile photo above."}
         </p>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <DashboardHomepagePicker onToast={onToast} />
-        <Card padding="lg" variant="secondary" className="transition-[box-shadow] duration-200 hover:shadow-md">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-sm font-extrabold text-ds-foreground">Appearance</p>
-              <p className="mt-1 text-xs text-ds-muted">Light or dark surface across Pulse.</p>
-            </div>
-            <span className="rounded-full bg-ds-secondary/80 p-2 text-ds-muted">
-              {theme === "dark" ? <Moon className="h-4 w-4" aria-hidden /> : <Sun className="h-4 w-4" aria-hidden />}
-            </span>
-          </div>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button
-              type="button"
-              className={cn(
-                SECONDARY,
-                theme === "light" && "border-ds-accent bg-ds-accent/10 font-bold text-ds-foreground",
-              )}
-              onClick={() => setTheme("light")}
-            >
-              Light
-            </button>
-            <button
-              type="button"
-              className={cn(
-                SECONDARY,
-                theme === "dark" && "border-ds-accent bg-ds-accent/10 font-bold text-ds-foreground",
-              )}
-              onClick={() => setTheme("dark")}
-            >
-              Dark
-            </button>
-          </div>
-          <div className="mt-6 border-t border-ds-border pt-4">
+      {showExtendedSettings ? (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <DashboardHomepagePicker onToast={onToast} />
+          <Card padding="lg" variant="secondary" className="transition-[box-shadow] duration-200 hover:shadow-md">
             <p className="text-sm font-extrabold text-ds-foreground">Progression effects</p>
             <p className="mt-1 text-xs text-ds-muted">
               Tones down XP celebrations, particles, and motion. Your device&apos;s reduced-motion preference is always
@@ -139,22 +110,22 @@ export function ProfileAccountSection({
               />
               <span className="text-sm font-semibold text-ds-foreground">Use reduced progression visuals</span>
             </label>
-          </div>
-        </Card>
+          </Card>
 
-        <Card padding="lg" variant="secondary" className="transition-[box-shadow] duration-200 hover:shadow-md">
-          <p className="text-sm font-extrabold text-ds-foreground">Notifications</p>
-          <p className="mt-1 text-xs text-ds-muted">
-            Fine-tune alerts alongside the rest of your workspace preferences.
-          </p>
-          <Link
-            href="/settings"
-            className={cn(buttonVariants({ surface: "light", intent: "accent" }), "mt-4 inline-flex rounded-xl px-4 py-2 text-xs font-bold")}
-          >
-            Open organization settings
-          </Link>
-        </Card>
-      </div>
+          <Card padding="lg" variant="secondary" className="transition-[box-shadow] duration-200 hover:shadow-md">
+            <p className="text-sm font-extrabold text-ds-foreground">Notifications</p>
+            <p className="mt-1 text-xs text-ds-muted">
+              Fine-tune alerts alongside the rest of your workspace preferences.
+            </p>
+            <Link
+              href="/settings"
+              className={cn(buttonVariants({ surface: "light", intent: "accent" }), "mt-4 inline-flex rounded-xl px-4 py-2 text-xs font-bold")}
+            >
+              Open organization settings
+            </Link>
+          </Card>
+        </div>
+      ) : null}
 
       <Card padding="none" variant="secondary" className="overflow-hidden">
         <button

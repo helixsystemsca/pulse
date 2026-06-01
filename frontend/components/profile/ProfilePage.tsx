@@ -43,6 +43,15 @@ import {
   readFeaturedBadgeIds,
   resolveEquippedTitleLabel,
 } from "@/lib/profileCosmetics";
+import {
+  hasExtendedProfileContent,
+  profileShowsEditDrawer,
+  profileShowsExtendedAccountSettings,
+  profileShowsGamification,
+  profileShowsPermissionsFooter,
+  profileShowsTrainingRecommendations,
+  profileShowsWorkAndSchedule,
+} from "@/lib/profile/profile-feature-access";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
 import { EditProfileDrawer } from "./EditProfileDrawer";
@@ -155,6 +164,13 @@ export function ProfilePage() {
 
   const companyId = session?.company_id ?? session?.company?.id ?? null;
   const isCompanyAdmin = session ? sessionHasAnyRole(session, "company_admin") : false;
+  const showGamification = profileShowsGamification(session);
+  const showWorkAndSchedule = profileShowsWorkAndSchedule(session);
+  const showTraining = profileShowsTrainingRecommendations(session);
+  const showExtendedContent = hasExtendedProfileContent(session);
+  const showExtendedAccountSettings = profileShowsExtendedAccountSettings(session);
+  const showEditDrawer = profileShowsEditDrawer(session);
+  const showPermissionsFooter = profileShowsPermissionsFooter(session);
 
   const syncFromSession = useCallback(() => {
     if (!session) return;
@@ -198,6 +214,17 @@ export function ProfilePage() {
     setErr(null);
     try {
       const cid = session.company_id ?? session.company?.id ?? null;
+
+      if (!showExtendedContent) {
+        setGamification(null);
+        setTrainingPrograms([]);
+        setTrainingAssignments([]);
+        setShifts([]);
+        setZones([]);
+        setWorker(null);
+        return;
+      }
+
       const now = new Date();
       const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const end = new Date(start);
@@ -206,12 +233,16 @@ export function ProfilePage() {
       const toIso = end.toISOString();
 
       const [g, trainRes, shiftRes, zoneRes] = await Promise.all([
-        getGamificationMe().catch(() => null),
-        fetchWorkerTraining(session.sub).catch(() => null),
-        apiFetch<PulseShiftApi[]>(
-          `/api/v1/pulse/schedule/shifts?from=${encodeURIComponent(fromIso)}&to=${encodeURIComponent(toIso)}`,
-        ).catch(() => []),
-        apiFetch<PulseZoneApi[]>("/api/v1/pulse/zones").catch(() => []),
+        showGamification ? getGamificationMe().catch(() => null) : Promise.resolve(null),
+        showTraining ? fetchWorkerTraining(session.sub).catch(() => null) : Promise.resolve(null),
+        showWorkAndSchedule
+          ? apiFetch<PulseShiftApi[]>(
+              `/api/v1/pulse/schedule/shifts?from=${encodeURIComponent(fromIso)}&to=${encodeURIComponent(toIso)}`,
+            ).catch(() => [])
+          : Promise.resolve([]),
+        showWorkAndSchedule
+          ? apiFetch<PulseZoneApi[]>("/api/v1/pulse/zones").catch(() => [])
+          : Promise.resolve([]),
       ]);
 
       setGamification(g);
@@ -225,7 +256,7 @@ export function ProfilePage() {
       setShifts(Array.isArray(shiftRes) ? shiftRes : []);
       setZones(Array.isArray(zoneRes) ? zoneRes : []);
 
-      if (cid) {
+      if (cid && (showWorkAndSchedule || showTraining)) {
         try {
           setWorker(await fetchWorkerDetail(cid, session.sub));
         } catch {
@@ -239,7 +270,7 @@ export function ProfilePage() {
     } finally {
       setLoadingProfile(false);
     }
-  }, [session]);
+  }, [session, showExtendedContent, showGamification, showTraining, showWorkAndSchedule]);
 
   useEffect(() => {
     void reloadSnapshot();
@@ -377,7 +408,11 @@ export function ProfilePage() {
     <div className="space-y-6">
       <PageHeader
         title="Profile"
-        description="Your workforce identity, momentum, and operational context — all in one place."
+        description={
+          showExtendedContent
+            ? "Your workforce identity, momentum, and operational context — all in one place."
+            : "Your account photo and sign-in settings."
+        }
         icon={UserRound}
       />
 
@@ -410,20 +445,21 @@ export function ProfilePage() {
           avatarUrl={avatarUrl}
           userId={session.sub}
           microsoftAuth={session.auth_provider === "microsoft"}
-          portraitRingClassName={portraitStyles.frameClass}
-          portraitAnimatedClassName={portraitStyles.animatedClass}
-          equippedTitle={equippedGamificationTitle}
-          featuredBadges={featuredBadgesForHeader}
-          onAppearanceClick={() => setCustomOpen(true)}
+          portraitRingClassName={showGamification ? portraitStyles.frameClass : undefined}
+          portraitAnimatedClassName={showGamification ? portraitStyles.animatedClass : undefined}
+          equippedTitle={showGamification ? equippedGamificationTitle : null}
+          featuredBadges={showGamification ? featuredBadgesForHeader : []}
+          onAppearanceClick={showGamification ? () => setCustomOpen(true) : undefined}
+          showPermissionsFooter={showPermissionsFooter}
           onAvatarUploaded={(next) => {
             setAvatarUrl(next);
             void reloadSnapshot();
             setToast("Profile photo updated.");
           }}
-          onEditClick={() => setEditOpen(true)}
+          onEditClick={showEditDrawer ? () => setEditOpen(true) : undefined}
         />
 
-        {/* Personal insights */}
+        {showGamification ? (
         <section className="space-y-4">
           <div>
             <h2 className="font-headline text-lg font-extrabold text-ds-foreground">Personal insights</h2>
@@ -561,8 +597,9 @@ export function ProfilePage() {
             <AchievementGrid catalog={gamification?.badgeCatalog ?? []} loading={loadingProfile && !gamification} />
           </div>
         </section>
+        ) : null}
 
-        {/* Work & schedule */}
+        {showWorkAndSchedule ? (
         <section className="space-y-4">
           <div>
             <h2 className="font-headline text-lg font-extrabold text-ds-foreground">Work &amp; schedule</h2>
@@ -660,21 +697,27 @@ export function ProfilePage() {
             </Card>
           ) : null}
         </section>
+        ) : null}
 
-        {/* Recommendations & activity */}
+        {showTraining || showGamification ? (
         <section className="space-y-4">
-          <ProfileRecommendationsSection items={recommendations} />
-          <XpTimeline rows={gamification?.recentXp ?? []} loading={loadingProfile && !gamification} />
+          {showTraining ? <ProfileRecommendationsSection items={recommendations} /> : null}
+          {showGamification ? (
+            <XpTimeline rows={gamification?.recentXp ?? []} loading={loadingProfile && !gamification} />
+          ) : null}
         </section>
+        ) : null}
 
         <ProfileAccountSection
           microsoftAuth={session.auth_provider === "microsoft"}
+          showExtendedSettings={showExtendedAccountSettings}
           onToast={setToast}
           onError={setErr}
         />
 
       </PageBody>
 
+      {showGamification ? (
       <ProfileCustomizationModal
         open={customOpen}
         onClose={() => {
@@ -688,7 +731,9 @@ export function ProfilePage() {
         onSelectBorder={(id) => void onBorder(id)}
         borderBusy={borderBusy}
       />
+      ) : null}
 
+      {showEditDrawer ? (
       <EditProfileDrawer
         open={editOpen}
         onClose={() => setEditOpen(false)}
@@ -713,6 +758,7 @@ export function ProfilePage() {
         onToast={setToast}
         onError={setErr}
       />
+      ) : null}
     </div>
   );
 }

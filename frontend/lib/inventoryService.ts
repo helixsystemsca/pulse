@@ -93,8 +93,15 @@ export type InventoryScopeRow = {
   description?: string | null;
 };
 
+import type {
+  InventoryCategoryConfig,
+  InventoryRegisterFormConfig,
+} from "@/lib/inventory/register-form-config";
+
 export type InventoryModuleSettings = {
-  categories?: string[];
+  setup_completed?: boolean;
+  categories?: InventoryCategoryConfig[] | string[];
+  register_form?: InventoryRegisterFormConfig;
   status_rules?: Record<string, boolean>;
   threshold_defaults?: { default_min?: number };
   locations?: string[];

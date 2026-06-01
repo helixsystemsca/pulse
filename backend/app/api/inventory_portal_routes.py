@@ -90,7 +90,12 @@ def _normalize_department_slug(raw: str) -> str:
 
 
 DEFAULT_INVENTORY_SETTINGS: dict[str, Any] = {
+    "setup_completed": False,
     "categories": ["Tool", "Part", "Consumable", "Fasteners", "Electrical"],
+    "register_form": {
+        "subtitle": "Tools are individually tracked; parts and consumables use quantity.",
+        "fields": [],
+    },
     "status_rules": {},
     "threshold_defaults": {"default_min": 5},
     "locations": [],
@@ -110,6 +115,8 @@ def merge_inventory_settings(raw: Optional[dict[str, Any]]) -> dict[str, Any]:
             out[k] = merged
         else:
             out[k] = v
+    if raw.get("categories") and raw.get("setup_completed") is None:
+        out["setup_completed"] = True
     return out
 
 

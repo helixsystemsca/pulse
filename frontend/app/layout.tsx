@@ -2,12 +2,11 @@ import type { Metadata } from "next";
 import { Inter, Poppins } from "next/font/google";
 import Script from "next/script";
 import { ThemeRoot } from "@/components/theme/ThemeRoot";
-import { THEME_STORAGE_KEY } from "@/lib/theme-constants";
 import { PulseThemedBackground } from "@/components/app/PulseThemedBackground";
 import { SentryInit } from "@/components/app/SentryInit";
 import "./globals.css";
 
-const themeInitScript = `(function(){try{var k=${JSON.stringify(THEME_STORAGE_KEY)};var t=localStorage.getItem(k)||localStorage.getItem("theme");if(t==="dark")document.documentElement.classList.add("dark");else document.documentElement.classList.remove("dark");}catch(e){}})();`;
+const themeInitScript = `(function(){try{document.documentElement.classList.remove("dark");}catch(e){}})();`;
 
 /** Single stack — crisp UI typography (Gantt / PM reference: Inter-like rhythm). */
 const inter = Inter({

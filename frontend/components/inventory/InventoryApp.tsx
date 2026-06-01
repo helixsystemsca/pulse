@@ -60,6 +60,23 @@ import { fetchWorkRequestList } from "@/lib/workRequestsService";
 import { InventoryContractorsPanel } from "@/components/inventory/InventoryContractorsPanel";
 import { InventoryVendorsPanel } from "@/components/inventory/InventoryVendorsPanel";
 import {
+  InventoryRegisterItemForm,
+  registerFormStateToPayload,
+  type InventoryRegisterFormState,
+} from "@/components/inventory/InventoryRegisterItemForm";
+import { InventoryCategoryEditor } from "@/components/inventory/InventoryCategoryEditor";
+import { InventoryRegisterFieldsEditor } from "@/components/inventory/InventoryRegisterFieldsEditor";
+import {
+  InventorySetupWizard,
+  mergedSettingsForSave,
+} from "@/components/inventory/InventorySetupWizard";
+import {
+  inventoryCategoryLeafOptions,
+  mergeInventoryModuleSettings,
+  resolveStoredCategory,
+  type MergedInventorySettings,
+} from "@/lib/inventory/register-form-config";
+import {
   defaultInventoryDepartmentFromSession,
   inventoryShowsContractorsTab,
 } from "@/lib/inventory-department";
@@ -77,37 +94,9 @@ const FIELD =
   "mt-1.5 w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100 dark:placeholder:text-gray-500";
 const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-muted";
 
-const DEFAULT_SETTINGS: Required<
-  Pick<
-    InventoryModuleSettings,
-    "categories" | "threshold_defaults" | "locations" | "assignment_rules" | "alerts" | "status_rules"
-  >
-> = {
-  categories: ["Tool", "Part", "Consumable", "Fasteners", "Electrical"],
-  status_rules: {
-    in_stock: true,
-    assigned: true,
-    low_stock: true,
-    missing: true,
-    maintenance: true,
-  },
-  threshold_defaults: { default_min: 5 },
-  locations: [],
-  assignment_rules: { checkout_required: true },
-  alerts: { low_stock: true, missing: true },
-};
-
-/** Controlled textarea lines: trim each line but keep empties so Enter / new rows are not stripped immediately. */
-function draftLinesFromTextarea(value: string): string[] {
-  return value.split("\n").map((line) => line.trim());
-}
-
-function normalizeNonEmptyLines(lines: string[]): string[] {
-  return lines.map((x) => x.trim()).filter((x) => x.length > 0);
-}
-
 const SETTINGS_TABS = [
   "Categories",
+  "Register form",
   "Status rules",
   "Thresholds",
   "Alerts",
@@ -293,6 +282,9 @@ export function InventoryApp() {
   const [assets, setAssets] = useState<AssetOpt[]>([]);
   const [workers, setWorkers] = useState<WorkerOpt[]>([]);
   const [settingsBaseline, setSettingsBaseline] = useState<InventoryModuleSettings>({});
+  const [setupWizardOpen, setSetupWizardOpen] = useState(false);
+  const [setupWizardDraft, setSetupWizardDraft] = useState<MergedInventorySettings | null>(null);
+  const [setupWizardDismissed, setSetupWizardDismissed] = useState(false);
 
   const [listLoading, setListLoading] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
@@ -300,23 +292,17 @@ export function InventoryApp() {
   const [total, setTotal] = useState(0);
   const [summary, setSummary] = useState<InventorySummary | null>(null);
 
-  const mergedSettings = useMemo(() => {
-    const s = settingsBaseline;
-    return {
-      categories: [...(s.categories?.length ? s.categories : DEFAULT_SETTINGS.categories)],
-      status_rules: { ...DEFAULT_SETTINGS.status_rules, ...s.status_rules },
-      threshold_defaults: { ...DEFAULT_SETTINGS.threshold_defaults, ...s.threshold_defaults },
-      locations: [...(s.locations?.length ? s.locations : DEFAULT_SETTINGS.locations)],
-      assignment_rules: { ...DEFAULT_SETTINGS.assignment_rules, ...s.assignment_rules },
-      alerts: { ...DEFAULT_SETTINGS.alerts, ...s.alerts },
-    };
-  }, [settingsBaseline]);
+  const mergedSettings = useMemo(() => mergeInventoryModuleSettings(settingsBaseline), [settingsBaseline]);
+  const categoryFilterOptions = useMemo(
+    () => inventoryCategoryLeafOptions(mergedSettings.categories),
+    [mergedSettings.categories],
+  );
 
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [qtyPending, setQtyPending] = useState<Record<string, boolean>>({});
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("Categories");
-  const [settingsDraft, setSettingsDraft] = useState(mergedSettings);
+  const [settingsDraft, setSettingsDraft] = useState<MergedInventorySettings>(() => mergeInventoryModuleSettings({}));
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
 
@@ -329,14 +315,15 @@ export function InventoryApp() {
   const [editMode, setEditMode] = useState<"create" | "edit">("create");
   const [editTargetId, setEditTargetId] = useState<string | null>(null);
   const [editFormLoading, setEditFormLoading] = useState(false);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<InventoryRegisterFormState>({
     name: "",
     sku: "",
     item_type: "part",
+    category_group: "",
     category: "",
     quantity: "0",
     unit: "count",
-    low_stock_threshold: String(DEFAULT_SETTINGS.threshold_defaults.default_min ?? 5),
+    low_stock_threshold: "5",
     zone_id: "",
     assigned_user_id: "",
     linked_tool_id: "",
@@ -431,6 +418,13 @@ export function InventoryApp() {
   useEffect(() => {
     void loadSettings();
   }, [loadSettings]);
+
+  useEffect(() => {
+    if (!dataEnabled || !canMutateInventory || setupWizardDismissed) return;
+    if (mergedSettings.setup_completed) return;
+    setSetupWizardDraft(mergedSettings);
+    setSetupWizardOpen(true);
+  }, [dataEnabled, canMutateInventory, mergedSettings, setupWizardDismissed]);
 
   const loadList = useCallback(async () => {
     if (!dataEnabled || !effectiveCompanyId) return;
@@ -542,24 +536,9 @@ export function InventoryApp() {
         const r = await fetchInventorySettings(apiCompany);
         const base = r.settings ?? {};
         setSettingsBaseline(base);
-        const merged = {
-          categories: [...(base.categories?.length ? base.categories : DEFAULT_SETTINGS.categories)],
-          status_rules: { ...DEFAULT_SETTINGS.status_rules, ...base.status_rules },
-          threshold_defaults: { ...DEFAULT_SETTINGS.threshold_defaults, ...base.threshold_defaults },
-          locations: [...(base.locations?.length ? base.locations : DEFAULT_SETTINGS.locations)],
-          assignment_rules: { ...DEFAULT_SETTINGS.assignment_rules, ...base.assignment_rules },
-          alerts: { ...DEFAULT_SETTINGS.alerts, ...base.alerts },
-        };
-        setSettingsDraft(merged);
+        setSettingsDraft(mergeInventoryModuleSettings(base));
       } catch {
-        setSettingsDraft({
-          categories: [...DEFAULT_SETTINGS.categories],
-          status_rules: { ...DEFAULT_SETTINGS.status_rules },
-          threshold_defaults: { ...DEFAULT_SETTINGS.threshold_defaults },
-          locations: [...DEFAULT_SETTINGS.locations],
-          assignment_rules: { ...DEFAULT_SETTINGS.assignment_rules },
-          alerts: { ...DEFAULT_SETTINGS.alerts },
-        });
+        setSettingsDraft(mergeInventoryModuleSettings({}));
       } finally {
         setSettingsLoading(false);
       }
@@ -591,6 +570,7 @@ export function InventoryApp() {
       name: "",
       sku: "",
       item_type: "part",
+      category_group: "",
       category: "",
       quantity: "0",
       unit: "count",
@@ -607,49 +587,61 @@ export function InventoryApp() {
     setEditOpen(true);
   }
 
+  const formFromRow = useCallback(
+    (
+      row: Pick<
+        InventoryRow,
+        | "name"
+        | "sku"
+        | "item_type"
+        | "category"
+        | "quantity"
+        | "unit"
+        | "low_stock_threshold"
+        | "zone_id"
+        | "assigned_user_id"
+        | "linked_tool_id"
+        | "department_slug"
+        | "condition"
+        | "unit_cost"
+        | "vendor"
+        | "reorder_flag"
+      >,
+    ) => {
+      const cat = resolveStoredCategory(mergedSettings.categories, row.category);
+      return {
+        name: row.name,
+        sku: row.sku,
+        item_type: row.item_type,
+        category_group: cat.groupId,
+        category: cat.value,
+        quantity: String(row.quantity),
+        unit: row.unit,
+        low_stock_threshold: String(row.low_stock_threshold),
+        zone_id: row.zone_id ?? "",
+        assigned_user_id: row.assigned_user_id ?? "",
+        linked_tool_id: row.linked_tool_id ?? "",
+        department_slug: row.department_slug ?? "maintenance",
+        condition: row.condition,
+        unit_cost: row.unit_cost != null ? String(row.unit_cost) : "",
+        vendor: row.vendor ?? "",
+        reorder_flag: row.reorder_flag,
+      };
+    },
+    [mergedSettings.categories],
+  );
+
   function openEdit(row: InventoryRow) {
     setEditMode("edit");
     setEditTargetId(row.id);
-    setForm({
-      name: row.name,
-      sku: row.sku,
-      item_type: row.item_type,
-      category: row.category ?? "",
-      quantity: String(row.quantity),
-      unit: row.unit,
-      low_stock_threshold: String(row.low_stock_threshold),
-      zone_id: row.zone_id ?? "",
-      assigned_user_id: row.assigned_user_id ?? "",
-      linked_tool_id: row.linked_tool_id ?? "",
-      department_slug: row.department_slug ?? "maintenance",
-      condition: row.condition,
-      unit_cost: row.unit_cost != null ? String(row.unit_cost) : "",
-      vendor: row.vendor ?? "",
-      reorder_flag: row.reorder_flag,
-    });
+    setForm(formFromRow(row));
     setEditOpen(true);
   }
 
   function openEditFromDetail(d: InventoryDetail) {
     setEditMode("edit");
     setEditTargetId(d.id);
-    setForm({
-      name: d.name,
-      sku: d.sku,
-      item_type: d.item_type,
-      category: d.category ?? "",
-      quantity: String(d.quantity),
-      unit: d.unit,
-      low_stock_threshold: String(d.low_stock_threshold),
-      zone_id: d.zone_id ?? "",
-      assigned_user_id: d.assigned_user_id ?? "",
-      linked_tool_id: d.linked_tool_id ?? "",
-      department_slug: d.department_slug ?? "maintenance",
-      condition: d.condition,
-      unit_cost: d.unit_cost != null ? String(d.unit_cost) : "",
-      vendor: d.vendor ?? "",
-      reorder_flag: d.reorder_flag,
-    });
+    setForm(formFromRow(d));
     setEditOpen(true);
   }
 
@@ -659,54 +651,20 @@ export function InventoryApp() {
     void (async () => {
       try {
         const d = await fetchInventoryDetail(apiCompany, editTargetId);
-        setForm({
-          name: d.name,
-          sku: d.sku,
-          item_type: d.item_type,
-          category: d.category ?? "",
-          quantity: String(d.quantity),
-          unit: d.unit,
-          low_stock_threshold: String(d.low_stock_threshold),
-          zone_id: d.zone_id ?? "",
-          assigned_user_id: d.assigned_user_id ?? "",
-          linked_tool_id: d.linked_tool_id ?? "",
-          department_slug: d.department_slug ?? "maintenance",
-          condition: d.condition,
-          unit_cost: d.unit_cost != null ? String(d.unit_cost) : "",
-          vendor: d.vendor ?? "",
-          reorder_flag: d.reorder_flag,
-        });
+        setForm(formFromRow(d));
       } catch {
         /* keep table row snapshot */
       } finally {
         setEditFormLoading(false);
       }
     })();
-  }, [editOpen, editMode, editTargetId, effectiveCompanyId, apiCompany]);
+  }, [editOpen, editMode, editTargetId, effectiveCompanyId, apiCompany, formFromRow]);
 
   async function submitForm() {
     if (!effectiveCompanyId || !form.name.trim() || !canMutateInventory) return;
     setActionBusy(true);
     try {
-      const unit_cost =
-        form.unit_cost.trim() === "" ? null : Number.parseFloat(form.unit_cost);
-      const payload = {
-        name: form.name.trim(),
-        sku: form.sku.trim() || null,
-        item_type: form.item_type,
-        category: form.category.trim() || null,
-        quantity: Number.parseFloat(form.quantity) || 0,
-        unit: form.unit.trim() || "count",
-        low_stock_threshold: Number.parseFloat(form.low_stock_threshold) || 0,
-        zone_id: form.zone_id || null,
-        assigned_user_id: form.assigned_user_id || null,
-        linked_tool_id: form.linked_tool_id || null,
-        condition: form.condition,
-        department_slug: form.department_slug,
-        unit_cost: unit_cost != null && !Number.isNaN(unit_cost) ? unit_cost : null,
-        vendor: form.vendor.trim() || null,
-        reorder_flag: form.reorder_flag,
-      };
+      const payload = registerFormStateToPayload(form, mergedSettings.categories);
       if (editMode === "create") {
         const d = await createInventoryItem(apiCompany, payload);
         setEditOpen(false);
@@ -732,13 +690,21 @@ export function InventoryApp() {
     if (!effectiveCompanyId || !canMutateInventory) return;
     setActionBusy(true);
     try {
-      await patchInventorySettings(apiCompany, {
-        categories: normalizeNonEmptyLines(settingsDraft.categories),
-        status_rules: settingsDraft.status_rules,
-        threshold_defaults: settingsDraft.threshold_defaults,
-        alerts: settingsDraft.alerts,
-      });
+      await patchInventorySettings(apiCompany, mergedSettingsForSave(settingsDraft));
       setSettingsOpen(false);
+      await loadSettings();
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
+  async function completeSetupWizard(next: MergedInventorySettings) {
+    if (!effectiveCompanyId || !canMutateInventory) return;
+    setActionBusy(true);
+    try {
+      await patchInventorySettings(apiCompany, mergedSettingsForSave(next));
+      setSetupWizardOpen(false);
+      setSetupWizardDraft(null);
       await loadSettings();
     } finally {
       setActionBusy(false);
@@ -1200,7 +1166,7 @@ export function InventoryApp() {
                   <option value="type:consumable">Consumable</option>
                 </optgroup>
                 <optgroup label="Category">
-                  {mergedSettings.categories.map((c) => (
+                  {categoryFilterOptions.map((c) => (
                     <option key={c} value={`cat:${c}`}>
                       {c}
                     </option>
@@ -1728,7 +1694,7 @@ export function InventoryApp() {
       <PulseDrawer
         open={editOpen}
         title={editMode === "create" ? "Register item" : "Edit item"}
-        subtitle="Tools are individually tracked; parts and consumables use quantity."
+        subtitle={mergedSettings.register_form.subtitle}
         wide
         placement="center"
         onClose={() => {
@@ -1756,173 +1722,23 @@ export function InventoryApp() {
             Loading item…
           </div>
         ) : null}
-        <div className={`grid gap-4 sm:grid-cols-2 ${editFormLoading ? "pointer-events-none opacity-50" : ""}`}>
-          <div className="sm:col-span-2">
-            <label className={LABEL}>Name</label>
-            <input className={FIELD} value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
-          </div>
-          <div>
-            <label className={LABEL}>SKU (optional)</label>
-            <input className={FIELD} value={form.sku} onChange={(e) => setForm((f) => ({ ...f, sku: e.target.value }))} />
-          </div>
-          <div>
-            <label className={LABEL}>Type</label>
-            <select
-              className={FIELD}
-              value={form.item_type}
-              onChange={(e) => setForm((f) => ({ ...f, item_type: e.target.value }))}
-            >
-              <option value="tool">Tool</option>
-              <option value="part">Part</option>
-              <option value="consumable">Consumable</option>
-            </select>
-          </div>
-          <div>
-            <label className={LABEL}>Category</label>
-            <select
-              className={FIELD}
-              value={form.category}
-              onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-            >
-              <option value="">—</option>
-              {mergedSettings.categories.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className={LABEL}>Quantity</label>
-            <input
-              className={FIELD}
-              inputMode="decimal"
-              disabled={form.item_type === "tool"}
-              value={form.item_type === "tool" ? "1" : form.quantity}
-              onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))}
-            />
-          </div>
-          <div>
-            <label className={LABEL}>Unit</label>
-            <input className={FIELD} value={form.unit} onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))} />
-          </div>
-          <div>
-            <label className={LABEL}>Min stock level</label>
-            <input
-              className={FIELD}
-              inputMode="decimal"
-              value={form.low_stock_threshold}
-              onChange={(e) => setForm((f) => ({ ...f, low_stock_threshold: e.target.value }))}
-            />
-          </div>
-          <div>
-            <label className={LABEL}>Department</label>
-            <select
-              className={FIELD}
-              value={form.department_slug}
-              onChange={(e) => setForm((f) => ({ ...f, department_slug: e.target.value }))}
-            >
-              {PLATFORM_DEPARTMENTS.map((d) => (
-                <option key={d.slug} value={d.slug}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className={LABEL}>Asset condition</label>
-            <select
-              className={FIELD}
-              value={form.condition}
-              onChange={(e) => setForm((f) => ({ ...f, condition: e.target.value }))}
-            >
-              <option value="good">Good</option>
-              <option value="needs_maintenance">Needs maintenance</option>
-              <option value="critical">Critical / out of service</option>
-            </select>
-          </div>
-          <div>
-            <label className={LABEL}>Location</label>
-            <select
-              className={FIELD}
-              value={form.zone_id}
-              onChange={(e) => setForm((f) => ({ ...f, zone_id: e.target.value }))}
-            >
-              <option value="">—</option>
-              {zones.map((z) => (
-                <option key={z.id} value={z.id}>
-                  {z.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className={LABEL}>Assigned worker</label>
-            <select
-              className={FIELD}
-              value={form.assigned_user_id}
-              onChange={(e) => setForm((f) => ({ ...f, assigned_user_id: e.target.value }))}
-            >
-              <option value="">—</option>
-              {workers.map((w) => (
-                <option key={w.id} value={w.id}>
-                  {w.full_name || w.email}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="sm:col-span-2">
-            <label className={LABEL}>Linked asset</label>
-            <select
-              className={FIELD}
-              value={form.linked_tool_id}
-              onChange={(e) => setForm((f) => ({ ...f, linked_tool_id: e.target.value }))}
-            >
-              <option value="">—</option>
-              {assets.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                  {a.tag_id ? ` (${a.tag_id})` : ""}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className={LABEL}>Vendor (optional)</label>
-            <input
-              className={FIELD}
-              value={form.vendor}
-              onChange={(e) => setForm((f) => ({ ...f, vendor: e.target.value }))}
-              placeholder="Supplier or manufacturer"
-            />
-          </div>
-          <div>
-            <label className={LABEL}>Unit cost (optional)</label>
-            <input
-              className={FIELD}
-              inputMode="decimal"
-              value={form.unit_cost}
-              onChange={(e) => setForm((f) => ({ ...f, unit_cost: e.target.value }))}
-            />
-          </div>
-          <div className="flex items-end">
-            <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-pulse-navy">
-              <input
-                type="checkbox"
-                checked={form.reorder_flag}
-                onChange={(e) => setForm((f) => ({ ...f, reorder_flag: e.target.checked }))}
-              />
-              Flag for reorder
-            </label>
-          </div>
-        </div>
+        <InventoryRegisterItemForm
+          registerForm={mergedSettings.register_form}
+          categories={mergedSettings.categories}
+          form={form}
+          onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
+          zones={zones}
+          assets={assets}
+          workers={workers}
+          disabled={editFormLoading}
+        />
       </PulseDrawer>
 
       <PulseDrawer
         open={settingsOpen}
         wide
         title="Inventory settings"
-        subtitle="Categories, thresholds, storage labels,and alert policies."
+        subtitle="Categories, register form, thresholds, storage labels, and alert policies."
         placement="center"
         onClose={() => setSettingsOpen(false)}
         footer={
@@ -1961,20 +1777,30 @@ export function InventoryApp() {
               ))}
             </div>
             <div className="min-w-0 flex-1 space-y-4">
+              {canMutateInventory ? (
+                <button
+                  type="button"
+                  className="text-xs font-semibold text-[#2B4C7E] underline-offset-2 hover:underline"
+                  onClick={() => {
+                    setSetupWizardDraft(settingsDraft);
+                    setSetupWizardOpen(true);
+                    setSetupWizardDismissed(false);
+                  }}
+                >
+                  Open setup wizard
+                </button>
+              ) : null}
               {settingsTab === "Categories" ? (
-                <div>
-                  <p className={LABEL}>Categories (one per line)</p>
-                  <textarea
-                    className={`${FIELD} min-h-[140px] font-mono text-xs`}
-                    value={settingsDraft.categories.join("\n")}
-                    onChange={(e) =>
-                      setSettingsDraft((d) => ({
-                        ...d,
-                        categories: draftLinesFromTextarea(e.target.value),
-                      }))
-                    }
-                  />
-                </div>
+                <InventoryCategoryEditor
+                  categories={settingsDraft.categories}
+                  onChange={(categories) => setSettingsDraft((d) => ({ ...d, categories }))}
+                />
+              ) : null}
+              {settingsTab === "Register form" ? (
+                <InventoryRegisterFieldsEditor
+                  registerForm={settingsDraft.register_form}
+                  onChange={(register_form) => setSettingsDraft((d) => ({ ...d, register_form }))}
+                />
               ) : null}
               {settingsTab === "Status rules" ? (
                 <div className="space-y-2">
@@ -2049,6 +1875,20 @@ export function InventoryApp() {
           </div>
         )}
       </PulseDrawer>
+
+      {setupWizardDraft ? (
+        <InventorySetupWizard
+          open={setupWizardOpen}
+          busy={actionBusy}
+          draft={setupWizardDraft}
+          onDraftChange={setSetupWizardDraft}
+          onComplete={(next) => completeSetupWizard(next)}
+          onSkip={() => {
+            setSetupWizardOpen(false);
+            setSetupWizardDismissed(true);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

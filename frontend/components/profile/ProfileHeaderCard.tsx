@@ -40,6 +40,7 @@ export function ProfileHeaderCard({
   equippedTitle,
   featuredBadges,
   onAppearanceClick,
+  showPermissionsFooter = true,
 }: {
   displayName: string;
   email: string;
@@ -55,13 +56,14 @@ export function ProfileHeaderCard({
   userId: string;
   microsoftAuth?: boolean;
   onAvatarUploaded: (next: string) => void;
-  onEditClick: () => void;
+  onEditClick?: () => void;
   portraitRingClassName?: string;
   portraitAnimatedClassName?: string;
   /** Gamification display title — hidden when `jobTitle` is set so HR truth wins. */
   equippedTitle?: string | null;
   featuredBadges?: { id: string; name: string }[];
   onAppearanceClick?: () => void;
+  showPermissionsFooter?: boolean;
 }) {
   return (
     <section
@@ -224,22 +226,25 @@ export function ProfileHeaderCard({
               Appearance
             </button>
           ) : null}
-          <button
-            type="button"
-            onClick={onEditClick}
-            className={cn(
-              buttonVariants({ surface: "light", intent: "secondary" }),
-              "inline-flex items-center gap-2 rounded-xl border border-white/35 bg-white/90 px-4 py-2.5 text-sm font-bold shadow-md backdrop-blur-md",
-              "hover:bg-white dark:border-white/15 dark:bg-[#1e2a3a]/90 dark:hover:bg-[#243447]",
-            )}
-            aria-label="Edit profile"
-          >
-            <Pencil className="h-4 w-4" aria-hidden />
-            Edit profile
-          </button>
+          {onEditClick ? (
+            <button
+              type="button"
+              onClick={onEditClick}
+              className={cn(
+                buttonVariants({ surface: "light", intent: "secondary" }),
+                "inline-flex items-center gap-2 rounded-xl border border-white/35 bg-white/90 px-4 py-2.5 text-sm font-bold shadow-md backdrop-blur-md",
+                "hover:bg-white dark:border-white/15 dark:bg-[#1e2a3a]/90 dark:hover:bg-[#243447]",
+              )}
+              aria-label="Edit profile"
+            >
+              <Pencil className="h-4 w-4" aria-hidden />
+              Edit profile
+            </button>
+          ) : null}
         </div>
       </div>
 
+      {showPermissionsFooter ? (
       <div className="relative border-t border-white/15 bg-black/[0.06] px-6 py-3 dark:border-white/10 dark:bg-black/25">
         <p className="text-center text-[11px] font-semibold text-ds-muted sm:text-left">
           Emergency contacts are managed by your supervisor or HR in{" "}
@@ -249,6 +254,7 @@ export function ProfileHeaderCard({
           .
         </p>
       </div>
+      ) : null}
     </section>
   );
 }

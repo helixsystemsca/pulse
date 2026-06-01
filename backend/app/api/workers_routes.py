@@ -67,7 +67,6 @@ from app.core.workers_settings_merge import (
 )
 from app.core.email_smtp import send_employee_invite
 from app.core.auth.security import bump_access_token_version, hash_password
-from app.core.auth.password_policy import validate_new_password
 from app.core.equipment_roster import is_equipment_roster_account
 from app.core.system_tokens import generate_raw_token, hash_system_token
 from app.models.domain import (
@@ -1687,11 +1686,8 @@ async def set_equipment_account_password(
             detail="Password can only be set here for equipment roster accounts (e.g. inventory scanner kiosk).",
         )
 
-    settings = get_settings()
-    try:
-        validate_new_password(body.new_password, settings)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+    if not body.new_password.strip():
+        raise HTTPException(status_code=400, detail="Password is required")
 
     target.hashed_password = hash_password(body.new_password)
     bump_access_token_version(target)

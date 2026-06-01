@@ -3229,7 +3229,7 @@ export function WorkersApp() {
                 <h3 className={SECTION_KICKER}>Sign-in password</h3>
                 <p className="mt-1 max-w-prose text-xs text-pulse-muted">
                   Set the password used on the kiosk tablet at{" "}
-                  <span className="font-mono text-ds-foreground">/kiosk/inventory-scanner</span>. Minimum 12 characters.
+                  <span className="font-mono text-ds-foreground">/kiosk/inventory-scanner</span>.
                 </p>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
                   <div className="sm:col-span-2">

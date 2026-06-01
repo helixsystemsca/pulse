@@ -1,16 +1,9 @@
 "use client";
 
 import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail } from "lucide-react";
-import { motion } from "framer-motion";
 import { FormEvent, useEffect, useId, useState } from "react";
 import { AuthScreenShell } from "@/components/auth/AuthScreenShell";
 import { LoginCinematicLogo } from "@/components/auth/LoginCinematicLogo";
-// TEMP: coming-soon panel hidden on login — restore with block below in main
-// import { LoginComingSoonEntrance } from "@/components/auth/LoginComingSoonEntrance";
-import { LoginIntroAtmosphere } from "@/components/auth/LoginIntroAtmosphere";
-import { useLoginIntroSequence } from "@/components/auth/useLoginIntroSequence";
-import { AuroraBackground } from "@/components/ui/AuroraBackground";
-import { LoginTessellationBackground } from "@/components/ui/LoginTessellationBackground";
 import { isApiMode } from "@/lib/api";
 import {
   attemptMockLogin,
@@ -29,12 +22,6 @@ import { PULSE_BUILD_VERSION } from "@/lib/pulse-build-version";
 import { mailtoInfo, mailtoSupport } from "@/lib/helix-emails";
 import { isMicrosoftSsoConfigured, startMicrosoftSignIn } from "@/lib/microsoft-auth";
 import { cn } from "@/lib/cn";
-import {
-  loginFormRevealTransition,
-  loginFormRevealVariants,
-  loginTaglineTransition,
-  loginTaglineVariants,
-} from "@/lib/auth/login-intro-motion";
 import { buttonVariants } from "@/styles/button-variants";
 
 function MicrosoftLogo({ className = "" }: { className?: string }) {
@@ -49,7 +36,6 @@ function MicrosoftLogo({ className = "" }: { className?: string }) {
 }
 
 export default function LoginPage() {
-  const intro = useLoginIntroSequence();
   const emailFieldId = useId();
   const passwordFieldId = useId();
 
@@ -172,17 +158,13 @@ export default function LoginPage() {
   const inputInner =
     "min-w-0 flex-1 border-0 bg-transparent p-0 text-sm font-medium text-[color-mix(in_srgb,var(--ds-text-primary)_92%,transparent)] outline-none ring-0 placeholder:text-[color-mix(in_srgb,var(--ds-text-primary)_45%,transparent)] dark:text-ds-foreground dark:placeholder:text-ds-muted";
 
-  const formInteractive = intro.showForm;
+  const formBusy = submitting || microsoftSubmitting;
 
   return (
-    <AuthScreenShell className="login-web-canvas login-web-canvas--aurora login-web-canvas--tessellation relative flex min-h-0 flex-1 flex-col">
-      <AuroraBackground />
-      <LoginTessellationBackground />
-      <LoginIntroAtmosphere active={intro.scrimActive} />
+    <AuthScreenShell className="login-web-canvas relative flex min-h-0 flex-1 flex-col">
       <div className="relative z-10 flex min-h-0 flex-1 flex-col">
         <header className="relative z-10 flex w-full items-center justify-end gap-4 px-5 py-2.5 sm:px-8 sm:py-3 lg:px-12">
           <nav className="flex items-center gap-1 sm:gap-2" aria-label="Login header">
-            {/* TEMP: dark/light toggle removed — restore theme button here when re-enabling */}
             <a
               href={mailtoSupport("Pulse — Support")}
               className="inline-flex rounded-full bg-[#4c6085] px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-white shadow-sm transition-colors hover:bg-[#3f5274] sm:px-4 sm:py-2.5 sm:text-xs dark:bg-[#556b8e] dark:hover:bg-[#4c6085]"
@@ -193,175 +175,147 @@ export default function LoginPage() {
         </header>
 
         <main className="relative z-10 flex min-h-0 flex-1 flex-col justify-center px-4 pb-4 pt-1 sm:px-6 sm:pb-5 md:px-8">
-          {/* TEMP: Future Features panel — left dock on login
-          <div
-            className={cn(
-              "z-[15] w-full shrink-0 justify-center pb-5",
-              "md:fixed md:inset-y-0 md:left-0 md:flex md:w-auto md:items-center md:justify-start md:pb-0 md:pointer-events-none",
-              intro.showComingSoon ? "flex" : "hidden",
-            )}
-            aria-hidden={!intro.showComingSoon}
-          >
-            <div className="pointer-events-auto">
-              <LoginComingSoonEntrance visible={intro.showComingSoon} />
-            </div>
-          </div>
-          */}
           <div className="login-content">
             <div className="login-content__form">
-            <LoginCinematicLogo stage={intro.stage} />
+              <LoginCinematicLogo />
 
-            <motion.p
-              className="mt-3 text-center text-sm font-medium text-[#5a6d82] dark:text-ds-muted sm:mt-3.5"
-              initial={intro.reducedMotion ? false : "hidden"}
-              animate={intro.showTagline ? "visible" : "hidden"}
-              variants={loginTaglineVariants}
-              transition={loginTaglineTransition}
-            >
-              Access only for verified users.
-            </motion.p>
+              <p className="mt-3 text-center text-sm font-medium text-[#5a6d82] dark:text-ds-muted sm:mt-3.5">
+                Access only for verified users.
+              </p>
 
-            <motion.div
-              className="mt-3 rounded-[1.15rem] bg-[linear-gradient(145deg,rgba(255,255,255,0.55)_0%,rgba(255,255,255,0.18)_45%,rgba(186,230,255,0.22)_100%)] p-px shadow-[0_28px_64px_rgba(46,90,120,0.16)] ring-1 ring-white/50 backdrop-blur-md dark:bg-[linear-gradient(145deg,rgba(255,255,255,0.14)_0%,rgba(255,255,255,0.05)_100%)] dark:ring-white/15 dark:shadow-[0_24px_52px_rgba(0,0,0,0.4)] sm:mt-4"
-              initial={intro.reducedMotion ? false : "hidden"}
-              animate={intro.showForm ? "visible" : "hidden"}
-              variants={loginFormRevealVariants}
-              transition={loginFormRevealTransition}
-              style={{ pointerEvents: formInteractive ? "auto" : "none" }}
-              aria-hidden={!formInteractive}
-            >
-              <div className="relative overflow-hidden rounded-[1.1rem] border border-white/45 bg-white/[0.62] px-4 py-4 shadow-[inset_0_1px_1px_rgba(255,255,255,0.9),inset_0_-1px_0_rgba(255,255,255,0.15),0_8px_32px_rgba(255,255,255,0.12)] backdrop-blur-[28px] backdrop-saturate-[1.35] dark:border-white/18 dark:bg-[color-mix(in_srgb,var(--ds-surface-primary)_58%,transparent)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] sm:px-5 sm:py-5">
-                <div
-                  className="pointer-events-none absolute inset-0 bg-[linear-gradient(128deg,rgba(255,255,255,0.72)_0%,rgba(255,255,255,0.08)_38%,transparent_55%,rgba(200,235,255,0.12)_100%)]"
-                  aria-hidden
-                />
-                <div
-                  className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.65),transparent_70%)] blur-2xl"
-                  aria-hidden
-                />
-                <form className="relative space-y-3.5" onSubmit={onSubmit} noValidate>
-                  {formError ? (
-                    <div
-                      className="ds-notification ds-notification-critical flex items-start justify-center gap-2 px-2.5 py-1.5 text-sm font-medium text-ds-foreground"
-                      role="alert"
-                    >
-                      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-ds-danger" aria-hidden />
-                      <span className="text-center">{formError}</span>
-                    </div>
-                  ) : null}
-
-                  <div>
-                    <label htmlFor={emailFieldId} className={labelClass}>
-                      Work email
-                    </label>
-                    <div className={inputShell}>
-                      <input
-                        id={emailFieldId}
-                        name="identifier"
-                        type="text"
-                        autoComplete="username"
-                        placeholder="operator@company.com"
-                        value={identifier}
-                        onChange={(e) => setIdentifier(e.target.value)}
-                        disabled={!formInteractive || submitting || microsoftSubmitting}
-                        aria-invalid={Boolean(fieldErrors.identifier)}
-                        className={`${inputInner} ${fieldErrors.identifier ? "text-ds-danger placeholder:text-ds-danger/70" : ""}`}
-                      />
-                      <Mail className="h-4 w-4 shrink-0 text-[#4c6085]/55 dark:text-ds-muted" aria-hidden />
-                    </div>
-                    {fieldErrors.identifier ? (
-                      <p className="mt-1 text-xs font-medium text-ds-danger">{fieldErrors.identifier}</p>
-                    ) : null}
-                  </div>
-
-                  <div>
-                    <label htmlFor={passwordFieldId} className={labelClass}>
-                      Password
-                    </label>
-                    <div className={inputShell}>
-                      <input
-                        id={passwordFieldId}
-                        name="password"
-                        type={showPassword ? "text" : "password"}
-                        autoComplete="current-password"
-                        placeholder="••••••••"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        disabled={!formInteractive || submitting || microsoftSubmitting}
-                        aria-invalid={Boolean(fieldErrors.password)}
-                        className={`${inputInner} pr-1 ${fieldErrors.password ? "text-ds-danger" : ""}`}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword((s) => !s)}
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[#4c6085]/70 transition-colors hover:bg-[color-mix(in_srgb,#4c6085_12%,transparent)] hover:text-[#3f5274] dark:text-ds-muted dark:hover:bg-ds-interactive-hover dark:hover:text-ds-foreground"
-                        aria-label={showPassword ? "Hide password" : "Show password"}
-                        disabled={!formInteractive || submitting || microsoftSubmitting}
+              <div className="mt-3 rounded-[1.15rem] bg-[linear-gradient(145deg,rgba(255,255,255,0.55)_0%,rgba(255,255,255,0.18)_45%,rgba(186,230,255,0.22)_100%)] p-px shadow-[0_28px_64px_rgba(46,90,120,0.16)] ring-1 ring-white/50 backdrop-blur-md dark:bg-[linear-gradient(145deg,rgba(255,255,255,0.14)_0%,rgba(255,255,255,0.05)_100%)] dark:ring-white/15 dark:shadow-[0_24px_52px_rgba(0,0,0,0.4)] sm:mt-4">
+                <div className="relative overflow-hidden rounded-[1.1rem] border border-white/45 bg-white/[0.62] px-4 py-4 shadow-[inset_0_1px_1px_rgba(255,255,255,0.9),inset_0_-1px_0_rgba(255,255,255,0.15),0_8px_32px_rgba(255,255,255,0.12)] backdrop-blur-[28px] backdrop-saturate-[1.35] dark:border-white/18 dark:bg-[color-mix(in_srgb,var(--ds-surface-primary)_58%,transparent)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] sm:px-5 sm:py-5">
+                  <div
+                    className="pointer-events-none absolute inset-0 bg-[linear-gradient(128deg,rgba(255,255,255,0.72)_0%,rgba(255,255,255,0.08)_38%,transparent_55%,rgba(200,235,255,0.12)_100%)]"
+                    aria-hidden
+                  />
+                  <div
+                    className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.65),transparent_70%)] blur-2xl"
+                    aria-hidden
+                  />
+                  <form className="relative space-y-3.5" onSubmit={onSubmit} noValidate>
+                    {formError ? (
+                      <div
+                        className="ds-notification ds-notification-critical flex items-start justify-center gap-2 px-2.5 py-1.5 text-sm font-medium text-ds-foreground"
+                        role="alert"
                       >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                      <Lock className="h-4 w-4 shrink-0 text-[#4c6085]/55 dark:text-ds-muted" aria-hidden />
-                    </div>
-                    {fieldErrors.password ? (
-                      <p className="mt-1 text-xs font-medium text-ds-danger">{fieldErrors.password}</p>
+                        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-ds-danger" aria-hidden />
+                        <span className="text-center">{formError}</span>
+                      </div>
                     ) : null}
+
+                    <div>
+                      <label htmlFor={emailFieldId} className={labelClass}>
+                        Work email
+                      </label>
+                      <div className={inputShell}>
+                        <input
+                          id={emailFieldId}
+                          name="identifier"
+                          type="text"
+                          autoComplete="username"
+                          placeholder="operator@company.com"
+                          value={identifier}
+                          onChange={(e) => setIdentifier(e.target.value)}
+                          disabled={formBusy}
+                          aria-invalid={Boolean(fieldErrors.identifier)}
+                          className={`${inputInner} ${fieldErrors.identifier ? "text-ds-danger placeholder:text-ds-danger/70" : ""}`}
+                        />
+                        <Mail className="h-4 w-4 shrink-0 text-[#4c6085]/55 dark:text-ds-muted" aria-hidden />
+                      </div>
+                      {fieldErrors.identifier ? (
+                        <p className="mt-1 text-xs font-medium text-ds-danger">{fieldErrors.identifier}</p>
+                      ) : null}
+                    </div>
+
+                    <div>
+                      <label htmlFor={passwordFieldId} className={labelClass}>
+                        Password
+                      </label>
+                      <div className={inputShell}>
+                        <input
+                          id={passwordFieldId}
+                          name="password"
+                          type={showPassword ? "text" : "password"}
+                          autoComplete="current-password"
+                          placeholder="••••••••"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          disabled={formBusy}
+                          aria-invalid={Boolean(fieldErrors.password)}
+                          className={`${inputInner} pr-1 ${fieldErrors.password ? "text-ds-danger" : ""}`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword((s) => !s)}
+                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[#4c6085]/70 transition-colors hover:bg-[color-mix(in_srgb,#4c6085_12%,transparent)] hover:text-[#3f5274] dark:text-ds-muted dark:hover:bg-ds-interactive-hover dark:hover:text-ds-foreground"
+                          aria-label={showPassword ? "Hide password" : "Show password"}
+                          disabled={formBusy}
+                        >
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                        <Lock className="h-4 w-4 shrink-0 text-[#4c6085]/55 dark:text-ds-muted" aria-hidden />
+                      </div>
+                      {fieldErrors.password ? (
+                        <p className="mt-1 text-xs font-medium text-ds-danger">{fieldErrors.password}</p>
+                      ) : null}
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={formBusy}
+                      className={cn(
+                        buttonVariants({ surface: "light", intent: "accent" }),
+                        "w-full gap-2 py-2.5 text-sm font-semibold tracking-normal disabled:opacity-60",
+                      )}
+                    >
+                      {submitting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                          Signing in…
+                        </>
+                      ) : (
+                        "Log in"
+                      )}
+                    </button>
+                  </form>
+
+                  <div className="my-4 flex items-center gap-3" aria-hidden="true">
+                    <div className="h-px flex-1 bg-[color-mix(in_srgb,#4c6085_14%,transparent)] dark:bg-ds-border" />
+                    <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[color-mix(in_srgb,var(--ds-text-primary)_38%,transparent)] dark:text-ds-muted">
+                      OR
+                    </span>
+                    <div className="h-px flex-1 bg-[color-mix(in_srgb,#4c6085_14%,transparent)] dark:bg-ds-border" />
                   </div>
 
                   <button
-                    type="submit"
-                    disabled={!formInteractive || submitting || microsoftSubmitting}
-                    className={cn(
-                      buttonVariants({ surface: "light", intent: "accent" }),
-                      "w-full gap-2 py-2.5 text-sm font-semibold tracking-normal disabled:opacity-60",
-                    )}
+                    type="button"
+                    onClick={() => void onMicrosoftSignIn()}
+                    disabled={formBusy || !microsoftConfigured}
+                    title={microsoftConfigured ? "Sign in with Microsoft" : "Microsoft sign-in is not configured"}
+                    className="flex w-full items-center justify-center gap-3 rounded-xl border border-[color-mix(in_srgb,#4c6085_18%,transparent)] bg-white px-4 py-2.5 text-sm font-extrabold text-[#2f3d52] shadow-sm transition-colors hover:border-[color-mix(in_srgb,#4c6085_30%,transparent)] hover:bg-[color-mix(in_srgb,#cfe8ff_36%,#ffffff)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4c6085] disabled:cursor-not-allowed disabled:opacity-60 dark:border-ds-border dark:bg-ds-secondary dark:text-ds-foreground dark:hover:bg-ds-interactive-hover"
                   >
-                    {submitting ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                        Signing in…
-                      </>
+                    {microsoftSubmitting ? (
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
                     ) : (
-                      "Log in"
+                      <MicrosoftLogo className="h-4 w-4 shrink-0" />
                     )}
+                    Sign in with Microsoft
                   </button>
-                </form>
 
-                <div className="my-4 flex items-center gap-3" aria-hidden="true">
-                  <div className="h-px flex-1 bg-[color-mix(in_srgb,#4c6085_14%,transparent)] dark:bg-ds-border" />
-                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[color-mix(in_srgb,var(--ds-text-primary)_38%,transparent)] dark:text-ds-muted">
-                    OR
-                  </span>
-                  <div className="h-px flex-1 bg-[color-mix(in_srgb,#4c6085_14%,transparent)] dark:bg-ds-border" />
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => void onMicrosoftSignIn()}
-                  disabled={!formInteractive || submitting || microsoftSubmitting || !microsoftConfigured}
-                  title={microsoftConfigured ? "Sign in with Microsoft" : "Microsoft sign-in is not configured"}
-                  className="flex w-full items-center justify-center gap-3 rounded-xl border border-[color-mix(in_srgb,#4c6085_18%,transparent)] bg-white px-4 py-2.5 text-sm font-extrabold text-[#2f3d52] shadow-sm transition-colors hover:border-[color-mix(in_srgb,#4c6085_30%,transparent)] hover:bg-[color-mix(in_srgb,#cfe8ff_36%,#ffffff)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4c6085] disabled:cursor-not-allowed disabled:opacity-60 dark:border-ds-border dark:bg-ds-secondary dark:text-ds-foreground dark:hover:bg-ds-interactive-hover"
-                >
-                  {microsoftSubmitting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                  ) : (
-                    <MicrosoftLogo className="h-4 w-4 shrink-0" />
-                  )}
-                  Sign in with Microsoft
-                </button>
-
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-2 pt-0.5 text-[11px] font-semibold uppercase tracking-wide">
-                  <a
-                    href={mailtoInfo("Pulse — credentials help")}
-                    className="text-ds-accent no-underline hover:underline"
-                  >
-                    Forgot credentials?
-                  </a>
-                  <span className="tabular-nums text-[color-mix(in_srgb,var(--ds-text-primary)_45%,transparent)] dark:text-ds-muted">
-                    Terminal {PULSE_BUILD_VERSION}
-                  </span>
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-2 pt-0.5 text-[11px] font-semibold uppercase tracking-wide">
+                    <a
+                      href={mailtoInfo("Pulse — credentials help")}
+                      className="text-ds-accent no-underline hover:underline"
+                    >
+                      Forgot credentials?
+                    </a>
+                    <span className="tabular-nums text-[color-mix(in_srgb,var(--ds-text-primary)_45%,transparent)] dark:text-ds-muted">
+                      Terminal {PULSE_BUILD_VERSION}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </motion.div>
             </div>
           </div>
         </main>
