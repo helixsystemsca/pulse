@@ -6,7 +6,7 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Bell, ChevronDown, Image as ImageIcon, KeyRound, LogOut, Megaphone, MessageSquare, Settings, X } from "lucide-react";
-import { HelixMarketingLogo } from "@/components/branding/HelixMarketingLogo";
+import { AppHeaderWordmark } from "@/components/branding/AppHeaderWordmark";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { OperationalNotificationsModal } from "@/components/app/OperationalNotificationsModal";
@@ -214,8 +214,9 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
           <Link
             href={logoHref}
             className="inline-flex min-w-0 items-center whitespace-nowrap leading-none"
+            aria-label={session?.company ? `${session.company.name} home` : "Helix home"}
           >
-            <HelixMarketingLogo variant="header" priority />
+            <AppHeaderWordmark company={session?.company} />
           </Link>
         </div>
 

@@ -411,6 +411,7 @@ async def me(
             company_summary = CompanySummaryOut(
                 id=co.id,
                 name=co.name,
+                header_wordmark=getattr(co, "header_wordmark", None),
                 logo_url=co.logo_url,
                 header_image_url=co.header_image_url,
                 background_image_url=getattr(co, "background_image_url", None),

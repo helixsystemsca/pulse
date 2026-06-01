@@ -51,10 +51,12 @@ export function OrganizationBrandingPanel({ initialCompany, onCompanyUpdated }: 
   const [company, setCompany] = useState(initialCompany);
   const [logoUrlDraft, setLogoUrlDraft] = useState(initialCompany.logo_url ?? "");
   const [bgUrlDraft, setBgUrlDraft] = useState(initialCompany.background_image_url ?? "");
+  const [headerWordmarkDraft, setHeaderWordmarkDraft] = useState(initialCompany.header_wordmark ?? "");
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingBg, setUploadingBg] = useState(false);
   const [savingLogoUrl, setSavingLogoUrl] = useState(false);
   const [savingBgUrl, setSavingBgUrl] = useState(false);
+  const [savingHeaderWordmark, setSavingHeaderWordmark] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
 
@@ -62,6 +64,7 @@ export function OrganizationBrandingPanel({ initialCompany, onCompanyUpdated }: 
     setCompany(initialCompany);
     setLogoUrlDraft(initialCompany.logo_url ?? "");
     setBgUrlDraft(initialCompany.background_image_url ?? "");
+    setHeaderWordmarkDraft(initialCompany.header_wordmark ?? "");
   }, [initialCompany]);
 
   const syncParent = useCallback(
@@ -179,6 +182,35 @@ export function OrganizationBrandingPanel({ initialCompany, onCompanyUpdated }: 
 
   const logoUrlDirty = (logoUrlDraft.trim() || null) !== (company.logo_url ?? null);
   const bgUrlDirty = (bgUrlDraft.trim() || null) !== (company.background_image_url ?? null);
+  const headerWordmarkDirty = (headerWordmarkDraft.trim() || null) !== (company.header_wordmark ?? null);
+
+  const saveHeaderWordmark = async () => {
+    setErr(null);
+    setOk(null);
+    const trimmed = headerWordmarkDraft.trim();
+    setSavingHeaderWordmark(true);
+    try {
+      const out = await apiFetch<{ header_wordmark?: string | null }>("/api/v1/company/profile", {
+        method: "PATCH",
+        json: { header_wordmark: trimmed || null },
+      });
+      await refreshPulseUserFromServer();
+      const next: CompanySummary = {
+        ...company,
+        header_wordmark: out.header_wordmark ?? null,
+      };
+      syncParent(next);
+      setHeaderWordmarkDraft(next.header_wordmark ?? "");
+      setOk("App header name saved.");
+      if (typeof window !== "undefined" && getImpersonationOverlayAccessToken()) {
+        window.dispatchEvent(new Event("pulse-auth-change"));
+      }
+    } catch (e) {
+      setErr(parseClientApiError(e).message);
+    } finally {
+      setSavingHeaderWordmark(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -197,8 +229,43 @@ export function OrganizationBrandingPanel({ initialCompany, onCompanyUpdated }: 
 
       <Card variant="secondary" padding="lg">
         <SectionHeader
+          title="App header name"
+          description="Text shown in the top navigation bar for everyone in your organization. Leave blank to use the platform default (HELIX)."
+        />
+        <div className="mt-4">
+          <label htmlFor="org-header-wordmark" className={dsLabelClass}>
+            Header wordmark
+          </label>
+          <p className={dsFormHintClass}>Same style as the legacy Panorama / Pulse app header.</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <input
+              id="org-header-wordmark"
+              value={headerWordmarkDraft}
+              onChange={(e) => setHeaderWordmarkDraft(e.target.value)}
+              placeholder="HELIX"
+              maxLength={64}
+              className={`min-w-[12rem] flex-1 ${dsInputClass}`}
+            />
+            <button
+              type="button"
+              disabled={!headerWordmarkDirty || savingHeaderWordmark}
+              onClick={() => void saveHeaderWordmark()}
+              className={cn(buttonVariants({ surface: "light", intent: "accent" }), "px-4 py-2.5 text-sm")}
+            >
+              {savingHeaderWordmark ? "Saving…" : "Save"}
+            </button>
+          </div>
+          <p className="mt-3 text-xs font-medium text-ds-muted">Preview in header style</p>
+          <p className="mt-1 inline-block rounded-lg bg-[var(--ds-palette-iron-grey)] px-3 py-2 font-panoramaBrand text-[clamp(1.05rem,2.1vw,1.45rem)] font-normal uppercase leading-none tracking-[0.04em] text-white">
+            {headerWordmarkDraft.trim() || "HELIX"}
+          </p>
+        </div>
+      </Card>
+
+      <Card variant="secondary" padding="lg">
+        <SectionHeader
           title="Organization logo"
-          description="Shown in the sidebar, headers, and the inventory scanner kiosk. Upload an image (max 2MB) or set a public https URL."
+          description="Shown in the sidebar and the inventory scanner kiosk. Upload an image (max 2MB) or set a public https URL."
         />
 
         <div className="mt-4 flex flex-wrap items-center gap-4">

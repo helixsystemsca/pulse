@@ -10,6 +10,7 @@ class CompanyProfilePatch(BaseModel):
     header_image_url: Optional[str] = Field(None, max_length=2048)
     background_image_url: Optional[str] = Field(None, max_length=2048)
     name: Optional[str] = Field(None, max_length=255)
+    header_wordmark: Optional[str] = Field(None, max_length=64)
     timezone: Optional[str] = Field(None, max_length=128)
     industry: Optional[str] = Field(None, max_length=255)
 
@@ -18,4 +19,5 @@ class CompanyLogoUploadOut(BaseModel):
     logo_url: Optional[str] = None
     header_image_url: Optional[str] = None
     background_image_url: Optional[str] = None
+    header_wordmark: Optional[str] = None
     message: str = "Logo updated"

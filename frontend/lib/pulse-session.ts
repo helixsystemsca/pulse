@@ -79,6 +79,8 @@ import type { OrganizationTheme } from "@/lib/theme/organization-branding"; // t
 export type CompanySummary = {
   id: string;
   name: string;
+  /** App navbar label; empty on server → client shows {@link DEFAULT_APP_HEADER_WORDMARK}. */
+  header_wordmark?: string | null;
   /** Optional API-provided theme colors; local preview used until backend persists. */
   brand_colors?: OrganizationTheme | null;
   logo_url?: string | null;

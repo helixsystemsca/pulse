@@ -234,20 +234,69 @@
   }
 }
 
-/* Login page: form column at 75% of the viewport */
-.login-content {
+/* Login: logo centered between viewport top and login card (any orientation) */
+.login-page-frame {
+  position: relative;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.login-main {
   display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+}
+
+.login-hero {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  padding-top: max(0.25rem, env(safe-area-inset-top, 0px));
+  padding-bottom: 0.5rem;
+}
+
+.login-content {
   width: min(75vw, 100%);
   max-width: 75%;
-  align-items: flex-start;
-  justify-content: center;
   margin-left: auto;
   margin-right: auto;
 }
 
-.login-content__form {
+.login-content--hero {
+  display: flex;
+  justify-content: center;
   width: 100%;
+  max-width: min(75vw, 28rem);
+}
+
+.login-content--stack {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.login-stack__subtitle {
   flex-shrink: 0;
+}
+
+.login-hero__logo {
+  width: 100%;
+}
+
+/* Scale logo down on short viewports (tablet landscape, small phones) */
+.login-hero__logo .login-cinematic-logo__mark {
+  height: clamp(4.5rem, 28vmin, 9.5rem) !important;
+  width: min(24rem, calc(100vw - 2rem)) !important;
+}
+
+.login-card {
+  flex-shrink: 0;
+  width: 100%;
 }
 
 @media (max-width: 968px) {
@@ -268,9 +317,8 @@
     border-radius: 16px 16px 0 0;
   }
 
-  .login-content {
-    flex-direction: column;
-    align-items: center;
+  .login-content--hero,
+  .login-content--stack {
     width: min(75vw, 100%);
     max-width: 75%;
   }

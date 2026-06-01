@@ -109,6 +109,8 @@ class Company(Base):
 
     id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+    #: App chrome wordmark (e.g. tenant acronym); null → platform default on the client.
+    header_wordmark: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     logo_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
     header_image_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
     background_image_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)

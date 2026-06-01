@@ -43,6 +43,7 @@ class MicrosoftOAuthRequest(BaseModel):
 class CompanySummaryOut(BaseModel):
     id: str
     name: str
+    header_wordmark: Optional[str] = None
     logo_url: Optional[str] = None
     header_image_url: Optional[str] = None
     background_image_url: Optional[str] = None

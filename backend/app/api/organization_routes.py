@@ -28,6 +28,7 @@ async def get_my_organization(
     return OrganizationOut(
         id=str(co.id),
         name=co.name,
+        header_wordmark=getattr(co, "header_wordmark", None),
         logo_url=co.logo_url,
         background_image_url=bg,
         theme=dict(getattr(co, "theme", None) or {}),
@@ -49,6 +50,9 @@ async def patch_my_organization(
         n = str(body["name"]).strip()
         if n:
             co.name = n
+    if "header_wordmark" in body:
+        raw = body["header_wordmark"]
+        co.header_wordmark = str(raw).strip() or None if raw is not None else None
     if "background_image_url" in body:
         raw = body["background_image_url"]
         co.background_image_url = str(raw).strip() or None if raw is not None else None
@@ -67,6 +71,7 @@ async def patch_my_organization(
     return OrganizationOut(
         id=str(co.id),
         name=co.name,
+        header_wordmark=getattr(co, "header_wordmark", None),
         logo_url=co.logo_url,
         background_image_url=bg,
         theme=dict(getattr(co, "theme", None) or {}),

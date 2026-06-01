@@ -165,6 +165,9 @@ async def patch_company_profile(
         n = str(data["name"]).strip()
         if n:
             co.name = n
+    if "header_wordmark" in data:
+        raw = data["header_wordmark"]
+        co.header_wordmark = str(raw).strip() or None if raw is not None else None
     if "timezone" in data:
         tz = data["timezone"]
         co.timezone = str(tz).strip() or None if tz is not None else None
@@ -177,5 +180,6 @@ async def patch_company_profile(
         logo_url=co.logo_url or "",
         header_image_url=co.header_image_url,
         background_image_url=getattr(co, "background_image_url", None),
+        header_wordmark=getattr(co, "header_wordmark", None),
         message="Company updated",
     )

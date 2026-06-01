@@ -162,9 +162,9 @@ export default function LoginPage() {
 
   return (
     <AuthScreenShell className="login-web-canvas relative flex min-h-0 flex-1 flex-col">
-      <div className="relative z-10 flex min-h-0 flex-1 flex-col">
-        <header className="relative z-10 flex w-full items-center justify-end gap-4 px-5 py-2.5 sm:px-8 sm:py-3 lg:px-12">
-          <nav className="flex items-center gap-1 sm:gap-2" aria-label="Login header">
+      <div className="login-page-frame relative z-10 flex min-h-0 flex-1 flex-col">
+        <header className="login-header pointer-events-none absolute inset-x-0 top-0 z-20 flex w-full items-center justify-end gap-4 px-5 py-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] sm:px-8 sm:py-3 lg:px-12">
+          <nav className="pointer-events-auto flex items-center gap-1 sm:gap-2" aria-label="Login header">
             <a
               href={mailtoSupport("Pulse — Support")}
               className="inline-flex rounded-full bg-[#4c6085] px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-white shadow-sm transition-colors hover:bg-[#3f5274] sm:px-4 sm:py-2.5 sm:text-xs dark:bg-[#556b8e] dark:hover:bg-[#4c6085]"
@@ -174,16 +174,19 @@ export default function LoginPage() {
           </nav>
         </header>
 
-        <main className="relative z-10 flex min-h-0 flex-1 flex-col justify-center px-4 pb-4 pt-1 sm:px-6 sm:pb-5 md:px-8">
-          <div className="login-content">
-            <div className="login-content__form">
-              <LoginCinematicLogo />
+        <main className="login-main relative z-10 flex min-h-0 flex-1 flex-col px-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-6 md:px-8">
+          <div className="login-hero">
+            <div className="login-content login-content--hero">
+              <LoginCinematicLogo layoutClassName="login-hero__logo" />
+            </div>
+          </div>
 
-              <p className="mt-2 text-center text-sm font-medium text-[#5a6d82] dark:text-ds-muted">
-                Access only for verified users.
-              </p>
+          <div className="login-content login-content--stack">
+            <p className="login-stack__subtitle text-center text-sm font-medium text-[#5a6d82] dark:text-ds-muted">
+              Access only for verified users.
+            </p>
 
-              <div className="mt-3 rounded-[1.15rem] bg-[linear-gradient(145deg,rgba(255,255,255,0.55)_0%,rgba(255,255,255,0.18)_45%,rgba(186,230,255,0.22)_100%)] p-px shadow-[0_28px_64px_rgba(46,90,120,0.16)] ring-1 ring-white/50 backdrop-blur-md dark:bg-[linear-gradient(145deg,rgba(255,255,255,0.14)_0%,rgba(255,255,255,0.05)_100%)] dark:ring-white/15 dark:shadow-[0_24px_52px_rgba(0,0,0,0.4)] sm:mt-4">
+            <div className="login-card mt-3 rounded-[1.15rem] bg-[linear-gradient(145deg,rgba(255,255,255,0.55)_0%,rgba(255,255,255,0.18)_45%,rgba(186,230,255,0.22)_100%)] p-px shadow-[0_28px_64px_rgba(46,90,120,0.16)] ring-1 ring-white/50 backdrop-blur-md dark:bg-[linear-gradient(145deg,rgba(255,255,255,0.14)_0%,rgba(255,255,255,0.05)_100%)] dark:ring-white/15 dark:shadow-[0_24px_52px_rgba(0,0,0,0.4)] sm:mt-4">
                 <div className="relative overflow-hidden rounded-[1.1rem] border border-white/45 bg-white/[0.62] px-4 py-4 shadow-[inset_0_1px_1px_rgba(255,255,255,0.9),inset_0_-1px_0_rgba(255,255,255,0.15),0_8px_32px_rgba(255,255,255,0.12)] backdrop-blur-[28px] backdrop-saturate-[1.35] dark:border-white/18 dark:bg-[color-mix(in_srgb,var(--ds-surface-primary)_58%,transparent)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] sm:px-5 sm:py-5">
                   <div
                     className="pointer-events-none absolute inset-0 bg-[linear-gradient(128deg,rgba(255,255,255,0.72)_0%,rgba(255,255,255,0.08)_38%,transparent_55%,rgba(200,235,255,0.12)_100%)]"
@@ -316,7 +319,6 @@ export default function LoginPage() {
                   </div>
                 </div>
               </div>
-            </div>
           </div>
         </main>
       </div>
