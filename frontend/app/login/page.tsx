@@ -5,7 +5,8 @@ import { motion } from "framer-motion";
 import { FormEvent, useEffect, useId, useState } from "react";
 import { AuthScreenShell } from "@/components/auth/AuthScreenShell";
 import { LoginCinematicLogo } from "@/components/auth/LoginCinematicLogo";
-import { LoginComingSoonEntrance } from "@/components/auth/LoginComingSoonEntrance";
+// TEMP: coming-soon panel hidden on login — restore with block below in main
+// import { LoginComingSoonEntrance } from "@/components/auth/LoginComingSoonEntrance";
 import { LoginIntroAtmosphere } from "@/components/auth/LoginIntroAtmosphere";
 import { useLoginIntroSequence } from "@/components/auth/useLoginIntroSequence";
 import { AuroraBackground } from "@/components/ui/AuroraBackground";
@@ -192,6 +193,7 @@ export default function LoginPage() {
         </header>
 
         <main className="relative z-10 flex min-h-0 flex-1 flex-col justify-center px-4 pb-4 pt-1 sm:px-6 sm:pb-5 md:px-8">
+          {/* TEMP: Future Features panel — left dock on login
           <div
             className={cn(
               "z-[15] w-full shrink-0 justify-center pb-5",
@@ -204,6 +206,7 @@ export default function LoginPage() {
               <LoginComingSoonEntrance visible={intro.showComingSoon} />
             </div>
           </div>
+          */}
           <div className="login-content">
             <div className="login-content__form">
             <LoginCinematicLogo stage={intro.stage} />

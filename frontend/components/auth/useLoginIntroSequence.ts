@@ -17,14 +17,16 @@ export function useLoginIntroSequence() {
     const step = LOGIN_STEP_MS;
     const t1 = window.setTimeout(() => setStage("logo-settle"), step);
     const t2 = window.setTimeout(() => setStage("reveal-form"), step * 2);
-    const t3 = window.setTimeout(() => setStage("reveal-card"), step * 3);
-    const t4 = window.setTimeout(() => setStage("complete"), step * 4);
+    // TEMP: skip reveal-card while LoginComingSoonEntrance is commented out on login page
+    const t3 = window.setTimeout(() => setStage("complete"), step * 3);
+    // const t3 = window.setTimeout(() => setStage("reveal-card"), step * 3);
+    // const t4 = window.setTimeout(() => setStage("complete"), step * 4);
 
     return () => {
       window.clearTimeout(t1);
       window.clearTimeout(t2);
       window.clearTimeout(t3);
-      window.clearTimeout(t4);
+      // window.clearTimeout(t4);
     };
   }, [reducedMotion]);
 
@@ -32,7 +34,7 @@ export function useLoginIntroSequence() {
     stage,
     reducedMotion: Boolean(reducedMotion),
     showForm: stage === "reveal-form" || stage === "reveal-card" || stage === "complete",
-    showComingSoon: stage === "reveal-card" || stage === "complete",
+    showComingSoon: false, // TEMP: panel commented out on login page
     showTagline: stage === "reveal-form" || stage === "reveal-card" || stage === "complete",
     scrimActive: stage === "intro",
   };
