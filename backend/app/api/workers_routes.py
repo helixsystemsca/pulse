@@ -1184,7 +1184,10 @@ async def create_worker(
     if body.roster_profile_only:
         # "Roster-only" adds an active account without invite/join flow.
         # Use a temporary password so the user can sign in, then prompt them to change it.
-        temp_pw = "Panorama"
+        co = await db.get(Company, cid)
+        from app.core.company_roster_password import roster_password_for_company
+
+        temp_pw = roster_password_for_company(co)
         if not user_has_any_role(actor, UserRole.company_admin) and not user_has_facility_tenant_admin_flag(actor):
             raise HTTPException(
                 status_code=403,

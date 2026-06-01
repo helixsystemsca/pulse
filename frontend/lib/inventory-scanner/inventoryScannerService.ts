@@ -43,7 +43,7 @@ function rowToScanProduct(row: InventoryRow): InventoryScanProduct {
     unit: row.unit,
     low_stock_threshold: row.low_stock_threshold,
     location_name: row.location_name,
-    image_url: null,
+    image_url: row.image_url ?? null,
     department_slug: row.department_slug,
   };
 }

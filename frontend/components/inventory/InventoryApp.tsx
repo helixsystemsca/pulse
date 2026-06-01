@@ -7,14 +7,12 @@
  */
 import {
   AlertTriangle,
-  ArrowRightLeft,
   Box,
   ChevronDown,
   ClipboardList,
   Download,
   HardHat,
   Loader2,
-  MapPin,
   MoreVertical,
   Package,
   ScanBarcode,
@@ -24,7 +22,7 @@ import {
   Truck,
   Wrench,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { PulseDrawer } from "@/components/schedule/PulseDrawer";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { apiFetch } from "@/lib/api";
@@ -71,6 +69,12 @@ import {
   InventoryItemProfilePhoto,
 } from "@/components/inventory/InventoryItemPhotoUpload";
 import { InventoryRegisterFieldsEditor } from "@/components/inventory/InventoryRegisterFieldsEditor";
+import { InventoryItemDetailFields } from "@/components/inventory/InventoryItemDetailFields";
+import { InventoryTableFieldCell } from "@/components/inventory/InventoryTableFieldCell";
+import {
+  detailFieldsFromRegisterForm,
+  tableColumnsFromRegisterForm,
+} from "@/lib/inventory/inventory-list-columns";
 import {
   InventorySetupWizard,
   mergedSettingsForSave,
@@ -117,50 +121,14 @@ function formatTs(iso: string | null | undefined): string {
   });
 }
 
-function formatUnitCost(value: number | null | undefined): string {
-  if (value == null || Number.isNaN(Number(value))) return "—";
-  return `$${Number(value).toFixed(2)}`;
-}
-
-function statusBadge(status: string): string {
-  switch (status) {
-    case "assigned":
-      return "bg-[#ebf8ff] text-[#3182ce] ring-1 ring-blue-200/80 dark:bg-blue-600 dark:text-white dark:ring-blue-500/40";
-    case "low_stock":
-      return "bg-amber-50 text-amber-900 ring-1 ring-amber-200/80 dark:bg-amber-600 dark:text-white dark:ring-amber-400/40";
-    case "missing":
-      return "bg-[#fff5eb] text-[#c05621] ring-1 ring-orange-200/80 dark:bg-orange-600 dark:text-white dark:ring-orange-400/40";
-    case "maintenance":
-      return "bg-violet-50 text-violet-900 ring-1 ring-violet-200/75 dark:bg-violet-600 dark:text-white dark:ring-violet-400/45";
-    case "in_stock":
-    default:
-      return "bg-sky-50/90 text-[#2B4C7E] ring-1 ring-sky-200/70 dark:bg-emerald-600 dark:text-white dark:ring-emerald-500/40";
-  }
-}
-
 function statusLabel(status: string): string {
   return status.replace(/_/g, " ");
-}
-
-function conditionLabel(c: string): string {
-  if (c === "needs_maintenance") return "Needs maintenance";
-  if (c === "critical") return "Critical";
-  return "Good";
-}
-
-function conditionBadge(c: string): string {
-  if (c === "critical") return "bg-rose-50 text-rose-800 ring-1 ring-rose-200/75 dark:bg-red-600 dark:text-white dark:ring-red-500/45";
-  if (c === "needs_maintenance") return "bg-amber-50 text-amber-900 ring-1 ring-amber-200/75 dark:bg-amber-600 dark:text-white dark:ring-amber-400/40";
-  return "bg-emerald-50 text-emerald-900 ring-1 ring-emerald-200/70 dark:bg-emerald-600 dark:text-white dark:ring-emerald-500/40";
 }
 
 function inventoryDepartmentLabel(slug: string | null | undefined): string {
   if (!slug) return "—";
   return getDepartmentBySlug(slug)?.name ?? slug;
 }
-
-const DEPARTMENT_PILL =
-  "bg-violet-50/90 text-violet-950 ring-1 ring-violet-200/75 dark:bg-violet-900/40 dark:text-violet-100 dark:ring-violet-500/35";
 
 function typeIcon(t: string) {
   if (t === "tool") return Wrench;
@@ -177,78 +145,6 @@ function inventoryMetricShortLabel(label: string): string {
   const top = /^Top (\d) by uses$/.exec(label);
   if (top) return `Top ${top[1]}`;
   return label;
-}
-
-const QTY_STEP_BTN =
-  "inline-flex h-7 w-7 shrink-0 select-none items-center justify-center rounded-md border border-slate-200/90 bg-white text-sm font-medium text-pulse-navy shadow-sm outline-none transition-[transform,colors] hover:bg-ds-interactive-hover active:bg-ds-interactive-active focus-visible:ring-2 focus-visible:ring-sky-400/35 active:scale-95 disabled:pointer-events-none disabled:opacity-40 dark:border-ds-border dark:bg-ds-secondary dark:hover:bg-ds-interactive-hover dark:active:bg-ds-interactive-active";
-
-function InventoryTableQtyCell(props: {
-  row: InventoryRow;
-  pending: boolean;
-  canMutate: boolean;
-  onUpdateQuantity: (id: string, newQuantity: number) => void;
-}) {
-  const { row, pending, canMutate, onUpdateQuantity } = props;
-  if (row.item_type === "tool") {
-    return <span className="whitespace-nowrap font-medium text-pulse-navy">1 (tracked)</span>;
-  }
-
-  if (!canMutate) {
-    return (
-      <span className="whitespace-nowrap font-medium text-pulse-navy">
-        {row.quantity}
-        <span className="ml-1 max-w-[4.5rem] truncate text-xs text-pulse-muted" title={row.unit}>
-          {row.unit}
-        </span>
-      </span>
-    );
-  }
-
-  const onQtyKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      e.stopPropagation();
-      onUpdateQuantity(row.id, Math.max(0, row.quantity - 1));
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      e.stopPropagation();
-      onUpdateQuantity(row.id, row.quantity + 1);
-    }
-  };
-
-  return (
-    <div
-      className="flex items-center gap-2 whitespace-nowrap"
-      onClick={(e) => e.stopPropagation()}
-      onKeyDown={onQtyKeyDown}
-      tabIndex={0}
-      role="group"
-      aria-label={`Adjust quantity for ${row.name}`}
-    >
-      <button
-        type="button"
-        onClick={() => onUpdateQuantity(row.id, Math.max(0, row.quantity - 1))}
-        disabled={pending || row.quantity <= 0 || !canMutate}
-        className={QTY_STEP_BTN}
-        aria-label="Decrease quantity"
-      >
-        -
-      </button>
-      <span className="min-w-[2.25rem] text-center tabular-nums font-medium text-pulse-navy">{row.quantity}</span>
-      <button
-        type="button"
-        onClick={() => onUpdateQuantity(row.id, row.quantity + 1)}
-        disabled={pending || !canMutate}
-        className={QTY_STEP_BTN}
-        aria-label="Increase quantity"
-      >
-        +
-      </button>
-      <span className="max-w-[4.5rem] truncate text-xs text-pulse-muted" title={row.unit}>
-        {row.unit}
-      </span>
-    </div>
-  );
 }
 
 export function InventoryApp() {
@@ -307,6 +203,14 @@ export function InventoryApp() {
   const [summary, setSummary] = useState<InventorySummary | null>(null);
 
   const mergedSettings = useMemo(() => mergeInventoryModuleSettings(settingsBaseline), [settingsBaseline]);
+  const tableColumns = useMemo(
+    () => tableColumnsFromRegisterForm(mergedSettings.register_form),
+    [mergedSettings.register_form],
+  );
+  const detailExtraFields = useMemo(
+    () => detailFieldsFromRegisterForm(mergedSettings.register_form),
+    [mergedSettings.register_form],
+  );
   const categoryFilterOptions = useMemo(
     () =>
       registerFormCategoryFilterOptions(
@@ -1280,18 +1184,19 @@ export function InventoryApp() {
               <p className="p-6 text-sm text-rose-600">{listError}</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-[1240px] w-full border-collapse text-left text-sm">
+                <table className="min-w-[960px] w-full border-collapse text-left text-sm">
                   <thead>
                     <tr className="app-table-head-row border-pulse-border">
                       <th className="px-4 py-3">Item</th>
-                      <th className="px-4 py-3">Category / type</th>
-                      <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3">Quantity</th>
-                      <th className="px-4 py-3">Vendor</th>
-                      <th className="px-4 py-3">Cost</th>
-                      <th className="px-4 py-3">Location</th>
-                      <th className="px-4 py-3">Last movement</th>
-                      <th className="px-4 py-3">Department</th>
+                      {tableColumns.map((col) => (
+                        <th key={col.kind === "field" ? col.field.id : col.kind} className="px-4 py-3">
+                          {col.kind === "field"
+                            ? col.field.label
+                            : col.kind === "type_category"
+                              ? col.label
+                              : col.label}
+                        </th>
+                      ))}
                       <th className="px-4 py-3 text-right">Actions</th>
                     </tr>
                   </thead>
@@ -1308,13 +1213,13 @@ export function InventoryApp() {
                           }}
                         >
                           <td className="px-4 py-3 align-middle">
-                            <div className="flex min-h-14 items-stretch gap-3">
+                            <div className="flex items-center gap-3">
                               <InventoryItemListThumb
                                 imageUrl={row.image_url}
                                 name={row.name}
                                 FallbackIcon={Icon}
                               />
-                              <div className="min-w-0 py-0.5">
+                              <div className="min-w-0">
                                 <p className="font-semibold text-pulse-navy">{row.name}</p>
                                 <p className="text-xs text-pulse-muted">{row.sku}</p>
                                 {row.linked_asset_name ? (
@@ -1325,71 +1230,16 @@ export function InventoryApp() {
                               </div>
                             </div>
                           </td>
-                          <td className="px-4 py-3 align-top text-pulse-navy">
-                            <span className="capitalize">{row.item_type}</span>
-                            {row.category ? (
-                              <>
-                                <br />
-                                <span className="text-xs text-pulse-muted">{row.category}</span>
-                              </>
-                            ) : null}
-                          </td>
-                          <td className="px-4 py-3 align-top">
-                            <span
-                              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold capitalize ${statusBadge(
-                                row.inv_status,
-                              )}`}
-                            >
-                              <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" aria-hidden />
-                              {statusLabel(row.inv_status)}
-                            </span>
-                            {row.reorder_flag ? (
-                              <span className="mt-1 block text-[10px] font-bold uppercase text-amber-800">
-                                Reorder flagged
-                              </span>
-                            ) : null}
-                          </td>
-                          <td className="px-4 py-3 align-top font-medium text-pulse-navy">
-                            <InventoryTableQtyCell
+                          {tableColumns.map((col) => (
+                            <InventoryTableFieldCell
+                              key={col.kind === "field" ? col.field.id : col.kind}
+                              column={col}
                               row={row}
                               pending={Boolean(qtyPending[row.id])}
                               canMutate={canMutateInventory}
                               onUpdateQuantity={updateQuantity}
                             />
-                          </td>
-                          <td className="max-w-[12rem] px-4 py-3 align-top text-pulse-navy">
-                            <span className="line-clamp-2" title={row.vendor ?? undefined}>
-                              {row.vendor?.trim() ? row.vendor : "—"}
-                            </span>
-                          </td>
-                          <td className="whitespace-nowrap px-4 py-3 align-top tabular-nums text-pulse-navy">
-                            {formatUnitCost(row.unit_cost)}
-                          </td>
-                          <td className="px-4 py-3 align-top">
-                            <span className="inline-flex items-center gap-1 text-pulse-navy">
-                              <MapPin className="h-3.5 w-3.5 text-[#3182ce]" aria-hidden />
-                              {row.location_name ?? "—"}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 align-top text-xs text-pulse-muted">
-                            <div className="flex flex-col gap-0.5">
-                              <span className="inline-flex items-center gap-1">
-                                <ArrowRightLeft className="h-3.5 w-3.5" aria-hidden />
-                                {formatTs(row.last_movement_at)}
-                              </span>
-                              {row.last_used_at ? (
-                                <span>Used: {formatTs(row.last_used_at)}</span>
-                              ) : null}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 align-top">
-                            <span
-                              className={`inline-flex max-w-[11rem] truncate rounded-full px-2.5 py-0.5 text-xs font-semibold ${DEPARTMENT_PILL}`}
-                              title={inventoryDepartmentLabel(row.department_slug)}
-                            >
-                              {inventoryDepartmentLabel(row.department_slug)}
-                            </span>
-                          </td>
+                          ))}
                           <td className="relative px-4 py-3 text-right align-top" onClick={(e) => e.stopPropagation()}>
                             {canMutateInventory ? (
                               <>
@@ -1636,16 +1486,6 @@ export function InventoryApp() {
                 <p className="text-sm text-pulse-muted">
                   Qty: {detail.item_type === "tool" ? "1 (tracked)" : `${detail.quantity} ${detail.unit}`}
                 </p>
-                {detail.vendor?.trim() ? (
-                  <p className="text-sm text-pulse-muted">Vendor: {detail.vendor}</p>
-                ) : null}
-                {detail.unit_cost != null ? (
-                  <p className="text-sm text-pulse-muted">Unit cost: {formatUnitCost(detail.unit_cost)}</p>
-                ) : null}
-                <p className="text-sm text-pulse-muted">
-                  Department: {inventoryDepartmentLabel(detail.department_slug)}
-                </p>
-                <p className="text-sm text-pulse-muted">Asset condition: {conditionLabel(detail.condition)}</p>
               </div>
               <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
                 <p className="text-xs font-bold uppercase text-pulse-muted">Assignment &amp; location</p>
@@ -1653,6 +1493,8 @@ export function InventoryApp() {
                 <p className="text-sm text-pulse-muted">{detail.location_name ?? "—"}</p>
               </div>
             </div>
+
+            <InventoryItemDetailFields detail={detail} fields={detailExtraFields} />
 
             <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
               <p className="text-xs font-bold uppercase text-pulse-muted">Work requests</p>
@@ -1773,6 +1615,7 @@ export function InventoryApp() {
           assets={assets}
           workers={workers}
           disabled={editFormLoading}
+          inventoryCompanyId={apiCompany}
           itemId={editMode === "edit" ? editTargetId : null}
           imageUrl={editImageUrl}
           pendingPhotoPreview={pendingPhotoPreview}

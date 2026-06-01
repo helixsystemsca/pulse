@@ -119,6 +119,8 @@ class Company(Base):
     latitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     longitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     industry: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    #: Plaintext default sign-in password for roster-only employees (company admin sets on branding).
+    default_roster_password: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     owner_admin_id: Mapped[Optional[str]] = mapped_column(
         UUID(as_uuid=False),
         ForeignKey("users.id", ondelete="SET NULL"),

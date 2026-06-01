@@ -166,32 +166,43 @@ type ProfilePhotoProps = {
   uploadFile?: (file: File) => Promise<{ image_url: string }>;
 };
 
-/** Square list-row thumbnail (90% of row height) for inventory tables and pickers. */
+/** Fixed square thumbnail for inventory table rows (replaces the legacy icon box). */
 export function InventoryItemListThumb({
   imageUrl,
   name,
   FallbackIcon,
+  size = "md",
 }: {
   imageUrl?: string | null;
   name: string;
   FallbackIcon: LucideIcon;
+  /** md ≈ 48px — fits table row; sm matches old 32px icon slot */
+  size?: "sm" | "md";
 }) {
   const { src, loading } = useResolvedProtectedAssetSrc(imageUrl ?? null);
+  const box =
+    size === "sm"
+      ? "h-8 w-8"
+      : "h-12 w-12 sm:h-[3.25rem] sm:w-[3.25rem]";
 
   return (
-    <div className="flex shrink-0 self-stretch items-center py-[5%]" aria-hidden>
-      <div className="aspect-square h-full max-h-16 border border-slate-200/90 bg-slate-50 dark:border-ds-border dark:bg-ds-secondary">
-        {src ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={src} alt="" className="h-full w-full object-cover" />
-        ) : loading && imageUrl?.trim() ? (
-          <div className="h-full w-full animate-pulse bg-slate-100 dark:bg-ds-interactive-hover" />
-        ) : (
-          <span className="flex h-full w-full items-center justify-center text-[#2B4C7E] dark:text-sky-300">
-            <FallbackIcon className="h-[42%] w-[42%] min-h-4 min-w-4" strokeWidth={1.75} />
-          </span>
-        )}
-      </div>
+    <div
+      className={cn(
+        "relative shrink-0 overflow-hidden border border-slate-200/90 bg-slate-50 dark:border-ds-border dark:bg-ds-secondary",
+        box,
+      )}
+      aria-hidden
+    >
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt="" className="absolute inset-0 h-full w-full object-cover" />
+      ) : loading && imageUrl?.trim() ? (
+        <div className="absolute inset-0 animate-pulse bg-slate-100 dark:bg-ds-interactive-hover" />
+      ) : (
+        <span className="absolute inset-0 flex items-center justify-center text-[#2B4C7E] dark:text-sky-300">
+          <FallbackIcon className={size === "sm" ? "h-4 w-4" : "h-5 w-5"} strokeWidth={1.75} />
+        </span>
+      )}
     </div>
   );
 }

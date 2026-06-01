@@ -428,7 +428,13 @@ async def me(
         eff = await psvc.effective_allow_set(user)
         perm_out = ["*"] if "*" in eff else sorted(eff)
 
-    must_change_password = bool(user.hashed_password) and verify_password("Panorama", user.hashed_password)
+    must_change_password = False
+    if user.hashed_password and user.company_id:
+        co_for_pw = await db.get(Company, str(user.company_id))
+        from app.core.company_roster_password import roster_password_for_company
+
+        default_pw = roster_password_for_company(co_for_pw)
+        must_change_password = verify_password(default_pw, user.hashed_password)
 
     hr_me: PulseWorkerHR | None = None
     if user.company_id:

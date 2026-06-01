@@ -52,11 +52,14 @@ export function OrganizationBrandingPanel({ initialCompany, onCompanyUpdated }: 
   const [logoUrlDraft, setLogoUrlDraft] = useState(initialCompany.logo_url ?? "");
   const [bgUrlDraft, setBgUrlDraft] = useState(initialCompany.background_image_url ?? "");
   const [headerWordmarkDraft, setHeaderWordmarkDraft] = useState(initialCompany.header_wordmark ?? "");
+  const [defaultRosterPasswordDraft, setDefaultRosterPasswordDraft] = useState("");
+  const [defaultRosterPasswordLoaded, setDefaultRosterPasswordLoaded] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingBg, setUploadingBg] = useState(false);
   const [savingLogoUrl, setSavingLogoUrl] = useState(false);
   const [savingBgUrl, setSavingBgUrl] = useState(false);
   const [savingHeaderWordmark, setSavingHeaderWordmark] = useState(false);
+  const [savingDefaultPassword, setSavingDefaultPassword] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
 
@@ -66,6 +69,23 @@ export function OrganizationBrandingPanel({ initialCompany, onCompanyUpdated }: 
     setBgUrlDraft(initialCompany.background_image_url ?? "");
     setHeaderWordmarkDraft(initialCompany.header_wordmark ?? "");
   }, [initialCompany]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const out = await apiFetch<{ default_roster_password?: string | null }>("/api/v1/company/profile");
+        if (cancelled) return;
+        setDefaultRosterPasswordDraft(out.default_roster_password ?? "");
+        setDefaultRosterPasswordLoaded(true);
+      } catch {
+        if (!cancelled) setDefaultRosterPasswordLoaded(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const syncParent = useCallback(
     (c: CompanySummary) => {
@@ -184,6 +204,29 @@ export function OrganizationBrandingPanel({ initialCompany, onCompanyUpdated }: 
   const bgUrlDirty = (bgUrlDraft.trim() || null) !== (company.background_image_url ?? null);
   const headerWordmarkDirty = (headerWordmarkDraft.trim() || null) !== (company.header_wordmark ?? null);
 
+  const saveDefaultRosterPassword = async () => {
+    setErr(null);
+    setOk(null);
+    const trimmed = defaultRosterPasswordDraft.trim();
+    if (trimmed && trimmed.length < 8) {
+      setErr("Default employee password must be at least 8 characters.");
+      return;
+    }
+    setSavingDefaultPassword(true);
+    try {
+      await apiFetch("/api/v1/company/profile", {
+        method: "PATCH",
+        json: { default_roster_password: trimmed || null },
+      });
+      setDefaultRosterPasswordDraft(trimmed);
+      setOk("Default employee password saved.");
+    } catch (e) {
+      setErr(parseClientApiError(e).message);
+    } finally {
+      setSavingDefaultPassword(false);
+    }
+  };
+
   const saveHeaderWordmark = async () => {
     setErr(null);
     setOk(null);
@@ -259,6 +302,42 @@ export function OrganizationBrandingPanel({ initialCompany, onCompanyUpdated }: 
           <p className="mt-1 inline-block rounded-lg bg-[var(--ds-palette-iron-grey)] px-3 py-2 font-panoramaBrand text-[clamp(1.05rem,2.1vw,1.45rem)] font-normal uppercase leading-none tracking-[0.04em] text-white">
             {headerWordmarkDraft.trim() || "HELIX"}
           </p>
+        </div>
+      </Card>
+
+      <Card variant="secondary" padding="lg">
+        <SectionHeader
+          title="Default employee password"
+          description="Used when an administrator creates a roster-only employee (no email invite). New accounts must change this password on first sign-in. Leave blank to use the platform default (Panorama)."
+        />
+        <div className="mt-4">
+          <label htmlFor="org-default-roster-password" className={dsLabelClass}>
+            Temporary sign-in password
+          </label>
+          <p className={dsFormHintClass}>
+            Share this with new employees through your normal secure channel. It is not shown to workers after they set
+            their own password.
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <input
+              id="org-default-roster-password"
+              type="password"
+              autoComplete="new-password"
+              value={defaultRosterPasswordDraft}
+              onChange={(e) => setDefaultRosterPasswordDraft(e.target.value)}
+              placeholder={defaultRosterPasswordLoaded ? "At least 8 characters" : "Loading…"}
+              disabled={!defaultRosterPasswordLoaded}
+              className={`min-w-[12rem] flex-1 ${dsInputClass}`}
+            />
+            <button
+              type="button"
+              disabled={!defaultRosterPasswordLoaded || savingDefaultPassword}
+              onClick={() => void saveDefaultRosterPassword()}
+              className={cn(buttonVariants({ surface: "light", intent: "accent" }), "px-4 py-2.5 text-sm")}
+            >
+              {savingDefaultPassword ? "Saving…" : "Save"}
+            </button>
+          </div>
         </div>
       </Card>
 

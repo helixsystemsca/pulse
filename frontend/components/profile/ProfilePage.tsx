@@ -26,6 +26,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/pulse/Card";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { useReducedEffects } from "@/hooks/useReducedEffects";
+import { useConfig } from "@/lib/config/useConfig";
 import { apiFetch, refreshPulseUserFromServer } from "@/lib/api";
 import { getGamificationMe, patchAvatarBorder, type GamificationMe } from "@/lib/gamificationService";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
@@ -164,7 +165,12 @@ export function ProfilePage() {
 
   const companyId = session?.company_id ?? session?.company?.id ?? null;
   const isCompanyAdmin = session ? sessionHasAnyRole(session, "company_admin") : false;
-  const showGamification = profileShowsGamification(session);
+  const { config: workersConfig, loading: workersConfigLoading } = useConfig<{ gamification_enabled?: boolean }>(
+    "workers",
+  );
+  const gamificationEnabled =
+    !workersConfigLoading && workersConfig != null && workersConfig.gamification_enabled !== false;
+  const showGamification = profileShowsGamification(session, { gamificationEnabled });
   const showWorkAndSchedule = profileShowsWorkAndSchedule(session);
   const showTraining = profileShowsTrainingRecommendations(session);
   const showExtendedContent = hasExtendedProfileContent(session);

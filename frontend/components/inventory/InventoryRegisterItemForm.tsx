@@ -8,6 +8,7 @@ import {
 } from "@/lib/inventory/register-form-config";
 import { getDepartmentBySlug, PLATFORM_DEPARTMENTS } from "@/config/platform/departments";
 import { InventoryItemPhotoUpload } from "@/components/inventory/InventoryItemPhotoUpload";
+import { InventoryRegisterLookupHints } from "@/components/inventory/InventoryRegisterLookupHints";
 import { cn } from "@/lib/cn";
 
 const FIELD =
@@ -51,6 +52,8 @@ type Props = {
   onPendingPhoto?: (file: File | null) => void;
   onPhotoUploaded?: (imageUrl: string) => void;
   uploadPhoto?: (file: File) => Promise<{ image_url: string }>;
+  /** When set, name field shows existing inventory matches while typing. */
+  inventoryCompanyId?: string | null;
 };
 
 function renderSelect(
@@ -85,6 +88,7 @@ export function InventoryRegisterItemForm({
   onPendingPhoto,
   onPhotoUploaded,
   uploadPhoto,
+  inventoryCompanyId,
 }: Props) {
   const fields = enabledRegisterFields(registerForm);
 
@@ -180,7 +184,20 @@ export function InventoryRegisterItemForm({
           />
         );
       case "name":
-        return renderTextOrSelect(field, form.name, (name) => setForm({ name }));
+        if (effectiveInputType(field) === "select") {
+          return renderTextOrSelect(field, form.name, (name) => setForm({ name }));
+        }
+        return (
+          <InventoryRegisterLookupHints
+            label={field.label}
+            value={form.name}
+            onChange={(name) => setForm({ name })}
+            placeholder={field.placeholder}
+            disabled={disabled}
+            companyId={inventoryCompanyId ?? null}
+            excludeItemId={itemId}
+          />
+        );
       case "sku":
         return renderTextOrSelect(field, form.sku, (sku) => setForm({ sku }));
       case "item_type":

@@ -2,7 +2,8 @@ import { isUserFeatureEnabled } from "@/lib/features/tenant-features";
 import { canAccessClassicNavHref } from "@/lib/rbac/session-access";
 import type { PulseAuthSession } from "@/lib/pulse-session";
 
-const GAMIFICATION_FEATURES = ["team_insights", "work_requests", "maintenance"] as const;
+/** Team Insights module must be on contract and enabled for the user. */
+const TEAM_INSIGHTS_FEATURE = "team_insights" as const;
 const SCHEDULE_FEATURES = ["schedule", "work_requests"] as const;
 const TRAINING_FEATURES = [
   "procedures",
@@ -12,9 +13,14 @@ const TRAINING_FEATURES = [
   "standards_certifications",
 ] as const;
 
-export function profileShowsGamification(session: PulseAuthSession | null): boolean {
+export function profileShowsGamification(
+  session: PulseAuthSession | null,
+  opts?: { gamificationEnabled?: boolean },
+): boolean {
   if (!session) return false;
-  return GAMIFICATION_FEATURES.some((f) => isUserFeatureEnabled(session, f));
+  if (!isUserFeatureEnabled(session, TEAM_INSIGHTS_FEATURE)) return false;
+  if (opts?.gamificationEnabled === false) return false;
+  return true;
 }
 
 export function profileShowsWorkAndSchedule(session: PulseAuthSession | null): boolean {

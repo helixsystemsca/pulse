@@ -100,6 +100,9 @@ export type InventoryRegisterFieldConfig = {
 
   help_text?: string;
 
+  /** When true (and {@link enabled}), column appears in the inventory list table. */
+  show_in_table?: boolean;
+
 };
 
 
@@ -240,6 +243,8 @@ export const DEFAULT_REGISTER_FORM_FIELDS: InventoryRegisterFieldConfig[] = [
 
     input_type: "text",
 
+    show_in_table: false,
+
   },
 
   {
@@ -266,6 +271,8 @@ export const DEFAULT_REGISTER_FORM_FIELDS: InventoryRegisterFieldConfig[] = [
 
     ],
 
+    show_in_table: true,
+
   },
 
   {
@@ -280,6 +287,8 @@ export const DEFAULT_REGISTER_FORM_FIELDS: InventoryRegisterFieldConfig[] = [
 
     input_type: "text",
 
+    show_in_table: true,
+
   },
 
   {
@@ -293,6 +302,8 @@ export const DEFAULT_REGISTER_FORM_FIELDS: InventoryRegisterFieldConfig[] = [
     order: 50,
 
     input_type: "number",
+
+    show_in_table: true,
 
   },
 
@@ -336,6 +347,8 @@ export const DEFAULT_REGISTER_FORM_FIELDS: InventoryRegisterFieldConfig[] = [
 
     input_type: "department_select",
 
+    show_in_table: true,
+
   },
 
   {
@@ -373,6 +386,8 @@ export const DEFAULT_REGISTER_FORM_FIELDS: InventoryRegisterFieldConfig[] = [
     order: 100,
 
     input_type: "zone_select",
+
+    show_in_table: true,
 
   },
 
@@ -420,6 +435,8 @@ export const DEFAULT_REGISTER_FORM_FIELDS: InventoryRegisterFieldConfig[] = [
 
     placeholder: "Supplier or manufacturer",
 
+    show_in_table: true,
+
   },
 
   {
@@ -433,6 +450,8 @@ export const DEFAULT_REGISTER_FORM_FIELDS: InventoryRegisterFieldConfig[] = [
     order: 140,
 
     input_type: "number",
+
+    show_in_table: true,
 
   },
 
@@ -514,6 +533,25 @@ export function effectiveInputType(field: InventoryRegisterFieldConfig): Invento
 
 
 
+function optionValueFromLabel(label: string): string {
+  const slug = label
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_|_$/g, "");
+  return slug || "option";
+}
+
+export function normalizeRegisterFieldOptions(rows: InventorySelectOption[]): InventorySelectOption[] {
+  return rows
+    .map((o) => {
+      const label = o.label.trim();
+      const value = o.value.trim() || optionValueFromLabel(label);
+      return { label: label || value, value };
+    })
+    .filter((o) => o.label);
+}
+
 function normalizeField(field: InventoryRegisterFieldConfig, base?: InventoryRegisterFieldConfig): InventoryRegisterFieldConfig {
 
   const input_type = field.input_type ?? base?.input_type ?? (field.is_custom ? "text" : DEFAULT_INPUT_TYPES[field.id as InventoryBuiltinFieldId] ?? "text");
@@ -526,7 +564,11 @@ function normalizeField(field: InventoryRegisterFieldConfig, base?: InventoryReg
 
     input_type,
 
-    options: field.options?.length ? field.options : base?.options,
+    show_in_table: field.show_in_table ?? base?.show_in_table ?? false,
+
+    options: field.options?.length
+      ? normalizeRegisterFieldOptions(field.options)
+      : base?.options,
 
   };
 
@@ -733,6 +775,8 @@ export function newCustomFieldDraft(label = "Custom field"): InventoryRegisterFi
     input_type: "text",
 
     is_custom: true,
+
+    show_in_table: false,
 
   };
 

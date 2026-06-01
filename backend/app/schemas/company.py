@@ -13,6 +13,17 @@ class CompanyProfilePatch(BaseModel):
     header_wordmark: Optional[str] = Field(None, max_length=64)
     timezone: Optional[str] = Field(None, max_length=128)
     industry: Optional[str] = Field(None, max_length=255)
+    default_roster_password: Optional[str] = Field(None, max_length=128)
+
+
+class CompanyBrandingOut(BaseModel):
+    """Company branding fields (company admin)."""
+
+    logo_url: Optional[str] = None
+    header_image_url: Optional[str] = None
+    background_image_url: Optional[str] = None
+    header_wordmark: Optional[str] = None
+    default_roster_password: Optional[str] = None
 
 
 class CompanyLogoUploadOut(BaseModel):
@@ -20,4 +31,5 @@ class CompanyLogoUploadOut(BaseModel):
     header_image_url: Optional[str] = None
     background_image_url: Optional[str] = None
     header_wordmark: Optional[str] = None
+    default_roster_password: Optional[str] = None
     message: str = "Logo updated"

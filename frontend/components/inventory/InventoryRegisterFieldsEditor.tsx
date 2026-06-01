@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import type {
   InventoryFieldInputType,
   InventoryRegisterFieldConfig,
@@ -14,6 +15,7 @@ import {
   newCustomFieldDraft,
   nextFieldOrder,
 } from "@/lib/inventory/register-form-config";
+import { canConfigureTableColumn, defaultShowInTable } from "@/lib/inventory/inventory-list-columns";
 
 const FIELD =
   "mt-1 w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25";
@@ -65,29 +67,39 @@ function normalizeDropdownOptions(rows: InventorySelectOption[]): InventorySelec
     .filter((o) => o.label);
 }
 
-function effectiveOptionRows(
+function seedOptionRows(
   options: InventorySelectOption[] | undefined,
   defaults: InventorySelectOption[] | undefined,
 ): InventorySelectOption[] {
-  if (options?.length) return options;
-  if (defaults?.length) return defaults.map((o) => ({ ...o }));
+  if (options !== undefined && options.length > 0) {
+    return options.map((o) => ({ ...o }));
+  }
+  if (defaults?.length) {
+    return defaults.map((o) => ({ ...o }));
+  }
   return [{ label: "", value: "" }];
 }
 
 function InventoryDropdownOptionsEditor({
+  fieldId,
   options,
   defaultOptions,
   onChange,
 }: {
+  fieldId: string;
   options: InventorySelectOption[] | undefined;
   defaultOptions?: InventorySelectOption[];
   onChange: (options: InventorySelectOption[]) => void;
 }) {
-  const rows = effectiveOptionRows(options, defaultOptions);
+  const [rows, setRows] = useState(() => seedOptionRows(options, defaultOptions));
 
-  function setRows(next: InventorySelectOption[]) {
-    const normalized = normalizeDropdownOptions(next);
-    onChange(normalized.length ? normalized : []);
+  useEffect(() => {
+    setRows(seedOptionRows(options, defaultOptions));
+  }, [fieldId]);
+
+  function commitRows(next: InventorySelectOption[]) {
+    setRows(next);
+    onChange(next);
   }
 
   function patchRow(index: number, patch: Partial<InventorySelectOption>) {
@@ -102,16 +114,16 @@ function InventoryDropdownOptionsEditor({
       }
       return merged;
     });
-    onChange(next);
+    commitRows(next);
   }
 
   function addRow() {
-    onChange([...rows, { label: "", value: "" }]);
+    commitRows([...rows, { label: "", value: "" }]);
   }
 
   function removeRow(index: number) {
     const next = rows.filter((_, i) => i !== index);
-    setRows(next.length ? next : [{ label: "", value: "" }]);
+    commitRows(next.length ? next : [{ label: "", value: "" }]);
   }
 
   return (
@@ -227,7 +239,8 @@ export function InventoryRegisterFieldsEditor({ registerForm, onChange }: Props)
         />
       </div>
       <p className="text-sm text-pulse-muted">
-        Choose which fields appear in the register item modal, add custom fields, and customize labels and input types.
+        Choose which fields appear when registering items, which columns show in the inventory table, and customize labels
+        and input types. Fields not in the table still appear when you open an item.
       </p>
       <ul className="space-y-3">
         {fields.map((field, idx) => {
@@ -239,18 +252,39 @@ export function InventoryRegisterFieldsEditor({ registerForm, onChange }: Props)
           const showOptions = inputType === "select";
           const showRequired =
             field.is_custom || field.id === "name" || (field.id === "item_type" && !field.is_custom);
+          const tableToggle = canConfigureTableColumn(field);
+          const inTable = defaultShowInTable(field);
 
           return (
             <li key={field.id} className="rounded-xl border border-slate-200/90 bg-white/80 p-4 shadow-sm">
               <div className="flex flex-wrap items-start gap-3">
-                <label className="flex min-w-[8rem] cursor-pointer items-center gap-2 pt-1 text-sm font-semibold text-pulse-navy">
-                  <input
-                    type="checkbox"
-                    checked={field.enabled}
-                    onChange={(e) => patchField(field.id, { enabled: e.target.checked })}
-                  />
-                  Show
-                </label>
+                <div className="flex min-w-[8rem] shrink-0 flex-col gap-2 pt-1">
+                  <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-pulse-navy">
+                    <input
+                      type="checkbox"
+                      checked={field.enabled}
+                      onChange={(e) => patchField(field.id, { enabled: e.target.checked })}
+                    />
+                    On form
+                  </label>
+                  {tableToggle ? (
+                    <label
+                      className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-pulse-navy"
+                      title="Show as a column in the inventory list"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={inTable}
+                        onChange={(e) => patchField(field.id, { show_in_table: e.target.checked })}
+                      />
+                      In table
+                    </label>
+                  ) : field.enabled ? (
+                    <p className="text-[11px] leading-snug text-pulse-muted">
+                      {field.id === "photo" ? "Photo" : "Name & SKU"} appear in the item column.
+                    </p>
+                  ) : null}
+                </div>
                 <div className="min-w-0 flex-1 space-y-2">
                   <div>
                     <label className={LABEL} htmlFor={`inv-field-label-${field.id}`}>
@@ -276,7 +310,12 @@ export function InventoryRegisterFieldsEditor({ registerForm, onChange }: Props)
                           const next = e.target.value as InventoryFieldInputType;
                           patchField(field.id, {
                             input_type: next,
-                            options: next === "select" ? field.options ?? [] : undefined,
+                            options:
+                              next === "select"
+                                ? field.options?.length
+                                  ? field.options
+                                  : (defaultField?.options?.map((o) => ({ ...o })) ?? [{ label: "", value: "" }])
+                                : undefined,
                           });
                         }}
                       >
@@ -299,7 +338,12 @@ export function InventoryRegisterFieldsEditor({ registerForm, onChange }: Props)
                           const next = e.target.value as "text" | "select";
                           patchField(field.id, {
                             input_type: next,
-                            options: next === "select" ? field.options ?? [] : undefined,
+                            options:
+                              next === "select"
+                                ? field.options?.length
+                                  ? field.options
+                                  : (defaultField?.options?.map((o) => ({ ...o })) ?? [{ label: "", value: "" }])
+                                : undefined,
                           });
                         }}
                       >
@@ -326,6 +370,7 @@ export function InventoryRegisterFieldsEditor({ registerForm, onChange }: Props)
                     <div>
                       <p className={LABEL}>Dropdown choices</p>
                       <InventoryDropdownOptionsEditor
+                        fieldId={field.id}
                         options={field.options}
                         defaultOptions={defaultField?.options}
                         onChange={(options) => patchField(field.id, { options })}

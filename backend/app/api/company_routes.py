@@ -18,11 +18,21 @@ from app.core.pulse_storage import (
     write_company_logo_bytes,
 )
 from app.models.domain import Company, User
-from app.schemas.company import CompanyLogoUploadOut, CompanyProfilePatch
+from app.schemas.company import CompanyBrandingOut, CompanyLogoUploadOut, CompanyProfilePatch
 
 router = APIRouter(prefix="/company", tags=["company"])
 
 _CACHE_PRIVATE = {"Cache-Control": "private, no-store"}
+
+
+def _branding_out(co: Company) -> CompanyBrandingOut:
+    return CompanyBrandingOut(
+        logo_url=co.logo_url,
+        header_image_url=co.header_image_url,
+        background_image_url=getattr(co, "background_image_url", None),
+        header_wordmark=getattr(co, "header_wordmark", None),
+        default_roster_password=getattr(co, "default_roster_password", None),
+    )
 
 
 @router.get("/logo")
@@ -132,6 +142,17 @@ async def upload_company_background(
     )
 
 
+@router.get("/profile", response_model=CompanyBrandingOut)
+async def get_company_profile(
+    user: Annotated[User, Depends(require_company_admin_scoped)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> CompanyBrandingOut:
+    co = await db.get(Company, str(user.company_id))
+    if not co:
+        raise HTTPException(status_code=404, detail="Company not found")
+    return _branding_out(co)
+
+
 @router.patch("/profile", response_model=CompanyLogoUploadOut)
 async def patch_company_profile(
     body: CompanyProfilePatch,
@@ -174,12 +195,26 @@ async def patch_company_profile(
     if "industry" in data:
         ind = data["industry"]
         co.industry = str(ind).strip() or None if ind is not None else None
+    if "default_roster_password" in data:
+        raw = data["default_roster_password"]
+        if raw is None:
+            co.default_roster_password = None
+        else:
+            pw = str(raw).strip()
+            if pw and len(pw) < 8:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Default employee password must be at least 8 characters.",
+                )
+            co.default_roster_password = pw or None
     await db.commit()
     await db.refresh(co)
+    out = _branding_out(co)
     return CompanyLogoUploadOut(
-        logo_url=co.logo_url or "",
-        header_image_url=co.header_image_url,
-        background_image_url=getattr(co, "background_image_url", None),
-        header_wordmark=getattr(co, "header_wordmark", None),
+        logo_url=out.logo_url or "",
+        header_image_url=out.header_image_url,
+        background_image_url=out.background_image_url,
+        header_wordmark=out.header_wordmark,
+        default_roster_password=out.default_roster_password,
         message="Company updated",
     )
