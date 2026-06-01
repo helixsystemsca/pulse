@@ -12,6 +12,7 @@ const FIELD =
 const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-muted";
 
 const FIELD_HINTS: Partial<Record<InventoryRegisterFieldId, string>> = {
+  photo: "Saved when you save the item. On mobile, tap to open the camera.",
   category: "Uses categories configured in the previous step.",
   zone_id: "Populated from facility zones.",
   assigned_user_id: "Populated from your worker roster.",

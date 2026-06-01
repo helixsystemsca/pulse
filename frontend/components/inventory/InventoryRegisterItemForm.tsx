@@ -6,6 +6,7 @@ import {
   enabledRegisterFields,
 } from "@/lib/inventory/register-form-config";
 import { getDepartmentBySlug, PLATFORM_DEPARTMENTS } from "@/config/platform/departments";
+import { InventoryItemPhotoUpload } from "@/components/inventory/InventoryItemPhotoUpload";
 import { cn } from "@/lib/cn";
 
 const FIELD =
@@ -44,6 +45,12 @@ type Props = {
   assets: AssetOpt[];
   workers: WorkerOpt[];
   disabled?: boolean;
+  itemId?: string | null;
+  imageUrl?: string | null;
+  pendingPhotoPreview?: string | null;
+  onPendingPhoto?: (file: File | null) => void;
+  onPhotoUploaded?: (imageUrl: string) => void;
+  uploadPhoto?: (file: File) => Promise<{ image_url: string }>;
 };
 
 export function InventoryRegisterItemForm({
@@ -55,6 +62,12 @@ export function InventoryRegisterItemForm({
   assets,
   workers,
   disabled,
+  itemId,
+  imageUrl,
+  pendingPhotoPreview,
+  onPendingPhoto,
+  onPhotoUploaded,
+  uploadPhoto,
 }: Props) {
   const fields = enabledRegisterFields(registerForm);
   const selectedCategory = categories.find((c) => c.id === form.category_group);
@@ -65,6 +78,18 @@ export function InventoryRegisterItemForm({
 
   function renderField(fieldId: (typeof fields)[number]["id"]) {
     switch (fieldId) {
+      case "photo":
+        return (
+          <InventoryItemPhotoUpload
+            itemId={itemId}
+            imageUrl={imageUrl}
+            pendingPreviewUrl={pendingPhotoPreview}
+            disabled={disabled}
+            onPendingFile={onPendingPhoto}
+            onUploadComplete={onPhotoUploaded}
+            uploadFile={uploadPhoto}
+          />
+        );
       case "name":
         return (
           <input
@@ -278,6 +303,15 @@ export function InventoryRegisterItemForm({
           return (
             <div key={field.id} className="flex items-end sm:col-span-1">
               {renderField(field.id)}
+            </div>
+          );
+        }
+        if (field.id === "photo") {
+          return (
+            <div key={field.id} className="sm:col-span-2">
+              <label className={LABEL}>{field.label}</label>
+              {renderField(field.id)}
+              {field.help_text ? <p className="mt-1 text-[11px] text-pulse-muted">{field.help_text}</p> : null}
             </div>
           );
         }

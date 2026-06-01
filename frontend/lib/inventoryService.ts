@@ -2,7 +2,8 @@
  * Client for `/api/inventory` — items, movements, usage, settings.
  * System administrators must pass `company_id` on each call.
  */
-import { apiFetch } from "@/lib/api";
+import { apiFetch, getApiBaseUrl } from "@/lib/api";
+import { readSession } from "@/lib/pulse-session";
 
 export type InventoryTopUsedItem = {
   id: string;
@@ -70,6 +71,7 @@ export type InventoryRow = {
   /** Unit cost (same field used for inventory value KPI). */
   unit_cost?: number | null;
   vendor?: string | null;
+  image_url?: string | null;
   scope_id?: string;
 };
 
@@ -240,4 +242,38 @@ export async function patchInventorySettings(
     method: "PATCH",
     json: { settings },
   });
+}
+
+export async function uploadInventoryItemImage(
+  companyId: string | null,
+  itemId: string,
+  file: File,
+): Promise<{ image_url: string }> {
+  const base = getApiBaseUrl();
+  if (!base) throw new Error("NEXT_PUBLIC_API_URL is not configured");
+  const s = readSession();
+  const fd = new FormData();
+  fd.append("file", file);
+  const url = withCompany(`/api/inventory/${encodeURIComponent(itemId)}/image`, companyId);
+  const res = await fetch(`${base}${url.startsWith("/") ? url : `/${url}`}`, {
+    method: "POST",
+    headers: s?.access_token ? { Authorization: `Bearer ${s.access_token}` } : {},
+    body: fd,
+  });
+  const text = await res.text();
+  let data: unknown = null;
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = text;
+    }
+  }
+  if (!res.ok) {
+    const err = new Error(`API ${res.status}`) as Error & { status: number; body: unknown };
+    err.status = res.status;
+    err.body = data;
+    throw err;
+  }
+  return data as { image_url: string };
 }

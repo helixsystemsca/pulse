@@ -11,7 +11,8 @@ from datetime import datetime, timezone
 from typing import Annotated, Any, Optional
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from starlette.responses import Response
 from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -42,6 +43,7 @@ from app.api.inventory_query_helpers import (
     ctx_maps_for_ids,
     last_used_at_map,
 )
+from app.core.pulse_storage import read_inventory_item_image_bytes, write_inventory_item_image_bytes
 from app.repositories import inventory_scope_repository as inv_scope_repo
 from app.models.pulse_models import PulseWorkRequest
 from app.modules.pulse import service as pulse_svc
@@ -49,6 +51,7 @@ from app.schemas.inventory_portal import (
     InventoryAssignIn,
     InventoryCreateIn,
     InventoryDetailOut,
+    InventoryImageUploadOut,
     InventoryListOut,
     InventoryMoveIn,
     InventoryMovementOut,
@@ -73,6 +76,52 @@ from app.schemas.inventory_portal import (
 )
 
 router = APIRouter(prefix="/inventory", tags=["inventory"])
+
+_MAX_ITEM_IMAGE_BYTES = 5 * 1024 * 1024
+_ITEM_IMAGE_CT_EXT: dict[str, str] = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+}
+
+
+def _inventory_image_internal_url(item_id: str) -> str:
+    return f"/api/inventory/{item_id}/image"
+
+
+async def _get_inventory_item_for_company(
+    db: AsyncSession,
+    cid: str,
+    policy: EffectiveInventoryPolicy,
+    item_id: str,
+    *,
+    write: bool = False,
+) -> InventoryItem:
+    item = await db.get(InventoryItem, item_id)
+    if not item or item.company_id != cid:
+        raise HTTPException(status_code=404, detail="Not found")
+    if not inv_scope_repo.can_read_inventory_item(policy, item):
+        raise HTTPException(status_code=404, detail="Not found")
+    if write and not inv_scope_repo.can_write_inventory_item(policy, item):
+        raise HTTPException(status_code=403, detail="Inventory write denied")
+    return item
+
+
+async def _save_inventory_item_image_upload(file: UploadFile, company_id: str, item_id: str) -> None:
+    ct = (file.content_type or "").split(";")[0].strip().lower()
+    if ct not in _ITEM_IMAGE_CT_EXT:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Upload a JPEG, PNG, or WebP image (max 5MB)",
+        )
+    raw = await file.read()
+    if len(raw) > _MAX_ITEM_IMAGE_BYTES:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Image too large (max 5MB)")
+    ext = _ITEM_IMAGE_CT_EXT[ct]
+    try:
+        await write_inventory_item_image_bytes(company_id, item_id, ext, raw, ct)
+    except RuntimeError as e:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
 
 INV_DEPARTMENT_SLUGS: frozenset[str] = frozenset(
     {"maintenance", "communications", "reception", "aquatics", "fitness", "admin"}
@@ -247,6 +296,7 @@ def _row(
         usage_count=item.usage_count,
         unit_cost=item.unit_cost,
         vendor=item.vendor,
+        image_url=item.image_url,
     )
 
 
@@ -1005,6 +1055,7 @@ def _scan_lookup_out(
 ) -> InventoryScanLookupOut:
     z = zones.get(item.zone_id) if item.zone_id else None
     t = tools.get(item.linked_tool_id) if item.linked_tool_id else None
+    image = item.image_url or (t.image_url if t else None)
     return InventoryScanLookupOut(
         id=item.id,
         sku=item.sku,
@@ -1016,7 +1067,7 @@ def _scan_lookup_out(
         unit=item.unit,
         low_stock_threshold=item.low_stock_threshold,
         location_name=z.name if z else None,
-        image_url=t.image_url if t else None,
+        image_url=image,
         department_slug=item.department_slug or "maintenance",
     )
 
@@ -1287,6 +1338,43 @@ async def patch_inventory_item(
     await db.commit()
     await db.refresh(item)
     return await _inventory_detail_payload(db, cid, item)
+
+
+@router.get("/{item_id}/image")
+async def get_inventory_item_image(
+    db: Db,
+    _: InvUser,
+    cid: CompanyId,
+    policy: InventoryPolicyDep,
+    item_id: str,
+) -> Response:
+    await _get_inventory_item_for_company(db, cid, policy, item_id)
+    try:
+        blob = await read_inventory_item_image_bytes(cid, item_id)
+    except RuntimeError as e:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
+    if not blob:
+        raise HTTPException(status_code=404, detail="No image for this item")
+    data, media_type = blob
+    return Response(content=data, media_type=media_type, headers={"Cache-Control": "private, no-store"})
+
+
+@router.post("/{item_id}/image", response_model=InventoryImageUploadOut)
+async def upload_inventory_item_image(
+    db: Db,
+    _: InvManageUser,
+    cid: CompanyId,
+    policy: InventoryPolicyDep,
+    item_id: str,
+    file: UploadFile = File(...),
+) -> InventoryImageUploadOut:
+    item = await _get_inventory_item_for_company(db, cid, policy, item_id, write=True)
+    await _save_inventory_item_image_upload(file, cid, item_id)
+    internal = _inventory_image_internal_url(item_id)
+    item.image_url = internal
+    await db.commit()
+    await db.refresh(item)
+    return InventoryImageUploadOut(image_url=internal)
 
 
 @router.post("/{item_id}/assign", response_model=InventoryDetailOut)

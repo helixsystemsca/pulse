@@ -84,6 +84,7 @@ class InventoryRowOut(BaseModel):
     usage_count: int
     unit_cost: Optional[float] = None
     vendor: Optional[str] = None
+    image_url: Optional[str] = None
 
 
 class InventoryDetailOut(InventoryRowOut):
@@ -160,6 +161,10 @@ class InventorySettingsOut(BaseModel):
 
 class InventorySettingsPatchIn(BaseModel):
     settings: dict[str, Any] = Field(default_factory=dict)
+
+
+class InventoryImageUploadOut(BaseModel):
+    image_url: str
 
 
 class InventoryVendorOut(BaseModel):

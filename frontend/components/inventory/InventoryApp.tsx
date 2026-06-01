@@ -52,6 +52,7 @@ import {
   postInventoryAssign,
   postInventoryMove,
   postInventoryUse,
+  uploadInventoryItemImage,
 } from "@/lib/inventoryService";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
@@ -315,6 +316,9 @@ export function InventoryApp() {
   const [editMode, setEditMode] = useState<"create" | "edit">("create");
   const [editTargetId, setEditTargetId] = useState<string | null>(null);
   const [editFormLoading, setEditFormLoading] = useState(false);
+  const [editImageUrl, setEditImageUrl] = useState<string | null>(null);
+  const [pendingPhotoFile, setPendingPhotoFile] = useState<File | null>(null);
+  const [pendingPhotoPreview, setPendingPhotoPreview] = useState<string | null>(null);
   const [form, setForm] = useState<InventoryRegisterFormState>({
     name: "",
     sku: "",
@@ -562,9 +566,19 @@ export function InventoryApp() {
     setPage(0);
   }
 
+  function clearPendingPhoto() {
+    setPendingPhotoFile(null);
+    setPendingPhotoPreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+  }
+
   function openCreate() {
     setEditMode("create");
     setEditTargetId(null);
+    setEditImageUrl(null);
+    clearPendingPhoto();
     const dept = directoryDepartmentSlug ?? userInventoryDepartment;
     setForm({
       name: "",
@@ -634,6 +648,8 @@ export function InventoryApp() {
   function openEdit(row: InventoryRow) {
     setEditMode("edit");
     setEditTargetId(row.id);
+    setEditImageUrl(row.image_url ?? null);
+    clearPendingPhoto();
     setForm(formFromRow(row));
     setEditOpen(true);
   }
@@ -641,6 +657,8 @@ export function InventoryApp() {
   function openEditFromDetail(d: InventoryDetail) {
     setEditMode("edit");
     setEditTargetId(d.id);
+    setEditImageUrl(d.image_url ?? null);
+    clearPendingPhoto();
     setForm(formFromRow(d));
     setEditOpen(true);
   }
@@ -651,6 +669,7 @@ export function InventoryApp() {
     void (async () => {
       try {
         const d = await fetchInventoryDetail(apiCompany, editTargetId);
+        setEditImageUrl(d.image_url ?? null);
         setForm(formFromRow(d));
       } catch {
         /* keep table row snapshot */
@@ -665,8 +684,10 @@ export function InventoryApp() {
     setActionBusy(true);
     try {
       const payload = registerFormStateToPayload(form, mergedSettings.categories);
+      let savedId: string | null = editTargetId;
       if (editMode === "create") {
         const d = await createInventoryItem(apiCompany, payload);
+        savedId = d.id;
         setEditOpen(false);
         setEditTargetId(null);
         setDetailId(d.id);
@@ -676,9 +697,14 @@ export function InventoryApp() {
           ...payload,
           sku: payload.sku ?? undefined,
         });
+        savedId = eid;
         setEditOpen(false);
         setEditTargetId(null);
         if (detailId === eid) await loadDetail();
+      }
+      if (savedId && pendingPhotoFile) {
+        await uploadInventoryItemImage(apiCompany, savedId, pendingPhotoFile);
+        clearPendingPhoto();
       }
       await loadList();
     } finally {
@@ -1700,6 +1726,7 @@ export function InventoryApp() {
         onClose={() => {
           setEditOpen(false);
           setEditTargetId(null);
+          clearPendingPhoto();
         }}
         footer={
           <div className="flex justify-end gap-2">
@@ -1731,6 +1758,22 @@ export function InventoryApp() {
           assets={assets}
           workers={workers}
           disabled={editFormLoading}
+          itemId={editMode === "edit" ? editTargetId : null}
+          imageUrl={editImageUrl}
+          pendingPhotoPreview={pendingPhotoPreview}
+          onPendingPhoto={(file) => {
+            setPendingPhotoFile(file);
+            setPendingPhotoPreview((prev) => {
+              if (prev) URL.revokeObjectURL(prev);
+              return file ? URL.createObjectURL(file) : null;
+            });
+          }}
+          onPhotoUploaded={(url) => setEditImageUrl(url)}
+          uploadPhoto={
+            editTargetId
+              ? (file) => uploadInventoryItemImage(apiCompany, editTargetId, file)
+              : undefined
+          }
         />
       </PulseDrawer>
 

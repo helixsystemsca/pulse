@@ -10,6 +10,7 @@ export type InventoryCategoryConfig = {
 };
 
 export type InventoryRegisterFieldId =
+  | "photo"
   | "name"
   | "sku"
   | "item_type"
@@ -57,6 +58,14 @@ export const DEFAULT_INVENTORY_CATEGORY_NAMES = [
 ] as const;
 
 export const DEFAULT_REGISTER_FORM_FIELDS: InventoryRegisterFieldConfig[] = [
+  {
+    id: "photo",
+    enabled: true,
+    label: "Photo",
+    order: 5,
+    col_span: 2,
+    help_text: "Use your device camera or upload an image from files.",
+  },
   {
     id: "name",
     enabled: true,
