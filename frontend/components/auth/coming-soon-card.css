@@ -234,7 +234,7 @@
   }
 }
 
-/* Login: logo centered between viewport top and login card (any orientation) */
+/* Login: logo + card centered as one block in the viewport */
 .login-page-frame {
   position: relative;
   min-height: 0;
@@ -243,48 +243,30 @@
 
 .login-main {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
-  flex: 1 1 auto;
-  min-height: 0;
-  width: 100%;
-}
-
-.login-hero {
-  flex: 1 1 auto;
-  display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
   min-height: 0;
-  padding-top: max(0.25rem, env(safe-area-inset-top, 0px));
-  padding-bottom: 0.35rem;
+  width: 100%;
+  overflow-y: auto;
+  padding-top: max(2.75rem, env(safe-area-inset-top, 0px));
 }
 
-/* Mobile / tablet: 75% of viewport; desktop (lg+): 50% */
-.login-content,
-.login-content--hero,
-.login-content--stack {
+/* Mobile / tablet: 75% width; desktop (lg+): 50% */
+.login-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
   width: min(75vw, 100%);
   max-width: 75%;
+  flex-shrink: 0;
   margin-left: auto;
   margin-right: auto;
 }
 
-.login-content--hero {
-  display: flex;
-  justify-content: center;
-}
-
-.login-content--stack {
-  flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
 @media (min-width: 1024px) {
-  .login-content,
-  .login-content--hero,
-  .login-content--stack {
+  .login-panel {
     width: min(50vw, 100%);
     max-width: 50%;
   }
@@ -294,12 +276,12 @@
   flex-shrink: 0;
 }
 
-.login-hero__logo {
+.login-panel__logo {
   width: 100%;
 }
 
 /* Scale logo down on short viewports (tablet landscape, small phones) */
-.login-hero__logo .login-cinematic-logo__mark {
+.login-panel__logo .login-cinematic-logo__mark {
   height: clamp(4.5rem, 28vmin, 9.5rem) !important;
   width: min(24rem, calc(100vw - 2rem)) !important;
 }

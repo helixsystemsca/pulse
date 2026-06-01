@@ -175,13 +175,9 @@ export default function LoginPage() {
         </header>
 
         <main className="login-main relative z-10 flex min-h-0 flex-1 flex-col px-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-6 md:px-8">
-          <div className="login-hero">
-            <div className="login-content login-content--hero">
-              <LoginCinematicLogo layoutClassName="login-hero__logo" />
-            </div>
-          </div>
+          <div className="login-panel">
+            <LoginCinematicLogo layoutClassName="login-panel__logo" />
 
-          <div className="login-content login-content--stack">
             <p className="login-stack__subtitle text-center text-sm font-medium text-[#5a6d82] dark:text-ds-muted">
               Access only for verified users.
             </p>
