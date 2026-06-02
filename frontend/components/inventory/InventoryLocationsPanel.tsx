@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createZone, deleteZone, patchZone } from "@/lib/setup-api";
+import { filterInventoryStorageZones, isScheduleFacilityZone } from "@/lib/inventory/inventory-zones";
 import { invalidateReferenceCache } from "@/lib/api-reference-cache";
 import { fetchPulseZonesCached, type PulseZoneOpt } from "@/lib/pulse/pulse-reference-data";
 import { cn } from "@/lib/cn";
@@ -81,10 +82,16 @@ export function InventoryLocationsPanel({
     });
   }
 
+  const storageZones = filterInventoryStorageZones(zones);
+
   async function removeLocation(zoneId: string) {
     if (!canManage) return;
     const z = zones.find((x) => x.id === zoneId);
     if (!z) return;
+    if (isScheduleFacilityZone(z)) {
+      onError?.("Schedule facilities are managed under Organization → Schedule, not inventory locations.");
+      return;
+    }
     if (!window.confirm(`Remove location “${z.name}”? Items at this location will be cleared.`)) return;
     await run(async () => {
       await deleteZone(companyId, zoneId);
@@ -95,8 +102,8 @@ export function InventoryLocationsPanel({
   return (
     <div className="space-y-4">
       <p className="text-sm text-pulse-muted">
-        Locations appear as dropdown choices when registering items, filtering the list, and on item details. They use
-        the same facility location list as work requests.
+        Storage locations appear when registering items, filtering the list, and on item details. Schedule facilities
+        (e.g. Facility 1 for workforce planning) are managed separately and are not listed here.
       </p>
       {!canManage ? (
         <p className="rounded-lg border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-sm text-amber-950 dark:border-amber-500/30 dark:bg-amber-950/40 dark:text-amber-100">
@@ -132,10 +139,10 @@ export function InventoryLocationsPanel({
       ) : null}
       <div className="space-y-3">
         <h3 className={LABEL}>Existing locations</h3>
-        {zones.length === 0 ? (
+        {storageZones.length === 0 ? (
           <p className="text-sm text-pulse-muted">No locations yet.{canManage ? " Add one above." : ""}</p>
         ) : (
-          zones.map((z) => {
+          storageZones.map((z) => {
             const draft = nameDrafts[z.id] ?? z.name;
             const dirty = draft.trim() !== z.name;
             return (

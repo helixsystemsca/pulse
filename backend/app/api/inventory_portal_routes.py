@@ -47,7 +47,7 @@ from app.api.inventory_query_helpers import (
     last_used_at_map,
 )
 from app.core.tenant_context import resolve_tenant_company_id
-from app.core.tenant_departments import validate_tenant_department_slug
+from app.core.tenant_departments import list_tenant_departments, validate_tenant_department_slug
 from app.core.pulse_storage import read_inventory_item_image_bytes, write_inventory_item_image_bytes
 from app.repositories import inventory_scope_repository as inv_scope_repo
 from app.schemas.inventory_transactions import (
@@ -580,6 +580,9 @@ async def _resolve_directory_department_slug(
     cid: str,
     requested: Optional[str],
 ) -> str:
+    configured = await list_tenant_departments(db, cid)
+    configured_slugs = {r.slug for r in configured}
+
     if requested and str(requested).strip():
         ds = await _normalize_department_slug(db, cid, str(requested))
         if not policy.is_company_admin:
@@ -587,15 +590,32 @@ async def _resolve_directory_department_slug(
             if ds not in allowed:
                 raise HTTPException(status_code=403, detail="Department access denied")
         return ds
+
+    if configured_slugs:
+        if policy.is_company_admin:
+            return configured[0].slug
+        allowed = await inventory_department_slugs_for_user(db, user, cid)
+        overlap = [s for s in configured if s.slug in allowed]
+        if len(overlap) == 1:
+            return overlap[0].slug
+        if overlap:
+            return overlap[0].slug
+        hr_row = await db.execute(select(PulseWorkerHR).where(PulseWorkerHR.user_id == user.id))
+        hr = hr_row.scalar_one_or_none()
+        matrix_slug = permission_matrix_department_for_user(user, hr)
+        if matrix_slug and matrix_slug in configured_slugs:
+            return matrix_slug
+        raise HTTPException(status_code=403, detail="Department access denied")
+
     if policy.is_company_admin:
-        return await _normalize_department_slug(db, cid, "maintenance")
+        return "maintenance"
     allowed = await inventory_department_slugs_for_user(db, user, cid)
     if len(allowed) == 1:
-        return await _normalize_department_slug(db, cid, next(iter(allowed)))
+        return next(iter(allowed))
     hr_row = await db.execute(select(PulseWorkerHR).where(PulseWorkerHR.user_id == user.id))
     hr = hr_row.scalar_one_or_none()
     matrix_slug = permission_matrix_department_for_user(user, hr)
-    return await _normalize_department_slug(db, cid, matrix_slug or "maintenance")
+    return matrix_slug or "maintenance"
 
 
 async def _apply_directory_department_filter(

@@ -21,6 +21,5 @@ async def test_list_tenant_departments_seeded_tenant(seeded_tenant) -> None:
     assert res.headers.get("access-control-allow-origin") == "https://ops.helixsystems.ca"
     body = res.json()
     assert isinstance(body.get("items"), list)
-    assert len(body["items"]) >= 1
-    slugs = {row["slug"] for row in body["items"]}
-    assert "maintenance" in slugs
+    # Departments are tenant-configured only; no default seed on list.
+    assert body["items"] == []

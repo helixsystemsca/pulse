@@ -107,8 +107,8 @@ export function InventoryDepartmentsPanel({
   return (
     <div className="space-y-4">
       <p className="text-sm text-pulse-muted">
-        Departments partition inventory, vendors, and worker HR tags for your organization. Slugs are stable identifiers
-        used on items; display names can be edited.
+        Departments partition inventory, vendors, and worker HR tags for your organization. Add them here or in the
+        inventory setup wizard. Slugs are stable identifiers used on items; display names can be edited.
       </p>
       {!canManage ? (
         <p className="rounded-lg border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-sm text-amber-950 dark:border-amber-500/30 dark:bg-amber-950/40 dark:text-amber-100">

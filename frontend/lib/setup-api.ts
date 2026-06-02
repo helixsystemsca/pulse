@@ -235,11 +235,14 @@ export async function linkEquipmentBle(
 
 export async function createZone(
   companyId: string | null,
-  body: { name: string; description?: string | null },
+  body: { name: string; description?: string | null; meta?: Record<string, unknown> },
 ): Promise<ZoneOut> {
   return apiFetch<ZoneOut>(withCompany("/api/v1/pulse/zones", companyId), {
     method: "POST",
-    json: body,
+    json: {
+      ...body,
+      meta: { inventory_location: true, ...(body.meta ?? {}) },
+    },
   });
 }
 

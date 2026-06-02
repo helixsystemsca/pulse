@@ -15,7 +15,6 @@ from app.core.tenant_context import log_tenant_context
 from app.core.tenant_departments import (
     create_tenant_department,
     delete_tenant_department,
-    ensure_default_tenant_departments,
     list_tenant_departments,
     patch_tenant_department,
 )
@@ -86,17 +85,8 @@ def _out(row) -> TenantDepartmentOut:
     )
 
 
-async def _seed_and_list_departments(db: Db, cid: str, *, user_id: str) -> list:
+async def _list_departments_for_tenant(db: Db, cid: str, *, user_id: str) -> list:
     log_tenant_context(user_id=user_id, tenant_id=cid, path="/api/workers/tenant-departments")
-    try:
-        await ensure_default_tenant_departments(db, cid)
-        await db.commit()
-    except IntegrityError:
-        await db.rollback()
-        _log.info(
-            "Tenant departments default seed race (concurrent request)",
-            extra={"tenant_id": cid},
-        )
     rows = await list_tenant_departments(db, cid)
     _log.info(
         "Tenant departments listed",
@@ -113,7 +103,7 @@ async def list_departments(
     cid: CompanyId,
 ) -> TenantDepartmentListOut:
     try:
-        rows = await _seed_and_list_departments(db, cid, user_id=str(user.id))
+        rows = await _list_departments_for_tenant(db, cid, user_id=str(user.id))
         return TenantDepartmentListOut(items=[_out(r) for r in rows])
     except HTTPException:
         raise

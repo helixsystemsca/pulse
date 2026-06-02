@@ -93,6 +93,7 @@ import {
   registerFormCategoryFilterOptions,
   type MergedInventorySettings,
 } from "@/lib/inventory/register-form-config";
+import { filterInventoryStorageZones } from "@/lib/inventory/inventory-zones";
 import { defaultInventoryDepartmentFromSession } from "@/lib/inventory-department";
 import {
   buildInventoryWorkspaceNav,
@@ -158,7 +159,7 @@ function statusLabel(status: string): string {
 }
 
 function inventoryDepartmentLabel(slug: string | null | undefined, departments: TenantDepartmentRow[]): string {
-  if (!slug) return "—";
+  if (!departments.length || !slug) return "—";
   return departments.find((d) => d.slug === slug)?.name ?? slug;
 }
 
@@ -227,6 +228,8 @@ export function InventoryApp() {
   const [setupWizardDraft, setSetupWizardDraft] = useState<MergedInventorySettings | null>(null);
   const [setupWizardDismissed, setSetupWizardDismissed] = useState(false);
   const [setupSaveError, setSetupSaveError] = useState<string | null>(null);
+  const [orgSetupBusy, setOrgSetupBusy] = useState(false);
+  const [orgSetupError, setOrgSetupError] = useState<string | null>(null);
 
   const inventorySetupDismissKey =
     effectiveCompanyId != null ? `pulse.inventory.setup.dismissed.${effectiveCompanyId}` : null;
@@ -357,7 +360,7 @@ export function InventoryApp() {
           fetchPulseWorkersOptsCached(),
           fetchTenantDepartments(apiCompany),
         ]);
-        setZones(z);
+        setZones(filterInventoryStorageZones(z));
         setAssets(a);
         setWorkers(w);
         setTenantDepartments(depts);
@@ -625,7 +628,11 @@ export function InventoryApp() {
     setEditTargetId(null);
     setEditImageUrl(null);
     clearPendingPhoto();
-    const dept = directoryDepartmentSlug ?? userInventoryDepartment;
+    const dept =
+      directoryDepartmentSlug ??
+      tenantDepartments.find((d) => d.slug === userInventoryDepartment)?.slug ??
+      tenantDepartments[0]?.slug ??
+      "";
     setForm(
       emptyRegisterFormState(mergedSettings.threshold_defaults.default_min ?? 5, dept),
     );
@@ -1208,6 +1215,7 @@ export function InventoryApp() {
                   </option>
                 ))}
               </select>
+              {tenantDepartments.length > 0 ? (
               <select
                 className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
                 value={departmentFilter}
@@ -1223,6 +1231,7 @@ export function InventoryApp() {
                   </option>
                 ))}
               </select>
+              ) : null}
               {canConfigureOrg ? (
                 <select
                   className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
@@ -1905,7 +1914,7 @@ export function InventoryApp() {
                   <InventoryLocationsPanel
                     companyId={apiCompany}
                     zones={zones}
-                    onZonesChange={setZones}
+                    onZonesChange={(next) => setZones(filterInventoryStorageZones(next))}
                     canManage={canMutateInventory || canConfigureOrg}
                     busy={actionBusy}
                     onBusyChange={setActionBusy}
@@ -2031,10 +2040,21 @@ export function InventoryApp() {
             setSetupWizardOpen(false);
             setSetupWizardDismissed(true);
             setSetupSaveError(null);
+            setOrgSetupError(null);
             if (inventorySetupDismissKey) {
               sessionStorage.setItem(inventorySetupDismissKey, "1");
             }
           }}
+          companyId={apiCompany}
+          zones={zones}
+          onZonesChange={(next) => setZones(filterInventoryStorageZones(next))}
+          departments={tenantDepartments}
+          onDepartmentsChange={setTenantDepartments}
+          canManageOrgData={canMutateInventory || canConfigureOrg}
+          orgDataBusy={orgSetupBusy}
+          onOrgDataBusyChange={setOrgSetupBusy}
+          orgDataError={orgSetupError}
+          onOrgDataError={setOrgSetupError}
         />
       ) : null}
     </div>

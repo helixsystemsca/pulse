@@ -3,6 +3,8 @@
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { PremiumModal } from "@/components/ui/premium-modal";
+import { InventoryDepartmentsPanel } from "@/components/inventory/InventoryDepartmentsPanel";
+import { InventoryLocationsPanel } from "@/components/inventory/InventoryLocationsPanel";
 import { InventoryRegisterFieldsEditor } from "@/components/inventory/InventoryRegisterFieldsEditor";
 import {
   ApprovalWorkflowStep,
@@ -32,6 +34,9 @@ import {
   type PurchasingWizardStepId,
 } from "@/lib/purchasing/purchasing-module-config";
 import type { MergedInventorySettings } from "@/lib/inventory/register-form-config";
+import { filterInventoryStorageZones } from "@/lib/inventory/inventory-zones";
+import type { PulseZoneOpt } from "@/lib/pulse/pulse-reference-data";
+import type { TenantDepartmentRow } from "@/lib/tenantDepartmentsService";
 import { effectiveInputType, settingsPayloadFromMerged } from "@/lib/inventory/register-form-config";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
@@ -42,6 +47,8 @@ const STEPS: SetupStepId[] = [
   "Welcome",
   "Inventory Structure",
   "Storage Locations",
+  "Departments",
+  "Location names",
   "Procurement Workflow",
   "Procurement Terminology",
   "Notification contacts",
@@ -69,18 +76,36 @@ type Props = {
   onDraftChange: (next: MergedInventorySettings) => void;
   onComplete: (settings: MergedInventorySettings) => void | Promise<void>;
   onSkip: () => void;
+  companyId: string | null;
+  zones: PulseZoneOpt[];
+  onZonesChange: (zones: PulseZoneOpt[]) => void;
+  departments: TenantDepartmentRow[];
+  onDepartmentsChange: (rows: TenantDepartmentRow[]) => void;
+  canManageOrgData: boolean;
+  orgDataBusy?: boolean;
+  onOrgDataBusyChange?: (busy: boolean) => void;
+  orgDataError?: string | null;
+  onOrgDataError?: (message: string | null) => void;
 };
 
-function applyInventoryConfig(draft: MergedInventorySettings): MergedInventorySettings {
-  const inv = draft.inventory;
-  const transactions = {
-    ...transactionsFromReferenceMode(inv.reference_mode, draft.transactions),
-    enable_location_selection: locationSelectionFromMode(inv.location_mode),
-  };
-  return { ...draft, transactions };
-}
-
-export function InventorySetupWizard({ open, busy, draft, onDraftChange, onComplete, onSkip }: Props) {
+export function InventorySetupWizard({
+  open,
+  busy,
+  draft,
+  onDraftChange,
+  onComplete,
+  onSkip,
+  companyId,
+  zones,
+  onZonesChange,
+  departments,
+  onDepartmentsChange,
+  canManageOrgData,
+  orgDataBusy,
+  onOrgDataBusyChange,
+  orgDataError,
+  onOrgDataError,
+}: Props) {
   const [step, setStep] = useState<SetupStepId>("Welcome");
   const [stepError, setStepError] = useState<string | null>(null);
 
@@ -120,9 +145,19 @@ export function InventorySetupWizard({ open, busy, draft, onDraftChange, onCompl
     setStepError(null);
   }
 
+  const storageZoneCount = filterInventoryStorageZones(zones).length;
+
   const summaryRows: { label: string; value: string }[] = [
     { label: "Inventory Structure", value: inventoryConfigLabel("asset_types", draft.inventory.asset_types) },
     { label: "Location Structure", value: inventoryConfigLabel("location_mode", draft.inventory.location_mode) },
+    {
+      label: "Departments",
+      value: departments.length ? departments.map((d) => d.name).join(", ") : "None configured",
+    },
+    {
+      label: "Storage locations",
+      value: storageZoneCount ? `${storageZoneCount} location${storageZoneCount === 1 ? "" : "s"}` : "None yet",
+    },
     { label: "Procurement Workflow", value: inventoryConfigLabel("procurement_mode", draft.inventory.procurement_mode) },
     {
       label: "Procurement Label",
@@ -229,7 +264,8 @@ export function InventorySetupWizard({ open, busy, draft, onDraftChange, onCompl
             whole organization — not individual sites.
           </p>
           <ul className="list-disc space-y-1 pl-5 text-ds-muted">
-            <li>Choose asset types and storage structure</li>
+            <li>Choose asset types and how stock is organized</li>
+            <li>Add departments and storage location names for your site</li>
             <li>Set procurement workflow and labels</li>
             <li>Add notification contacts for alerts and material request exports</li>
             <li>Define transaction references and approvals</li>
@@ -245,6 +281,52 @@ export function InventorySetupWizard({ open, busy, draft, onDraftChange, onCompl
 
       {step === "Storage Locations" ? (
         <StorageLocationsStep value={draft.inventory} onChange={(inventory) => onDraftChange(applyInventoryConfig({ ...draft, inventory }))} />
+      ) : null}
+
+      {step === "Departments" ? (
+        <div className="space-y-3">
+          <WizardStepIntro
+            title="Departments"
+            description="Optional partitions for inventory, vendors, and worker tags. Skip if you do not use departments."
+          />
+          {orgDataError ? (
+            <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200">
+              {orgDataError}
+            </p>
+          ) : null}
+          <InventoryDepartmentsPanel
+            companyId={companyId}
+            departments={departments}
+            onDepartmentsChange={onDepartmentsChange}
+            canManage={canManageOrgData}
+            busy={orgDataBusy}
+            onBusyChange={onOrgDataBusyChange}
+            onError={onOrgDataError}
+          />
+        </div>
+      ) : null}
+
+      {step === "Location names" ? (
+        <div className="space-y-3">
+          <WizardStepIntro
+            title="Storage location names"
+            description="Add the rooms, buildings, or bins where stock is kept. Schedule facilities (Facility 1, etc.) are managed separately."
+          />
+          {orgDataError ? (
+            <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200">
+              {orgDataError}
+            </p>
+          ) : null}
+          <InventoryLocationsPanel
+            companyId={companyId}
+            zones={zones}
+            onZonesChange={onZonesChange}
+            canManage={canManageOrgData}
+            busy={orgDataBusy}
+            onBusyChange={onOrgDataBusyChange}
+            onError={onOrgDataError}
+          />
+        </div>
       ) : null}
 
       {step === "Procurement Workflow" ? (
@@ -328,6 +410,24 @@ export function InventorySetupWizard({ open, busy, draft, onDraftChange, onCompl
         </div>
       ) : null}
     </PremiumModal>
+  );
+}
+
+function applyInventoryConfig(draft: MergedInventorySettings): MergedInventorySettings {
+  const inv = draft.inventory;
+  const transactions = {
+    ...transactionsFromReferenceMode(inv.reference_mode, draft.transactions),
+    enable_location_selection: locationSelectionFromMode(inv.location_mode),
+  };
+  return { ...draft, transactions };
+}
+
+function WizardStepIntro({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="space-y-1">
+      <h3 className="text-base font-bold text-ds-foreground">{title}</h3>
+      <p className="text-sm text-ds-muted">{description}</p>
+    </div>
   );
 }
 

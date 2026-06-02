@@ -5,7 +5,7 @@ import type { PulseAuthSession } from "@/lib/pulse-session";
 export function defaultInventoryDepartmentFromSession(
   session: Pick<PulseAuthSession, "hr_department"> | null | undefined,
 ): string {
-  return normalizeScheduleDepartmentSlug(session?.hr_department) ?? "maintenance";
+  return normalizeScheduleDepartmentSlug(session?.hr_department) ?? "";
 }
 
 /** Departments that hide the contractors tab when it is enabled (maintenance-only workflow). */

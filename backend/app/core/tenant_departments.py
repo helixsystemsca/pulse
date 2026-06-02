@@ -87,8 +87,9 @@ async def validate_tenant_department_slug(db: AsyncSession, company_id: str, raw
     slug = normalize_department_slug_format(raw)
     if not slug:
         raise ValueError(f"Invalid department slug: {raw!r}")
-    await ensure_default_tenant_departments(db, company_id)
     allowed = await tenant_department_slug_set(db, company_id)
+    if not allowed:
+        return slug
     if slug not in allowed:
         raise ValueError(f"Unknown department slug (not configured for this organization): {slug}")
     return slug
@@ -101,7 +102,6 @@ async def create_tenant_department(
     name: str,
     slug: str | None = None,
 ) -> TenantDepartment:
-    await ensure_default_tenant_departments(db, company_id)
     clean_name = name.strip()
     if not clean_name:
         raise ValueError("Department name is required")

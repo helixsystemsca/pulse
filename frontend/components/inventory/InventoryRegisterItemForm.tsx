@@ -572,7 +572,7 @@ type InventoryRowLike = {
   custom_attributes?: Record<string, string | number | boolean | null>;
 };
 
-export function emptyRegisterFormState(defaultMin = 5, departmentSlug = "maintenance"): InventoryRegisterFormState {
+export function emptyRegisterFormState(defaultMin = 5, departmentSlug = ""): InventoryRegisterFormState {
   return {
     name: "",
     sku: "",

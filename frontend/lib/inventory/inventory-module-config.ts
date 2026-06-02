@@ -180,6 +180,8 @@ export type InventoryWizardStepId =
   | "Welcome"
   | "Inventory Structure"
   | "Storage Locations"
+  | "Departments"
+  | "Location names"
   | "Procurement Workflow"
   | "Procurement Terminology"
   | "Notification contacts"
