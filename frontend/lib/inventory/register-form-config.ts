@@ -716,7 +716,7 @@ export function mergeInventoryModuleSettings(raw: InventoryModuleSettings = {}):
 
   return {
 
-    setup_completed: raw.setup_completed ?? hasLegacyConfig,
+    setup_completed: raw.setup_completed === true || (raw.setup_completed !== false && hasLegacyConfig),
 
     register_form: mergeRegisterFormConfig(raw.register_form),
 

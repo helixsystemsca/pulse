@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, 
 from starlette.responses import Response
 from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.api.deps import get_current_user, get_db, require_any_rbac
 from app.core.inventory.policy import (
@@ -211,7 +212,9 @@ def merge_inventory_settings(raw: Optional[dict[str, Any]]) -> dict[str, Any]:
             out[k] = merged
         else:
             out[k] = v
-    if raw.get("categories") and raw.get("setup_completed") is None:
+    if raw.get("setup_completed") is True:
+        out["setup_completed"] = True
+    elif raw.get("categories") and raw.get("setup_completed") is None:
         out["setup_completed"] = True
     return out
 
@@ -236,6 +239,10 @@ CompanyId = Annotated[str, Depends(resolve_inv_company_id)]
 Db = Annotated[AsyncSession, Depends(get_db)]
 InvUser = Annotated[User, Depends(require_any_rbac("inventory.view", "inventory.manage", "inventory.scan"))]
 InvManageUser = Annotated[User, Depends(require_any_rbac("inventory.manage", "inventory.scan"))]
+InvSettingsWriter = Annotated[
+    User,
+    Depends(require_any_rbac("inventory.view", "inventory.manage", "inventory.scan")),
+]
 InvScanUser = Annotated[User, Depends(require_any_rbac("inventory.scan", "inventory.manage"))]
 
 
@@ -465,12 +472,13 @@ async def get_inv_settings(db: Db, _: InvUser, cid: CompanyId) -> InventorySetti
 @router.patch("/settings", response_model=InventorySettingsOut)
 async def patch_inv_settings(
     db: Db,
-    _: InvUser,
+    _: InvSettingsWriter,
     cid: CompanyId,
     body: InventorySettingsPatchIn,
 ) -> InventorySettingsOut:
     row = await _get_settings_row(db, cid)
-    base = merge_inventory_settings(row.settings if row else None)
+    stored = dict(row.settings) if row and isinstance(row.settings, dict) else {}
+    base = merge_inventory_settings(stored if stored else None)
     for k, v in body.settings.items():
         if isinstance(v, dict) and isinstance(base.get(k), dict):
             m = dict(base[k])
@@ -478,8 +486,11 @@ async def patch_inv_settings(
             base[k] = m
         else:
             base[k] = v
+    if "setup_completed" in body.settings:
+        base["setup_completed"] = bool(body.settings["setup_completed"])
     if row:
         row.settings = base
+        flag_modified(row, "settings")
     else:
         db.add(InventoryModuleSettings(id=str(uuid4()), company_id=cid, settings=base))
 

@@ -218,9 +218,11 @@ export function InventoryApp() {
   const [assets, setAssets] = useState<AssetOpt[]>([]);
   const [workers, setWorkers] = useState<WorkerOpt[]>([]);
   const [settingsBaseline, setSettingsBaseline] = useState<InventoryModuleSettings>({});
+  const [settingsHydrated, setSettingsHydrated] = useState(false);
   const [setupWizardOpen, setSetupWizardOpen] = useState(false);
   const [setupWizardDraft, setSetupWizardDraft] = useState<MergedInventorySettings | null>(null);
   const [setupWizardDismissed, setSetupWizardDismissed] = useState(false);
+  const [setupSaveError, setSetupSaveError] = useState<string | null>(null);
 
   const inventorySetupDismissKey =
     effectiveCompanyId != null ? `pulse.inventory.setup.dismissed.${effectiveCompanyId}` : null;
@@ -352,16 +354,26 @@ export function InventoryApp() {
   }, [dataEnabled, session?.access_token, apiCompany]);
 
   const loadSettings = useCallback(async () => {
-    if (!effectiveCompanyId) return;
+    if (!effectiveCompanyId) {
+      setSettingsBaseline({});
+      setSettingsHydrated(false);
+      return null;
+    }
     try {
       const r = await fetchInventorySettings(apiCompany);
-      setSettingsBaseline(r.settings ?? {});
+      const settings = r.settings ?? {};
+      setSettingsBaseline(settings);
+      return settings;
     } catch {
       setSettingsBaseline({});
+      return null;
+    } finally {
+      setSettingsHydrated(true);
     }
   }, [apiCompany, effectiveCompanyId]);
 
   useEffect(() => {
+    setSettingsHydrated(false);
     void loadSettings();
   }, [loadSettings]);
 
@@ -430,11 +442,22 @@ export function InventoryApp() {
   }, [inventorySetupDismissKey]);
 
   useEffect(() => {
-    if (!dataEnabled || !canRunInventorySetup || setupWizardDismissed) return;
-    if (mergedSettings.setup_completed) return;
-    setSetupWizardDraft(mergedSettings);
+    if (!settingsHydrated || !dataEnabled || !canRunInventorySetup) return;
+    if (mergedSettings.setup_completed) {
+      setSetupWizardOpen(false);
+      return;
+    }
+    if (setupWizardDismissed) return;
+    setSetupWizardDraft(mergeInventoryModuleSettings(settingsBaseline));
     setSetupWizardOpen(true);
-  }, [dataEnabled, canRunInventorySetup, mergedSettings, setupWizardDismissed]);
+  }, [
+    settingsHydrated,
+    dataEnabled,
+    canRunInventorySetup,
+    mergedSettings.setup_completed,
+    setupWizardDismissed,
+    settingsBaseline,
+  ]);
 
   const loadList = useCallback(async () => {
     if (!dataEnabled || !effectiveCompanyId) return;
@@ -724,15 +747,21 @@ export function InventoryApp() {
   async function completeSetupWizard(next: MergedInventorySettings) {
     if (!effectiveCompanyId || !canRunInventorySetup) return;
     setActionBusy(true);
+    setSetupSaveError(null);
     try {
-      await patchInventorySettings(apiCompany, mergedSettingsForSave(next));
+      const payload = mergedSettingsForSave(next);
+      const saved = await patchInventorySettings(apiCompany, payload);
+      setSettingsBaseline(saved.settings ?? payload);
+      setSettingsHydrated(true);
       if (inventorySetupDismissKey) {
         sessionStorage.removeItem(inventorySetupDismissKey);
       }
-      setSetupWizardDismissed(false);
       setSetupWizardOpen(false);
       setSetupWizardDraft(null);
-      await loadSettings();
+      await loadList();
+      void loadPurchasingData();
+    } catch (e: unknown) {
+      setSetupSaveError(e instanceof Error ? e.message : "Could not save inventory setup");
     } finally {
       setActionBusy(false);
     }
@@ -1946,6 +1975,12 @@ export function InventoryApp() {
         )}
       </PulseDrawer>
 
+      {setupSaveError && setupWizardOpen ? (
+        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200">
+          {setupSaveError}
+        </p>
+      ) : null}
+
       {setupWizardDraft ? (
         <InventorySetupWizard
           open={setupWizardOpen}
@@ -1956,6 +1991,7 @@ export function InventoryApp() {
           onSkip={() => {
             setSetupWizardOpen(false);
             setSetupWizardDismissed(true);
+            setSetupSaveError(null);
             if (inventorySetupDismissKey) {
               sessionStorage.setItem(inventorySetupDismissKey, "1");
             }
