@@ -35,6 +35,7 @@ function toPlatformIcon(icon: string): PlatformIconKey {
     "layout",
     "file-text",
     "layout-grid",
+    "shopping-cart",
   ];
   if (allowed.includes(icon as PlatformIconKey)) return icon as PlatformIconKey;
   return "layout";

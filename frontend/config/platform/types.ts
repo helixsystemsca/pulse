@@ -24,7 +24,8 @@ export type PlatformIconKey =
   | "calendar"
   | "layout"
   | "file-text"
-  | "layout-grid";
+  | "layout-grid"
+  | "shopping-cart";
 
 export type Department = {
   id: DepartmentId;

@@ -33,6 +33,7 @@ import {
   ScanBarcode,
   ScrollText,
   Settings,
+  ShoppingCart,
   Sparkles,
   UserCog,
   Users,
@@ -95,6 +96,7 @@ const PLATFORM_DEPT_ICONS: Record<PlatformIconKey, LucideIcon> = {
   calendar: CalendarDays,
   "layout-grid": LayoutGrid,
   "file-text": FileText,
+  "shopping-cart": ShoppingCart,
 };
 
 const RAIL_ICONS: Record<string, LucideIcon> = { ...PLATFORM_DEPT_ICONS, ...ICONS };
