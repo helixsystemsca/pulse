@@ -237,7 +237,7 @@ export async function createZone(
   companyId: string | null,
   body: { name: string; description?: string | null },
 ): Promise<ZoneOut> {
-  return apiFetch<ZoneOut>(withCompany("/api/v1/zones", companyId), {
+  return apiFetch<ZoneOut>(withCompany("/api/v1/pulse/zones", companyId), {
     method: "POST",
     json: body,
   });
@@ -248,14 +248,14 @@ export async function patchZone(
   zoneId: string,
   body: { name?: string; description?: string | null },
 ): Promise<ZoneOut> {
-  return apiFetch<ZoneOut>(withCompany(`/api/v1/zones/${zoneId}`, companyId), {
+  return apiFetch<ZoneOut>(withCompany(`/api/v1/pulse/zones/${zoneId}`, companyId), {
     method: "PATCH",
     json: body,
   });
 }
 
 export async function deleteZone(companyId: string | null, zoneId: string): Promise<void> {
-  await apiFetch<void>(withCompany(`/api/v1/zones/${zoneId}`, companyId), {
+  await apiFetch<void>(withCompany(`/api/v1/pulse/zones/${zoneId}`, companyId), {
     method: "DELETE",
   });
 }

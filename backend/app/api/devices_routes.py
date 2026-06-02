@@ -8,7 +8,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import delete, desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_db, require_manager_or_above
+from app.api.deps import get_current_user, get_db, require_manager_or_above
+from app.core.tenant_feature_access import load_merged_workers_settings
+from app.core.work_request_access import user_may_manage_facility_zones_for_api
 from app.core.user_roles import user_has_any_role
 from app.core.audit.service import record_audit
 from app.models.domain import ToolStatus, User, UserRole
@@ -55,6 +57,39 @@ async def resolve_devices_company_id(
 CompanyId = Annotated[str, Depends(resolve_devices_company_id)]
 Db = Annotated[AsyncSession, Depends(get_db)]
 Actor = Annotated[User, Depends(require_manager_or_above)]
+
+
+async def resolve_devices_company_tenant(
+    user: Annotated[User, Depends(get_current_user)],
+    company_id: Optional[str] = Query(None, description="Required for system administrators"),
+) -> str:
+    if user_has_any_role(user, UserRole.system_admin) or user.is_system_admin:
+        if not company_id:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="company_id is required for system administrators")
+        return company_id
+    if user.company_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a tenant user")
+    cid = str(user.company_id)
+    if company_id is not None and company_id != cid:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company access denied")
+    return cid
+
+
+CompanyIdTenant = Annotated[str, Depends(resolve_devices_company_tenant)]
+
+
+async def _require_facility_zone_manager(
+    db: AsyncSession,
+    user: User,
+    company_id: str,
+) -> User:
+    merged = await load_merged_workers_settings(db, company_id)
+    if not await user_may_manage_facility_zones_for_api(db, user, merged):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not allowed to manage facility locations (inventory.manage, zone_manage_roles, or company admin)",
+        )
+    return user
 
 
 def _svc(db: AsyncSession) -> DeviceService:
@@ -333,9 +368,10 @@ async def link_tool_ble(
 async def create_zone(
     body: ZoneCreateIn,
     db: Db,
-    company_id: CompanyId,
-    actor: Actor,
+    company_id: CompanyIdTenant,
+    user: Annotated[User, Depends(get_current_user)],
 ) -> ZoneOut:
+    await _require_facility_zone_manager(db, user, company_id)
     z = await _svc(db).create_zone(
         company_id=company_id,
         name=body.name,
@@ -352,8 +388,10 @@ async def patch_zone(
     zone_id: str,
     body: ZoneUpdateIn,
     db: Db,
-    company_id: CompanyId,
+    company_id: CompanyIdTenant,
+    user: Annotated[User, Depends(get_current_user)],
 ) -> ZoneOut:
+    await _require_facility_zone_manager(db, user, company_id)
     updates = body.model_dump(exclude_unset=True)
     if not updates:
         raise HTTPException(
@@ -381,8 +419,10 @@ async def patch_zone(
 async def delete_zone(
     zone_id: str,
     db: Db,
-    company_id: CompanyId,
+    company_id: CompanyIdTenant,
+    user: Annotated[User, Depends(get_current_user)],
 ) -> Response:
+    await _require_facility_zone_manager(db, user, company_id)
     try:
         await _svc(db).delete_zone(company_id=company_id, zone_id=zone_id)
         await db.commit()
