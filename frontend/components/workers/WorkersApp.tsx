@@ -180,13 +180,14 @@ type SettingsTab = (typeof SETTINGS_TABS)[number];
 type InviteLinkBanner = {
   inviteUrl: string;
   variant: "no_email" | "email_maybe" | "link_only";
+  emailError?: string | null;
 };
 
 /** Inline banner at the top of the Add employee drawer after an action completes. */
 type CreateModalBanner =
   | { kind: "link"; url: string }
   | { kind: "invite_ok" }
-  | { kind: "invite_warning"; url: string; serverMessage: string }
+  | { kind: "invite_warning"; url: string; serverMessage: string; emailError?: string | null }
   | { kind: "profile"; serverMessage: string }
   | { kind: "error"; message: string };
 
@@ -956,6 +957,7 @@ export function WorkersApp() {
           setInviteNotice({
             inviteUrl: url,
             variant: r.invite_email_sent === false ? "no_email" : "email_maybe",
+            emailError: r.invite_email_error,
           });
         }
       } catch (e: unknown) {
@@ -1571,6 +1573,7 @@ export function WorkersApp() {
             kind: "invite_warning",
             url: absLink,
             serverMessage: result.message,
+            emailError: result.invite_email_error,
           });
         }
       } else {
@@ -1690,7 +1693,9 @@ export function WorkersApp() {
                   </p>
                   <p className="text-sm leading-relaxed text-ds-muted">
                     {inviteNotice.variant === "no_email"
-                      ? "Outbound email is not configured. Copy the join link below and send it to the person directly."
+                      ? inviteNotice.emailError
+                        ? `Email could not be sent: ${inviteNotice.emailError} Copy the join link below and send it manually.`
+                        : "Outbound email is not configured. Copy the join link below and send it to the person directly."
                       : inviteNotice.variant === "link_only"
                         ? "No invite email was sent for this action. Copy the URL below and send it yourself (personal email, SMS, etc.). This is a new activation link-any older link for this person no longer works."
                         : "If outbound email is configured, they should receive the invite shortly. You can still share the link below as a backup."}
@@ -2715,6 +2720,12 @@ export function WorkersApp() {
                   <div className="min-w-0 space-y-1">
                     <p className="font-semibold text-ds-foreground">Invite may not have been emailed</p>
                     <p className="text-xs leading-relaxed text-ds-muted">{createModalBanner.serverMessage}</p>
+                    {createModalBanner.emailError &&
+                    !createModalBanner.serverMessage.includes(createModalBanner.emailError) ? (
+                      <p className="text-xs leading-relaxed text-ds-muted">
+                        {createModalBanner.emailError}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
                 {createModalBanner.url ? (

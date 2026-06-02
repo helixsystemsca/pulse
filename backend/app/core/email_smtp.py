@@ -13,6 +13,12 @@ from email.mime.text import MIMEText
 from typing import Optional
 
 from app.core.config import Settings
+from app.core.smtp_connectivity import (
+    SmtpNetworkError,
+    smtp_network_error_message,
+    smtp_session,
+    validate_public_smtp_host,
+)
 
 _log = logging.getLogger(__name__)
 
@@ -23,6 +29,9 @@ def outbound_smtp_configuration_error(settings: Settings) -> str | None:
         return "SMTP host not configured"
     if not settings.email_from_noreply.strip():
         return "SMTP sender email not configured"
+    host_err = validate_public_smtp_host(settings.smtp_host)
+    if host_err:
+        return host_err
     return None
 
 
@@ -64,22 +73,24 @@ def _send_sync(settings: Settings, msg: MIMEMultipart) -> None:
     from_addr = settings.email_from_noreply.strip()
     to_raw = msg["To"]
     recipients = [a.strip() for a in to_raw.split(",") if a.strip()]
+    host = settings.smtp_host.strip()
 
-    if settings.smtp_use_ssl:
-        with smtplib.SMTP_SSL(settings.smtp_host, settings.smtp_port, timeout=12) as smtp:
-            if settings.smtp_username:
-                smtp.login(settings.smtp_username, settings.smtp_password)
+    try:
+        with smtp_session(settings, timeout=12) as smtp:
             smtp.sendmail(from_addr, recipients, raw)
-        return
+    except SmtpNetworkError:
+        raise
+    except OSError as exc:
+        _log.exception("SMTP network connection failed host=%s port=%s", host, settings.smtp_port)
+        raise SmtpNetworkError(smtp_network_error_message(exc)) from exc
 
-    with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=12) as smtp:
-        smtp.ehlo()
-        if settings.smtp_use_tls:
-            smtp.starttls()
-            smtp.ehlo()
-        if settings.smtp_username:
-            smtp.login(settings.smtp_username, settings.smtp_password)
-        smtp.sendmail(from_addr, recipients, raw)
+
+def format_smtp_send_error(exc: Exception) -> str:
+    if isinstance(exc, SmtpNetworkError):
+        return str(exc)
+    if isinstance(exc, OSError):
+        return smtp_network_error_message(exc)
+    return f"SMTP send failed: {exc}"
 
 
 async def send_smtp_message(settings: Settings, msg: MIMEMultipart) -> None:
@@ -92,8 +103,12 @@ async def send_company_admin_invite(
     to_email: str,
     company_name: str,
     invite_url: str,
-) -> bool:
-    if not settings.smtp_configured:
+    return_error_detail: bool = False,
+) -> bool | tuple[bool, str | None]:
+    smtp_err = outbound_smtp_configuration_error(settings)
+    if smtp_err:
+        if return_error_detail:
+            return False, smtp_err
         return False
 
     hours = settings.system_invite_expire_hours
@@ -169,9 +184,18 @@ async def send_company_admin_invite(
     )
     try:
         await send_smtp_message(settings, msg)
+        if return_error_detail:
+            return True, None
         return True
-    except Exception:
+    except SmtpNetworkError as exc:
+        _log.exception("SMTP company invite network failure to=%s", to_email)
+        if return_error_detail:
+            return False, str(exc)
+        return False
+    except Exception as exc:
         _log.exception("SMTP company invite failed to=%s", to_email)
+        if return_error_detail:
+            return False, format_smtp_send_error(exc)
         return False
 
 
@@ -181,9 +205,13 @@ async def send_employee_invite(
     to_email: str,
     company_name: str,
     invite_url: str,
-) -> bool:
+    return_error_detail: bool = False,
+) -> bool | tuple[bool, str | None]:
     """Invite an existing user row to set their password (tenant employee invite)."""
-    if not settings.smtp_configured:
+    smtp_err = outbound_smtp_configuration_error(settings)
+    if smtp_err:
+        if return_error_detail:
+            return False, smtp_err
         return False
 
     hours = settings.system_invite_expire_hours
@@ -239,9 +267,18 @@ async def send_employee_invite(
     )
     try:
         await send_smtp_message(settings, msg)
+        if return_error_detail:
+            return True, None
         return True
-    except Exception:
+    except SmtpNetworkError as exc:
+        _log.exception("SMTP employee invite network failure to=%s", to_email)
+        if return_error_detail:
+            return False, str(exc)
+        return False
+    except Exception as exc:
         _log.exception("SMTP employee invite failed to=%s", to_email)
+        if return_error_detail:
+            return False, format_smtp_send_error(exc)
         return False
 
 
@@ -512,10 +549,15 @@ async def send_inventory_low_stock_alert_email(
         if return_error_detail:
             return True, None
         return True
+    except SmtpNetworkError as exc:
+        _log.exception("SMTP inventory low stock alert network failure sku=%s", sku)
+        if return_error_detail:
+            return False, str(exc)
+        return False
     except Exception as exc:
         _log.exception("SMTP inventory low stock alert failed sku=%s", sku)
         if return_error_detail:
-            return False, f"SMTP send failed: {exc}"
+            return False, format_smtp_send_error(exc)
         return False
 
 

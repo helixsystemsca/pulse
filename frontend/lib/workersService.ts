@@ -242,6 +242,7 @@ export type WorkerCreateResult = {
   worker: WorkerDetail;
   invite_link_path: string;
   invite_email_sent: boolean | null;
+  invite_email_error?: string | null;
   message: string;
 };
 
@@ -259,7 +260,12 @@ export async function resendWorkerInvite(
   companyId: string | null,
   userId: string,
   options?: { sendEmail?: boolean },
-): Promise<{ invite_link_path: string; invite_email_sent: boolean | null; message: string }> {
+): Promise<{
+  invite_link_path: string;
+  invite_email_sent: boolean | null;
+  invite_email_error?: string | null;
+  message: string;
+}> {
   const send_email = options?.sendEmail === false ? false : true;
   return apiFetch(withCompany(`/api/workers/${userId}/resend-invite`, companyId), {
     method: "POST",

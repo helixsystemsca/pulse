@@ -18,7 +18,7 @@ from app.core.audit.permission_audit import record_permission_change
 from app.core.audit.service import record_audit
 from app.core.config import get_settings
 from app.core.database import get_db
-from app.core.email_smtp import send_employee_invite
+from app.services.invite_email_service import invite_failure_message, try_send_employee_invite_email
 from app.core.permissions import keys as perm_keys
 from app.core.permissions.service import PermissionService
 from app.core.system_tokens import generate_raw_token, hash_system_token
@@ -155,27 +155,29 @@ async def create_company_user(
     co_name = co.name if co else "your organization"
     link_path = _join_path(raw)
     invite_url = _public_link(link_path)
-    invite_email_sent = False
-    if settings.smtp_configured:
-        invite_email_sent = await send_employee_invite(
-            settings,
-            to_email=email_norm,
-            company_name=co_name,
-            invite_url=invite_url,
-        )
+    invite_email_sent, invite_email_error = await try_send_employee_invite_email(
+        settings,
+        tenant_id=str(company_id),
+        to_email=email_norm,
+        company_name=co_name,
+        invite_url=invite_url,
+        send_email=True,
+    )
 
     await db.commit()
     if invite_email_sent:
         msg = "Invite sent"
-    elif settings.smtp_configured:
-        msg = "Invite created — email failed to send; share the activation link"
     else:
-        msg = "Invite created — SMTP not configured; share the activation link"
+        msg = invite_failure_message(
+            "Invite created — email failed to send; share the activation link",
+            invite_email_error,
+        )
 
     return {
         "id": user.id,
         "invite_link_path": link_path,
         "invite_email_sent": invite_email_sent,
+        "invite_email_error": invite_email_error,
         "message": msg,
     }
 

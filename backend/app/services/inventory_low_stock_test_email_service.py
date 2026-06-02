@@ -87,6 +87,12 @@ async def send_inventory_low_stock_test_email(
     )
     if not sent:
         reason = send_err or "SMTP send failed. Check server logs for the underlying error."
+        if reason.startswith("SMTP network connection failed"):
+            _log.warning(
+                "Low stock test email network failure",
+                extra={"tenant_id": tenant_id, "reason": reason},
+            )
+            raise HTTPException(status_code=500, detail=reason)
         _validation_failed(tenant_id=tenant_id, reason=reason)
 
     return {"sent": True, "to": recipients}

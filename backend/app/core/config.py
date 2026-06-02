@@ -254,6 +254,8 @@ class Settings(BaseSettings):
     smtp_use_tls: bool = Field(default=True, validation_alias=AliasChoices("SMTP_USE_TLS", "smtp_use_tls"))
     #: Use SMTP_SSL on port 465 instead of STARTTLS (e.g. some legacy hosts).
     smtp_use_ssl: bool = Field(default=False, validation_alias=AliasChoices("SMTP_USE_SSL", "smtp_use_ssl"))
+    #: Prefer IPv4 when connecting (avoids Errno 101 on hosts like Render when IPv6 has no route).
+    smtp_prefer_ipv4: bool = Field(default=True, validation_alias=AliasChoices("SMTP_PREFER_IPV4", "smtp_prefer_ipv4"))
     #: Envelope + From for transactional mail (invites, password reset). Use your DNS alias.
     email_from_noreply: str = Field(
         default="noreply@helixsystems.ca",

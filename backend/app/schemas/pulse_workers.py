@@ -362,6 +362,7 @@ class WorkerCreateResultOut(BaseModel):
     worker: WorkerDetailOut
     invite_link_path: str
     invite_email_sent: Optional[bool] = None
+    invite_email_error: Optional[str] = None
     message: str = "Invite sent"
 
 

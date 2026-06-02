@@ -48,6 +48,7 @@ export default function SystemCompaniesPage() {
     path: string;
     emailSent: boolean;
     emailPending: boolean;
+    emailError?: string | null;
   } | null>(null);
   const [bootstrapOk, setBootstrapOk] = useState<{ companyId: string; adminEmail: string } | null>(null);
   const [bootstrapFail, setBootstrapFail] = useState<{
@@ -162,6 +163,7 @@ export default function SystemCompaniesPage() {
         invite_link_path: string;
         invite_email_sent?: boolean | null;
         invite_email_pending?: boolean;
+        invite_email_error?: string | null;
       }>(
         "/api/system/companies/create-and-invite",
         {
@@ -177,6 +179,7 @@ export default function SystemCompaniesPage() {
         path: res.invite_link_path,
         emailSent: res.invite_email_sent === true,
         emailPending: Boolean(res.invite_email_pending),
+        emailError: res.invite_email_error,
       });
       setModal(null);
       setCompanyName("");
@@ -280,6 +283,11 @@ export default function SystemCompaniesPage() {
                 SMTP is configured—the invite email is being sent in the background from{" "}
                 <strong className="text-blue-100">{HELIX_NOREPLY_EMAIL}</strong>. Check the admin inbox in a moment, or
                 share the link below now.
+              </>
+            ) : inviteBanner.emailError ? (
+              <>
+                Invite email was not sent: <strong className="text-blue-100">{inviteBanner.emailError}</strong> Share the
+                link below manually.
               </>
             ) : (
               <>

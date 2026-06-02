@@ -30,6 +30,8 @@ from app.schemas.company import (
     InventoryLowStockNotificationOut,
     InventoryLowStockTestEmailIn,
 )
+from app.core.config import get_settings
+from app.core.smtp_connectivity import run_smtp_health_check
 from app.services.inventory_low_stock_test_email_service import send_inventory_low_stock_test_email
 
 router = APIRouter(prefix="/company", tags=["company"])
@@ -246,6 +248,14 @@ async def patch_company_profile(
         default_roster_password=out.default_roster_password,
         message="Company updated",
     )
+
+
+@router.get("/profile/smtp-health")
+async def company_smtp_health(
+    user: Annotated[User, Depends(require_company_admin_scoped)],
+) -> dict:
+    """Staged SMTP diagnostics for the server environment (company admins)."""
+    return run_smtp_health_check(get_settings()).to_api_dict()
 
 
 @router.post("/profile/inventory-low-stock/test-email")

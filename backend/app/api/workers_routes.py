@@ -66,7 +66,7 @@ from app.core.workers_settings_merge import (
     merge_workers_settings,
     sanitize_workers_policy_keys,
 )
-from app.core.email_smtp import send_employee_invite
+from app.services.invite_email_service import invite_failure_message, try_send_employee_invite_email
 from app.core.auth.security import bump_access_token_version, hash_password
 from app.core.equipment_roster import is_equipment_roster_account
 from app.core.system_tokens import generate_raw_token, hash_system_token
@@ -1316,18 +1316,14 @@ async def create_worker(
     invite_url = _pulse_public_link(link_path)
 
     send_email = body.send_email
-    invite_email_sent: bool | None
-    if send_email and settings.smtp_configured:
-        invite_email_sent = await send_employee_invite(
-            settings,
-            to_email=email_norm,
-            company_name=co_name,
-            invite_url=invite_url,
-        )
-    elif not send_email:
-        invite_email_sent = None
-    else:
-        invite_email_sent = False
+    invite_email_sent, invite_email_error = await try_send_employee_invite_email(
+        settings,
+        tenant_id=cid,
+        to_email=email_norm,
+        company_name=co_name,
+        invite_url=invite_url,
+        send_email=send_email,
+    )
 
     await db.commit()
 
@@ -1339,10 +1335,11 @@ async def create_worker(
     if send_email:
         if invite_email_sent:
             create_msg = "Invite sent"
-        elif settings.smtp_configured:
-            create_msg = "Worker saved — email failed to send; share the activation link"
         else:
-            create_msg = "Worker saved — SMTP not configured; share the activation link"
+            create_msg = invite_failure_message(
+                "Worker saved — email failed to send; share the activation link",
+                invite_email_error,
+            )
     else:
         create_msg = "Join link ready — share manually (no invite email sent for this action)"
 
@@ -1350,6 +1347,7 @@ async def create_worker(
         worker=detail,
         invite_link_path=link_path,
         invite_email_sent=invite_email_sent,
+        invite_email_error=invite_email_error,
         message=create_msg,
     )
 
@@ -1379,29 +1377,29 @@ async def resend_worker_invite(
     link_path = _employee_join_path(raw)
     invite_url = _pulse_public_link(link_path)
     send_email = True if body is None else body.send_email
-    invite_email_sent: bool | None = False
-    if send_email and settings.smtp_configured:
-        invite_email_sent = await send_employee_invite(
-            settings,
-            to_email=target.email,
-            company_name=co_name,
-            invite_url=invite_url,
-        )
-    elif not send_email:
-        invite_email_sent = None
+    invite_email_sent, invite_email_error = await try_send_employee_invite_email(
+        settings,
+        tenant_id=cid,
+        to_email=target.email,
+        company_name=co_name,
+        invite_url=invite_url,
+        send_email=send_email,
+    )
 
     if not send_email:
         resend_msg = "Join link ready — share manually (no invite email sent for this action)"
     elif invite_email_sent:
         resend_msg = "Invite resent"
-    elif settings.smtp_configured:
-        resend_msg = "Token updated — email failed to send; share the activation link"
     else:
-        resend_msg = "Token updated — SMTP not configured; share the activation link"
+        resend_msg = invite_failure_message(
+            "Token updated — email failed to send; share the activation link",
+            invite_email_error,
+        )
 
     return {
         "invite_link_path": link_path,
         "invite_email_sent": invite_email_sent,
+        "invite_email_error": invite_email_error,
         "message": resend_msg,
     }
 

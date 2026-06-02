@@ -21,8 +21,10 @@ from app.core.user_roles import (
 from app.core.audit.service import record_audit
 from app.core.auth.security import create_access_token, hash_password as hash_pw
 from app.core.config import Settings, get_settings
+from app.core.smtp_connectivity import run_smtp_health_check
 from app.core.database import get_db
-from app.core.email_smtp import send_company_admin_invite, send_password_reset_email
+from app.core.email_smtp import send_password_reset_email
+from app.services.invite_email_service import try_send_company_admin_invite_email
 from app.core.company_features import list_enabled_names, sync_enabled_features
 from app.core.features.cache import invalidate
 from app.core.features.service import MODULE_KEYS
@@ -134,6 +136,18 @@ async def feature_catalog(_: Annotated[User, Depends(require_system_admin)]) -> 
     return {"features": list(GLOBAL_SYSTEM_FEATURES), "legacy_module_keys": list(MODULE_KEYS)}
 
 
+@router.get("/smtp-health")
+async def smtp_health(
+    _: Annotated[User, Depends(require_system_admin)],
+) -> dict[str, Any]:
+    """
+    Staged SMTP diagnostics: host validation, DNS, TCP, and authentication.
+    Does not send mail. Safe for production troubleshooting on Render.
+    """
+    report = run_smtp_health_check(get_settings())
+    return report.to_api_dict()
+
+
 @router.post("/companies", status_code=status.HTTP_201_CREATED)
 async def create_company(
     body: SystemCompanyCreate,
@@ -217,18 +231,18 @@ async def create_company_and_invite(
     invite_url = _pulse_app_link(link_path)
 
     cfg = get_settings()
-    invite_email_sent = False
-    if cfg.smtp_configured:
-        invite_email_sent = await send_company_admin_invite(
-            cfg,
-            to_email=email_norm,
-            company_name=company.name,
-            invite_url=invite_url,
-        )
+    invite_email_sent, invite_email_error = await try_send_company_admin_invite_email(
+        cfg,
+        tenant_id=str(company.id),
+        to_email=email_norm,
+        company_name=company.name,
+        invite_url=invite_url,
+    )
     return {
         "company_id": company.id,
         "invite_link_path": link_path,
         "invite_email_sent": invite_email_sent,
+        "invite_email_error": invite_email_error,
         "invite_email_pending": False,
     }
 
@@ -687,13 +701,18 @@ async def create_invite(
     await db.commit()
     link_path = _invite_path(raw)
     invite_url = _pulse_app_link(link_path)
-    invite_email_sent = await send_company_admin_invite(
+    invite_email_sent, invite_email_error = await try_send_company_admin_invite_email(
         settings,
+        tenant_id=str(body.company_id),
         to_email=body.email,
         company_name=c.name,
         invite_url=invite_url,
     )
-    return {"invite_link_path": link_path, "invite_email_sent": invite_email_sent}
+    return {
+        "invite_link_path": link_path,
+        "invite_email_sent": invite_email_sent,
+        "invite_email_error": invite_email_error,
+    }
 
 
 @router.get("/users", response_model=SystemUsersDirectoryOut)
