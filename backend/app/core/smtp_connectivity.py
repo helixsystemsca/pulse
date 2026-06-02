@@ -212,8 +212,8 @@ def smtp_session(settings: Settings, *, timeout: float = 12.0) -> Iterator[smtpl
         if settings.smtp_use_ssl:
             smtp = _SMTPSSL(host, port, timeout=timeout, prefer_ipv4=prefer_ipv4)
         else:
-            smtp = _SMTP(timeout=timeout, prefer_ipv4=prefer_ipv4)
-            smtp.connect(host, port, timeout=timeout)
+            # timeout is only valid on the SMTP constructor, not connect() (stdlib smtplib).
+            smtp = _SMTP(host, port, timeout=timeout, prefer_ipv4=prefer_ipv4)
             smtp.ehlo()
             if settings.smtp_use_tls:
                 smtp.starttls(context=ssl.create_default_context())
