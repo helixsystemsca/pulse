@@ -170,6 +170,8 @@ export function InventoryApp() {
   const sessionCompanyId = session?.company_id ?? null;
   const canViewInventory = can("inventory.view") || can("inventory.manage");
   const canMutateInventory = can("inventory.manage");
+  /** One-time inventory setup: company admins or inventory managers with manage permission. */
+  const canRunInventorySetup = canMutateInventory || canConfigureOrg;
   const canOpenScannerKiosk = can("inventory.scan") || can("inventory.manage");
   const userInventoryDepartment = defaultInventoryDepartmentFromSession(session);
 
@@ -213,6 +215,9 @@ export function InventoryApp() {
   const [setupWizardOpen, setSetupWizardOpen] = useState(false);
   const [setupWizardDraft, setSetupWizardDraft] = useState<MergedInventorySettings | null>(null);
   const [setupWizardDismissed, setSetupWizardDismissed] = useState(false);
+
+  const inventorySetupDismissKey =
+    effectiveCompanyId != null ? `pulse.inventory.setup.dismissed.${effectiveCompanyId}` : null;
 
   const [listLoading, setListLoading] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
@@ -355,11 +360,16 @@ export function InventoryApp() {
   }, [loadSettings]);
 
   useEffect(() => {
-    if (!dataEnabled || !canMutateInventory || setupWizardDismissed) return;
+    if (!inventorySetupDismissKey || typeof window === "undefined") return;
+    setSetupWizardDismissed(sessionStorage.getItem(inventorySetupDismissKey) === "1");
+  }, [inventorySetupDismissKey]);
+
+  useEffect(() => {
+    if (!dataEnabled || !canRunInventorySetup || setupWizardDismissed) return;
     if (mergedSettings.setup_completed) return;
     setSetupWizardDraft(mergedSettings);
     setSetupWizardOpen(true);
-  }, [dataEnabled, canMutateInventory, mergedSettings, setupWizardDismissed]);
+  }, [dataEnabled, canRunInventorySetup, mergedSettings, setupWizardDismissed]);
 
   const loadList = useCallback(async () => {
     if (!dataEnabled || !effectiveCompanyId) return;
@@ -647,10 +657,14 @@ export function InventoryApp() {
   }
 
   async function completeSetupWizard(next: MergedInventorySettings) {
-    if (!effectiveCompanyId || !canMutateInventory) return;
+    if (!effectiveCompanyId || !canRunInventorySetup) return;
     setActionBusy(true);
     try {
       await patchInventorySettings(apiCompany, mergedSettingsForSave(next));
+      if (inventorySetupDismissKey) {
+        sessionStorage.removeItem(inventorySetupDismissKey);
+      }
+      setSetupWizardDismissed(false);
       setSetupWizardOpen(false);
       setSetupWizardDraft(null);
       await loadSettings();
@@ -1755,7 +1769,7 @@ export function InventoryApp() {
               ))}
             </div>
             <div className="min-w-0 flex-1 space-y-4">
-              {canMutateInventory ? (
+              {canRunInventorySetup ? (
                 <button
                   type="button"
                   className="text-xs font-semibold text-[#2B4C7E] underline-offset-2 hover:underline"
@@ -1763,6 +1777,9 @@ export function InventoryApp() {
                     setSetupWizardDraft(settingsDraft);
                     setSetupWizardOpen(true);
                     setSetupWizardDismissed(false);
+                    if (inventorySetupDismissKey) {
+                      sessionStorage.removeItem(inventorySetupDismissKey);
+                    }
                   }}
                 >
                   Open setup wizard
@@ -1917,6 +1934,9 @@ export function InventoryApp() {
           onSkip={() => {
             setSetupWizardOpen(false);
             setSetupWizardDismissed(true);
+            if (inventorySetupDismissKey) {
+              sessionStorage.setItem(inventorySetupDismissKey, "1");
+            }
           }}
         />
       ) : null}
