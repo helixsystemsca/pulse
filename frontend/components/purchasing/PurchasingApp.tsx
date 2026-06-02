@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, Loader2 } from "lucide-react";
+import { Download, Loader2, ShoppingCart } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -100,6 +100,7 @@ export function PurchasingApp({ apiCompany }: Props) {
     <div className="space-y-6">
       <PageHeader
         title={purchasingConfig.purchasing_label}
+        icon={ShoppingCart}
         actions={
           purchasingConfig.enable_monthly_expense_exports ? (
             <button
