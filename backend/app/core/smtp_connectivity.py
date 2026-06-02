@@ -129,11 +129,49 @@ def log_smtp_dns(host: str) -> tuple[bool, str]:
     return ok, detail
 
 
-def _addrinfo_sorted(host: str, port: int, *, prefer_ipv4: bool) -> list[tuple]:
-    infos = list(socket.getaddrinfo(host, port, type=socket.SOCK_STREAM))
+def _smtp_addrinfo_candidates(host: str, port: int, *, prefer_ipv4: bool) -> list[tuple]:
+    """
+    Return getaddrinfo rows: (family, socktype, proto, canonname, sockaddr).
+
+    Each row has five elements; sockaddr is (host, port) for IPv4 or
+    (host, port, flowinfo, scope_id) for IPv6 — never unpack a row into two variables.
+    """
+    results = list(socket.getaddrinfo(host, port, type=socket.SOCK_STREAM))
+    _log.info("SMTP address candidates for %s:%s: %s", host, port, results)
     if prefer_ipv4:
-        infos.sort(key=lambda i: (i[0] != socket.AF_INET, i[0] == socket.AF_INET6))
-    return infos
+        v4_only = [row for row in results if row[0] == socket.AF_INET]
+        if v4_only:
+            return v4_only
+        # No IPv4 — fall back to full list, IPv6 first in sort order below
+    results.sort(key=lambda row: (row[0] != socket.AF_INET, row[0] == socket.AF_INET6))
+    return results
+
+
+def _connect_sockaddr(
+    family: int,
+    socktype: int,
+    proto: int,
+    sockaddr: tuple,
+    *,
+    timeout: float,
+) -> socket.socket:
+    """
+    Connect using the full getaddrinfo sockaddr.
+
+    Do not pass IPv6 sockaddrs (4-tuples) to socket.create_connection — it unpacks
+    address as (host, port) and raises "too many values to unpack (expected 2, got 4)".
+    """
+    if family == socket.AF_INET and len(sockaddr) == 2:
+        return socket.create_connection(sockaddr, timeout=timeout)
+    sock = socket.socket(family, socktype, proto)
+    try:
+        if timeout is not None:
+            sock.settimeout(timeout)
+        sock.connect(sockaddr)
+        return sock
+    except Exception:
+        sock.close()
+        raise
 
 
 def create_smtp_socket(
@@ -145,14 +183,21 @@ def create_smtp_socket(
 ) -> socket.socket:
     """Open a TCP socket to SMTP, trying IPv4 before IPv6 when prefer_ipv4 is set."""
     last_error: OSError | None = None
-    for _family, _socktype, _proto, _canon, sockaddr in _addrinfo_sorted(host, port, prefer_ipv4=prefer_ipv4):
+    candidates = _smtp_addrinfo_candidates(host, port, prefer_ipv4=prefer_ipv4)
+    for family, socktype, proto, _canonname, sockaddr in candidates:
         try:
-            return socket.create_connection(sockaddr, timeout=timeout)
+            return _connect_sockaddr(family, socktype, proto, sockaddr, timeout=timeout)
         except OSError as exc:
             last_error = exc
             _log.info(
                 "SMTP TCP attempt failed",
-                extra={"host": host, "port": port, "sockaddr": str(sockaddr), "error": str(exc)},
+                extra={
+                    "host": host,
+                    "port": port,
+                    "family": family,
+                    "sockaddr": str(sockaddr),
+                    "error": str(exc),
+                },
             )
     if last_error is not None:
         raise last_error
