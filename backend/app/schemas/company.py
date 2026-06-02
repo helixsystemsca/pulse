@@ -29,6 +29,16 @@ class InventoryLowStockNotificationOut(BaseModel):
     email_list: list[str] = Field(default_factory=list)
 
 
+class InventoryLowStockTestEmailIn(BaseModel):
+    """Optional recipients for test send (uses saved company settings when omitted)."""
+
+    emails: str | None = Field(
+        default=None,
+        max_length=4096,
+        description="Comma-separated recipient list from the form (need not be saved yet).",
+    )
+
+
 class CompanyBrandingOut(BaseModel):
     """Company branding fields (company admin)."""
 

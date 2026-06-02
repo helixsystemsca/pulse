@@ -90,4 +90,10 @@ def collect_item_reference_ids(
             zone_ids.add(str(it.zone_id))
         if getattr(it, "linked_tool_id", None):
             tool_ids.add(str(it.linked_tool_id))
+        attrs = getattr(it, "custom_attributes", None) or {}
+        stock = attrs.get("location_stock")
+        if isinstance(stock, list):
+            for entry in stock:
+                if isinstance(entry, dict) and entry.get("zone_id"):
+                    zone_ids.add(str(entry["zone_id"]))
     return user_ids, zone_ids, tool_ids

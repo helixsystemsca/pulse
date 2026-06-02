@@ -85,13 +85,24 @@ export function InventoryLowStockAlertsSection({ compact = false, className }: P
     setOk(null);
     setTesting(true);
     try {
-      const out = await apiFetch<{ sent: boolean; to?: string[] }>("/api/v1/company/profile/inventory-low-stock/test-email", {
-        method: "POST",
-      });
+      const out = await apiFetch<{ sent: boolean; to?: string[] }>(
+        "/api/v1/company/profile/inventory-low-stock/test-email",
+        {
+          method: "POST",
+          json: { emails: emails.trim() },
+        },
+      );
       const to = out.to?.length ? ` to ${out.to.join(", ")}` : "";
       setOk(`Test email sent${to}.`);
     } catch (e) {
-      setErr(parseClientApiError(e).message || "Could not send test email");
+      const detail = parseClientApiError(e).message;
+      setErr(
+        detail
+          ? detail.startsWith("Unable to send test email")
+            ? detail
+            : `Unable to send test email: ${detail}`
+          : "Unable to send test email.",
+      );
     } finally {
       setTesting(false);
     }

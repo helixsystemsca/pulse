@@ -319,6 +319,78 @@ async def _log_movement(
     )
 
 
+LOCATION_STOCK_KEY = "location_stock"
+
+
+def _parse_location_stock(attrs: Optional[dict[str, Any]]) -> list[tuple[str, float]]:
+    raw = (attrs or {}).get(LOCATION_STOCK_KEY)
+    if not isinstance(raw, list):
+        return []
+    merged: dict[str, float] = {}
+    for entry in raw:
+        if not isinstance(entry, dict):
+            continue
+        zid = str(entry.get("zone_id") or "").strip()
+        if not zid:
+            continue
+        try:
+            qty = float(entry.get("quantity") or 0)
+        except (TypeError, ValueError):
+            qty = 0.0
+        if qty <= 0:
+            continue
+        merged[zid] = merged.get(zid, 0.0) + qty
+    return [(zid, qty) for zid, qty in merged.items()]
+
+
+def _location_name_for_item(item: InventoryItem, zones: dict[str, Zone]) -> Optional[str]:
+    lines = _parse_location_stock(item.custom_attributes)
+    if lines:
+        if len(lines) == 1:
+            z = zones.get(lines[0][0])
+            return z.name if z else None
+        parts: list[str] = []
+        for zid, qty in lines:
+            z = zones.get(zid)
+            label = z.name if z else "Location"
+            parts.append(f"{label} ({qty:g})")
+        return ", ".join(parts)
+    z = zones.get(str(item.zone_id)) if item.zone_id else None
+    return z.name if z else None
+
+
+async def _normalize_location_lines(
+    db: AsyncSession,
+    cid: str,
+    lines: list[tuple[str, float]],
+) -> list[tuple[str, float]]:
+    merged: dict[str, float] = {}
+    for zid, qty in lines:
+        z = str(zid).strip()
+        if not z or qty <= 0:
+            continue
+        if not await pulse_svc.zone_in_company(db, cid, z):
+            raise HTTPException(status_code=400, detail="Unknown zone")
+        merged[z] = merged.get(z, 0.0) + float(qty)
+    return [(z, q) for z, q in merged.items()]
+
+
+def _apply_location_stock(
+    item: InventoryItem,
+    lines: list[tuple[str, float]],
+    *,
+    custom_attributes: Optional[dict[str, Any]] = None,
+) -> None:
+    attrs = dict(custom_attributes if custom_attributes is not None else (item.custom_attributes or {}))
+    if lines:
+        attrs[LOCATION_STOCK_KEY] = [{"zone_id": zid, "quantity": qty} for zid, qty in lines]
+        item.quantity = sum(qty for _, qty in lines)
+        item.zone_id = lines[0][0]
+    else:
+        attrs.pop(LOCATION_STOCK_KEY, None)
+    item.custom_attributes = attrs
+
+
 def _row(
     item: InventoryItem,
     *,
@@ -328,7 +400,6 @@ def _row(
     last_used: Optional[datetime],
 ) -> InventoryRowOut:
     au = users.get(str(item.assigned_user_id)) if item.assigned_user_id else None
-    z = zones.get(str(item.zone_id)) if item.zone_id else None
     t = tools.get(str(item.linked_tool_id)) if item.linked_tool_id else None
     return InventoryRowOut(
         id=item.id,
@@ -343,7 +414,7 @@ def _row(
         assigned_user_id=item.assigned_user_id,
         assignee_name=au.full_name if au else None,
         zone_id=item.zone_id,
-        location_name=z.name if z else None,
+        location_name=_location_name_for_item(item, zones),
         linked_tool_id=item.linked_tool_id,
         linked_asset_name=t.name if t else None,
         condition=item.item_condition,
@@ -1306,8 +1377,18 @@ async def create_inventory_item(
     body: InventoryCreateIn,
 ) -> InventoryDetailOut:
     sku = (body.sku or "").strip() or f"INV-{uuid4().hex[:8].upper()}"
-    if body.zone_id and not await pulse_svc.zone_in_company(db, cid, body.zone_id):
-        raise HTTPException(status_code=400, detail="Unknown zone")
+    location_lines: list[tuple[str, float]] = []
+    if body.location_lines:
+        location_lines = await _normalize_location_lines(
+            db,
+            cid,
+            [(ln.zone_id, ln.quantity) for ln in body.location_lines],
+        )
+    elif body.zone_id:
+        if not await pulse_svc.zone_in_company(db, cid, body.zone_id):
+            raise HTTPException(status_code=400, detail="Unknown zone")
+        if float(body.quantity) > 0:
+            location_lines = [(body.zone_id, float(body.quantity))]
     if body.assigned_user_id and not await pulse_svc._user_in_company(db, cid, body.assigned_user_id):
         raise HTTPException(status_code=400, detail="Unknown assignee")
     if body.linked_tool_id and not await pulse_svc.tool_in_company(db, cid, body.linked_tool_id):
@@ -1332,20 +1413,22 @@ async def create_inventory_item(
 
     inv_st = body.inv_status
     slug_disp = scope_row.slug[:64]
+    create_qty = sum(q for _, q in location_lines) if location_lines else float(body.quantity)
+    create_zone = location_lines[0][0] if location_lines else body.zone_id
     item = InventoryItem(
         id=str(uuid4()),
         company_id=cid,
         scope_id=scope_row.id,
         sku=sku,
         name=body.name.strip(),
-        quantity=float(body.quantity),
+        quantity=create_qty,
         unit=body.unit,
         low_stock_threshold=float(body.low_stock_threshold),
         maximum_qty=float(body.maximum_qty) if body.maximum_qty is not None else None,
         item_type=body.item_type,
         category=body.category,
         inv_status=inv_st or "in_stock",
-        zone_id=body.zone_id,
+        zone_id=create_zone,
         assigned_user_id=body.assigned_user_id,
         linked_tool_id=body.linked_tool_id,
         item_condition=body.condition,
@@ -1355,6 +1438,7 @@ async def create_inventory_item(
         vendor=(body.vendor or "").strip() or None,
         custom_attributes=dict(body.custom_attributes or {}),
     )
+    _apply_location_stock(item, location_lines)
     if body.assigned_user_id:
         item.inv_status = "assigned"
     elif not inv_st:
@@ -1396,6 +1480,7 @@ async def patch_inventory_item(
         raise HTTPException(status_code=403, detail="Inventory write denied")
 
     data = body.model_dump(exclude_unset=True)
+    location_lines_raw = data.pop("location_lines", None)
     if "zone_id" in data and data["zone_id"] and not await pulse_svc.zone_in_company(db, cid, data["zone_id"]):
         raise HTTPException(status_code=400, detail="Unknown zone")
     if "assigned_user_id" in data and data["assigned_user_id"]:
@@ -1451,8 +1536,26 @@ async def patch_inventory_item(
     if "vendor" in data:
         vraw = data["vendor"]
         item.vendor = None if vraw is None else (str(vraw).strip() or None)
-    if "custom_attributes" in data and data["custom_attributes"] is not None:
-        item.custom_attributes = dict(data["custom_attributes"])
+    custom_attrs_patch = data.pop("custom_attributes", None)
+    if custom_attrs_patch is not None:
+        item.custom_attributes = dict(custom_attrs_patch)
+    if location_lines_raw is not None:
+        location_lines = await _normalize_location_lines(
+            db,
+            cid,
+            [(str(ln["zone_id"]), float(ln["quantity"])) for ln in location_lines_raw],
+        )
+        _apply_location_stock(
+            item,
+            location_lines,
+            custom_attributes=item.custom_attributes,
+        )
+        data.pop("quantity", None)
+        data.pop("zone_id", None)
+    elif ("zone_id" in data or "quantity" in data) and _parse_location_stock(item.custom_attributes):
+        attrs = dict(item.custom_attributes or {})
+        attrs.pop(LOCATION_STOCK_KEY, None)
+        item.custom_attributes = attrs
     if "maximum_qty" in data:
         raw_max = data["maximum_qty"]
         item.maximum_qty = None if raw_max is None else float(raw_max)

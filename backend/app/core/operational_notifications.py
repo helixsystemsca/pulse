@@ -26,6 +26,7 @@ def _parse_email_list(raw: Any) -> list[str]:
     out: list[str] = []
     seen: set[str] = set()
     for p in parts:
+        p = p.strip().strip(",").strip(";")
         if not p or p in seen:
             continue
         if _EMAIL_RE.match(p):

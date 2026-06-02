@@ -141,7 +141,7 @@ export function InventoryDepartmentsPanel({
                 className={FIELD}
                 value={newSlug}
                 disabled={busy}
-                placeholder="Auto from name"
+                placeholder="Auto from name (lowercase, a-z0-9_-)"
                 onChange={(e) => setNewSlug(e.target.value)}
               />
             </div>

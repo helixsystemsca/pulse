@@ -17,6 +17,26 @@ from app.core.config import Settings
 _log = logging.getLogger(__name__)
 
 
+def outbound_smtp_configuration_error(settings: Settings) -> str | None:
+    """Return a user-facing reason when outbound SMTP is not ready (server env / Settings)."""
+    if not settings.smtp_host.strip():
+        return "SMTP host not configured"
+    if not settings.email_from_noreply.strip():
+        return "SMTP sender email not configured"
+    return None
+
+
+def smtp_settings_log_extra(settings: Settings) -> dict[str, object]:
+    """Safe SMTP fields for structured logs (never includes password)."""
+    return {
+        "smtp_host": settings.smtp_host.strip(),
+        "smtp_port": settings.smtp_port,
+        "smtp_username": settings.smtp_username.strip() or None,
+        "smtp_from_email": settings.email_from_noreply.strip(),
+        "smtp_from_name": settings.email_from_display.strip() or None,
+    }
+
+
 def _build_message(
     *,
     subject: str,
@@ -428,8 +448,16 @@ async def send_inventory_low_stock_alert_email(
     unit: str,
     vendor: str | None,
     suggested_reorder_qty: float | None,
-) -> bool:
-    if not settings.smtp_configured or not to_emails:
+    return_error_detail: bool = False,
+) -> bool | tuple[bool, str | None]:
+    smtp_err = outbound_smtp_configuration_error(settings)
+    if smtp_err:
+        if return_error_detail:
+            return False, smtp_err
+        return False
+    if not to_emails:
+        if return_error_detail:
+            return False, "No recipient emails configured"
         return False
 
     display = settings.email_from_display.strip() or "Helix Systems"
@@ -481,9 +509,13 @@ async def send_inventory_low_stock_alert_email(
     )
     try:
         await send_smtp_message(settings, msg)
+        if return_error_detail:
+            return True, None
         return True
-    except Exception:
+    except Exception as exc:
         _log.exception("SMTP inventory low stock alert failed sku=%s", sku)
+        if return_error_detail:
+            return False, f"SMTP send failed: {exc}"
         return False
 
 

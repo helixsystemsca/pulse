@@ -23,14 +23,14 @@ from app.core.operational_notifications import (
     inventory_low_stock_to_api,
     patch_inventory_low_stock,
 )
-from app.core.config import get_settings
-from app.core.email_smtp import send_inventory_low_stock_alert_email
 from app.schemas.company import (
     CompanyBrandingOut,
     CompanyLogoUploadOut,
     CompanyProfilePatch,
     InventoryLowStockNotificationOut,
+    InventoryLowStockTestEmailIn,
 )
+from app.services.inventory_low_stock_test_email_service import send_inventory_low_stock_test_email
 
 router = APIRouter(prefix="/company", tags=["company"])
 
@@ -252,32 +252,11 @@ async def patch_company_profile(
 async def send_test_inventory_low_stock_email(
     user: Annotated[User, Depends(require_company_admin_scoped)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    body: InventoryLowStockTestEmailIn | None = None,
 ) -> dict:
-    co = await db.get(Company, str(user.company_id))
-    if not co:
-        raise HTTPException(status_code=404, detail="Company not found")
-
-    cfg = inventory_low_stock_from_company(getattr(co, "operational_notifications", None))
-    if not cfg.emails:
-        raise HTTPException(status_code=400, detail="Add at least one recipient email before sending a test.")
-
-    settings = get_settings()
-    if not settings.smtp_configured:
-        raise HTTPException(status_code=400, detail="SMTP is not configured on the server.")
-
-    sent = await send_inventory_low_stock_alert_email(
-        settings,
-        to_emails=cfg.emails,
-        company_name=co.name or "Your organization",
-        item_name="Test item (no stock change)",
-        sku="TEST-LOW-STOCK",
-        current_qty=1,
-        minimum_qty=5,
-        unit="each",
-        vendor=None,
-        suggested_reorder_qty=10,
+    emails_override = body.emails if body is not None else None
+    return await send_inventory_low_stock_test_email(
+        db,
+        company_id=str(user.company_id),
+        emails_override=emails_override,
     )
-    if not sent:
-        raise HTTPException(status_code=400, detail="Unable to send test email. Check SMTP settings and logs.")
-
-    return {"sent": True, "to": cfg.emails}

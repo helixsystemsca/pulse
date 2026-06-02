@@ -25,7 +25,7 @@ export async function createTenantDepartment(
   const q = companyId ? `?company_id=${encodeURIComponent(companyId)}` : "";
   return apiFetch<TenantDepartmentRow>(`/api/workers/tenant-departments${q}`, {
     method: "POST",
-    body: JSON.stringify(body),
+    json: body,
   });
 }
 
@@ -37,7 +37,7 @@ export async function patchTenantDepartment(
   const q = companyId ? `?company_id=${encodeURIComponent(companyId)}` : "";
   return apiFetch<TenantDepartmentRow>(`/api/workers/tenant-departments/${departmentId}${q}`, {
     method: "PATCH",
-    body: JSON.stringify(body),
+    json: body,
   });
 }
 

@@ -51,6 +51,10 @@ import {
   postInventoryUse,
   uploadInventoryItemImage,
 } from "@/lib/inventoryService";
+import {
+  formatLocationStockLabel,
+  parseLocationStock,
+} from "@/lib/inventory/inventory-location-stock";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { canAccessCompanyConfiguration } from "@/lib/pulse-roles";
@@ -60,6 +64,7 @@ import { InventoryVendorsPanel } from "@/components/inventory/InventoryVendorsPa
 import {
   InventoryRegisterItemForm,
   registerFormStateToPayload,
+  registerFormStateFromRow,
   emptyRegisterFormState,
   type InventoryRegisterFormState,
 } from "@/components/inventory/InventoryRegisterItemForm";
@@ -643,15 +648,17 @@ export function InventoryApp() {
         if (typeof v === "boolean") custom_attributes[k] = v;
         else if (v != null) custom_attributes[k] = String(v);
       }
+      const loc = registerFormStateFromRow(row);
       return {
         name: row.name,
         sku: row.sku,
         item_type: row.item_type,
         category: row.category ?? "",
-        quantity: String(row.quantity),
+        quantity: loc.quantity,
         unit: row.unit,
         low_stock_threshold: String(row.low_stock_threshold),
-        zone_id: row.zone_id ?? "",
+        zone_id: loc.zone_id,
+        location_lines: loc.location_lines,
         assigned_user_id: row.assigned_user_id ?? "",
         linked_tool_id: row.linked_tool_id ?? "",
         department_slug: row.department_slug ?? "maintenance",
@@ -1594,38 +1601,68 @@ export function InventoryApp() {
                 <p className="text-xs font-bold uppercase text-pulse-muted">Assignment &amp; location</p>
                 <p className="mt-2 text-sm font-semibold text-pulse-navy">{detail.assignee_name ?? "Unassigned"}</p>
                 <p className={`${LABEL} mt-3`}>Location</p>
-                {canMutateInventory ? (
-                  <select
-                    className={FIELD}
-                    value={detail.zone_id ?? ""}
-                    disabled={actionBusy}
-                    onChange={(e) => {
-                      const zone_id = e.target.value || null;
-                      void (async () => {
-                        setActionBusy(true);
-                        try {
-                          await postInventoryMove(apiCompany, detail.id, zone_id);
-                          await loadDetail();
-                          await loadList();
-                        } finally {
-                          setActionBusy(false);
-                        }
-                      })();
-                    }}
-                  >
-                    <option value="">Unspecified</option>
-                    {zones.map((z) => (
-                      <option key={z.id} value={z.id}>
-                        {z.name}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <p className="text-sm text-pulse-muted">{detail.location_name ?? "—"}</p>
-                )}
-                {zones.length === 0 && canMutateInventory ? (
+                {(() => {
+                  const stock = parseLocationStock(detail.custom_attributes);
+                  const stockLabel = formatLocationStockLabel(stock, (id) =>
+                    zones.find((z) => z.id === id)?.name,
+                  );
+                  if (stock.length > 1) {
+                    return (
+                      <ul className="mt-1 space-y-1 text-sm text-pulse-navy">
+                        {stock.map((line) => (
+                          <li key={line.zone_id}>
+                            {zones.find((z) => z.id === line.zone_id)?.name ?? "Location"}:{" "}
+                            <span className="font-semibold">{line.quantity}</span> {detail.unit}
+                          </li>
+                        ))}
+                      </ul>
+                    );
+                  }
+                  if (canMutateInventory && stock.length <= 1) {
+                    return (
+                      <>
+                        <select
+                          className={FIELD}
+                          value={detail.zone_id ?? ""}
+                          disabled={actionBusy}
+                          onChange={(e) => {
+                            const zone_id = e.target.value || null;
+                            void (async () => {
+                              setActionBusy(true);
+                              try {
+                                await postInventoryMove(apiCompany, detail.id, zone_id);
+                                await loadDetail();
+                                await loadList();
+                              } finally {
+                                setActionBusy(false);
+                              }
+                            })();
+                          }}
+                        >
+                          <option value="">Unspecified</option>
+                          {zones.map((z) => (
+                            <option key={z.id} value={z.id}>
+                              {z.name}
+                            </option>
+                          ))}
+                        </select>
+                        {zones.length === 0 ? (
+                          <p className="mt-2 text-xs text-pulse-muted">
+                            Add locations under Inventory settings → Locations.
+                          </p>
+                        ) : null}
+                      </>
+                    );
+                  }
+                  return (
+                    <p className="text-sm text-pulse-muted">
+                      {stockLabel || detail.location_name || "—"}
+                    </p>
+                  );
+                })()}
+                {canMutateInventory && parseLocationStock(detail.custom_attributes).length > 1 ? (
                   <p className="mt-2 text-xs text-pulse-muted">
-                    Add locations under Inventory settings → Locations.
+                    Edit the item to change stock across multiple locations.
                   </p>
                 ) : null}
               </div>

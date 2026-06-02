@@ -100,6 +100,11 @@ class InventoryListOut(BaseModel):
     summary: InventorySummaryOut
 
 
+class InventoryLocationLineIn(BaseModel):
+    zone_id: str = Field(..., min_length=1)
+    quantity: float = Field(..., ge=0)
+
+
 class InventoryCreateIn(BaseModel):
     sku: Optional[str] = Field(None, max_length=128)
     name: str = Field(..., min_length=1, max_length=255)
@@ -111,6 +116,10 @@ class InventoryCreateIn(BaseModel):
     maximum_qty: Optional[float] = Field(None, ge=0)
     inv_status: Optional[str] = None
     zone_id: Optional[str] = None
+    location_lines: Optional[list[InventoryLocationLineIn]] = Field(
+        default=None,
+        description="Stock split across facility locations; totals quantity and sets primary zone.",
+    )
     assigned_user_id: Optional[str] = None
     linked_tool_id: Optional[str] = None
     condition: str = Field("good", pattern="^(good|needs_maintenance|critical)$")
@@ -136,6 +145,10 @@ class InventoryPatchIn(BaseModel):
     maximum_qty: Optional[float] = Field(None, ge=0)
     inv_status: Optional[str] = None
     zone_id: Optional[str] = None
+    location_lines: Optional[list[InventoryLocationLineIn]] = Field(
+        default=None,
+        description="Replace per-location stock breakdown.",
+    )
     assigned_user_id: Optional[str] = None
     linked_tool_id: Optional[str] = None
     condition: Optional[str] = Field(None, pattern="^(good|needs_maintenance|critical)$")

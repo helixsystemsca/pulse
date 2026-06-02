@@ -10,11 +10,21 @@ import type { TenantDepartmentRow } from "@/lib/tenantDepartmentsService";
 import { departmentNameForSlug, tenantDepartmentOptions } from "@/lib/tenantDepartmentsService";
 import { InventoryItemPhotoUpload } from "@/components/inventory/InventoryItemPhotoUpload";
 import { InventoryRegisterLookupHints } from "@/components/inventory/InventoryRegisterLookupHints";
+import {
+  parseLocationStock,
+  sumLocationStockQuantity,
+  type LocationStockLine,
+} from "@/lib/inventory/inventory-location-stock";
 import { cn } from "@/lib/cn";
 
 const FIELD =
   "mt-1.5 w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25";
 const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-muted";
+
+export type InventoryRegisterLocationLineState = {
+  zone_id: string;
+  quantity: string;
+};
 
 export type InventoryRegisterFormState = {
   name: string;
@@ -25,6 +35,8 @@ export type InventoryRegisterFormState = {
   unit: string;
   low_stock_threshold: string;
   zone_id: string;
+  /** Per-location stock when the location field is enabled. */
+  location_lines: InventoryRegisterLocationLineState[];
   assigned_user_id: string;
   linked_tool_id: string;
   department_slug: string;
@@ -57,6 +69,133 @@ type Props = {
   /** When set, name field shows existing inventory matches while typing. */
   inventoryCompanyId?: string | null;
 };
+
+function locationLinesFromStock(
+  stock: LocationStockLine[],
+  fallbackZoneId: string | null | undefined,
+  fallbackQuantity: number,
+): InventoryRegisterLocationLineState[] {
+  if (stock.length) {
+    return stock.map((l) => ({ zone_id: l.zone_id, quantity: String(l.quantity) }));
+  }
+  if (fallbackZoneId) {
+    return [{ zone_id: fallbackZoneId, quantity: String(fallbackQuantity) }];
+  }
+  return [{ zone_id: "", quantity: "" }];
+}
+
+function syncLocationLinesToForm(
+  lines: InventoryRegisterLocationLineState[],
+  itemType: string,
+): Pick<InventoryRegisterFormState, "location_lines" | "zone_id" | "quantity"> {
+  const valid = lines.filter((l) => l.zone_id.trim() && (Number.parseFloat(l.quantity) || 0) > 0);
+  const total =
+    itemType === "tool" ? "1" : String(sumLocationStockQuantity(valid.map((l) => ({
+      zone_id: l.zone_id,
+      quantity: Number.parseFloat(l.quantity) || 0,
+    }))));
+  return {
+    location_lines: lines,
+    zone_id: valid[0]?.zone_id ?? "",
+    quantity: total,
+  };
+}
+
+function InventoryLocationLinesEditor({
+  lines,
+  zones,
+  disabled,
+  itemType,
+  onChange,
+}: {
+  lines: InventoryRegisterLocationLineState[];
+  zones: ZoneOpt[];
+  disabled?: boolean;
+  itemType: string;
+  onChange: (patch: Pick<InventoryRegisterFormState, "location_lines" | "zone_id" | "quantity">) => void;
+}) {
+  function updateLine(index: number, patch: Partial<InventoryRegisterLocationLineState>) {
+    const next = lines.map((line, i) => (i === index ? { ...line, ...patch } : line));
+    onChange(syncLocationLinesToForm(next, itemType));
+  }
+
+  function addLine() {
+    onChange(syncLocationLinesToForm([...lines, { zone_id: "", quantity: "" }], itemType));
+  }
+
+  function removeLine(index: number) {
+    const next = lines.filter((_, i) => i !== index);
+    onChange(
+      syncLocationLinesToForm(
+        next.length ? next : [{ zone_id: "", quantity: "" }],
+        itemType,
+      ),
+    );
+  }
+
+  const zoneOptions = zones.map((z) => ({ value: z.id, label: z.name }));
+
+  return (
+    <div className="space-y-2">
+      {lines.map((line, index) => (
+        <div key={index} className="flex flex-wrap items-end gap-2">
+          <div className="min-w-[10rem] flex-1">
+            {index === 0 ? (
+              <span className={LABEL}>Location</span>
+            ) : null}
+            {renderSelect(
+              line.zone_id,
+              (zone_id) => updateLine(index, { zone_id }),
+              zoneOptions,
+              zones.length ? "Select location…" : "No locations — add in settings",
+            )}
+          </div>
+          <div className="w-24">
+            {index === 0 ? <span className={LABEL}>Qty</span> : null}
+            <input
+              className={FIELD}
+              inputMode="decimal"
+              disabled={itemType === "tool"}
+              value={itemType === "tool" ? "1" : line.quantity}
+              onChange={(e) => updateLine(index, { quantity: e.target.value })}
+            />
+          </div>
+          {lines.length > 1 ? (
+            <button
+              type="button"
+              className="mb-0.5 rounded-md px-2 py-2.5 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-40"
+              disabled={disabled}
+              onClick={() => removeLine(index)}
+            >
+              Remove
+            </button>
+          ) : null}
+        </div>
+      ))}
+      <button
+        type="button"
+        className="text-xs font-semibold text-[#2B4C7E] hover:underline disabled:opacity-40"
+        disabled={disabled || itemType === "tool"}
+        onClick={addLine}
+      >
+        + Add another location
+      </button>
+      {lines.filter((l) => l.zone_id.trim()).length > 1 ? (
+        <p className="text-[11px] text-pulse-muted">
+          Total on hand: {sumLocationStockQuantity(
+            lines
+              .filter((l) => l.zone_id.trim())
+              .map((l) => ({
+                zone_id: l.zone_id,
+                quantity: Number.parseFloat(l.quantity) || 0,
+              })),
+          )}{" "}
+          (updates quantity above)
+        </p>
+      ) : null}
+    </div>
+  );
+}
 
 function renderSelect(
   value: string,
@@ -217,16 +356,21 @@ export function InventoryRegisterItemForm({
         );
       case "category":
         return renderTextOrSelect(field, form.category, (category) => setForm({ category }));
-      case "quantity":
+      case "quantity": {
+        const multiLoc =
+          form.location_lines.filter((l) => l.zone_id.trim() && (Number.parseFloat(l.quantity) || 0) > 0)
+            .length > 1;
         return (
           <input
             className={FIELD}
             inputMode="decimal"
-            disabled={form.item_type === "tool"}
+            disabled={form.item_type === "tool" || multiLoc}
+            title={multiLoc ? "Total is calculated from locations below" : undefined}
             value={form.item_type === "tool" ? "1" : form.quantity}
             onChange={(e) => setForm({ quantity: e.target.value })}
           />
         );
+      }
       case "unit":
         return renderTextOrSelect(field, form.unit, (unit) => setForm({ unit }));
       case "low_stock_threshold":
@@ -252,11 +396,14 @@ export function InventoryRegisterItemForm({
           { value: "critical", label: "Critical / out of service" },
         ]);
       case "zone_id":
-        return renderSelect(
-          form.zone_id,
-          (zone_id) => setForm({ zone_id }),
-          zones.map((z) => ({ value: z.id, label: z.name })),
-          zones.length ? "Select location…" : "No locations — add in settings",
+        return (
+          <InventoryLocationLinesEditor
+            lines={form.location_lines}
+            zones={zones}
+            disabled={disabled}
+            itemType={form.item_type}
+            onChange={(patch) => setForm(patch)}
+          />
         );
       case "assigned_user_id":
         return renderSelect(
@@ -323,9 +470,21 @@ export function InventoryRegisterItemForm({
           );
         }
         return (
-          <div key={field.id} className={field.col_span === 2 ? "sm:col-span-2" : undefined}>
-            <label className={LABEL}>{field.label}</label>
-            {renderField(field)}
+          <div
+            key={field.id}
+            className={field.id === "zone_id" || field.col_span === 2 ? "sm:col-span-2" : undefined}
+          >
+            {field.id === "zone_id" ? (
+              <>
+                <p className={LABEL}>{field.label}</p>
+                {renderField(field)}
+              </>
+            ) : (
+              <>
+                <label className={LABEL}>{field.label}</label>
+                {renderField(field)}
+              </>
+            )}
             {field.help_text ? <p className="mt-1 text-[11px] text-pulse-muted">{field.help_text}</p> : null}
           </div>
         );
@@ -356,15 +515,28 @@ export function registerFormStateToPayload(
     }
   }
 
+  const location_lines = form.location_lines
+    .map((l) => ({
+      zone_id: l.zone_id.trim(),
+      quantity: Number.parseFloat(l.quantity) || 0,
+    }))
+    .filter((l) => l.zone_id && l.quantity > 0);
+
+  const quantity =
+    location_lines.length > 0
+      ? sumLocationStockQuantity(location_lines)
+      : Number.parseFloat(form.quantity) || 0;
+
   return {
     name: form.name.trim(),
     sku: form.sku.trim() || null,
     item_type: form.item_type,
     category: form.category.trim() || null,
-    quantity: Number.parseFloat(form.quantity) || 0,
+    quantity,
     unit: form.unit.trim() || "count",
     low_stock_threshold: Number.parseFloat(form.low_stock_threshold) || 0,
-    zone_id: form.zone_id || null,
+    zone_id: (location_lines[0]?.zone_id ?? form.zone_id) || null,
+    location_lines: location_lines.length > 0 ? location_lines : undefined,
     assigned_user_id: form.assigned_user_id || null,
     linked_tool_id: form.linked_tool_id || null,
     condition: form.condition,
@@ -380,6 +552,26 @@ export function departmentLabel(slug: string, departments: TenantDepartmentRow[]
   return departmentNameForSlug(departments, slug);
 }
 
+export function registerFormStateFromRow(
+  row: Pick<
+    InventoryRowLike,
+    | "quantity"
+    | "zone_id"
+    | "custom_attributes"
+  >,
+): Pick<InventoryRegisterFormState, "location_lines" | "zone_id" | "quantity"> {
+  const stock = parseLocationStock(row.custom_attributes);
+  const location_lines = locationLinesFromStock(stock, row.zone_id, row.quantity);
+  const zone_id = location_lines.find((l) => l.zone_id)?.zone_id ?? "";
+  return { location_lines, zone_id, quantity: String(row.quantity) };
+}
+
+type InventoryRowLike = {
+  quantity: number;
+  zone_id?: string | null;
+  custom_attributes?: Record<string, string | number | boolean | null>;
+};
+
 export function emptyRegisterFormState(defaultMin = 5, departmentSlug = "maintenance"): InventoryRegisterFormState {
   return {
     name: "",
@@ -390,6 +582,7 @@ export function emptyRegisterFormState(defaultMin = 5, departmentSlug = "mainten
     unit: "count",
     low_stock_threshold: String(defaultMin),
     zone_id: "",
+    location_lines: [{ zone_id: "", quantity: "" }],
     assigned_user_id: "",
     linked_tool_id: "",
     department_slug: departmentSlug,

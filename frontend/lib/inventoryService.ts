@@ -212,6 +212,7 @@ export async function createInventoryItem(
     low_stock_threshold?: number;
     inv_status?: string | null;
     zone_id?: string | null;
+    location_lines?: { zone_id: string; quantity: number }[];
     assigned_user_id?: string | null;
     linked_tool_id?: string | null;
     condition: string;
