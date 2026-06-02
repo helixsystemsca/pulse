@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.rbac.resolve import effective_rbac_permission_keys
+from app.core.tenant_feature_access import contract_and_effective_features_for_me
 from app.core.user_roles import user_has_any_role, user_has_facility_tenant_admin_flag
 from app.models.domain import User, UserRole
 from app.models.pulse_models import PulseWorkRequest
@@ -49,3 +53,26 @@ def user_may_manage_facility_zones(user: User, merged_workers: dict[str, Any]) -
         default=["manager", "supervisor"],
     )
     return bool(set(user.roles) & allow)
+
+
+async def user_may_manage_facility_zones_for_api(
+    db: AsyncSession,
+    user: User,
+    merged_workers: dict[str, Any],
+) -> bool:
+    """
+    Zone CRUD for facility locations (work requests + inventory settings).
+    Allows legacy role lists, tenant admins, and RBAC `inventory.manage`.
+    """
+    if user_may_manage_facility_zones(user, merged_workers):
+        return True
+    contract_feats, eff_feats, _, _ = await contract_and_effective_features_for_me(db, user)
+    resolved = set(
+        await effective_rbac_permission_keys(
+            db,
+            user,
+            contract_feature_names=contract_feats,
+            effective_feature_names=eff_feats,
+        )
+    )
+    return "*" in resolved or "inventory.manage" in resolved

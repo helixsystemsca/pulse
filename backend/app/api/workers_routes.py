@@ -44,6 +44,7 @@ from app.core.workers_permission_delegation import (
     actor_is_delegated_permission_editor,
     actor_may_set_worker_feature_allow_extra,
 )
+from app.core.tenant_departments import validate_tenant_department_slug
 from app.core.workspace_departments import (
     normalize_workspace_department_slug,
     normalize_workspace_department_slug_list,
@@ -137,6 +138,24 @@ def _merge_hr_department_slugs(body_department_slugs: list[str] | None, body_dep
         return slugs
     one = normalize_workspace_department_slug((body_department or "").strip() or None)
     return [one] if one else []
+
+
+async def _tenant_validated_hr_department_slugs(
+    db: AsyncSession,
+    cid: str,
+    body_department_slugs: list[str] | None,
+    body_department: str | None,
+) -> list[str]:
+    merged = _merge_hr_department_slugs(body_department_slugs, body_department)
+    if not merged:
+        return []
+    out: list[str] = []
+    for raw in merged:
+        try:
+            out.append(await validate_tenant_department_slug(db, cid, raw))
+        except ValueError as e:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+    return out
 
 
 async def resolve_workers_company_id(
@@ -1085,7 +1104,9 @@ async def _apply_worker_hr_and_extras(
     hr_row: PulseWorkerHR | None,
     actor_id: str | None = None,
 ) -> None:
-    merged_slugs = _merge_hr_department_slugs(
+    merged_slugs = await _tenant_validated_hr_department_slugs(
+        db,
+        cid,
         list(body.department_slugs) if body.department_slugs else None,
         body.department,
     )
@@ -1486,23 +1507,25 @@ async def patch_worker(
             raw_ds = data["department_slugs"]
             if raw_ds is None:
                 hr.department_slugs = None
+                hr.department = None
             else:
-                hr.department_slugs = normalize_workspace_department_slug_list(list(raw_ds))
-            merged = _hr_department_slugs_list(hr)
-            if merged:
-                hr.department = merged[0]
-            else:
+                hr.department_slugs = await _tenant_validated_hr_department_slugs(
+                    db,
+                    cid,
+                    list(raw_ds),
+                    None,
+                )
+                hr.department = hr.department_slugs[0] if hr.department_slugs else None
+        elif "department" in data:
+            if data["department"] is None or (
+                isinstance(data["department"], str) and not str(data["department"]).strip()
+            ):
                 hr.department = None
                 hr.department_slugs = None
-        elif "department" in data:
-            hr.department = data["department"]
-            one = normalize_workspace_department_slug(
-                str(data["department"]).strip() if data["department"] is not None else None
-            )
-            if one:
-                hr.department_slugs = [one]
-            elif data["department"] is None or (isinstance(data["department"], str) and not str(data["department"]).strip()):
-                hr.department_slugs = None
+            else:
+                validated = await _tenant_validated_hr_department_slugs(db, cid, None, str(data["department"]))
+                hr.department = validated[0] if validated else None
+                hr.department_slugs = validated or None
         if "job_title" in data:
             hr.job_title = data["job_title"]
         if "matrix_slot" in data:

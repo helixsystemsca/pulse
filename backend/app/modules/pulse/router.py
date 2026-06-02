@@ -31,7 +31,7 @@ from app.core.schedule_department import (
 )
 from app.repositories import inventory_scope_repository as inv_scope_repo
 from app.core.tenant_feature_access import load_merged_workers_settings
-from app.core.work_request_access import user_may_manage_facility_zones
+from app.core.work_request_access import user_may_manage_facility_zones_for_api
 from app.models.domain import (
     InventoryItem,
     OperationalRole,
@@ -1300,10 +1300,10 @@ async def create_zone_pulse(
     user: Annotated[User, Depends(require_tenant_user)],
 ) -> ZoneOut:
     merged = await load_merged_workers_settings(db, cid)
-    if not user_may_manage_facility_zones(user, merged):
+    if not await user_may_manage_facility_zones_for_api(db, user, merged):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not allowed to create facility locations (see Workers → settings: zone_manage_roles)",
+            detail="Not allowed to create facility locations (Workers → zone_manage_roles or inventory.manage)",
         )
     z = await _device_hub_svc(db).create_zone(
         company_id=cid,
@@ -1325,10 +1325,10 @@ async def patch_zone_pulse(
     user: Annotated[User, Depends(require_tenant_user)],
 ) -> ZoneOut:
     merged = await load_merged_workers_settings(db, cid)
-    if not user_may_manage_facility_zones(user, merged):
+    if not await user_may_manage_facility_zones_for_api(db, user, merged):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not allowed to edit facility locations (see Workers → settings: zone_manage_roles)",
+            detail="Not allowed to edit facility locations (Workers → zone_manage_roles or inventory.manage)",
         )
     updates = body.model_dump(exclude_unset=True)
     if not updates:
@@ -1354,10 +1354,10 @@ async def delete_zone_pulse(
     user: Annotated[User, Depends(require_tenant_user)],
 ) -> Response:
     merged = await load_merged_workers_settings(db, cid)
-    if not user_may_manage_facility_zones(user, merged):
+    if not await user_may_manage_facility_zones_for_api(db, user, merged):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not allowed to delete facility locations (see Workers → settings: zone_manage_roles)",
+            detail="Not allowed to delete facility locations (Workers → zone_manage_roles or inventory.manage)",
         )
     try:
         await _device_hub_svc(db).delete_zone(company_id=cid, zone_id=zone_id)

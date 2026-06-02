@@ -26,7 +26,7 @@ const FIELD_HINTS: Partial<Record<string, string>> = {
   zone_id: "Dropdown choices come from Inventory settings → Locations (same list as work requests).",
   assigned_user_id: "Populated from your worker roster.",
   linked_tool_id: "Populated from tracked assets.",
-  department_slug: "Populated from platform departments.",
+  department_slug: "Populated from your organization department list (Inventory → Settings → Departments).",
 };
 
 const FIXED_TYPE_LABELS: Partial<Record<InventoryFieldInputType, string>> = {

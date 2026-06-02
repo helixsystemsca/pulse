@@ -7,9 +7,10 @@ import { formatRegisterFieldValue } from "@/lib/inventory/inventory-list-columns
 type Props = {
   detail: InventoryDetail;
   fields: InventoryRegisterFieldConfig[];
+  departmentNamesBySlug?: Record<string, string>;
 };
 
-export function InventoryItemDetailFields({ detail, fields }: Props) {
+export function InventoryItemDetailFields({ detail, fields, departmentNamesBySlug }: Props) {
   if (fields.length === 0) return null;
 
   return (
@@ -17,7 +18,7 @@ export function InventoryItemDetailFields({ detail, fields }: Props) {
       <p className="text-xs font-bold uppercase text-pulse-muted">Item details</p>
       <dl className="mt-3 grid gap-3 sm:grid-cols-2">
         {fields.map((field) => {
-          const value = formatRegisterFieldValue(field, detail);
+          const value = formatRegisterFieldValue(field, detail, departmentNamesBySlug);
           return (
             <div key={field.id} className="min-w-0">
               <dt className="text-[11px] font-semibold uppercase tracking-wider text-pulse-muted">{field.label}</dt>

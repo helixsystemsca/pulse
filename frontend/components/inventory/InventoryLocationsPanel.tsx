@@ -100,8 +100,8 @@ export function InventoryLocationsPanel({
       </p>
       {!canManage ? (
         <p className="rounded-lg border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-sm text-amber-950 dark:border-amber-500/30 dark:bg-amber-950/40 dark:text-amber-100">
-          Adding or editing locations requires facility location permissions (Workers → Access policy). You can still
-          pick from existing locations below.
+          Adding or editing locations requires Manage inventory permission or facility location roles in Workers →
+          Access policy. You can still pick from existing locations below.
         </p>
       ) : null}
       {canManage ? (

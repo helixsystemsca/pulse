@@ -4,30 +4,17 @@ from __future__ import annotations
 
 from typing import Sequence
 
+from app.core.tenant_departments import normalize_department_slug_format, normalize_department_slug_list
 from app.models.domain import User
 from app.models.pulse_models import PulseWorkerHR
 
-ALLOWED_WORKSPACE_DEPARTMENT_SLUGS: frozenset[str] = frozenset(
-    {"maintenance", "reception", "communications", "aquatics", "fitness", "racquets", "admin"}
-)
-
 
 def normalize_workspace_department_slug(raw: str | None) -> str | None:
-    if not raw:
-        return None
-    s = str(raw).strip().lower()
-    return s if s in ALLOWED_WORKSPACE_DEPARTMENT_SLUGS else None
+    return normalize_department_slug_format(raw)
 
 
 def normalize_workspace_department_slug_list(values: Sequence[str] | None) -> list[str]:
-    out: list[str] = []
-    seen: set[str] = set()
-    for x in values or []:
-        n = normalize_workspace_department_slug(str(x))
-        if n and n not in seen:
-            seen.add(n)
-            out.append(n)
-    return out
+    return normalize_department_slug_list(values)
 
 
 def effective_workspace_slugs_for_user(

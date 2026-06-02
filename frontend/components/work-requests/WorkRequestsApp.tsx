@@ -321,8 +321,8 @@ export function WorkRequestsApp() {
   /** Matches Workers → Work request editing roles (+ RBAC edit + admins). */
   const canApproveWR = isSystemAdmin || canManage || hasWorkRequestEditRole;
   const canManageZones = useMemo(
-    () => userCanManageFacilityZones(session, zoneManageAccessRoles),
-    [session, zoneManageAccessRoles],
+    () => userCanManageFacilityZones(session, zoneManageAccessRoles) || can("inventory.manage"),
+    [session, zoneManageAccessRoles, can],
   );
   const canEditWorkRequest = useCallback(
     (wr: Pick<WorkRequestRow, "created_by_user_id">) => userCanEditWorkRequest(session, wr, wrEditAccessRoles),

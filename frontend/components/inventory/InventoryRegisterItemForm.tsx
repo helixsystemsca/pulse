@@ -6,7 +6,8 @@ import {
   enabledRegisterFields,
   isBuiltinFieldId,
 } from "@/lib/inventory/register-form-config";
-import { getDepartmentBySlug, PLATFORM_DEPARTMENTS } from "@/config/platform/departments";
+import type { TenantDepartmentRow } from "@/lib/tenantDepartmentsService";
+import { departmentNameForSlug, tenantDepartmentOptions } from "@/lib/tenantDepartmentsService";
 import { InventoryItemPhotoUpload } from "@/components/inventory/InventoryItemPhotoUpload";
 import { InventoryRegisterLookupHints } from "@/components/inventory/InventoryRegisterLookupHints";
 import { cn } from "@/lib/cn";
@@ -45,6 +46,7 @@ type Props = {
   zones: ZoneOpt[];
   assets: AssetOpt[];
   workers: WorkerOpt[];
+  departments: TenantDepartmentRow[];
   disabled?: boolean;
   itemId?: string | null;
   imageUrl?: string | null;
@@ -81,6 +83,7 @@ export function InventoryRegisterItemForm({
   zones,
   assets,
   workers,
+  departments,
   disabled,
   itemId,
   imageUrl,
@@ -239,7 +242,8 @@ export function InventoryRegisterItemForm({
         return renderSelect(
           form.department_slug,
           (department_slug) => setForm({ department_slug }),
-          PLATFORM_DEPARTMENTS.map((d) => ({ value: d.slug, label: d.name })),
+          tenantDepartmentOptions(departments),
+          departments.length ? "Select department…" : "No departments — add in settings",
         );
       case "condition":
         return renderTextOrSelect(field, form.condition, (condition) => setForm({ condition }), [
@@ -372,8 +376,8 @@ export function registerFormStateToPayload(
   };
 }
 
-export function departmentLabel(slug: string): string {
-  return getDepartmentBySlug(slug)?.name ?? slug;
+export function departmentLabel(slug: string, departments: TenantDepartmentRow[] = []): string {
+  return departmentNameForSlug(departments, slug);
 }
 
 export function emptyRegisterFormState(defaultMin = 5, departmentSlug = "maintenance"): InventoryRegisterFormState {

@@ -5,7 +5,6 @@ import {
   enabledRegisterFields,
   isBuiltinFieldId,
 } from "@/lib/inventory/register-form-config";
-import { getDepartmentBySlug } from "@/config/platform/departments";
 
 /** Built-in fields always rendered in the item column (not separate table columns). */
 export const ITEM_COLUMN_FIELD_IDS = new Set(["photo", "name", "sku"]);
@@ -113,6 +112,7 @@ function labelForSelectOption(
 export function formatRegisterFieldValue(
   field: InventoryRegisterFieldConfig,
   row: InventoryRow | InventoryDetail,
+  departmentNamesBySlug?: Record<string, string>,
 ): string {
   const inputType = effectiveInputType(field);
 
@@ -139,7 +139,7 @@ export function formatRegisterFieldValue(
     case "low_stock_threshold":
       return String(row.low_stock_threshold ?? "—");
     case "department_slug":
-      return getDepartmentBySlug(row.department_slug)?.name ?? row.department_slug ?? "—";
+      return departmentNamesBySlug?.[row.department_slug ?? ""] ?? row.department_slug ?? "—";
     case "condition":
       return labelForSelectOption(field, row.condition, [
         { value: "good", label: "Good" },

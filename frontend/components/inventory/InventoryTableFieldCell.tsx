@@ -50,9 +50,10 @@ function statusLabel(status: string): string {
 type Props = {
   column: InventoryTableColumn;
   row: InventoryRow;
+  departmentNamesBySlug?: Record<string, string>;
 };
 
-export function InventoryTableFieldCell({ column, row }: Props) {
+export function InventoryTableFieldCell({ column, row, departmentNamesBySlug }: Props) {
   if (column.kind === "type_category") {
     return (
       <td className="px-4 py-3 align-top text-pulse-navy">
@@ -103,7 +104,7 @@ export function InventoryTableFieldCell({ column, row }: Props) {
   const field = column.field;
 
   if (field.id === "quantity") {
-    const qtyText = formatRegisterFieldValue(field, row);
+    const qtyText = formatRegisterFieldValue(field, row, departmentNamesBySlug);
     return (
       <td className="whitespace-nowrap px-4 py-3 align-top font-medium tabular-nums text-pulse-navy">
         {qtyText}
@@ -126,7 +127,7 @@ export function InventoryTableFieldCell({ column, row }: Props) {
   }
 
   if (field.id === "department_slug") {
-    const label = formatRegisterFieldValue(field, row);
+    const label = formatRegisterFieldValue(field, row, departmentNamesBySlug);
     return (
       <td className="px-4 py-3 align-top">
         <span
@@ -154,13 +155,13 @@ export function InventoryTableFieldCell({ column, row }: Props) {
     return (
       <td className="max-w-[12rem] px-4 py-3 align-top text-pulse-navy">
         <span className="line-clamp-2" title={row.vendor ?? undefined}>
-          {formatRegisterFieldValue(field, row)}
+          {formatRegisterFieldValue(field, row, departmentNamesBySlug)}
         </span>
       </td>
     );
   }
 
-  const text = formatRegisterFieldValue(field, row);
+  const text = formatRegisterFieldValue(field, row, departmentNamesBySlug);
   return (
     <td className="max-w-[14rem] px-4 py-3 align-top text-pulse-navy">
       <span className="line-clamp-2" title={text !== "—" ? text : undefined}>

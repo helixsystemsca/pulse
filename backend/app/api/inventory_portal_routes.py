@@ -43,6 +43,7 @@ from app.api.inventory_query_helpers import (
     ctx_maps_for_ids,
     last_used_at_map,
 )
+from app.core.tenant_departments import validate_tenant_department_slug
 from app.core.pulse_storage import read_inventory_item_image_bytes, write_inventory_item_image_bytes
 from app.repositories import inventory_scope_repository as inv_scope_repo
 from app.services.inventory_alert_service import maybe_send_low_stock_alert
@@ -125,19 +126,12 @@ async def _save_inventory_item_image_upload(file: UploadFile, company_id: str, i
     except RuntimeError as e:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
 
-INV_DEPARTMENT_SLUGS: frozenset[str] = frozenset(
-    {"maintenance", "communications", "reception", "aquatics", "fitness", "admin"}
-)
 
-
-def _normalize_department_slug(raw: str) -> str:
-    s = (raw or "").strip().lower()
-    if s not in INV_DEPARTMENT_SLUGS:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid department_slug: use one of {', '.join(sorted(INV_DEPARTMENT_SLUGS))}",
-        )
-    return s
+async def _normalize_department_slug(db: AsyncSession, cid: str, raw: str) -> str:
+    try:
+        return await validate_tenant_department_slug(db, cid, raw)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
 
 DEFAULT_INVENTORY_SETTINGS: dict[str, Any] = {
@@ -449,20 +443,21 @@ async def _resolve_directory_department_slug(
     requested: Optional[str],
 ) -> str:
     if requested and str(requested).strip():
-        ds = _normalize_department_slug(str(requested))
+        ds = await _normalize_department_slug(db, cid, str(requested))
         if not policy.is_company_admin:
             allowed = await inventory_department_slugs_for_user(db, user, cid)
             if ds not in allowed:
                 raise HTTPException(status_code=403, detail="Department access denied")
         return ds
     if policy.is_company_admin:
-        return "maintenance"
+        return await _normalize_department_slug(db, cid, "maintenance")
     allowed = await inventory_department_slugs_for_user(db, user, cid)
     if len(allowed) == 1:
-        return _normalize_department_slug(next(iter(allowed)))
+        return await _normalize_department_slug(db, cid, next(iter(allowed)))
     hr_row = await db.execute(select(PulseWorkerHR).where(PulseWorkerHR.user_id == user.id))
     hr = hr_row.scalar_one_or_none()
-    return _normalize_department_slug(permission_matrix_department_for_user(user, hr))
+    matrix_slug = permission_matrix_department_for_user(user, hr)
+    return await _normalize_department_slug(db, cid, matrix_slug or "maintenance")
 
 
 async def _apply_directory_department_filter(
@@ -476,18 +471,25 @@ async def _apply_directory_department_filter(
 ) -> None:
     if policy.is_company_admin:
         if department_slug and department_slug.strip():
-            conds.append(model.department_slug == _normalize_department_slug(department_slug))
+            conds.append(
+                model.department_slug
+                == await _normalize_department_slug(db, cid, department_slug)
+            )
         return
     allowed = await inventory_department_slugs_for_user(db, user, cid)
     if department_slug and department_slug.strip():
-        ds = _normalize_department_slug(department_slug)
+        ds = await _normalize_department_slug(db, cid, department_slug)
         if ds not in allowed:
             raise HTTPException(status_code=403, detail="Department access denied")
         conds.append(model.department_slug == ds)
     elif len(allowed) == 1:
-        conds.append(model.department_slug == _normalize_department_slug(next(iter(allowed))))
+        conds.append(
+            model.department_slug
+            == await _normalize_department_slug(db, cid, next(iter(allowed)))
+        )
     else:
-        conds.append(model.department_slug.in_([_normalize_department_slug(s) for s in allowed]))
+        normed = [await _normalize_department_slug(db, cid, s) for s in allowed]
+        conds.append(model.department_slug.in_(normed))
 
 
 def _vendor_ilike(column: Any, raw: Optional[str]) -> Optional[Any]:
@@ -972,7 +974,7 @@ async def list_inventory(
     if assigned_user_id:
         conds.append(InventoryItem.assigned_user_id == assigned_user_id)
     if department_slug and department_slug.strip():
-        ds = _normalize_department_slug(department_slug)
+        ds = await _normalize_department_slug(db, cid, department_slug)
         sq = await db.execute(
             select(InventoryScope.id).where(InventoryScope.company_id == cid, InventoryScope.slug == ds)
         )
@@ -1202,7 +1204,7 @@ async def create_inventory_item(
         if scope_row is None:
             raise HTTPException(status_code=400, detail="Unknown inventory scope")
     else:
-        dept_slug = _normalize_department_slug(body.department_slug)
+        dept_slug = await _normalize_department_slug(db, cid, body.department_slug)
         scope_row = await inv_scope_repo.ensure_scope_for_company_slug(db, cid, dept_slug)
 
     if not policy.is_company_admin and scope_row.id not in policy.writable_scope_ids:
@@ -1296,7 +1298,7 @@ async def patch_inventory_item(
         item.item_condition = cond
     ds = data.pop("department_slug", None)
     if ds is not None:
-        slug_norm = _normalize_department_slug(str(ds))
+        slug_norm = await _normalize_department_slug(db, cid, str(ds))
         dest = await inv_scope_repo.ensure_scope_for_company_slug(db, cid, slug_norm)
         if not inv_scope_repo.can_transfer_inventory_item_to_scope(
             policy, source_item=item, destination_scope_id=dest.id

@@ -71,6 +71,7 @@ import {
   InventoryItemProfilePhoto,
 } from "@/components/inventory/InventoryItemPhotoUpload";
 import { InventoryRegisterFieldsEditor } from "@/components/inventory/InventoryRegisterFieldsEditor";
+import { InventoryDepartmentsPanel } from "@/components/inventory/InventoryDepartmentsPanel";
 import { InventoryLocationsPanel } from "@/components/inventory/InventoryLocationsPanel";
 import { InventoryMaterialRequestsPanel } from "@/components/inventory/InventoryMaterialRequestsPanel";
 import { InventoryItemDetailFields } from "@/components/inventory/InventoryItemDetailFields";
@@ -94,7 +95,11 @@ import {
 } from "@/lib/inventory-department";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
-import { getDepartmentBySlug, PLATFORM_DEPARTMENTS } from "@/config/platform/departments";
+import {
+  fetchTenantDepartments,
+  tenantDepartmentNamesBySlug,
+  type TenantDepartmentRow,
+} from "@/lib/tenantDepartmentsService";
 
 type CompanyOption = { id: string; name: string };
 type ZoneOpt = { id: string; name: string };
@@ -108,6 +113,7 @@ const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-mut
 
 const SETTINGS_TABS = [
   "Register form",
+  "Departments",
   "Locations",
   "Status rules",
   "Thresholds",
@@ -130,9 +136,9 @@ function statusLabel(status: string): string {
   return status.replace(/_/g, " ");
 }
 
-function inventoryDepartmentLabel(slug: string | null | undefined): string {
+function inventoryDepartmentLabel(slug: string | null | undefined, departments: TenantDepartmentRow[]): string {
   if (!slug) return "—";
-  return getDepartmentBySlug(slug)?.name ?? slug;
+  return departments.find((d) => d.slug === slug)?.name ?? slug;
 }
 
 function typeIcon(t: string) {
@@ -196,6 +202,7 @@ export function InventoryApp() {
   const pageSize = 12;
 
   const [zones, setZones] = useState<ZoneOpt[]>([]);
+  const [tenantDepartments, setTenantDepartments] = useState<TenantDepartmentRow[]>([]);
   const [assets, setAssets] = useState<AssetOpt[]>([]);
   const [workers, setWorkers] = useState<WorkerOpt[]>([]);
   const [settingsBaseline, setSettingsBaseline] = useState<InventoryModuleSettings>({});
@@ -226,6 +233,10 @@ export function InventoryApp() {
       ),
     [mergedSettings.register_form, rows],
   );
+  const departmentNamesBySlug = useMemo(
+    () => tenantDepartmentNamesBySlug(tenantDepartments),
+    [tenantDepartments],
+  );
 
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -233,6 +244,7 @@ export function InventoryApp() {
   const [settingsDraft, setSettingsDraft] = useState<MergedInventorySettings>(() => mergeInventoryModuleSettings({}));
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [settingsLocationError, setSettingsLocationError] = useState<string | null>(null);
+  const [settingsDepartmentError, setSettingsDepartmentError] = useState<string | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
 
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -298,27 +310,32 @@ export function InventoryApp() {
   useEffect(() => {
     if (!dataEnabled || !session?.access_token) {
       setZones([]);
+      setTenantDepartments([]);
       setAssets([]);
       setWorkers([]);
       return;
     }
     void (async () => {
       try {
-        const [z, a, w] = await Promise.all([
+        const [z, a, w, depts] = await Promise.all([
           fetchPulseZonesCached(),
           fetchPulseAssetsCached(),
           fetchPulseWorkersOptsCached(),
+          fetchTenantDepartments(apiCompany),
         ]);
         setZones(z);
         setAssets(a);
         setWorkers(w);
+        setTenantDepartments(depts);
       } catch {
         setZones([]);
+        setTenantDepartments([]);
         setAssets([]);
         setWorkers([]);
       }
+      }
     })();
-  }, [dataEnabled, session?.access_token]);
+  }, [dataEnabled, session?.access_token, apiCompany]);
 
   const loadSettings = useCallback(async () => {
     if (!effectiveCompanyId) return;
@@ -723,7 +740,7 @@ export function InventoryApp() {
         r.unit_cost != null ? String(r.unit_cost) : "",
         r.assignee_name ?? "",
         r.location_name ?? "",
-        inventoryDepartmentLabel(r.department_slug),
+        inventoryDepartmentLabel(r.department_slug, tenantDepartments),
       ]
         .map((c) => `"${c}"`)
         .join(","),
@@ -1110,7 +1127,7 @@ export function InventoryApp() {
                 }}
               >
                 <option value="">Department</option>
-                {PLATFORM_DEPARTMENTS.map((d) => (
+                {tenantDepartments.map((d) => (
                   <option key={d.slug} value={d.slug}>
                     {d.name}
                   </option>
@@ -1218,6 +1235,7 @@ export function InventoryApp() {
                               key={col.kind === "field" ? col.field.id : col.kind}
                               column={col}
                               row={row}
+                              departmentNamesBySlug={departmentNamesBySlug}
                             />
                           ))}
                           <td className="relative px-4 py-3 text-right align-top" onClick={(e) => e.stopPropagation()}>
@@ -1508,7 +1526,11 @@ export function InventoryApp() {
               </div>
             </div>
 
-            <InventoryItemDetailFields detail={detail} fields={detailExtraFields} />
+            <InventoryItemDetailFields
+              detail={detail}
+              fields={detailExtraFields}
+              departmentNamesBySlug={departmentNamesBySlug}
+            />
 
             <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
               <p className="text-xs font-bold uppercase text-pulse-muted">Work requests</p>
@@ -1628,6 +1650,7 @@ export function InventoryApp() {
           zones={zones}
           assets={assets}
           workers={workers}
+          departments={tenantDepartments}
           disabled={editFormLoading}
           inventoryCompanyId={apiCompany}
           itemId={editMode === "edit" ? editTargetId : null}
@@ -1710,6 +1733,22 @@ export function InventoryApp() {
                   registerForm={settingsDraft.register_form}
                   onChange={(register_form) => setSettingsDraft((d) => ({ ...d, register_form }))}
                 />
+              ) : null}
+              {settingsTab === "Departments" ? (
+                <div className="space-y-3">
+                  {settingsDepartmentError ? (
+                    <p className="text-sm text-rose-600">{settingsDepartmentError}</p>
+                  ) : null}
+                  <InventoryDepartmentsPanel
+                    companyId={apiCompany}
+                    departments={tenantDepartments}
+                    onDepartmentsChange={setTenantDepartments}
+                    canManage={canMutateInventory || canConfigureOrg}
+                    busy={actionBusy}
+                    onBusyChange={setActionBusy}
+                    onError={setSettingsDepartmentError}
+                  />
+                </div>
               ) : null}
               {settingsTab === "Locations" ? (
                 <div className="space-y-3">
