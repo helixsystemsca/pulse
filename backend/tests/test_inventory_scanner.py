@@ -79,3 +79,87 @@ async def test_inventory_scanner_receive_and_issue(client, db_session, seeded_te
         await db_session.execute(select(InventoryItem).where(InventoryItem.id == item.id))
     ).scalar_one()
     assert float(row.quantity) == 12
+
+
+@pytest.mark.asyncio
+async def test_inventory_transaction_settings_and_batch(client, db_session, seeded_tenant) -> None:
+    cid = seeded_tenant.company_id
+    await sync_enabled_features(db_session, cid, ["inventory", "inventory_scanner"])
+
+    scanner_id = "cccccccc-cccc-cccc-cccc-cccccccccccc"
+    scanner = User(
+        id=scanner_id,
+        company_id=cid,
+        email="scanner-batch@example.com",
+        hashed_password=hash_password("pytest-pass-12345"),
+        full_name="Scanner Batch",
+        roles=[UserRole.worker.value],
+        is_active=True,
+        feature_allow_extra=["inventory_scanner"],
+        rbac_permission_extra=["inventory.scan"],
+    )
+    db_session.add(scanner)
+    scope = await ensure_scope_for_company_slug(db_session, cid, "maintenance")
+    item_a = InventoryItem(
+        id="dddddddd-dddd-dddd-dddd-dddddddddddd",
+        company_id=cid,
+        scope_id=scope.id,
+        sku="BATCH-A",
+        name="Batch Item A",
+        item_type="part",
+        category="Test",
+        quantity=10,
+        unit="each",
+        low_stock_threshold=2,
+        inv_status="in_stock",
+        department_slug="maintenance",
+    )
+    item_b = InventoryItem(
+        id="eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+        company_id=cid,
+        scope_id=scope.id,
+        sku="BATCH-B",
+        name="Batch Item B",
+        item_type="part",
+        category="Test",
+        quantity=5,
+        unit="each",
+        low_stock_threshold=2,
+        inv_status="in_stock",
+        department_slug="maintenance",
+    )
+    db_session.add_all([item_a, item_b])
+    await db_session.commit()
+
+    token = create_access_token(
+        subject=scanner_id,
+        extra_claims={"company_id": cid, "role": UserRole.worker.value, "tv": 0},
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+
+    settings = await client.get("/api/inventory/scan/transaction-settings", headers=headers)
+    assert settings.status_code == 200
+    body = settings.json()
+    assert body["enable_batch_transactions"] is True
+    assert body["enable_references"] is False
+
+    batch = await client.post(
+        "/api/inventory/scan/transactions",
+        headers={**headers, "Content-Type": "application/json"},
+        json={
+            "transaction_type": "issue",
+            "lines": [
+                {"item_id": item_a.id, "quantity": 2},
+                {"item_id": item_b.id, "quantity": 1},
+            ],
+        },
+    )
+    assert batch.status_code == 200
+    out = batch.json()
+    assert out["transaction_type"] == "issue"
+    assert len(out["lines"]) == 2
+
+    row_a = (await db_session.execute(select(InventoryItem).where(InventoryItem.id == item_a.id))).scalar_one()
+    row_b = (await db_session.execute(select(InventoryItem).where(InventoryItem.id == item_b.id))).scalar_one()
+    assert float(row_a.quantity) == 8
+    assert float(row_b.quantity) == 4

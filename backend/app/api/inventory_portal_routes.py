@@ -46,7 +46,21 @@ from app.api.inventory_query_helpers import (
 from app.core.tenant_departments import validate_tenant_department_slug
 from app.core.pulse_storage import read_inventory_item_image_bytes, write_inventory_item_image_bytes
 from app.repositories import inventory_scope_repository as inv_scope_repo
+from app.schemas.inventory_transactions import (
+    InventoryBatchTransactionIn,
+    InventoryBatchTransactionOut,
+    InventoryTransactionLineIn,
+    InventoryTransactionReferenceIn,
+    InventoryTransactionSettingsOut,
+)
 from app.services.inventory_alert_service import maybe_send_low_stock_alert
+from app.services.inventory_transaction_service import (
+    _validate_references,
+    apply_transaction_line,
+    commit_batch_transaction,
+    transaction_settings_from_inventory_module,
+    transaction_settings_to_out,
+)
 from app.services.material_request_queue_service import is_item_low_stock, sync_queue_for_inventory_item
 from app.models.pulse_models import PulseWorkRequest
 from app.modules.pulse import service as pulse_svc
@@ -146,6 +160,12 @@ DEFAULT_INVENTORY_SETTINGS: dict[str, Any] = {
     "locations": [],
     "assignment_rules": {"checkout_required": True},
     "alerts": {"low_stock": True, "missing": True},
+    "transactions": {
+        "require_reference": False,
+        "enable_references": False,
+        "enable_batch_transactions": True,
+        "enable_location_selection": True,
+    },
 }
 
 
@@ -1076,6 +1096,7 @@ def _scan_lookup_out(
         unit=item.unit,
         low_stock_threshold=item.low_stock_threshold,
         location_name=z.name if z else None,
+        zone_id=str(item.zone_id) if item.zone_id else None,
         image_url=t.image_url if t else None,
         department_slug=item.department_slug or "maintenance",
     )
@@ -1097,6 +1118,17 @@ async def lookup_inventory_by_sku(
     return _scan_lookup_out(item, users=users, zones=zones, tools=tools)
 
 
+@router.get("/scan/transaction-settings", response_model=InventoryTransactionSettingsOut)
+async def get_inventory_transaction_settings(
+    db: Db,
+    _: InvScanUser,
+    cid: CompanyId,
+) -> InventoryTransactionSettingsOut:
+    row = await _get_settings_row(db, cid)
+    merged = merge_inventory_settings(row.settings if row else None)
+    return transaction_settings_to_out(transaction_settings_from_inventory_module(merged))
+
+
 @router.post("/scan/transaction", response_model=InventoryScanTransactionOut)
 async def post_inventory_scan_transaction(
     db: Db,
@@ -1106,65 +1138,91 @@ async def post_inventory_scan_transaction(
     body: InventoryScanTransactionIn,
 ) -> InventoryScanTransactionOut:
     item = await _lookup_item_by_sku(db, cid, policy, body.sku)
-    if not inv_scope_repo.can_write_inventory_item(policy, item):
-        raise HTTPException(status_code=403, detail="Inventory write denied")
-
-    qty = float(body.quantity)
-    before = float(item.quantity)
-    if body.action == "receive":
-        after = before + qty
-        delta = qty
-        action = "scanner_received"
-    else:
-        after = before - qty
-        if after < 0:
-            raise HTTPException(status_code=400, detail="Insufficient stock for issue")
-        delta = -qty
-        action = "scanner_issued"
-
-    item.quantity = after
-    _recompute_status(item)
-    item.last_movement_at = datetime.now(timezone.utc)
-    await _sync_stock_queue_and_alerts(db, item)
-    movement_id = str(uuid4())
-    db.add(
-        InventoryMovement(
-            id=movement_id,
-            company_id=cid,
-            item_id=item.id,
-            action=action,
-            performed_by=user.id,
-            zone_id=item.zone_id,
-            quantity=abs(qty),
-            meta={
-                "channel": "inventory_scanner_kiosk",
-                "transaction": body.action,
-                "quantity_before": before,
-                "quantity_after": after,
-                "quantity_delta": delta,
-                "sku": item.sku,
-                "category": item.category,
-                "item_type": item.item_type,
-                "notes": (body.notes or "").strip() or None,
-            },
+    row = await _get_settings_row(db, cid)
+    merged = merge_inventory_settings(row.settings if row else None)
+    cfg = transaction_settings_from_inventory_module(merged)
+    ref = None
+    if cfg.enable_references:
+        ref = InventoryTransactionReferenceIn(
+            reference_type=body.reference_type,
+            reference_id=body.reference_id,
+            reference_note=body.reference_note or body.notes,
         )
-    )
+    try:
+        _validate_references(
+            cfg,
+            batch_ref=ref,
+            lines=[
+                InventoryTransactionLineIn(
+                    item_id=item.id,
+                    quantity=body.quantity,
+                    location_id=body.location_id,
+                    reference=ref,
+                )
+            ],
+        )
+        line_out = await apply_transaction_line(
+            db,
+            company_id=cid,
+            user=user,
+            policy=policy,
+            item=item,
+            transaction_type=body.action,
+            quantity=body.quantity,
+            location_id=body.location_id if cfg.enable_location_selection else None,
+            reference=ref,
+            legacy_notes=body.notes if not cfg.enable_references else None,
+            channel="inventory_scanner_kiosk",
+        )
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="Inventory write denied") from None
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
     await db.commit()
     await db.refresh(item)
     user_ids, zone_ids, tool_ids = collect_item_reference_ids([item])
     users, zones, tools = await ctx_maps_for_ids(
         db, cid, user_ids=user_ids, zone_ids=zone_ids, tool_ids=tool_ids
     )
-    mv = await db.get(InventoryMovement, movement_id)
+    delta = line_out.quantity_after - line_out.quantity_before
     return InventoryScanTransactionOut(
         item=_scan_lookup_out(item, users=users, zones=zones, tools=tools),
         action=body.action,
         quantity_delta=delta,
-        quantity_before=before,
-        quantity_after=after,
-        movement_id=movement_id,
-        created_at=mv.created_at if mv else datetime.now(timezone.utc),
+        quantity_before=line_out.quantity_before,
+        quantity_after=line_out.quantity_after,
+        movement_id=line_out.movement_id,
+        created_at=datetime.now(timezone.utc),
     )
+
+
+@router.post("/scan/transactions", response_model=InventoryBatchTransactionOut)
+async def post_inventory_batch_transaction(
+    db: Db,
+    user: InvManageUser,
+    cid: CompanyId,
+    policy: InventoryPolicyDep,
+    body: InventoryBatchTransactionIn,
+) -> InventoryBatchTransactionOut:
+    row = await _get_settings_row(db, cid)
+    merged = merge_inventory_settings(row.settings if row else None)
+    try:
+        out = await commit_batch_transaction(
+            db,
+            company_id=cid,
+            user=user,
+            policy=policy,
+            body=body,
+            module_settings=merged,
+            channel="inventory_transactions",
+        )
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="Inventory write denied") from None
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    await db.commit()
+    return out
 
 
 @router.get("/{item_id}", response_model=InventoryDetailOut)

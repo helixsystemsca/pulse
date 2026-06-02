@@ -4,11 +4,17 @@ export const INVENTORY_SCANNER_KIOSK_PATH = "/kiosk/inventory-scanner";
 /** Query flag: `?kiosk=1` — browser fullscreen + intended for a fixed tablet window. */
 export const INVENTORY_SCANNER_KIOSK_QUERY = "kiosk";
 
-export function inventoryScannerHref(opts?: { kioskDisplay?: boolean }): string {
-  if (opts?.kioskDisplay) {
-    return `${INVENTORY_SCANNER_KIOSK_PATH}?${INVENTORY_SCANNER_KIOSK_QUERY}=1`;
-  }
-  return INVENTORY_SCANNER_KIOSK_PATH;
+export type InventoryScannerMode = "issue" | "receive";
+
+export function inventoryScannerHref(opts?: {
+  kioskDisplay?: boolean;
+  mode?: InventoryScannerMode;
+}): string {
+  const params = new URLSearchParams();
+  if (opts?.kioskDisplay) params.set(INVENTORY_SCANNER_KIOSK_QUERY, "1");
+  if (opts?.mode) params.set("mode", opts.mode);
+  const q = params.toString();
+  return q ? `${INVENTORY_SCANNER_KIOSK_PATH}?${q}` : INVENTORY_SCANNER_KIOSK_PATH;
 }
 
 export function isInventoryScannerKioskDisplayParam(value: string | null | undefined): boolean {

@@ -630,6 +630,13 @@ export function mergeRegisterFormConfig(raw?: InventoryRegisterFormConfig | null
 
 
 
+export type InventoryTransactionSettingsConfig = {
+  require_reference: boolean;
+  enable_references: boolean;
+  enable_batch_transactions: boolean;
+  enable_location_selection: boolean;
+};
+
 export type MergedInventorySettings = {
 
   setup_completed: boolean;
@@ -645,6 +652,8 @@ export type MergedInventorySettings = {
   assignment_rules: { checkout_required?: boolean };
 
   alerts: { low_stock?: boolean; missing?: boolean };
+
+  transactions: InventoryTransactionSettingsConfig;
 
 };
 
@@ -662,6 +671,13 @@ const DEFAULT_STATUS_RULES = {
 
   maintenance: true,
 
+};
+
+const DEFAULT_TRANSACTIONS: InventoryTransactionSettingsConfig = {
+  require_reference: false,
+  enable_references: false,
+  enable_batch_transactions: true,
+  enable_location_selection: true,
 };
 
 
@@ -687,6 +703,11 @@ export function mergeInventoryModuleSettings(raw: InventoryModuleSettings = {}):
     assignment_rules: { checkout_required: true, ...raw.assignment_rules },
 
     alerts: { low_stock: true, missing: true, ...raw.alerts },
+
+    transactions: {
+      ...DEFAULT_TRANSACTIONS,
+      ...(raw.transactions as Partial<InventoryTransactionSettingsConfig> | undefined),
+    },
 
   };
 
@@ -747,6 +768,8 @@ export function settingsPayloadFromMerged(merged: MergedInventorySettings): Inve
     assignment_rules: merged.assignment_rules,
 
     alerts: merged.alerts,
+
+    transactions: merged.transactions,
 
   };
 

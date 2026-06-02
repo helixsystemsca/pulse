@@ -108,6 +108,12 @@ export type InventoryModuleSettings = {
   locations?: string[];
   assignment_rules?: { checkout_required?: boolean };
   alerts?: { low_stock?: boolean; missing?: boolean };
+  transactions?: {
+    require_reference?: boolean;
+    enable_references?: boolean;
+    enable_batch_transactions?: boolean;
+    enable_location_selection?: boolean;
+  };
 };
 
 function companyQs(companyId: string | null): string {

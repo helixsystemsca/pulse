@@ -316,6 +316,7 @@ class InventoryScanLookupOut(BaseModel):
     unit: str
     low_stock_threshold: float
     location_name: Optional[str] = None
+    zone_id: Optional[str] = None
     image_url: Optional[str] = None
     department_slug: str = "maintenance"
 
@@ -324,6 +325,10 @@ class InventoryScanTransactionIn(BaseModel):
     sku: str = Field(min_length=1, max_length=128)
     action: Literal["receive", "issue"]
     quantity: float = Field(gt=0)
+    location_id: Optional[str] = Field(None, description="Facility zone id")
+    reference_type: Optional[str] = Field(None, max_length=64)
+    reference_id: Optional[str] = Field(None, max_length=128)
+    reference_note: Optional[str] = Field(None, max_length=512)
     notes: Optional[str] = Field(None, max_length=512)
 
 
