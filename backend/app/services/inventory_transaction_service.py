@@ -51,14 +51,18 @@ class TransactionSettings:
 
 
 def transaction_settings_from_inventory_module(settings: dict[str, Any]) -> TransactionSettings:
+    from app.core.inventory_module_config import transaction_flags_from_settings
+
+    enable_refs, require_ref, enable_loc = transaction_flags_from_settings(settings)
     raw = settings.get("transactions")
-    if not isinstance(raw, dict):
-        return TransactionSettings()
+    batch = True
+    if isinstance(raw, dict):
+        batch = raw.get("enable_batch_transactions", True) is not False
     return TransactionSettings(
-        require_reference=bool(raw.get("require_reference", False)),
-        enable_references=bool(raw.get("enable_references", False)),
-        enable_batch_transactions=raw.get("enable_batch_transactions", True) is not False,
-        enable_location_selection=raw.get("enable_location_selection", True) is not False,
+        require_reference=require_ref,
+        enable_references=enable_refs,
+        enable_batch_transactions=batch,
+        enable_location_selection=enable_loc,
     )
 
 

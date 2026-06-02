@@ -669,6 +669,66 @@ class MaterialRequestDraftItem(Base):
     estimated_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
 
+class PurchasingQuickPurchase(Base):
+    """Field / card purchase recorded outside formal replenishment."""
+
+    __tablename__ = "purchasing_quick_purchases"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    vendor_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("inventory_vendors.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    vendor_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    purchase_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    total_amount: Mapped[float] = mapped_column(Float, nullable=False)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    receipt_filename: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    receipt_content_type: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    add_to_inventory: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_by_user_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+    lines: Mapped[list["PurchasingQuickPurchaseLine"]] = relationship(
+        back_populates="purchase", cascade="all, delete-orphan"
+    )
+
+
+class PurchasingQuickPurchaseLine(Base):
+    __tablename__ = "purchasing_quick_purchase_lines"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    purchase_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("purchasing_quick_purchases.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    quantity: Mapped[float] = mapped_column(Float, nullable=False, default=1)
+    unit_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    category: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    inventory_item_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("inventory_items.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    zone_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("zones.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    add_to_inventory: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    purchase: Mapped["PurchasingQuickPurchase"] = relationship(back_populates="lines")
+
+
 class InventoryMovement(Base):
     """Assignment, moves, usage, returns for advanced inventory tracking."""
 
@@ -759,6 +819,7 @@ class InventoryVendor(Base):
     postal_code: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     country: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    preferred_vendor: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     department_slug: Mapped[str] = mapped_column(String(64), nullable=False, default="maintenance", index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True

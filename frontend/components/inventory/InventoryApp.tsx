@@ -86,6 +86,7 @@ import {
   InventorySetupWizard,
   mergedSettingsForSave,
 } from "@/components/inventory/InventorySetupWizard";
+import { referenceModeFromTransactions } from "@/lib/inventory/inventory-module-config";
 import {
   mergeInventoryModuleSettings,
   registerFormCategoryFilterOptions,
@@ -782,6 +783,18 @@ export function InventoryApp() {
         }
         actions={
           <>
+            {mergedSettings.purchasing.enabled ? (
+              <Link
+                href={pulseAppHref("/dashboard/purchasing")}
+                className={cn(
+                  buttonVariants({ surface: "light", intent: "secondary" }),
+                  "inline-flex items-center gap-2 px-4 py-2.5",
+                )}
+              >
+                <Truck className="h-4 w-4" aria-hidden />
+                {mergedSettings.purchasing.purchasing_label}
+              </Link>
+            ) : null}
             {canOpenScannerKiosk ? (
               <>
                 <Link
@@ -954,7 +967,11 @@ export function InventoryApp() {
           ) : null}
 
           {inventoryTab === "material_requests" ? (
-            <InventoryMaterialRequestsPanel apiCompany={apiCompany} canMutate={canMutateInventory} />
+            <InventoryMaterialRequestsPanel
+              apiCompany={apiCompany}
+              canMutate={canMutateInventory}
+              procurementActionLabel={mergedSettings.inventory.procurement_action_label}
+            />
           ) : null}
 
           {inventoryTab === "vendors" ? (
@@ -1792,7 +1809,16 @@ export function InventoryApp() {
               {settingsTab === "Transactions" ? (
                 <InventoryTransactionSettingsPanel
                   value={settingsDraft.transactions}
-                  onChange={(transactions) => setSettingsDraft((d) => ({ ...d, transactions }))}
+                  onChange={(transactions) =>
+                    setSettingsDraft((d) => ({
+                      ...d,
+                      transactions,
+                      inventory: {
+                        ...d.inventory,
+                        reference_mode: referenceModeFromTransactions(transactions),
+                      },
+                    }))
+                  }
                   disabled={actionBusy}
                 />
               ) : null}

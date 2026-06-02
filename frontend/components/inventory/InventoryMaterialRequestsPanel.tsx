@@ -27,6 +27,9 @@ const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-mut
 type Props = {
   apiCompany: string | null;
   canMutate: boolean;
+  /** Tenant label for export / procurement actions (from inventory wizard settings). */
+  procurementActionLabel?: string;
+  replenishmentLabel?: string;
 };
 
 function formatMoney(n: number | null | undefined): string {
@@ -34,7 +37,12 @@ function formatMoney(n: number | null | undefined): string {
   return `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-export function InventoryMaterialRequestsPanel({ apiCompany, canMutate }: Props) {
+export function InventoryMaterialRequestsPanel({
+  apiCompany,
+  canMutate,
+  procurementActionLabel = "Export Request",
+  replenishmentLabel = "Replenishment Queue",
+}: Props) {
   const [queue, setQueue] = useState<MaterialRequestQueueRow[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [draft, setDraft] = useState<MaterialRequestDraft | null>(null);
@@ -176,7 +184,7 @@ export function InventoryMaterialRequestsPanel({ apiCompany, canMutate }: Props)
       <section className="space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h2 className="text-lg font-bold text-pulse-navy dark:text-gray-100">Low stock queue</h2>
+            <h2 className="text-lg font-bold text-pulse-navy dark:text-gray-100">{replenishmentLabel}</h2>
             <p className="text-sm text-pulse-muted">
               Items at or below minimum quantity appear here automatically when stock is updated.
             </p>
@@ -188,7 +196,7 @@ export function InventoryMaterialRequestsPanel({ apiCompany, canMutate }: Props)
               disabled={busy || selectedCount === 0}
               onClick={() => void createDraft()}
             >
-              Create material request
+              Create draft
               {selectedCount > 0 ? ` (${selectedCount})` : ""}
             </button>
           ) : null}
@@ -329,7 +337,7 @@ export function InventoryMaterialRequestsPanel({ apiCompany, canMutate }: Props)
             <div className="flex flex-wrap gap-2">
               <button type="button" className={SECONDARY_BTN} disabled={busy} onClick={() => void exportDraft()}>
                 <Download className="mr-2 inline h-4 w-4" aria-hidden />
-                Export to Excel
+                {procurementActionLabel.trim() || "Export Request"}
               </button>
               {canMutate && draft.status === "draft" ? (
                 <button type="button" className={PRIMARY_BTN} disabled={busy} onClick={() => void submitDraft()}>

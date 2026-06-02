@@ -5,6 +5,20 @@
  */
 
 import type { InventoryModuleSettings } from "@/lib/inventoryService";
+import {
+  DEFAULT_INVENTORY_MODULE_CONFIG,
+  inventoryConfigFromModuleSettings,
+  inventoryBlockForModuleSettings,
+  locationSelectionFromMode,
+  transactionsFromReferenceMode,
+  type InventoryModuleConfig,
+} from "@/lib/inventory/inventory-module-config";
+import {
+  DEFAULT_PURCHASING_CONFIG,
+  mergePurchasingConfig,
+  purchasingBlockForSave,
+  type PurchasingModuleConfig,
+} from "@/lib/purchasing/purchasing-module-config";
 
 
 
@@ -655,6 +669,10 @@ export type MergedInventorySettings = {
 
   transactions: InventoryTransactionSettingsConfig;
 
+  inventory: InventoryModuleConfig;
+
+  purchasing: PurchasingModuleConfig;
+
 };
 
 
@@ -704,10 +722,22 @@ export function mergeInventoryModuleSettings(raw: InventoryModuleSettings = {}):
 
     alerts: { low_stock: true, missing: true, ...raw.alerts },
 
-    transactions: {
-      ...DEFAULT_TRANSACTIONS,
-      ...(raw.transactions as Partial<InventoryTransactionSettingsConfig> | undefined),
-    },
+    transactions: (() => {
+      const inventory = inventoryConfigFromModuleSettings(raw);
+      const legacyTx = {
+        ...DEFAULT_TRANSACTIONS,
+        ...(raw.transactions as Partial<InventoryTransactionSettingsConfig> | undefined),
+      };
+      const synced = transactionsFromReferenceMode(inventory.reference_mode, legacyTx);
+      return {
+        ...synced,
+        enable_location_selection: locationSelectionFromMode(inventory.location_mode),
+      };
+    })(),
+
+    inventory: inventoryConfigFromModuleSettings(raw),
+
+    purchasing: mergePurchasingConfig(raw),
 
   };
 
@@ -771,9 +801,15 @@ export function settingsPayloadFromMerged(merged: MergedInventorySettings): Inve
 
     transactions: merged.transactions,
 
+    inventory: inventoryBlockForModuleSettings(merged.inventory),
+
+    purchasing: purchasingBlockForSave(merged.purchasing),
+
   };
 
 }
+
+export { DEFAULT_INVENTORY_MODULE_CONFIG, DEFAULT_PURCHASING_CONFIG };
 
 
 

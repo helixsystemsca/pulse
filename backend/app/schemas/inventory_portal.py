@@ -194,6 +194,7 @@ class InventoryVendorOut(BaseModel):
     postal_code: Optional[str] = None
     country: Optional[str] = None
     is_active: bool
+    preferred_vendor: bool = False
     created_at: datetime
     updated_at: datetime
 
@@ -216,6 +217,7 @@ class InventoryVendorCreateIn(BaseModel):
     postal_code: Optional[str] = Field(None, max_length=32)
     country: Optional[str] = Field(None, max_length=128)
     is_active: bool = True
+    preferred_vendor: bool = False
 
 
 class InventoryVendorPatchIn(BaseModel):
@@ -235,6 +237,7 @@ class InventoryVendorPatchIn(BaseModel):
     postal_code: Optional[str] = Field(None, max_length=32)
     country: Optional[str] = Field(None, max_length=128)
     is_active: Optional[bool] = None
+    preferred_vendor: Optional[bool] = None
 
 
 class InventoryContractorOut(BaseModel):

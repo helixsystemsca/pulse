@@ -166,6 +166,28 @@ DEFAULT_INVENTORY_SETTINGS: dict[str, Any] = {
         "enable_batch_transactions": True,
         "enable_location_selection": True,
     },
+    "inventory": {
+        "asset_types": ["consumables", "tools", "materials"],
+        "location_mode": "single",
+        "procurement_mode": "excel",
+        "procurement_action_label": "Export Request",
+        "reference_mode": "none",
+        "approval_mode": "none",
+    },
+    "purchasing": {
+        "enabled": True,
+        "enable_replenishment_requests": True,
+        "enable_quick_purchases": True,
+        "enable_receipt_uploads": True,
+        "enable_vendor_tracking": True,
+        "enable_contract_archive": False,
+        "enable_purchase_history": True,
+        "enable_monthly_expense_exports": True,
+        "require_vendor_selection": False,
+        "require_receipt_upload": False,
+        "purchasing_label": "Purchasing",
+        "replenishment_label": "Replenishment Queue",
+    },
 }
 
 
@@ -613,6 +635,7 @@ async def create_inventory_vendor(
         postal_code=(body.postal_code or "").strip() or None,
         country=(body.country or "").strip() or None,
         is_active=bool(body.is_active),
+        preferred_vendor=bool(body.preferred_vendor),
         created_at=now,
         updated_at=now,
     )
@@ -668,6 +691,8 @@ async def patch_inventory_vendor(
         setattr(row, k, None if v is None else (str(v).strip() or None))
     if "is_active" in data and data["is_active"] is not None:
         row.is_active = bool(data["is_active"])
+    if "preferred_vendor" in data and data["preferred_vendor"] is not None:
+        row.preferred_vendor = bool(data["preferred_vendor"])
     row.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(row)

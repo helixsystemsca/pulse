@@ -114,6 +114,28 @@ export type InventoryModuleSettings = {
     enable_batch_transactions?: boolean;
     enable_location_selection?: boolean;
   };
+  inventory?: {
+    asset_types?: string[];
+    location_mode?: string;
+    procurement_mode?: string;
+    procurement_action_label?: string;
+    reference_mode?: string;
+    approval_mode?: string;
+  };
+  purchasing?: {
+    enabled?: boolean;
+    enable_replenishment_requests?: boolean;
+    enable_quick_purchases?: boolean;
+    enable_receipt_uploads?: boolean;
+    enable_vendor_tracking?: boolean;
+    enable_contract_archive?: boolean;
+    enable_purchase_history?: boolean;
+    enable_monthly_expense_exports?: boolean;
+    require_vendor_selection?: boolean;
+    require_receipt_upload?: boolean;
+    purchasing_label?: string;
+    replenishment_label?: string;
+  };
 };
 
 function companyQs(companyId: string | null): string {

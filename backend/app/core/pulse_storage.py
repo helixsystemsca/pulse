@@ -350,6 +350,35 @@ async def read_inventory_item_image_bytes(company_id: str, item_id: str) -> Opti
     return _local()
 
 
+_RECEIPT_EXTS = (".pdf", ".jpg", ".jpeg", ".png", ".webp", ".heic")
+
+
+async def read_purchase_receipt_bytes(company_id: str, purchase_id: str) -> Optional[tuple[bytes, str]]:
+    sub = f"purchase_receipts/{company_id}"
+
+    def _local() -> Optional[tuple[bytes, str]]:
+        return _local_read_stem(sub, purchase_id, _RECEIPT_EXTS)
+
+    if _backend() == "s3":
+        return await _run_sync(lambda: _s3_read_stem(sub, purchase_id, _RECEIPT_EXTS))
+    return _local()
+
+
+async def write_purchase_receipt_bytes(
+    company_id: str, purchase_id: str, ext_with_dot: str, raw: bytes, content_type: str
+) -> None:
+    sub = f"purchase_receipts/{company_id}"
+    ct = (content_type or "").split(";")[0].strip() or media_type_for_ext(ext_with_dot)
+
+    def _local() -> None:
+        _local_write_stem(sub, purchase_id, ext_with_dot, raw)
+
+    if _backend() == "s3":
+        await _run_sync(lambda: _s3_write_stem(sub, purchase_id, ext_with_dot, ct, raw))
+    else:
+        await _run_sync(_local)
+
+
 async def write_inventory_item_image_bytes(
     company_id: str, item_id: str, ext_with_dot: str, raw: bytes, content_type: str
 ) -> None:

@@ -82,6 +82,7 @@ from app.api.tenant_roles_routes import router as tenant_roles_router
 from app.api.tenant_departments_routes import router as tenant_departments_router
 from app.api.inventory_portal_routes import router as inventory_portal_router
 from app.api.material_requests_routes import router as material_requests_router
+from app.api.purchasing_routes import router as purchasing_router
 from app.api.routes_schedule import router as schedule_router
 from app.api.telemetry_ingest_routes import router as telemetry_ingest_router
 from app.api.telemetry_positions_routes import router as telemetry_positions_router
@@ -283,6 +284,7 @@ app.include_router(tenant_roles_router, prefix="/api")
 app.include_router(tenant_departments_router, prefix="/api")
 app.include_router(inventory_portal_router, prefix="/api")
 app.include_router(material_requests_router, prefix="/api")
+app.include_router(purchasing_router, prefix="/api")
 app.include_router(schedule_router, prefix="/api")
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(setup_progress_router, prefix="/api/v1")
