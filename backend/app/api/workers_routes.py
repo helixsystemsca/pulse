@@ -44,6 +44,7 @@ from app.core.workers_permission_delegation import (
     actor_is_delegated_permission_editor,
     actor_may_set_worker_feature_allow_extra,
 )
+from app.core.tenant_context import resolve_tenant_company_id
 from app.core.tenant_departments import validate_tenant_department_slug
 from app.core.workspace_departments import (
     normalize_workspace_department_slug,
@@ -162,16 +163,7 @@ async def resolve_workers_company_id(
     user: Annotated[User, Depends(get_current_user)],
     company_id: Optional[str] = Query(None, description="Required for system administrators"),
 ) -> str:
-    if user_has_any_role(user, UserRole.system_admin) or user.is_system_admin:
-        if not company_id:
-            raise HTTPException(status_code=400, detail="company_id is required for system administrators")
-        return company_id
-    if user.company_id is None:
-        raise HTTPException(status_code=403, detail="Not a tenant user")
-    cid = str(user.company_id)
-    if company_id is not None and company_id != cid:
-        raise HTTPException(status_code=403, detail="Company access denied")
-    return cid
+    return resolve_tenant_company_id(user, company_id, path="/api/workers")
 
 
 CompanyId = Annotated[str, Depends(resolve_workers_company_id)]

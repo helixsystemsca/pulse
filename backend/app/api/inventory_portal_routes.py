@@ -7,6 +7,7 @@ Multi-tenant with optional `company_id` for system administrators.
 from __future__ import annotations
 
 import copy
+import logging
 from datetime import datetime, timezone
 from typing import Annotated, Any, Optional
 from uuid import uuid4
@@ -45,6 +46,7 @@ from app.api.inventory_query_helpers import (
     ctx_maps_for_ids,
     last_used_at_map,
 )
+from app.core.tenant_context import resolve_tenant_company_id
 from app.core.tenant_departments import validate_tenant_department_slug
 from app.core.pulse_storage import read_inventory_item_image_bytes, write_inventory_item_image_bytes
 from app.repositories import inventory_scope_repository as inv_scope_repo
@@ -97,6 +99,7 @@ from app.schemas.inventory_portal import (
 )
 
 router = APIRouter(prefix="/inventory", tags=["inventory"])
+_log = logging.getLogger(__name__)
 
 _MAX_ITEM_IMAGE_BYTES = 5 * 1024 * 1024
 _ITEM_IMAGE_CT_EXT: dict[str, str] = {
@@ -223,16 +226,7 @@ async def resolve_inv_company_id(
     user: Annotated[User, Depends(get_current_user)],
     company_id: Optional[str] = Query(None, description="Required for system administrators"),
 ) -> str:
-    if user_has_any_role(user, UserRole.system_admin) or user.is_system_admin:
-        if not company_id:
-            raise HTTPException(status_code=400, detail="company_id is required for system administrators")
-        return company_id
-    if user.company_id is None:
-        raise HTTPException(status_code=403, detail="Not a tenant user")
-    cid = str(user.company_id)
-    if company_id is not None and company_id != cid:
-        raise HTTPException(status_code=403, detail="Company access denied")
-    return cid
+    return resolve_tenant_company_id(user, company_id, path="/api/inventory")
 
 
 CompanyId = Annotated[str, Depends(resolve_inv_company_id)]
@@ -1355,15 +1349,46 @@ async def post_inventory_batch_transaction(
 @router.get("/{item_id}", response_model=InventoryDetailOut)
 async def get_inventory_item(
     db: Db,
-    _: InvUser,
+    user: InvUser,
     cid: CompanyId,
     policy: InventoryPolicyDep,
     item_id: str,
 ) -> InventoryDetailOut:
     item = await db.get(InventoryItem, item_id)
-    if not item or item.company_id != cid:
+    if not item:
+        _log.info(
+            "Inventory item lookup missed",
+            extra={
+                "tenant_id": cid,
+                "user_id": str(user.id),
+                "item_id": item_id,
+                "reason": "not_found",
+            },
+        )
+        raise HTTPException(status_code=404, detail="Not found")
+    if item.company_id != cid:
+        _log.info(
+            "Inventory item lookup denied",
+            extra={
+                "tenant_id": cid,
+                "user_id": str(user.id),
+                "item_id": item_id,
+                "item_company_id": str(item.company_id),
+                "reason": "wrong_tenant",
+            },
+        )
         raise HTTPException(status_code=404, detail="Not found")
     if not inv_scope_repo.can_read_inventory_item(policy, item):
+        _log.info(
+            "Inventory item lookup denied",
+            extra={
+                "tenant_id": cid,
+                "user_id": str(user.id),
+                "item_id": item_id,
+                "item_scope_id": str(item.scope_id),
+                "reason": "scope_denied",
+            },
+        )
         raise HTTPException(status_code=404, detail="Not found")
     return await _inventory_detail_payload(db, cid, item)
 

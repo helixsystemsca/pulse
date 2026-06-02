@@ -1,0 +1,26 @@
+"""Tenant departments API."""
+
+import pytest
+from httpx import ASGITransport, AsyncClient
+
+from app.main import app
+from tests.conftest import auth_headers
+
+
+@pytest.mark.asyncio
+async def test_list_tenant_departments_seeded_tenant(seeded_tenant) -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        res = await client.get(
+            "/api/workers/tenant-departments",
+            headers={
+                **auth_headers(seeded_tenant.manager_token),
+                "Origin": "https://ops.helixsystems.ca",
+            },
+        )
+    assert res.status_code == 200, res.text
+    assert res.headers.get("access-control-allow-origin") == "https://ops.helixsystems.ca"
+    body = res.json()
+    assert isinstance(body.get("items"), list)
+    assert len(body["items"]) >= 1
+    slugs = {row["slug"] for row in body["items"]}
+    assert "maintenance" in slugs

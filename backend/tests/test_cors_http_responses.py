@@ -12,6 +12,21 @@ from app.main import _validation_errors_for_json, app
 from tests.conftest import auth_headers
 
 PANORAMA_ORIGIN = "https://panorama.helixsystems.ca"
+OPS_ORIGIN = "https://ops.helixsystems.ca"
+
+
+def test_options_preflight_includes_ops_origin() -> None:
+    client = TestClient(app)
+    res = client.options(
+        "/api/workers/tenant-departments",
+        headers={
+            "Origin": OPS_ORIGIN,
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "authorization,content-type",
+        },
+    )
+    assert res.status_code == 200
+    assert res.headers.get("access-control-allow-origin") == OPS_ORIGIN
 
 
 def test_options_preflight_includes_panorama_origin() -> None:

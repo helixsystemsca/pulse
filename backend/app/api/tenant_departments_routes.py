@@ -1,15 +1,17 @@
-"""Tenant workspace departments — per-company slug/name list."""
+"""Tenant department CRUD (`/api/workers/tenant-departments`)."""
 
 from __future__ import annotations
 
+import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.exc import IntegrityError
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.api.deps import get_current_user
 from app.api.workers_routes import CompanyId, Db, resolve_workers_company_id
 from app.core.rbac.resolve import effective_rbac_permission_keys
+from app.core.tenant_context import log_tenant_context
 from app.core.tenant_departments import (
     create_tenant_department,
     delete_tenant_department,
@@ -28,6 +30,7 @@ from app.schemas.tenant_departments import (
 )
 
 router = APIRouter(prefix="/workers/tenant-departments", tags=["tenant-departments"])
+_log = logging.getLogger(__name__)
 
 
 async def require_tenant_department_reader(
@@ -83,12 +86,57 @@ def _out(row) -> TenantDepartmentOut:
     )
 
 
-@router.get("", response_model=TenantDepartmentListOut)
-async def list_departments(db: Db, _: TenantDeptReader, cid: CompanyId) -> TenantDepartmentListOut:
-    await ensure_default_tenant_departments(db, cid)
-    await db.commit()
+async def _seed_and_list_departments(db: Db, cid: str, *, user_id: str) -> list:
+    log_tenant_context(user_id=user_id, tenant_id=cid, path="/api/workers/tenant-departments")
+    try:
+        await ensure_default_tenant_departments(db, cid)
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        _log.info(
+            "Tenant departments default seed race (concurrent request)",
+            extra={"tenant_id": cid},
+        )
     rows = await list_tenant_departments(db, cid)
-    return TenantDepartmentListOut(items=[_out(r) for r in rows])
+    _log.info(
+        "Tenant departments listed",
+        extra={"tenant_id": cid, "department_count": len(rows)},
+    )
+    return rows
+
+
+@router.get("", response_model=TenantDepartmentListOut)
+async def list_departments(
+    request: Request,
+    db: Db,
+    user: TenantDeptReader,
+    cid: CompanyId,
+) -> TenantDepartmentListOut:
+    try:
+        rows = await _seed_and_list_departments(db, cid, user_id=str(user.id))
+        return TenantDepartmentListOut(items=[_out(r) for r in rows])
+    except HTTPException:
+        raise
+    except SQLAlchemyError as exc:
+        _log.exception(
+            "Tenant departments query failed tenant_id=%s path=%s",
+            cid,
+            request.url.path,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Tenant departments query failed: {exc.__class__.__name__}",
+        ) from exc
+    except Exception as exc:
+        _log.exception(
+            "Tenant departments unexpected error tenant_id=%s path=%s",
+            cid,
+            request.url.path,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Tenant departments failed: {exc.__class__.__name__}: {exc}",
+        ) from exc
 
 
 @router.post("", response_model=TenantDepartmentOut, status_code=status.HTTP_201_CREATED)

@@ -75,7 +75,6 @@ import {
 import { InventoryRegisterFieldsEditor } from "@/components/inventory/InventoryRegisterFieldsEditor";
 import { InventoryDepartmentsPanel } from "@/components/inventory/InventoryDepartmentsPanel";
 import { InventoryLocationsPanel } from "@/components/inventory/InventoryLocationsPanel";
-import { InventoryPredictiveSearch } from "@/components/inventory/InventoryPredictiveSearch";
 import { InventoryTransactionSettingsPanel } from "@/components/inventory/InventoryTransactionSettingsPanel";
 import { InventoryMaterialRequestsPanel } from "@/components/inventory/InventoryMaterialRequestsPanel";
 import { InventoryItemDetailFields } from "@/components/inventory/InventoryItemDetailFields";
@@ -300,6 +299,19 @@ export function InventoryApp() {
     const t = window.setTimeout(() => setQDebounced(q.trim()), 300);
     return () => window.clearTimeout(t);
   }, [q]);
+
+  /** Drop stale list/detail state when tenant or session changes (login, impersonation, admin company pick). */
+  useEffect(() => {
+    setDetailId(null);
+    setDetail(null);
+    setEditOpen(false);
+    setEditTargetId(null);
+    setPage(0);
+    setRows([]);
+    setTotal(0);
+    setSummary(null);
+    setListError(null);
+  }, [effectiveCompanyId, session?.access_token]);
 
   useEffect(() => {
     if (!canConfigureOrg || !dataEnabled || !effectiveCompanyId) {
@@ -972,16 +984,6 @@ export function InventoryApp() {
         </p>
       ) : (
         <>
-          {inventoryTab === "list" ? (
-            <InventoryPredictiveSearch
-              canTransact={canOpenScannerKiosk}
-              onOpenItem={(id) => {
-                setDetailId(id);
-                setMovementOpen(true);
-              }}
-            />
-          ) : null}
-
           {inventoryTab === "queue" ? (
             <InventoryMaterialRequestsPanel
               apiCompany={apiCompany}
