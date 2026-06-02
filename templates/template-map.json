@@ -1,0 +1,81 @@
+{
+  "templateId": "kent_material_request",
+  "templateFile": "kent_material_request.xlsx",
+  "sheetName": null,
+  "version": 1,
+  "discoveredAt": "2026-06-02",
+  "fields": {
+    "project": {
+      "cell": "E3",
+      "label": "Project:",
+      "labelCell": "D3",
+      "description": "Project name (e.g. KEARL). Do not populate MR number in H1/I1."
+    },
+    "location": {
+      "cell": "G2",
+      "label": "Job Description / Location:",
+      "labelCell": "E2",
+      "description": "Job description or site location."
+    },
+    "date": {
+      "cell": "H3",
+      "label": "DATE:",
+      "labelCell": "H2",
+      "description": "Export date (YYYY-MM-DD). Merged with I3."
+    },
+    "costObject": {
+      "cell": "G3",
+      "label": "Cost Object",
+      "description": "Header-level cost object / WBS (sample used A4003727)."
+    },
+    "comments": {
+      "cell": "G25",
+      "label": "Comments:",
+      "labelCell": "G24",
+      "description": "Free-text comments. Merged range G25:G29."
+    },
+    "excluded": {
+      "mrNumber": {
+        "cells": ["H1", "I1"],
+        "description": "MR number assigned outside Pulse — leave blank."
+      },
+      "poNumber": {
+        "column": "C",
+        "headerRow": 4,
+        "description": "PO numbers per line — leave blank."
+      },
+      "signatures": {
+        "rows": [24, 25, 26, 27, 28, 29],
+        "description": "Requester, Site Manager, Client Approval — leave blank."
+      }
+    }
+  },
+  "projectCell": "E3",
+  "locationCell": "G2",
+  "dateCell": "H3",
+  "costObjectCell": "G3",
+  "commentsCell": "G25",
+  "headerRow": 4,
+  "firstDataRow": 5,
+  "lastTemplateDataRow": 23,
+  "columns": {
+    "lineNumber": "A",
+    "reimbursable": "B",
+    "poNumber": "C",
+    "costObject": "D",
+    "vendor": "E",
+    "vendorPart": "F",
+    "description": "G",
+    "quantity": "H",
+    "unit": "I"
+  },
+  "populateColumns": {
+    "reimbursable": "B",
+    "vendor": "E",
+    "vendorPart": "F",
+    "description": "G",
+    "quantity": "H",
+    "unit": "I"
+  },
+  "fileNamePattern": "MR_{project}_{date}.xlsx"
+}

@@ -15,12 +15,17 @@ class MaterialRequestQueueOut(BaseModel):
     sku: str
     category: Optional[str] = None
     vendor: Optional[str] = None
+    vendor_part_number: Optional[str] = None
+    unit: Optional[str] = None
+    reimbursable: Optional[bool] = None
     current_qty: float
     minimum_qty: float
     maximum_qty: Optional[float] = None
     reorder_qty: float
     estimated_unit_cost: Optional[float] = None
     status: str
+    exported_at: Optional[datetime] = None
+    export_batch_id: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
@@ -31,6 +36,32 @@ class MaterialRequestQueueListOut(BaseModel):
 
 class MaterialRequestQueuePatchIn(BaseModel):
     reorder_qty: Optional[float] = Field(None, ge=0)
+    reimbursable: Optional[bool] = None
+    vendor_part_number: Optional[str] = Field(None, max_length=128)
+    unit: Optional[str] = Field(None, max_length=32)
+
+
+class MaterialRequestQueueExportIn(BaseModel):
+    queue_item_ids: list[str] = Field(..., min_length=1)
+    project: str = Field(..., min_length=1, max_length=255)
+    location: str = Field(..., min_length=1, max_length=512)
+    cost_object: Optional[str] = Field(None, max_length=255)
+    comments: Optional[str] = Field(None, max_length=4000)
+
+
+class MaterialRequestExportOut(BaseModel):
+    id: str
+    project: str
+    location: str
+    cost_object: Optional[str] = None
+    item_count: int
+    file_name: str
+    created_by_user_id: Optional[str] = None
+    created_at: datetime
+
+
+class MaterialRequestExportListOut(BaseModel):
+    items: list[MaterialRequestExportOut]
 
 
 class MaterialRequestCreateDraftIn(BaseModel):

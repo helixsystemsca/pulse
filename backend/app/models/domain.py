@@ -610,8 +610,18 @@ class MaterialRequestQueue(Base):
     maximum_qty: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     reorder_qty: Mapped[float] = mapped_column(Float, nullable=False, default=0)
     estimated_unit_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-    #: pending | drafted | submitted | ordered | received
+    vendor_part_number: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    unit: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    reimbursable: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    #: pending | drafted | submitted | ordered | received | exported
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending", index=True)
+    exported_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    export_batch_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("material_request_exports.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
     )
@@ -620,6 +630,29 @@ class MaterialRequestQueue(Base):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
     )
+
+
+class MaterialRequestExport(Base):
+    """Audit log for template-based material request Excel exports."""
+
+    __tablename__ = "material_request_exports"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    created_by_user_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
+    )
+    project: Mapped[str] = mapped_column(String(255), nullable=False)
+    location: Mapped[str] = mapped_column(String(512), nullable=False)
+    cost_object: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    comments: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    item_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    file_name: Mapped[str] = mapped_column(String(255), nullable=False)
 
 
 class MaterialRequestDraft(Base):

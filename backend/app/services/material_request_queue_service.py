@@ -14,6 +14,7 @@ QUEUE_STATUS_DRAFTED = "drafted"
 QUEUE_STATUS_SUBMITTED = "submitted"
 QUEUE_STATUS_ORDERED = "ordered"
 QUEUE_STATUS_RECEIVED = "received"
+QUEUE_STATUS_EXPORTED = "exported"
 
 
 def compute_reorder_qty(item: InventoryItem) -> float:
@@ -28,11 +29,17 @@ def compute_reorder_qty(item: InventoryItem) -> float:
 
 
 def _snapshot_from_item(item: InventoryItem) -> dict:
+    attrs = item.custom_attributes or {}
+    vendor_part = attrs.get("vendor_part_number") or attrs.get("vendorPartNumber")
+    if vendor_part is not None:
+        vendor_part = str(vendor_part).strip() or None
     return {
         "item_name": item.name,
         "sku": item.sku,
         "category": item.category,
         "vendor": item.vendor,
+        "vendor_part_number": vendor_part or item.sku,
+        "unit": item.unit,
         "current_qty": float(item.quantity or 0),
         "minimum_qty": float(item.low_stock_threshold or 0),
         "maximum_qty": float(item.maximum_qty) if item.maximum_qty is not None else None,
@@ -125,3 +132,39 @@ async def patch_queue_reorder_qty(
     row.reorder_qty = max(0.0, float(reorder_qty))
     row.updated_at = datetime.now(timezone.utc)
     return row
+
+
+async def patch_queue_item(
+    db: AsyncSession,
+    row: MaterialRequestQueue,
+    *,
+    reorder_qty: float | None = None,
+    reimbursable: bool | None = None,
+    vendor_part_number: str | None = None,
+    unit: str | None = None,
+) -> MaterialRequestQueue:
+    if reorder_qty is not None:
+        row.reorder_qty = max(0.0, float(reorder_qty))
+    if reimbursable is not None:
+        row.reimbursable = reimbursable
+    if vendor_part_number is not None:
+        row.vendor_part_number = vendor_part_number.strip() or None
+    if unit is not None:
+        row.unit = unit.strip() or None
+    row.updated_at = datetime.now(timezone.utc)
+    return row
+
+
+async def get_queue_rows_for_export(
+    db: AsyncSession, company_id: str, queue_item_ids: list[str]
+) -> list[MaterialRequestQueue]:
+    q = await db.execute(
+        select(MaterialRequestQueue).where(
+            MaterialRequestQueue.company_id == company_id,
+            MaterialRequestQueue.id.in_(queue_item_ids),
+            MaterialRequestQueue.status == QUEUE_STATUS_PENDING,
+        )
+    )
+    rows = list(q.scalars().all())
+    rows.sort(key=lambda r: queue_item_ids.index(r.id))
+    return rows

@@ -1,19 +1,23 @@
 "use client";
 
-import { ClipboardList, Download, Loader2, Trash2 } from "lucide-react";
+import { ClipboardList, Download, History, Loader2, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { buttonVariants } from "@/styles/button-variants";
 import { cn } from "@/lib/cn";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
+import { MaterialRequestExportModal, type MaterialRequestExportForm } from "@/components/inventory/MaterialRequestExportModal";
 import {
   createMaterialRequestDraft,
   exportMaterialRequestDraft,
+  exportMaterialRequestQueue,
+  fetchMaterialRequestExports,
   fetchMaterialRequestQueue,
   formatQueueStatus,
   patchMaterialRequestQueueItem,
   removeMaterialRequestQueueItem,
   submitMaterialRequestDraft,
   type MaterialRequestDraft,
+  type MaterialRequestExportRecord,
   type MaterialRequestQueueRow,
 } from "@/lib/inventoryMaterialRequestsService";
 
@@ -50,6 +54,9 @@ export function InventoryMaterialRequestsPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reorderDrafts, setReorderDrafts] = useState<Record<string, string>>({});
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportHistory, setExportHistory] = useState<MaterialRequestExportRecord[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const loadQueue = useCallback(async () => {
     setLoading(true);
@@ -164,6 +171,39 @@ export function InventoryMaterialRequestsPanel({
     }
   }
 
+  async function loadExportHistory() {
+    try {
+      const items = await fetchMaterialRequestExports(apiCompany);
+      setExportHistory(items);
+    } catch {
+      setExportHistory([]);
+    }
+  }
+
+  async function handleQueueExport(form: MaterialRequestExportForm) {
+    const ids = [...selected];
+    if (!ids.length) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await exportMaterialRequestQueue(apiCompany, {
+        queue_item_ids: ids,
+        project: form.project,
+        location: form.location,
+        cost_object: form.cost_object || undefined,
+        comments: form.comments || undefined,
+      });
+      setExportOpen(false);
+      setSelected(new Set());
+      await loadQueue();
+      void loadExportHistory();
+    } catch (e) {
+      setError(parseClientApiError(e).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function exportDraft() {
     if (!draft) return;
     setBusy(true);
@@ -189,17 +229,43 @@ export function InventoryMaterialRequestsPanel({
               Items at or below minimum quantity appear here automatically when stock is updated.
             </p>
           </div>
-          {canMutate ? (
+          <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              className={PRIMARY_BTN}
-              disabled={busy || selectedCount === 0}
-              onClick={() => void createDraft()}
+              className={SECONDARY_BTN}
+              disabled={busy}
+              onClick={() => {
+                setHistoryOpen((v) => !v);
+                if (!historyOpen) void loadExportHistory();
+              }}
             >
-              Create draft
-              {selectedCount > 0 ? ` (${selectedCount})` : ""}
+              <History className="mr-2 inline h-4 w-4" aria-hidden />
+              Export history
             </button>
-          ) : null}
+            {canMutate ? (
+              <>
+                <button
+                  type="button"
+                  className={SECONDARY_BTN}
+                  disabled={busy || selectedCount === 0}
+                  onClick={() => setExportOpen(true)}
+                >
+                  <Download className="mr-2 inline h-4 w-4" aria-hidden />
+                  {procurementActionLabel.trim() || "Export Request"}
+                  {selectedCount > 0 ? ` (${selectedCount})` : ""}
+                </button>
+                <button
+                  type="button"
+                  className={PRIMARY_BTN}
+                  disabled={busy || selectedCount === 0}
+                  onClick={() => void createDraft()}
+                >
+                  Create draft
+                  {selectedCount > 0 ? ` (${selectedCount})` : ""}
+                </button>
+              </>
+            ) : null}
+          </div>
         </div>
 
         {loading ? (
@@ -315,6 +381,35 @@ export function InventoryMaterialRequestsPanel({
   return (
     <div className="space-y-8">
       {error ? <p className="text-sm text-rose-600">{error}</p> : null}
+
+      <MaterialRequestExportModal
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        itemCount={selectedCount}
+        busy={busy}
+        onExport={handleQueueExport}
+      />
+
+      {historyOpen ? (
+        <section className="rounded-xl border border-slate-200/90 bg-white p-4 dark:border-ds-border dark:bg-ds-primary">
+          <h3 className="text-sm font-bold text-pulse-navy dark:text-gray-100">Recent exports</h3>
+          {exportHistory.length === 0 ? (
+            <p className="mt-2 text-sm text-pulse-muted">No exports recorded yet.</p>
+          ) : (
+            <ul className="mt-3 space-y-2 text-sm">
+              {exportHistory.map((row) => (
+                <li key={row.id} className="flex flex-wrap justify-between gap-2 border-b border-slate-100 py-2 last:border-0 dark:border-ds-border">
+                  <span className="font-medium text-pulse-navy dark:text-gray-100">{row.file_name}</span>
+                  <span className="text-pulse-muted">
+                    {row.project} · {row.location} · {row.item_count} items ·{" "}
+                    {new Date(row.created_at).toLocaleString()}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      ) : null}
 
       {queueSection}
 

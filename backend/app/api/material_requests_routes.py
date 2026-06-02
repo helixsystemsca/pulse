@@ -16,6 +16,9 @@ from app.schemas.material_requests import (
     MaterialRequestDraftCreatedOut,
     MaterialRequestDraftItemOut,
     MaterialRequestDraftOut,
+    MaterialRequestExportListOut,
+    MaterialRequestExportOut,
+    MaterialRequestQueueExportIn,
     MaterialRequestQueueListOut,
     MaterialRequestQueueOut,
     MaterialRequestQueuePatchIn,
@@ -23,6 +26,7 @@ from app.schemas.material_requests import (
 from app.services import material_request_export_service as export_svc
 from app.services import material_request_queue_service as queue_svc
 from app.services import material_request_service as draft_svc
+from app.services import material_request_template_export_service as template_export_svc
 
 router = APIRouter(prefix="/material-requests", tags=["material-requests"])
 
@@ -39,12 +43,17 @@ def _queue_out(row) -> MaterialRequestQueueOut:
         sku=row.sku,
         category=row.category,
         vendor=row.vendor,
+        vendor_part_number=row.vendor_part_number,
+        unit=row.unit,
+        reimbursable=row.reimbursable,
         current_qty=row.current_qty,
         minimum_qty=row.minimum_qty,
         maximum_qty=row.maximum_qty,
         reorder_qty=row.reorder_qty,
         estimated_unit_cost=row.estimated_unit_cost,
         status=row.status,
+        exported_at=row.exported_at,
+        export_batch_id=row.export_batch_id,
         created_at=row.created_at,
         updated_at=row.updated_at,
     )
@@ -98,8 +107,21 @@ async def patch_material_request_queue_item(
         raise HTTPException(status_code=404, detail="Not found")
     if row.status != queue_svc.QUEUE_STATUS_PENDING:
         raise HTTPException(status_code=400, detail="Only pending queue items can be edited")
-    if body.reorder_qty is not None:
-        await queue_svc.patch_queue_reorder_qty(db, row, body.reorder_qty)
+    if (
+        body.reorder_qty is None
+        and body.reimbursable is None
+        and body.vendor_part_number is None
+        and body.unit is None
+    ):
+        raise HTTPException(status_code=400, detail="No fields to update")
+    await queue_svc.patch_queue_item(
+        db,
+        row,
+        reorder_qty=body.reorder_qty,
+        reimbursable=body.reimbursable,
+        vendor_part_number=body.vendor_part_number,
+        unit=body.unit,
+    )
     await db.commit()
     await db.refresh(row)
     return _queue_out(row)
@@ -117,6 +139,55 @@ async def remove_material_request_queue_item(
         raise HTTPException(status_code=404, detail="Not found")
     await queue_svc.remove_from_queue(db, row)
     await db.commit()
+
+
+@router.post("/queue/export")
+async def export_material_request_queue(
+    db: Db,
+    user: InvUser,
+    cid: CompanyId,
+    body: MaterialRequestQueueExportIn,
+) -> Response:
+    data, filename, _record = await template_export_svc.export_queue_to_workbook(
+        db,
+        cid,
+        user,
+        queue_item_ids=body.queue_item_ids,
+        project=body.project,
+        location=body.location,
+        cost_object=body.cost_object or "",
+        comments=body.comments or "",
+    )
+    await db.commit()
+    return Response(
+        content=data,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/exports", response_model=MaterialRequestExportListOut)
+async def list_material_request_exports(
+    db: Db,
+    _: InvUser,
+    cid: CompanyId,
+) -> MaterialRequestExportListOut:
+    rows = await template_export_svc.list_export_history(db, cid)
+    return MaterialRequestExportListOut(
+        items=[
+            MaterialRequestExportOut(
+                id=r.id,
+                project=r.project,
+                location=r.location,
+                cost_object=r.cost_object,
+                item_count=r.item_count,
+                file_name=r.file_name,
+                created_by_user_id=r.created_by_user_id,
+                created_at=r.created_at,
+            )
+            for r in rows
+        ]
+    )
 
 
 @router.post("/create-draft", response_model=MaterialRequestDraftCreatedOut, status_code=201)
