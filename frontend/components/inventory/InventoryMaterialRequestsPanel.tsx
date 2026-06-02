@@ -34,6 +34,8 @@ type Props = {
   /** Tenant label for export / procurement actions (from inventory wizard settings). */
   procurementActionLabel?: string;
   replenishmentLabel?: string;
+  notificationEmailDirectory?: string[];
+  defaultMrExportEmails?: string[];
 };
 
 function formatMoney(n: number | null | undefined): string {
@@ -46,6 +48,8 @@ export function InventoryMaterialRequestsPanel({
   canMutate,
   procurementActionLabel = "Export Request",
   replenishmentLabel = "Replenishment Queue",
+  notificationEmailDirectory = [],
+  defaultMrExportEmails = [],
 }: Props) {
   const [queue, setQueue] = useState<MaterialRequestQueueRow[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -192,6 +196,7 @@ export function InventoryMaterialRequestsPanel({
         location: form.location,
         cost_object: form.cost_object || undefined,
         comments: form.comments || undefined,
+        notify_emails: form.notify_emails.length ? form.notify_emails : undefined,
       });
       setExportOpen(false);
       setSelected(new Set());
@@ -387,6 +392,8 @@ export function InventoryMaterialRequestsPanel({
         onClose={() => setExportOpen(false)}
         itemCount={selectedCount}
         busy={busy}
+        emailDirectory={notificationEmailDirectory}
+        defaultNotifyEmails={defaultMrExportEmails}
         onExport={handleQueueExport}
       />
 

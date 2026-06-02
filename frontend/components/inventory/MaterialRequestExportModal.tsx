@@ -1,7 +1,8 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { EmailRecipientMultiSelect } from "@/components/inventory/EmailRecipientMultiSelect";
 import { PremiumModal } from "@/components/ui/premium-modal";
 import { buttonVariants } from "@/styles/button-variants";
 import { cn } from "@/lib/cn";
@@ -20,6 +21,7 @@ export type MaterialRequestExportForm = {
   location: string;
   cost_object: string;
   comments: string;
+  notify_emails: string[];
 };
 
 type Props = {
@@ -27,14 +29,30 @@ type Props = {
   onClose: () => void;
   itemCount: number;
   busy: boolean;
+  emailDirectory: string[];
+  defaultNotifyEmails: string[];
   onExport: (form: MaterialRequestExportForm) => void | Promise<void>;
 };
 
-export function MaterialRequestExportModal({ open, onClose, itemCount, busy, onExport }: Props) {
+export function MaterialRequestExportModal({
+  open,
+  onClose,
+  itemCount,
+  busy,
+  emailDirectory,
+  defaultNotifyEmails,
+  onExport,
+}: Props) {
   const [project, setProject] = useState("");
   const [location, setLocation] = useState("");
   const [costObject, setCostObject] = useState("");
   const [comments, setComments] = useState("");
+  const [notifyEmails, setNotifyEmails] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!open) return;
+    setNotifyEmails(defaultNotifyEmails.filter((e) => emailDirectory.includes(e)));
+  }, [open, defaultNotifyEmails, emailDirectory]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -43,6 +61,7 @@ export function MaterialRequestExportModal({ open, onClose, itemCount, busy, onE
       location: location.trim(),
       cost_object: costObject.trim(),
       comments: comments.trim(),
+      notify_emails: notifyEmails,
     });
   }
 
@@ -124,6 +143,16 @@ export function MaterialRequestExportModal({ open, onClose, itemCount, busy, onE
               rows={3}
             />
           </label>
+          <div className="sm:col-span-2">
+            <EmailRecipientMultiSelect
+              title="Email spreadsheet to"
+              description="Optional. Selected addresses receive the Excel file when SMTP is configured."
+              directory={emailDirectory}
+              selected={notifyEmails}
+              onChange={setNotifyEmails}
+              disabled={busy}
+            />
+          </div>
         </div>
       </form>
     </PremiumModal>

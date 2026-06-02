@@ -47,6 +47,10 @@ class MaterialRequestQueueExportIn(BaseModel):
     location: str = Field(..., min_length=1, max_length=512)
     cost_object: Optional[str] = Field(None, max_length=255)
     comments: Optional[str] = Field(None, max_length=4000)
+    notify_emails: Optional[list[str]] = Field(
+        None,
+        description="Recipients to email the exported spreadsheet (must be in tenant notification directory when configured).",
+    )
 
 
 class MaterialRequestExportOut(BaseModel):

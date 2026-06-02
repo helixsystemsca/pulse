@@ -26,6 +26,7 @@ from app.core.permission_feature_matrix import permission_matrix_department_for_
 from app.models.pulse_models import PulseWorkerHR
 from app.core.user_roles import user_has_any_role
 from app.models.domain import (
+    Company,
     InventoryContractor,
     InventoryItem,
     InventoryModuleSettings,
@@ -53,7 +54,9 @@ from app.schemas.inventory_transactions import (
     InventoryTransactionReferenceIn,
     InventoryTransactionSettingsOut,
 )
+from app.core.operational_notifications import patch_inventory_low_stock
 from app.services.inventory_alert_service import maybe_send_low_stock_alert
+from app.services.inventory_notifications import notifications_from_settings
 from app.services.inventory_transaction_service import (
     _validate_references,
     apply_transaction_line,
@@ -173,6 +176,12 @@ DEFAULT_INVENTORY_SETTINGS: dict[str, Any] = {
         "procurement_action_label": "Export Request",
         "reference_mode": "none",
         "approval_mode": "none",
+    },
+    "notifications": {
+        "email_directory": [],
+        "low_stock_enabled": True,
+        "low_stock_emails": [],
+        "mr_export_emails": [],
     },
     "purchasing": {
         "enabled": True,
@@ -473,6 +482,17 @@ async def patch_inv_settings(
         row.settings = base
     else:
         db.add(InventoryModuleSettings(id=str(uuid4()), company_id=cid, settings=base))
+
+    notif = notifications_from_settings(base)
+    if notif.email_directory:
+        co = await db.get(Company, cid)
+        if co is not None:
+            co.operational_notifications = patch_inventory_low_stock(
+                getattr(co, "operational_notifications", None),
+                enabled=notif.low_stock_enabled,
+                emails=notif.low_stock_emails or notif.email_directory,
+            )
+
     await db.commit()
     return InventorySettingsOut(settings=base)
 

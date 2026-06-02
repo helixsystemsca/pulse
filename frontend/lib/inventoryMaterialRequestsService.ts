@@ -46,6 +46,7 @@ export type MaterialRequestQueueExportBody = {
   location: string;
   cost_object?: string;
   comments?: string;
+  notify_emails?: string[];
 };
 
 export type MaterialRequestDraftItemRow = {

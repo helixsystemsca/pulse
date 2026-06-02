@@ -10,7 +10,10 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.domain import InventoryItem, MaterialRequestExport, MaterialRequestQueue, User
+from app.core.config import get_settings
+from app.core.email_smtp import send_material_request_export_email
+from app.models.domain import Company, InventoryItem, InventoryModuleSettings, MaterialRequestExport, MaterialRequestQueue, User
+from app.services.inventory_notifications import notifications_from_settings, parse_email_list
 from app.services.material_request_queue_service import (
     QUEUE_STATUS_EXPORTED,
     QUEUE_STATUS_PENDING,
@@ -31,6 +34,28 @@ def _queue_row_payload(row: MaterialRequestQueue) -> dict[str, Any]:
     }
 
 
+async def _load_inventory_settings(db: AsyncSession, company_id: str) -> dict:
+    q = await db.execute(
+        select(InventoryModuleSettings).where(InventoryModuleSettings.company_id == company_id)
+    )
+    row = q.scalar_one_or_none()
+    return dict(row.settings) if row and isinstance(row.settings, dict) else {}
+
+
+def resolve_mr_export_recipients(
+    inv_settings: dict,
+    requested: list[str] | None,
+) -> list[str]:
+    notif = notifications_from_settings(inv_settings)
+    directory = set(notif.email_directory)
+    if requested:
+        parsed = parse_email_list(requested)
+        if directory:
+            return [e for e in parsed if e in directory]
+        return parsed
+    return list(notif.mr_export_emails)
+
+
 async def export_queue_to_workbook(
     db: AsyncSession,
     company_id: str,
@@ -41,6 +66,7 @@ async def export_queue_to_workbook(
     location: str,
     cost_object: str,
     comments: str,
+    notify_emails: list[str] | None = None,
 ) -> tuple[bytes, str, MaterialRequestExport]:
     project = (project or "").strip()
     location = (location or "").strip()
@@ -102,6 +128,27 @@ async def export_queue_to_workbook(
         row.exported_at = now
         row.export_batch_id = export_record.id
         row.updated_at = now
+
+    inv_settings = await _load_inventory_settings(db, company_id)
+    recipients = resolve_mr_export_recipients(inv_settings, notify_emails)
+    if recipients:
+        settings = get_settings()
+        co = await db.get(Company, company_id)
+        company_name = co.name if co else "Your organization"
+        exported_by = None
+        if user:
+            exported_by = (user.full_name or user.email or "").strip() or None
+        await send_material_request_export_email(
+            settings,
+            to_emails=recipients,
+            company_name=company_name,
+            project=project,
+            location=location,
+            file_name=filename,
+            file_bytes=data,
+            item_count=len(rows),
+            exported_by=exported_by,
+        )
 
     return data, filename, export_record
 

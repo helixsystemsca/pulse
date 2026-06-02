@@ -6,6 +6,8 @@ import asyncio
 import html
 import logging
 import smtplib
+from email import encoders
+from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Optional
@@ -482,4 +484,74 @@ async def send_inventory_low_stock_alert_email(
         return True
     except Exception:
         _log.exception("SMTP inventory low stock alert failed sku=%s", sku)
+        return False
+
+
+async def send_material_request_export_email(
+    settings: Settings,
+    *,
+    to_emails: list[str],
+    company_name: str,
+    project: str,
+    location: str,
+    file_name: str,
+    file_bytes: bytes,
+    item_count: int,
+    exported_by: str | None = None,
+) -> bool:
+    if not settings.smtp_configured or not to_emails or not file_bytes:
+        return False
+
+    display = settings.email_from_display.strip() or "Helix Systems"
+    by_line = f"\nExported by: {exported_by}\n" if exported_by and exported_by.strip() else ""
+    subject = f"[{company_name}] Material request — {project}"
+    text = (
+        f"Material request spreadsheet for {company_name}\n\n"
+        f"Project: {project}\n"
+        f"Location: {location}\n"
+        f"Line items: {item_count}\n"
+        f"{by_line}\n"
+        f"The Excel file is attached ({file_name}).\n"
+    )
+
+    safe_co = html.escape(company_name, quote=True)
+    safe_project = html.escape(project, quote=True)
+    safe_location = html.escape(location, quote=True)
+    html_body = f"""<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8" /></head>
+<body style="font-family:system-ui,sans-serif;line-height:1.5;color:#1e293b;">
+  <h2 style="color:#2B4C7E;">Material request export</h2>
+  <p><strong>{safe_co}</strong></p>
+  <ul>
+    <li><strong>Project:</strong> {safe_project}</li>
+    <li><strong>Location:</strong> {safe_location}</li>
+    <li><strong>Items:</strong> {item_count}</li>
+  </ul>
+  <p style="font-size:14px;color:#64748b;">See attached spreadsheet ({html.escape(file_name, quote=True)}).</p>
+</body></html>"""
+
+    msg = MIMEMultipart("mixed")
+    msg["Subject"] = subject
+    msg["From"] = f"{display} <{settings.email_from_noreply}>"
+    msg["To"] = ", ".join(to_emails)
+
+    alt = MIMEMultipart("alternative")
+    alt.attach(MIMEText(text, "plain", "utf-8"))
+    alt.attach(MIMEText(html_body, "html", "utf-8"))
+    msg.attach(alt)
+
+    attachment = MIMEBase(
+        "application",
+        "vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    attachment.set_payload(file_bytes)
+    encoders.encode_base64(attachment)
+    attachment.add_header("Content-Disposition", f'attachment; filename="{file_name}"')
+    msg.attach(attachment)
+
+    try:
+        await send_smtp_message(settings, msg)
+        return True
+    except Exception:
+        _log.exception("SMTP material request export failed project=%s", project)
         return False

@@ -108,6 +108,12 @@ export type InventoryModuleSettings = {
   locations?: string[];
   assignment_rules?: { checkout_required?: boolean };
   alerts?: { low_stock?: boolean; missing?: boolean };
+  notifications?: {
+    email_directory?: string[];
+    low_stock_enabled?: boolean;
+    low_stock_emails?: string[];
+    mr_export_emails?: string[];
+  };
   transactions?: {
     require_reference?: boolean;
     enable_references?: boolean;

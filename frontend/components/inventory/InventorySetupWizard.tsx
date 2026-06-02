@@ -12,6 +12,7 @@ import {
   StorageLocationsStep,
   TransactionReferencesStep,
 } from "@/components/inventory/setup-wizard/InventoryWizardStepFields";
+import { NotificationContactsStep } from "@/components/inventory/setup-wizard/NotificationContactsStep";
 import {
   PurchasingExportsStep,
   PurchasingHowYouBuyStep,
@@ -43,6 +44,7 @@ const STEPS: SetupStepId[] = [
   "Storage Locations",
   "Procurement Workflow",
   "Procurement Terminology",
+  "Notification contacts",
   "Transaction References",
   "Approval Workflow",
   "Purchasing — How you buy",
@@ -90,6 +92,10 @@ export function InventorySetupWizard({ open, busy, draft, onDraftChange, onCompl
     let err: string | null = null;
     if (step.startsWith("Purchasing")) {
       err = validatePurchasingWizardStep(step as PurchasingWizardStepId, draft.purchasing);
+    } else if (step === "Notification contacts") {
+      if (draft.notifications.low_stock_enabled && draft.notifications.email_directory.length > 0 && !draft.notifications.low_stock_emails.length) {
+        err = "Select at least one recipient for low-stock notifications, or turn off low-stock emails.";
+      }
     } else if (step !== "Welcome" && step !== "Register form" && step !== "Review") {
       err = validateInventoryWizardStep(step as InventoryWizardStepId, draft.inventory);
     }
@@ -140,6 +146,22 @@ export function InventorySetupWizard({ open, busy, draft, onDraftChange, onCompl
       value: draft.purchasing.enable_monthly_expense_exports ? "Yes" : "No",
     },
     { label: "Module label", value: draft.purchasing.purchasing_label },
+    {
+      label: "Notification emails",
+      value: draft.notifications.email_directory.length
+        ? `${draft.notifications.email_directory.length} in directory`
+        : "None",
+    },
+    {
+      label: "Low-stock alerts",
+      value: draft.notifications.low_stock_enabled
+        ? draft.notifications.low_stock_emails.join(", ") || "—"
+        : "Off",
+    },
+    {
+      label: "MR export defaults",
+      value: draft.notifications.mr_export_emails.join(", ") || "—",
+    },
   ];
 
   return (
@@ -209,6 +231,7 @@ export function InventorySetupWizard({ open, busy, draft, onDraftChange, onCompl
           <ul className="list-disc space-y-1 pl-5 text-ds-muted">
             <li>Choose asset types and storage structure</li>
             <li>Set procurement workflow and labels</li>
+            <li>Add notification contacts for alerts and material request exports</li>
             <li>Define transaction references and approvals</li>
             <li>Customize the register item form</li>
           </ul>
@@ -230,6 +253,13 @@ export function InventorySetupWizard({ open, busy, draft, onDraftChange, onCompl
 
       {step === "Procurement Terminology" ? (
         <ProcurementTerminologyStep value={draft.inventory} onChange={(inventory) => onDraftChange(applyInventoryConfig({ ...draft, inventory }))} />
+      ) : null}
+
+      {step === "Notification contacts" ? (
+        <NotificationContactsStep
+          value={draft.notifications}
+          onChange={(notifications) => onDraftChange({ ...draft, notifications })}
+        />
       ) : null}
 
       {step === "Transaction References" ? (

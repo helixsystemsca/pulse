@@ -11,16 +11,13 @@ import {
   ChevronDown,
   ClipboardList,
   Download,
-  HardHat,
   Loader2,
   MoreVertical,
   Package,
-  Monitor,
-  ScanBarcode,
+  Plus,
   Search,
   Settings,
   TrendingUp,
-  Truck,
   Wrench,
 } from "lucide-react";
 import Link from "next/link";
@@ -58,7 +55,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { canAccessCompanyConfiguration } from "@/lib/pulse-roles";
 import { fetchWorkRequestList } from "@/lib/workRequestsService";
-import { InventoryContractorsPanel } from "@/components/inventory/InventoryContractorsPanel";
+import { InventoryPurchasingPanels } from "@/components/inventory/InventoryPurchasingPanels";
 import { InventoryVendorsPanel } from "@/components/inventory/InventoryVendorsPanel";
 import {
   InventoryRegisterItemForm,
@@ -92,10 +89,17 @@ import {
   registerFormCategoryFilterOptions,
   type MergedInventorySettings,
 } from "@/lib/inventory/register-form-config";
+import { defaultInventoryDepartmentFromSession } from "@/lib/inventory-department";
 import {
-  defaultInventoryDepartmentFromSession,
-  inventoryShowsContractorsTab,
-} from "@/lib/inventory-department";
+  buildInventoryWorkspaceNav,
+  type InventoryWorkspaceTab,
+} from "@/lib/inventory/inventory-workspace-nav";
+import {
+  fetchPurchasingVendors,
+  fetchQuickPurchases,
+  type QuickPurchase,
+  type VendorWithPerformance,
+} from "@/lib/purchasing/purchasingService";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
 import {
@@ -110,6 +114,15 @@ type AssetOpt = { id: string; name: string; tag_id?: string | null };
 type WorkerOpt = { id: string; email: string; full_name: string | null };
 
 const PRIMARY_BTN = cn(buttonVariants({ surface: "light", intent: "accent" }), "px-5 py-2.5");
+const ICON_BTN = cn(
+  buttonVariants({ surface: "light", intent: "secondary" }),
+  "inline-flex h-10 w-10 items-center justify-center p-0",
+);
+const NAV_TAB =
+  "inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-semibold transition whitespace-nowrap";
+const NAV_TAB_ACTIVE = "bg-ds-accent text-ds-accent-foreground shadow-sm";
+const NAV_TAB_IDLE =
+  "text-pulse-muted hover:bg-ds-interactive-hover dark:hover:bg-ds-interactive-hover";
 const FIELD =
   "mt-1.5 w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100 dark:placeholder:text-gray-500";
 const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-muted";
@@ -181,18 +194,11 @@ export function InventoryApp() {
   const dataEnabled = Boolean(effectiveCompanyId) && canViewInventory;
   const apiCompany = isSystemAdmin ? effectiveCompanyId : null;
 
-  const [inventoryTab, setInventoryTab] = useState<
-    "items" | "vendors" | "contractors" | "material_requests"
-  >("items");
+  const [inventoryTab, setInventoryTab] = useState<InventoryWorkspaceTab>("list");
   const [departmentFilter, setDepartmentFilter] = useState(() => (canConfigureOrg ? "" : userInventoryDepartment));
   const directoryDepartmentSlug = canConfigureOrg ? departmentFilter || undefined : userInventoryDepartment;
-  const showContractorsTab = inventoryShowsContractorsTab(directoryDepartmentSlug ?? userInventoryDepartment);
-
-  useEffect(() => {
-    if (!showContractorsTab && inventoryTab === "contractors") {
-      setInventoryTab("items");
-    }
-  }, [showContractorsTab, inventoryTab]);
+  const [quickPurchases, setQuickPurchases] = useState<QuickPurchase[]>([]);
+  const [purchasingVendors, setPurchasingVendors] = useState<VendorWithPerformance[]>([]);
 
   const [q, setQ] = useState("");
   const [qDebounced, setQDebounced] = useState("");
@@ -358,6 +364,65 @@ export function InventoryApp() {
   useEffect(() => {
     void loadSettings();
   }, [loadSettings]);
+
+  const loadPurchasingData = useCallback(async () => {
+    if (!dataEnabled) return;
+    const pc = mergedSettings.purchasing;
+    if (!pc.enabled) {
+      setQuickPurchases([]);
+      setPurchasingVendors([]);
+      return;
+    }
+    try {
+      const tasks: Promise<void>[] = [];
+      if (pc.enable_purchase_history || pc.enable_receipt_uploads) {
+        tasks.push(
+          fetchQuickPurchases(apiCompany).then((list) => {
+            setQuickPurchases(list.items);
+          }),
+        );
+      } else {
+        setQuickPurchases([]);
+      }
+      if (pc.enable_vendor_tracking) {
+        tasks.push(
+          fetchPurchasingVendors(apiCompany).then((list) => {
+            setPurchasingVendors(list);
+          }),
+        );
+      } else {
+        setPurchasingVendors([]);
+      }
+      await Promise.all(tasks);
+    } catch {
+      setQuickPurchases([]);
+      setPurchasingVendors([]);
+    }
+  }, [apiCompany, dataEnabled, mergedSettings.purchasing]);
+
+  useEffect(() => {
+    void loadPurchasingData();
+  }, [loadPurchasingData]);
+
+  const workspaceNav = useMemo(
+    () =>
+      buildInventoryWorkspaceNav({
+        purchasing: mergedSettings.purchasing,
+        replenishmentLabel: mergedSettings.purchasing.replenishment_label,
+        canScanner: canOpenScannerKiosk,
+        issueHref: pulseAppHref(inventoryScannerHref({ mode: "issue" })),
+        receiveHref: pulseAppHref(inventoryScannerHref({ mode: "receive" })),
+        kioskHref: pulseAppHref(inventoryScannerHref({ kioskDisplay: true })),
+      }),
+    [mergedSettings.purchasing, canOpenScannerKiosk],
+  );
+
+  useEffect(() => {
+    if (!workspaceNav.some((n) => n.kind === "tab" && n.id === inventoryTab)) {
+      const first = workspaceNav.find((n) => n.kind === "tab");
+      if (first && first.kind === "tab") setInventoryTab(first.id);
+    }
+  }, [workspaceNav, inventoryTab]);
 
   useEffect(() => {
     if (!inventorySetupDismissKey || typeof window === "undefined") return;
@@ -786,110 +851,63 @@ export function InventoryApp() {
     <div className="space-y-6">
       <PageHeader
         title="Inventory"
-        icon={
-          inventoryTab === "items"
-            ? Package
-            : inventoryTab === "vendors"
-              ? Truck
-              : inventoryTab === "material_requests"
-                ? ClipboardList
-                : HardHat
-        }
+        icon={Package}
+        divider={false}
         actions={
-          <>
-            {mergedSettings.purchasing.enabled ? (
-              <Link
-                href={pulseAppHref("/dashboard/purchasing")}
-                className={cn(
-                  buttonVariants({ surface: "light", intent: "secondary" }),
-                  "inline-flex items-center gap-2 px-4 py-2.5",
-                )}
-              >
-                <Truck className="h-4 w-4" aria-hidden />
-                {mergedSettings.purchasing.purchasing_label}
-              </Link>
-            ) : null}
-            {canOpenScannerKiosk ? (
-              <>
-                <Link
-                  href={pulseAppHref(inventoryScannerHref({ mode: "issue" }))}
-                  className={cn(
-                    buttonVariants({ surface: "light", intent: "secondary" }),
-                    "inline-flex items-center gap-2 px-4 py-2.5",
-                  )}
-                  title="Issue stock from scanner"
-                >
-                  <ScanBarcode className="h-4 w-4" aria-hidden />
-                  Issue stock
-                </Link>
-                <Link
-                  href={pulseAppHref(inventoryScannerHref({ mode: "receive" }))}
-                  className={cn(
-                    buttonVariants({ surface: "light", intent: "secondary" }),
-                    "inline-flex items-center gap-2 px-4 py-2.5",
-                  )}
-                  title="Receive stock from scanner"
-                >
-                  <Truck className="h-4 w-4" aria-hidden />
-                  Receive stock
-                </Link>
-                <a
-                  href={pulseAppHref(inventoryScannerHref({ kioskDisplay: true }))}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={cn(
-                    buttonVariants({ surface: "light", intent: "secondary" }),
-                    "inline-flex items-center gap-2 px-4 py-2.5",
-                  )}
-                  title="Open fullscreen checkout in a new window for a fixed tablet"
-                >
-                  <Monitor className="h-4 w-4" aria-hidden />
-                  Kiosk display
-                </a>
-              </>
-            ) : null}
-            {inventoryTab === "items" ? (
-              <>
-                <button
-                  type="button"
-                  className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "inline-flex items-center gap-2 px-4 py-2.5 disabled:opacity-50")}
-                  onClick={() => exportCsv()}
-                  disabled={rows.length === 0}
-                >
-                  <Download className="h-4 w-4" aria-hidden />
-                  Export CSV
-                </button>
-                {canConfigureOrg ? (
-                  <button
-                    type="button"
-                    className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "inline-flex items-center gap-2 px-4 py-2.5")}
-                    onClick={() => setSettingsOpen(true)}
-                  >
-                    <Settings className="h-4 w-4" aria-hidden />
-                    Settings
-                  </button>
-                ) : null}
-                <button type="button" className={PRIMARY_BTN} onClick={() => openCreate()} disabled={!dataEnabled || !canMutateInventory}>
-                  + Register item
-                </button>
-              </>
-            ) : (
-              <>
-                {canConfigureOrg ? (
-                  <button
-                    type="button"
-                    className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "inline-flex items-center gap-2 px-4 py-2.5")}
-                    onClick={() => setSettingsOpen(true)}
-                  >
-                    <Settings className="h-4 w-4" aria-hidden />
-                    Settings
-                  </button>
-                ) : null}
-              </>
-            )}
-          </>
+          canConfigureOrg ? (
+            <button
+              type="button"
+              className={ICON_BTN}
+              title="Inventory settings"
+              aria-label="Inventory settings"
+              onClick={() => setSettingsOpen(true)}
+            >
+              <Settings className="h-4 w-4" aria-hidden />
+            </button>
+          ) : null
         }
       />
+
+      {dataEnabled ? (
+        <div className="-mt-2 flex flex-wrap gap-1 rounded-lg border border-pulse-border bg-white p-1 shadow-sm dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
+          {workspaceNav.map((item) => {
+            const Icon = item.icon;
+            if (item.kind === "link") {
+              const className = cn(NAV_TAB, NAV_TAB_IDLE);
+              return item.external ? (
+                <a
+                  key={item.label}
+                  href={item.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={className}
+                  title={item.label}
+                >
+                  <Icon className="h-4 w-4 shrink-0" aria-hidden />
+                  {item.label}
+                </a>
+              ) : (
+                <Link key={item.label} href={item.href} className={className} title={item.label}>
+                  <Icon className="h-4 w-4 shrink-0" aria-hidden />
+                  {item.label}
+                </Link>
+              );
+            }
+            const active = inventoryTab === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setInventoryTab(item.id)}
+                className={cn(NAV_TAB, active ? NAV_TAB_ACTIVE : NAV_TAB_IDLE)}
+              >
+                <Icon className="h-4 w-4 shrink-0" aria-hidden />
+                {item.label}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
 
       {isSystemAdmin ? (
         <div className="mt-6 rounded-md border border-pulse-border bg-white p-4 shadow-sm dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
@@ -918,59 +936,7 @@ export function InventoryApp() {
         </p>
       ) : (
         <>
-          <div className="flex flex-wrap gap-1 rounded-lg border border-pulse-border bg-white p-1 shadow-sm dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
-            <button
-              type="button"
-              onClick={() => setInventoryTab("items")}
-              className={`rounded-md px-4 py-2 text-sm font-semibold transition ${
-                inventoryTab === "items"
-                  ? "bg-ds-accent text-ds-accent-foreground shadow-sm"
-                  : "text-pulse-muted hover:bg-ds-interactive-hover dark:hover:bg-ds-interactive-hover"
-              }`}
-            >
-              Items
-            </button>
-            <button
-              type="button"
-              onClick={() => setInventoryTab("vendors")}
-              className={`inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition ${
-                inventoryTab === "vendors"
-                  ? "bg-ds-accent text-ds-accent-foreground shadow-sm"
-                  : "text-pulse-muted hover:bg-ds-interactive-hover dark:hover:bg-ds-interactive-hover"
-              }`}
-            >
-              <Truck className="h-4 w-4" aria-hidden />
-              Vendors
-            </button>
-            {showContractorsTab ? (
-              <button
-                type="button"
-                onClick={() => setInventoryTab("contractors")}
-                className={`inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition ${
-                  inventoryTab === "contractors"
-                    ? "bg-ds-accent text-ds-accent-foreground shadow-sm"
-                    : "text-pulse-muted hover:bg-ds-interactive-hover dark:hover:bg-ds-interactive-hover"
-                }`}
-              >
-                <HardHat className="h-4 w-4" aria-hidden />
-                Contractors
-              </button>
-            ) : null}
-            <button
-              type="button"
-              onClick={() => setInventoryTab("material_requests")}
-              className={`inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition ${
-                inventoryTab === "material_requests"
-                  ? "bg-ds-accent text-ds-accent-foreground shadow-sm"
-                  : "text-pulse-muted hover:bg-ds-interactive-hover dark:hover:bg-ds-interactive-hover"
-              }`}
-            >
-              <ClipboardList className="h-4 w-4" aria-hidden />
-              Material requests
-            </button>
-          </div>
-
-          {inventoryTab === "items" ? (
+          {inventoryTab === "list" ? (
             <InventoryPredictiveSearch
               canTransact={canOpenScannerKiosk}
               onOpenItem={(id) => {
@@ -980,23 +946,55 @@ export function InventoryApp() {
             />
           ) : null}
 
-          {inventoryTab === "material_requests" ? (
+          {inventoryTab === "queue" ? (
             <InventoryMaterialRequestsPanel
               apiCompany={apiCompany}
               canMutate={canMutateInventory}
               procurementActionLabel={mergedSettings.inventory.procurement_action_label}
+              replenishmentLabel={mergedSettings.purchasing.replenishment_label}
+              notificationEmailDirectory={mergedSettings.notifications.email_directory}
+              defaultMrExportEmails={mergedSettings.notifications.mr_export_emails}
             />
           ) : null}
 
           {inventoryTab === "vendors" ? (
-            <InventoryVendorsPanel apiCompany={apiCompany} departmentSlug={directoryDepartmentSlug} />
+            mergedSettings.purchasing.enabled && mergedSettings.purchasing.enable_vendor_tracking ? (
+              <InventoryPurchasingPanels
+                apiCompany={apiCompany}
+                tab="vendors"
+                config={mergedSettings.purchasing}
+                purchases={quickPurchases}
+                vendors={purchasingVendors}
+                onPurchaseSaved={() => void loadPurchasingData()}
+              />
+            ) : (
+              <InventoryVendorsPanel apiCompany={apiCompany} departmentSlug={directoryDepartmentSlug} />
+            )
           ) : null}
 
-          {inventoryTab === "contractors" && showContractorsTab ? (
-            <InventoryContractorsPanel apiCompany={apiCompany} departmentSlug={directoryDepartmentSlug} />
+          {inventoryTab === "quick_purchase" ? (
+            <InventoryPurchasingPanels
+              apiCompany={apiCompany}
+              tab="quick_purchase"
+              config={mergedSettings.purchasing}
+              purchases={quickPurchases}
+              vendors={purchasingVendors}
+              onPurchaseSaved={() => void loadPurchasingData()}
+            />
           ) : null}
 
-          {inventoryTab === "items" && sum ? (
+          {inventoryTab === "receipts" || inventoryTab === "history" ? (
+            <InventoryPurchasingPanels
+              apiCompany={apiCompany}
+              tab={inventoryTab}
+              config={mergedSettings.purchasing}
+              purchases={quickPurchases}
+              vendors={purchasingVendors}
+              onPurchaseSaved={() => void loadPurchasingData()}
+            />
+          ) : null}
+
+          {inventoryTab === "list" && sum ? (
             <div className="mt-4 grid grid-cols-7 gap-1.5 sm:mt-6 sm:gap-2 lg:gap-3">
               {[
                 {
@@ -1084,7 +1082,7 @@ export function InventoryApp() {
             </div>
           ) : null}
 
-          {inventoryTab === "items" ? (
+          {inventoryTab === "list" ? (
           <>
           <div className="mt-4 flex flex-wrap gap-2">
             {[
@@ -1223,9 +1221,33 @@ export function InventoryApp() {
                 className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
               />
             </div>
-            <button type="button" className="text-sm font-semibold text-[#2B4C7E] hover:underline" onClick={clearFilters}>
-              Clear filters
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" className="text-sm font-semibold text-[#2B4C7E] hover:underline" onClick={clearFilters}>
+                Clear filters
+              </button>
+              <button
+                type="button"
+                className={ICON_BTN}
+                title="Export list as CSV"
+                aria-label="Export list as CSV"
+                disabled={rows.length === 0}
+                onClick={() => exportCsv()}
+              >
+                <Download className="h-4 w-4" aria-hidden />
+              </button>
+              {canMutateInventory ? (
+                <button
+                  type="button"
+                  className={ICON_BTN}
+                  title="Register item"
+                  aria-label="Register item"
+                  disabled={!dataEnabled}
+                  onClick={() => openCreate()}
+                >
+                  <Plus className="h-4 w-4" aria-hidden />
+                </button>
+              ) : null}
+            </div>
           </div>
 
           <div className="app-data-shell mt-4">

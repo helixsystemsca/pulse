@@ -157,6 +157,7 @@ async def export_material_request_queue(
         location=body.location,
         cost_object=body.cost_object or "",
         comments=body.comments or "",
+        notify_emails=body.notify_emails,
     )
     await db.commit()
     return Response(

@@ -1,16 +1,20 @@
 "use client";
 
-import { PurchasingApp } from "@/components/purchasing/PurchasingApp";
-import { usePulseAuth } from "@/hooks/usePulseAuth";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { pulseAppHref } from "@/lib/pulse-app";
 
+/** Purchasing lives on the Inventory page — redirect legacy route. */
 export default function PurchasingPage() {
-  const { session } = usePulseAuth();
-  const isSystemAdmin = Boolean(session?.is_system_admin);
-  const apiCompany = isSystemAdmin ? null : session?.company_id ?? null;
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace(pulseAppHref("/dashboard/inventory"));
+  }, [router]);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-      <PurchasingApp apiCompany={apiCompany} />
-    </div>
+    <p className="mx-auto max-w-6xl px-4 py-8 text-sm text-pulse-muted sm:px-6">
+      Redirecting to Inventory…
+    </p>
   );
 }

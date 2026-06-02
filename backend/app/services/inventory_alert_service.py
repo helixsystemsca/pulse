@@ -13,6 +13,7 @@ from app.core.config import get_settings
 from app.core.email_smtp import send_inventory_low_stock_alert_email
 from app.core.operational_notifications import inventory_low_stock_from_company
 from app.models.domain import Company, InventoryItem, InventoryModuleSettings
+from app.services.inventory_notifications import notifications_from_settings
 
 _log = logging.getLogger(__name__)
 
@@ -45,13 +46,18 @@ async def resolve_low_stock_alert_targets(
     inv_settings = await _load_inventory_settings(db, company_id)
     if not _inventory_alerts_enabled(inv_settings):
         return False, []
-    cfg = inventory_low_stock_from_company(getattr(co, "operational_notifications", None))
-    if not cfg.enabled or not cfg.emails:
-        return False, []
+    notif = notifications_from_settings(inv_settings)
+    if notif.email_directory and notif.low_stock_enabled and notif.low_stock_emails:
+        recipients = notif.low_stock_emails
+    else:
+        cfg = inventory_low_stock_from_company(getattr(co, "operational_notifications", None))
+        if not cfg.enabled or not cfg.emails:
+            return False, []
+        recipients = cfg.emails
     settings = get_settings()
     if not settings.smtp_configured:
         return False, []
-    return True, cfg.emails
+    return True, recipients
 
 
 def _was_notified(item: InventoryItem) -> bool:

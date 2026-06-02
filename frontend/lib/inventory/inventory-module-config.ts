@@ -182,6 +182,7 @@ export type InventoryWizardStepId =
   | "Storage Locations"
   | "Procurement Workflow"
   | "Procurement Terminology"
+  | "Notification contacts"
   | "Transaction References"
   | "Approval Workflow"
   | "Register form"
@@ -203,6 +204,8 @@ export function validateInventoryWizardStep(
       return null;
     case "Procurement Terminology":
       if (!inventory.procurement_action_label.trim()) return "Enter a label for the procurement action.";
+      return null;
+    case "Notification contacts":
       return null;
     case "Transaction References":
       if (!REFERENCE_SET.has(inventory.reference_mode)) return "Choose how transaction references work.";

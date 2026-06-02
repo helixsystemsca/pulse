@@ -6,6 +6,12 @@
 
 import type { InventoryModuleSettings } from "@/lib/inventoryService";
 import {
+  DEFAULT_INVENTORY_NOTIFICATIONS,
+  inventoryNotificationsBlockForSave,
+  mergeInventoryNotificationsConfig,
+  type InventoryNotificationsConfig,
+} from "@/lib/inventory/inventory-notifications-config";
+import {
   DEFAULT_INVENTORY_MODULE_CONFIG,
   inventoryConfigFromModuleSettings,
   inventoryBlockForModuleSettings,
@@ -673,6 +679,8 @@ export type MergedInventorySettings = {
 
   purchasing: PurchasingModuleConfig;
 
+  notifications: InventoryNotificationsConfig;
+
 };
 
 
@@ -738,6 +746,10 @@ export function mergeInventoryModuleSettings(raw: InventoryModuleSettings = {}):
     inventory: inventoryConfigFromModuleSettings(raw),
 
     purchasing: mergePurchasingConfig(raw),
+
+    notifications: mergeInventoryNotificationsConfig(
+      raw.notifications as Partial<InventoryNotificationsConfig> | undefined,
+    ),
 
   };
 
@@ -805,9 +817,13 @@ export function settingsPayloadFromMerged(merged: MergedInventorySettings): Inve
 
     purchasing: purchasingBlockForSave(merged.purchasing),
 
+    notifications: inventoryNotificationsBlockForSave(merged.notifications),
+
   };
 
 }
+
+export { DEFAULT_INVENTORY_NOTIFICATIONS };
 
 export { DEFAULT_INVENTORY_MODULE_CONFIG, DEFAULT_PURCHASING_CONFIG };
 

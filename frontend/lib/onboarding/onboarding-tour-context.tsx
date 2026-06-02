@@ -27,6 +27,7 @@ import {
   hasTourTarget,
   stepHasTourTarget,
 } from "@/lib/onboarding/tour-target";
+import { PLATFORM_DEFAULT_LOGO_SRC } from "@/lib/branding/platform-defaults";
 import { buildNavigationTree } from "@/lib/navigation/build-navigation-tree";
 import { isInventoryScannerOnlySession } from "@/lib/inventory-scanner/scanner-session";
 import {
@@ -468,7 +469,7 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
               </div>
             ) : (
               <div className="start-icon" aria-hidden>
-                <img src="/images/panoramalogo2.png" alt="" className="start-icon__logo" />
+                <img src={PLATFORM_DEFAULT_LOGO_SRC} alt="Helix Systems" className="start-icon__logo" />
               </div>
             )}
             <h2 id="tour-welcome-title" className="start-title">
