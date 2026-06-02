@@ -333,7 +333,6 @@ export function InventoryApp() {
         setAssets([]);
         setWorkers([]);
       }
-      }
     })();
   }, [dataEnabled, session?.access_token, apiCompany]);
 
