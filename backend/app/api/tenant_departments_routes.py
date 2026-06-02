@@ -6,7 +6,7 @@ import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, OperationalError, ProgrammingError, SQLAlchemyError
 
 from app.api.deps import get_current_user
 from app.api.workers_routes import CompanyId, Db, resolve_workers_company_id
@@ -85,6 +85,16 @@ def _out(row) -> TenantDepartmentOut:
     )
 
 
+def _migration_required_http(exc: Exception) -> HTTPException | None:
+    msg = str(exc).lower()
+    if "tenant_departments" in msg and ("does not exist" in msg or "undefinedtable" in msg):
+        return HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Tenant departments table is missing. Run database migrations on the API service (alembic upgrade head).",
+        )
+    return None
+
+
 async def _list_departments_for_tenant(db: Db, cid: str, *, user_id: str) -> list:
     log_tenant_context(user_id=user_id, tenant_id=cid, path="/api/workers/tenant-departments")
     rows = await list_tenant_departments(db, cid)
@@ -107,6 +117,20 @@ async def list_departments(
         return TenantDepartmentListOut(items=[_out(r) for r in rows])
     except HTTPException:
         raise
+    except (ProgrammingError, OperationalError) as exc:
+        mig = _migration_required_http(exc)
+        if mig:
+            _log.error("Tenant departments storage unavailable tenant_id=%s", cid)
+            raise mig from exc
+        _log.exception(
+            "Tenant departments query failed tenant_id=%s path=%s",
+            cid,
+            request.url.path,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Tenant departments query failed: {exc.__class__.__name__}",
+        ) from exc
     except SQLAlchemyError as exc:
         _log.exception(
             "Tenant departments query failed tenant_id=%s path=%s",

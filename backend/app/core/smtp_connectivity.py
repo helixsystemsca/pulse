@@ -246,8 +246,9 @@ def test_smtp_tcp(
 
 
 @contextmanager
-def smtp_session(settings: Settings, *, timeout: float = 12.0) -> Iterator[smtplib.SMTP]:
+def smtp_session(settings: Settings, *, timeout: float | None = None) -> Iterator[smtplib.SMTP]:
     """Open SMTP, apply TLS/login per settings. Caller sends mail then exits context."""
+    connect_timeout = timeout if timeout is not None else smtp_connect_timeout(settings)
     prepare_smtp_connection(settings)
     host = settings.smtp_host.strip()
     port = settings.smtp_port
@@ -255,10 +256,10 @@ def smtp_session(settings: Settings, *, timeout: float = 12.0) -> Iterator[smtpl
     smtp: smtplib.SMTP | None = None
     try:
         if settings.smtp_use_ssl:
-            smtp = _SMTPSSL(host, port, timeout=timeout, prefer_ipv4=prefer_ipv4)
+            smtp = _SMTPSSL(host, port, timeout=connect_timeout, prefer_ipv4=prefer_ipv4)
         else:
             # timeout is only valid on the SMTP constructor, not connect() (stdlib smtplib).
-            smtp = _SMTP(host, port, timeout=timeout, prefer_ipv4=prefer_ipv4)
+            smtp = _SMTP(host, port, timeout=connect_timeout, prefer_ipv4=prefer_ipv4)
             smtp.ehlo()
             if settings.smtp_use_tls:
                 smtp.starttls(context=ssl.create_default_context())
@@ -277,10 +278,11 @@ def smtp_session(settings: Settings, *, timeout: float = 12.0) -> Iterator[smtpl
                     pass
 
 
-def test_smtp_authentication(settings: Settings, *, timeout: float = 12.0) -> tuple[bool, str]:
+def test_smtp_authentication(settings: Settings, *, timeout: float | None = None) -> tuple[bool, str]:
     username = settings.smtp_username.strip()
+    connect_timeout = timeout if timeout is not None else smtp_connect_timeout(settings)
     try:
-        with smtp_session(settings, timeout=timeout):
+        with smtp_session(settings, timeout=connect_timeout):
             if username:
                 return True, "SMTP authentication succeeded"
             return True, "SMTP session opened (no SMTP_USERNAME configured; login skipped)"
@@ -325,7 +327,12 @@ def run_smtp_health_check(settings: Settings) -> SmtpHealthReport:
     if not dns_ok:
         return report
 
-    tcp_ok, tcp_detail = test_smtp_tcp(host, settings.smtp_port, prefer_ipv4=settings.smtp_prefer_ipv4)
+    tcp_ok, tcp_detail = test_smtp_tcp(
+        host,
+        settings.smtp_port,
+        timeout=smtp_connect_timeout(settings),
+        prefer_ipv4=settings.smtp_prefer_ipv4,
+    )
     report.stages.append(SmtpHealthStage("tcp", tcp_ok, tcp_detail))
     if not tcp_ok:
         return report
@@ -358,8 +365,32 @@ def prepare_smtp_connection(settings: Settings) -> None:
     )
 
 
+def smtp_connect_timeout(settings: Settings) -> float:
+    """TCP + TLS + login budget for smtplib (seconds)."""
+    raw = getattr(settings, "smtp_timeout_seconds", 25.0)
+    try:
+        t = float(raw)
+    except (TypeError, ValueError):
+        t = 25.0
+    return max(5.0, min(t, 120.0))
+
+
 def smtp_network_error_message(exc: BaseException) -> str:
-    return f"SMTP network connection failed: {exc}"
+    base = f"SMTP network connection failed: {exc}"
+    lowered = str(exc).lower()
+    if "timed out" in lowered or isinstance(exc, TimeoutError):
+        return (
+            f"{base} Cloud hosts (e.g. Render) must reach your provider over the public internet — "
+            "verify SMTP_HOST (e.g. smtp.gmail.com), SMTP_PREFER_IPV4=true, port 587 with SMTP_USE_TLS=true "
+            "(or port 465 with SMTP_USE_SSL=true), and a Google App Password if using Gmail. "
+            "If TCP still times out, outbound SMTP may be blocked; use SendGrid, Resend, or Mailgun HTTP APIs instead."
+        )
+    if "network is unreachable" in lowered or "errno 101" in lowered:
+        return (
+            f"{base} Set SMTP_PREFER_IPV4=true on the API service and use a public SMTP hostname "
+            "(not localhost or a .local address)."
+        )
+    return base
 
 
 def is_smtp_network_failure(exc: BaseException) -> bool:

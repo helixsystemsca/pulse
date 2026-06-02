@@ -92,7 +92,7 @@ async def send_inventory_low_stock_test_email(
                 "Low stock test email network failure",
                 extra={"tenant_id": tenant_id, "reason": reason},
             )
-            raise HTTPException(status_code=500, detail=reason)
+            raise HTTPException(status_code=503, detail=reason)
         _validation_failed(tenant_id=tenant_id, reason=reason)
 
     return {"sent": True, "to": recipients}

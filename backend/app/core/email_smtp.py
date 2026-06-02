@@ -15,6 +15,7 @@ from typing import Optional
 from app.core.config import Settings
 from app.core.smtp_connectivity import (
     SmtpNetworkError,
+    smtp_connect_timeout,
     smtp_network_error_message,
     smtp_session,
     validate_public_smtp_host,
@@ -76,7 +77,7 @@ def _send_sync(settings: Settings, msg: MIMEMultipart) -> None:
     host = settings.smtp_host.strip()
 
     try:
-        with smtp_session(settings, timeout=12) as smtp:
+        with smtp_session(settings, timeout=smtp_connect_timeout(settings)) as smtp:
             smtp.sendmail(from_addr, recipients, raw)
     except SmtpNetworkError:
         raise

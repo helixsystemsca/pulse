@@ -1629,13 +1629,17 @@ async def get_inventory_item_image(
     policy: InventoryPolicyDep,
     item_id: str,
 ) -> Response:
-    await _get_inventory_item_for_company(db, cid, policy, item_id)
+    item = await _get_inventory_item_for_company(db, cid, policy, item_id)
     try:
         blob = await read_inventory_item_image_bytes(cid, item_id)
     except RuntimeError as e:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
     if not blob:
-        raise HTTPException(status_code=404, detail="No image for this item")
+        # Self-heal stale image_url pointers (e.g. ephemeral disk on Render after redeploy).
+        if item.image_url:
+            item.image_url = None
+            await db.commit()
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
     data, media_type = blob
     return Response(content=data, media_type=media_type, headers={"Cache-Control": "private, no-store"})
 

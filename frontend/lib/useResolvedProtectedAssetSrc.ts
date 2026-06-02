@@ -56,9 +56,16 @@ export function useResolvedProtectedAssetSrc(storedPath: string | null | undefin
     let cancelled = false;
     setLoading(true);
     fetch(url, { headers: { Authorization: `Bearer ${bearer}` } })
-      .then((r) => (r.ok ? r.blob() : Promise.reject(new Error(String(r.status)))))
+      .then((r) => {
+        if (r.status === 204) return null;
+        return r.ok ? r.blob() : Promise.reject(new Error(String(r.status)));
+      })
       .then((b) => {
         if (cancelled) return;
+        if (!b) {
+          setFailed(false);
+          return;
+        }
         setBlobUrl(URL.createObjectURL(b));
         setFailed(false);
       })

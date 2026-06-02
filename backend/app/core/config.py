@@ -256,6 +256,10 @@ class Settings(BaseSettings):
     smtp_use_ssl: bool = Field(default=False, validation_alias=AliasChoices("SMTP_USE_SSL", "smtp_use_ssl"))
     #: Prefer IPv4 when connecting (avoids Errno 101 on hosts like Render when IPv6 has no route).
     smtp_prefer_ipv4: bool = Field(default=True, validation_alias=AliasChoices("SMTP_PREFER_IPV4", "smtp_prefer_ipv4"))
+    smtp_timeout_seconds: float = Field(
+        default=25.0,
+        validation_alias=AliasChoices("SMTP_TIMEOUT_SECONDS", "smtp_timeout_seconds"),
+    )
     #: Envelope + From for transactional mail (invites, password reset). Use your DNS alias.
     email_from_noreply: str = Field(
         default="noreply@helixsystems.ca",

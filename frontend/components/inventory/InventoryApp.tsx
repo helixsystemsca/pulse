@@ -95,6 +95,7 @@ import {
 } from "@/lib/inventory/register-form-config";
 import { filterInventoryStorageZones } from "@/lib/inventory/inventory-zones";
 import { defaultInventoryDepartmentFromSession } from "@/lib/inventory-department";
+import { parseClientApiError } from "@/lib/parse-client-api-error";
 import {
   buildInventoryWorkspaceNav,
   type InventoryWorkspaceTab,
@@ -540,8 +541,12 @@ export function InventoryApp() {
       setDetail(d);
       setAssignUserId(d.assigned_user_id ?? "");
       setMoveZoneId(d.zone_id ?? "");
-    } catch {
+    } catch (e) {
       setDetail(null);
+      if (parseClientApiError(e).status === 404) {
+        setDetailId(null);
+        setDetailPanel("none");
+      }
     } finally {
       setDetailLoading(false);
     }
@@ -1516,11 +1521,13 @@ export function InventoryApp() {
           ) : null
         }
       >
-        {detailLoading || !detail ? (
+        {detailLoading ? (
           <div className="flex items-center gap-2 text-pulse-muted">
             <Loader2 className="h-5 w-5 animate-spin" />
             Loading…
           </div>
+        ) : !detail ? (
+          <p className="text-sm text-pulse-muted">This item is unavailable — it may have been removed or you may not have access.</p>
         ) : (
           <div className="space-y-5">
             {detailPanel === "assign" && canMutateInventory ? (
