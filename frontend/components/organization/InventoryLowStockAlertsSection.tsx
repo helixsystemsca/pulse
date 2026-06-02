@@ -31,6 +31,7 @@ export function InventoryLowStockAlertsSection({ compact = false, className }: P
   const [initialEnabled, setInitialEnabled] = useState(false);
   const [initialEmails, setInitialEmails] = useState("");
   const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
 
@@ -76,6 +77,23 @@ export function InventoryLowStockAlertsSection({ compact = false, className }: P
       setErr(parseClientApiError(e).message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const sendTest = async () => {
+    setErr(null);
+    setOk(null);
+    setTesting(true);
+    try {
+      const out = await apiFetch<{ sent: boolean; to?: string[] }>("/api/v1/company/profile/inventory-low-stock/test-email", {
+        method: "POST",
+      });
+      const to = out.to?.length ? ` to ${out.to.join(", ")}` : "";
+      setOk(`Test email sent${to}.`);
+    } catch (e) {
+      setErr(parseClientApiError(e).message || "Could not send test email");
+    } finally {
+      setTesting(false);
     }
   };
 
@@ -134,6 +152,15 @@ export function InventoryLowStockAlertsSection({ compact = false, className }: P
       </p>
 
       <div className="flex flex-wrap justify-end gap-2">
+        <button
+          type="button"
+          className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-4 py-2.5 text-sm")}
+          disabled={!loaded || saving || testing || !enabled || !emails.trim()}
+          onClick={() => void sendTest()}
+          title={!enabled ? "Enable low stock emails to send a test." : !emails.trim() ? "Add recipients to send a test." : "Send a test email"}
+        >
+          {testing ? "Sending…" : "Send test email"}
+        </button>
         <button
           type="button"
           className={cn(buttonVariants({ surface: "light", intent: "accent" }), "px-4 py-2.5 text-sm")}

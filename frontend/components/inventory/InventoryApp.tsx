@@ -73,6 +73,7 @@ import {
 import { InventoryRegisterFieldsEditor } from "@/components/inventory/InventoryRegisterFieldsEditor";
 import { InventoryDepartmentsPanel } from "@/components/inventory/InventoryDepartmentsPanel";
 import { InventoryLocationsPanel } from "@/components/inventory/InventoryLocationsPanel";
+import { InventoryPredictiveSearch } from "@/components/inventory/InventoryPredictiveSearch";
 import { InventoryTransactionSettingsPanel } from "@/components/inventory/InventoryTransactionSettingsPanel";
 import { InventoryMaterialRequestsPanel } from "@/components/inventory/InventoryMaterialRequestsPanel";
 import { InventoryItemDetailFields } from "@/components/inventory/InventoryItemDetailFields";
@@ -942,64 +943,14 @@ export function InventoryApp() {
             </button>
           </div>
 
-          {inventoryTab === "items" && canOpenScannerKiosk ? (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <Link
-                href={pulseAppHref(inventoryScannerHref({ mode: "issue" }))}
-                className={cn(
-                  buttonVariants({ surface: "light", intent: "secondary" }),
-                  "flex min-h-[4.5rem] flex-col items-start justify-center gap-1 px-5 py-4 text-left",
-                )}
-              >
-                <span className="inline-flex items-center gap-2 text-base font-bold text-pulse-navy dark:text-gray-100">
-                  <ScanBarcode className="h-5 w-5" aria-hidden />
-                  Issue inventory
-                </span>
-                <span className="text-sm text-pulse-muted">Remove stock from a location</span>
-              </Link>
-              <Link
-                href={pulseAppHref(inventoryScannerHref({ mode: "receive" }))}
-                className={cn(
-                  buttonVariants({ surface: "light", intent: "secondary" }),
-                  "flex min-h-[4.5rem] flex-col items-start justify-center gap-1 px-5 py-4 text-left",
-                )}
-              >
-                <span className="inline-flex items-center gap-2 text-base font-bold text-pulse-navy dark:text-gray-100">
-                  <Truck className="h-5 w-5" aria-hidden />
-                  Receive inventory
-                </span>
-                <span className="text-sm text-pulse-muted">Add stock to a location</span>
-              </Link>
-              <Link
-                href={pulseAppHref(inventoryScannerHref())}
-                className={cn(
-                  buttonVariants({ surface: "light", intent: "secondary" }),
-                  "flex min-h-[4.5rem] flex-col items-start justify-center gap-1 px-5 py-4 text-left",
-                )}
-              >
-                <span className="inline-flex items-center gap-2 text-base font-bold text-pulse-navy dark:text-gray-100">
-                  <Search className="h-5 w-5" aria-hidden />
-                  Find item
-                </span>
-                <span className="text-sm text-pulse-muted">Look up SKU and quantity on hand</span>
-              </Link>
-              <button
-                type="button"
-                className={cn(
-                  buttonVariants({ surface: "light", intent: "secondary" }),
-                  "flex min-h-[4.5rem] flex-col items-start justify-center gap-1 px-5 py-4 text-left opacity-90",
-                )}
-                onClick={() => {
-                  window.alert("Inventory counts are coming soon. Use Issue or Receive for stock changes.");
-                }}
-              >
-                <span className="inline-flex items-center gap-2 text-base font-bold text-pulse-navy dark:text-gray-100">
-                  <ClipboardList className="h-5 w-5" aria-hidden />
-                  Inventory count
-                </span>
-                <span className="text-sm text-pulse-muted">Cycle counts (coming soon)</span>
-              </button>
-            </div>
+          {inventoryTab === "items" ? (
+            <InventoryPredictiveSearch
+              canTransact={canOpenScannerKiosk}
+              onOpenItem={(id) => {
+                setDetailId(id);
+                setMovementOpen(true);
+              }}
+            />
           ) : null}
 
           {inventoryTab === "material_requests" ? (
