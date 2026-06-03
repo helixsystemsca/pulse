@@ -105,3 +105,10 @@ async def upload_profile_photo(
     return await _run_sync(
         lambda: provider.upload_file(key=key, data=raw, content_type=content_type)
     )
+
+
+async def upload_spatial_binary(*, key: str, raw: bytes, content_type: str) -> StoredObject:
+    provider = get_storage_provider()
+    return await _run_sync(
+        lambda: provider.upload_file(key=key, data=raw, content_type=content_type)
+    )

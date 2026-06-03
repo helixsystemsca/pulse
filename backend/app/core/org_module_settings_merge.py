@@ -44,6 +44,9 @@ DEFAULT_ORG_MODULE_SETTINGS: dict[str, Any] = {
         "showRepeatOffenderHighlight": True,
         "strictReviewDeadlines": False,
     },
+    "advertising": {
+        "walls": [],
+    },
 }
 
 

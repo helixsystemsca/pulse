@@ -15,6 +15,8 @@ import {
   type AdvertisingLayerVisibility,
 } from "@/modules/communications/advertising-mapper/components/editor/AdvertisingInspectorPanel";
 import { persistAllWallBackdrops } from "@/modules/communications/advertising-mapper/lib/advertising-wall-backdrop-storage";
+import { saveAdvertisingWalls } from "@/lib/advertising/advertisingWallsService";
+import { isApiMode } from "@/lib/api";
 import { SnipPresetBar } from "@/modules/communications/advertising-mapper/components/editor/SnipPresetBar";
 import { snipRegionFromBackdrop, type WallSnipRect } from "@/modules/communications/advertising-mapper/lib/ad-snip";
 import { generateEmptySpaceBackdrop } from "@/modules/communications/advertising-mapper/lib/generate-empty-backdrop";
@@ -418,6 +420,12 @@ export function AdvertisingWorkspaceView({
 
   const handleSaveBackdrops = useCallback(() => {
     try {
+      if (isApiMode()) {
+        void saveAdvertisingWalls(walls).then(() => {
+          setSaveNotice("Advertising plans saved to your organization.");
+        });
+        return;
+      }
       const { savedCount } = persistAllWallBackdrops(walls);
       setSaveNotice(
         savedCount > 0

@@ -8,8 +8,10 @@ from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.responses import Response
 
 from app.api.deps import get_current_company_user, get_db
+from app.core.spatial_media_storage import persist_facility_map_image_url, read_facility_map_image
 from app.models.domain import User
 from app.models.facility_map_models import FacilityMap
 from app.models.pulse_models import PulseProject
@@ -107,6 +109,8 @@ async def create_map(body: MapCreateIn, db: Db, user: TenantUser) -> MapDetailOu
         layers_json=layers_model_to_json(layers),
     )
     db.add(row)
+    await db.flush()
+    row.image_url = await persist_facility_map_image_url(cid, row.id, body.image_url or "")
     await db.commit()
     await db.refresh(row)
     return _row_to_detail(row)
@@ -148,7 +152,7 @@ async def update_map(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Map not found")
     row.name = body.name.strip()
     row.category = (body.category.strip() if body.category else "General")[:128]
-    row.image_url = body.image_url or ""
+    row.image_url = await persist_facility_map_image_url(cid, map_id, body.image_url or "")
     row.updated_at = datetime.now(timezone.utc)
     row.elements_json = serialize_elements_json(body.elements)
     row.tasks_json = tasks_model_to_json(body.tasks)
@@ -157,6 +161,16 @@ async def update_map(
     await db.commit()
     await db.refresh(row)
     return _row_to_detail(row)
+
+
+@router.get("/{map_id}/image")
+async def get_map_image(map_id: str, user: TenantUser) -> Response:
+    cid = str(user.company_id)
+    blob = await read_facility_map_image(cid, map_id)
+    if not blob:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Map image not found")
+    raw, media_type = blob
+    return Response(content=raw, media_type=media_type, headers={"Cache-Control": "private, max-age=3600"})
 
 
 @router.delete("/{map_id}", status_code=status.HTTP_204_NO_CONTENT)

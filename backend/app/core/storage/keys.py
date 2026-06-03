@@ -29,5 +29,15 @@ def attachment_key(tenant_id: str, attachment_id: str, ext_with_dot: str) -> str
     return f"{tenant_prefix(tenant_id)}/attachments/{attachment_id}{ext}"
 
 
+def facility_map_image_key(tenant_id: str, map_id: str, ext_with_dot: str) -> str:
+    ext = ext_with_dot if ext_with_dot.startswith(".") else f".{ext_with_dot}"
+    return f"{tenant_prefix(tenant_id)}/facility-maps/{map_id}{ext}"
+
+
+def advertising_wall_backdrop_key(tenant_id: str, wall_id: str, ext_with_dot: str) -> str:
+    ext = ext_with_dot if ext_with_dot.startswith(".") else f".{ext_with_dot}"
+    return f"{tenant_prefix(tenant_id)}/advertising/walls/{wall_id}{ext}"
+
+
 def health_probe_key() -> str:
     return "__healthcheck__/probe.txt"

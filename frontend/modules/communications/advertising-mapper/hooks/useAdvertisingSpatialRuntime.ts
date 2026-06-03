@@ -22,14 +22,20 @@ import {
 } from "@/spatial-engine/runtime/spatial-runtime-store";
 import { wallPlanFromDocument } from "@/spatial-engine/runtime/selectors";
 import {
-  loadAllWallBackdrops,
-  saveWallBackdrop,
-  mergeWallPlanBackdrops,
-} from "@/modules/communications/advertising-mapper/lib/advertising-wall-backdrop-storage";
+  fetchAdvertisingWalls,
+  saveAdvertisingWalls,
+  uploadAdvertisingWallBackdropDataUrl,
+} from "@/lib/advertising/advertisingWallsService";
+import { isApiMode } from "@/lib/api";
+import { readSession } from "@/lib/pulse-session";
 import {
   loadPersistedAdvertisingWalls,
   savePersistedAdvertisingWalls,
 } from "@/modules/communications/advertising-mapper/lib/advertising-wall-plans-storage";
+import {
+  loadAllWallBackdrops,
+  mergeWallPlanBackdrops,
+} from "@/modules/communications/advertising-mapper/lib/advertising-wall-backdrop-storage";
 import { getDefaultAdvertisingWallScaffolds } from "@/modules/communications/advertising-mapper/data/mock-walls";
 import { createEmptyWallPlan } from "@/modules/communications/advertising-mapper/lib/create-wall-plan";
 import type { ConstraintRegion } from "@/modules/communications/advertising-mapper/geometry/types";
@@ -81,21 +87,43 @@ export function useAdvertisingSpatialRuntime(initialWallId = "left") {
   const revision = useSpatialRuntimeStore(selectActiveDocumentRevision);
   const activeDocument = useSpatialRuntimeStore(selectActiveDocument);
   const hydratedRef = useRef(false);
+  const saveInFlightRef = useRef(false);
+  const companyId = readSession()?.company_id ?? null;
 
   useEffect(() => {
     resetSession("advertising");
-    const persisted = loadPersistedAdvertisingWalls();
-    const base = persisted ?? getDefaultAdvertisingWallScaffolds();
-    const storedBackdrops = loadAllWallBackdrops();
-    const wallsWithBackdrops = mergeWallPlanBackdrops(base, storedBackdrops) as FacilityWallPlan[];
-    for (const w of wallsWithBackdrops) {
-      loadDocument(wallPlanToDocument(w), { pushHistory: false });
+    let cancelled = false;
+
+    async function hydrate() {
+      let base: FacilityWallPlan[] | null = null;
+      if (isApiMode()) {
+        try {
+          const remote = await fetchAdvertisingWalls(companyId);
+          if (remote.length) base = remote;
+        } catch {
+          /* fall back to local cache */
+        }
+      }
+      if (!base?.length) {
+        base = loadPersistedAdvertisingWalls() ?? getDefaultAdvertisingWallScaffolds();
+        const storedBackdrops = loadAllWallBackdrops();
+        base = mergeWallPlanBackdrops(base, storedBackdrops) as FacilityWallPlan[];
+      }
+      if (cancelled) return;
+      for (const w of base) {
+        loadDocument(wallPlanToDocument(w), { pushHistory: false });
+      }
+      const activeId = base.some((w) => w.id === initialWallId)
+        ? initialWallId
+        : (base[0]?.id ?? initialWallId);
+      setActiveDocumentId(activeId);
+      hydratedRef.current = true;
     }
-    const activeId = wallsWithBackdrops.some((w) => w.id === initialWallId)
-      ? initialWallId
-      : (wallsWithBackdrops[0]?.id ?? initialWallId);
-    setActiveDocumentId(activeId);
-    hydratedRef.current = true;
+
+    void hydrate();
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- bootstrap once
   }, []);
 
@@ -108,10 +136,22 @@ export function useAdvertisingSpatialRuntime(initialWallId = "left") {
   useEffect(() => {
     if (!hydratedRef.current || Object.keys(documents).length === 0) return;
     const t = window.setTimeout(() => {
-      savePersistedAdvertisingWalls(walls);
-    }, 400);
+      if (isApiMode()) {
+        if (saveInFlightRef.current) return;
+        saveInFlightRef.current = true;
+        void saveAdvertisingWalls(walls, companyId)
+          .catch(() => {
+            savePersistedAdvertisingWalls(walls);
+          })
+          .finally(() => {
+            saveInFlightRef.current = false;
+          });
+      } else {
+        savePersistedAdvertisingWalls(walls);
+      }
+    }, 600);
     return () => window.clearTimeout(t);
-  }, [walls, documents]);
+  }, [walls, documents, companyId]);
 
   const wallId = activeDocumentId ?? initialWallId;
 
@@ -141,14 +181,34 @@ export function useAdvertisingSpatialRuntime(initialWallId = "left") {
             naturalHeight: patch.backdropNaturalHeight,
             variant: current.backdropKind,
           });
-          if (patch.backdropUrl && patch.backdropNaturalWidth && patch.backdropNaturalHeight) {
-            saveWallBackdrop(doc.id, {
-              backdropUrl: patch.backdropUrl,
-              backdropNaturalWidth: patch.backdropNaturalWidth,
-              backdropNaturalHeight: patch.backdropNaturalHeight,
-            });
-          } else {
-            saveWallBackdrop(doc.id, null);
+            if (
+            patch.backdropUrl &&
+            patch.backdropNaturalWidth &&
+            patch.backdropNaturalHeight &&
+            patch.backdropUrl.startsWith("data:") &&
+            isApiMode()
+          ) {
+            const wallId = doc.id;
+            const nw = patch.backdropNaturalWidth;
+            const nh = patch.backdropNaturalHeight;
+            const dataUrl = patch.backdropUrl;
+            void (async () => {
+              try {
+                await saveAdvertisingWalls(walls, companyId);
+                const out = await uploadAdvertisingWallBackdropDataUrl(wallId, dataUrl, companyId);
+                updateActiveDocument((inner) =>
+                  patchDocumentBackdrop(inner, {
+                    kind: "image",
+                    url: out.backdrop_url,
+                    naturalWidth: nw,
+                    naturalHeight: nh,
+                    variant: current.backdropKind,
+                  }),
+                );
+              } catch {
+                /* keep data URL until next save attempt */
+              }
+            })();
           }
         }
         if (patch.name !== undefined) {
@@ -157,7 +217,7 @@ export function useAdvertisingSpatialRuntime(initialWallId = "left") {
         return next;
       });
     },
-    [updateActiveDocument],
+    [companyId, updateActiveDocument, walls],
   );
 
   const onBlockChange = useCallback(
