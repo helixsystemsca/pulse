@@ -26,10 +26,9 @@ const DEFAULT_SHOW_IN_TABLE: Partial<Record<string, boolean>> = {
   department_slug: true,
 };
 
-export type InventoryTableColumnKind = "type_category" | "field" | "status" | "last_movement";
+export type InventoryTableColumnKind = "field" | "status" | "last_movement";
 
 export type InventoryTableColumn =
-  | { kind: "type_category"; label: string; order: number }
   | { kind: "field"; field: InventoryRegisterFieldConfig; order: number }
   | { kind: "status"; label: string; order: number }
   | { kind: "last_movement"; label: string; order: number };
@@ -49,34 +48,11 @@ export function tableColumnsFromRegisterForm(config: InventoryRegisterFormConfig
   const enabled = enabledRegisterFields(config);
   const tableFields = enabled.filter((f) => isRegisterFieldInTable(f));
 
-  const hasType = tableFields.some((f) => f.id === "item_type");
-  const hasCategory = tableFields.some((f) => f.id === "category");
-  const typeOrder = Math.min(
-    ...[tableFields.find((f) => f.id === "item_type"), tableFields.find((f) => f.id === "category")]
-      .filter(Boolean)
-      .map((f) => f!.order),
-    Infinity,
-  );
-
-  const columns: InventoryTableColumn[] = [];
-  const consumed = new Set<string>();
-
-  if (hasType || hasCategory) {
-    const typeField = tableFields.find((f) => f.id === "item_type");
-    const catField = tableFields.find((f) => f.id === "category");
-    const label =
-      typeField && catField
-        ? `${typeField.label} / ${catField.label}`
-        : (typeField?.label ?? catField?.label ?? "Type / category");
-    columns.push({ kind: "type_category", label, order: Number.isFinite(typeOrder) ? typeOrder : 30 });
-    if (hasType) consumed.add("item_type");
-    if (hasCategory) consumed.add("category");
-  }
-
-  for (const field of tableFields) {
-    if (consumed.has(field.id)) continue;
-    columns.push({ kind: "field", field, order: field.order });
-  }
+  const columns: InventoryTableColumn[] = tableFields.map((field) => ({
+    kind: "field",
+    field,
+    order: field.order,
+  }));
 
   columns.sort((a, b) => a.order - b.order);
 

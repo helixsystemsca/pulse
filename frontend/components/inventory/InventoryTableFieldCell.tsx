@@ -54,20 +54,6 @@ type Props = {
 };
 
 export function InventoryTableFieldCell({ column, row, departmentNamesBySlug }: Props) {
-  if (column.kind === "type_category") {
-    return (
-      <td className="px-4 py-3 align-top text-pulse-navy">
-        <span className="capitalize">{row.item_type}</span>
-        {row.category ? (
-          <>
-            <br />
-            <span className="text-xs text-pulse-muted">{row.category}</span>
-          </>
-        ) : null}
-      </td>
-    );
-  }
-
   if (column.kind === "status") {
     return (
       <td className="px-4 py-3 align-top">
@@ -102,6 +88,24 @@ export function InventoryTableFieldCell({ column, row, departmentNamesBySlug }: 
   }
 
   const field = column.field;
+
+  if (field.id === "item_type") {
+    const text = formatRegisterFieldValue(field, row, departmentNamesBySlug);
+    return (
+      <td className="whitespace-nowrap px-4 py-3 align-top capitalize text-pulse-navy">{text}</td>
+    );
+  }
+
+  if (field.id === "category") {
+    const text = formatRegisterFieldValue(field, row, departmentNamesBySlug);
+    return (
+      <td className="max-w-[10rem] px-4 py-3 align-top text-pulse-navy">
+        <span className="line-clamp-2 capitalize" title={text !== "—" ? text : undefined}>
+          {text}
+        </span>
+      </td>
+    );
+  }
 
   if (field.id === "quantity") {
     const qtyText = formatRegisterFieldValue(field, row, departmentNamesBySlug);

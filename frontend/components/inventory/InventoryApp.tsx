@@ -1318,11 +1318,7 @@ export function InventoryApp() {
                       <th className="px-4 py-3">Item</th>
                       {tableColumns.map((col) => (
                         <th key={col.kind === "field" ? col.field.id : col.kind} className="px-4 py-3">
-                          {col.kind === "field"
-                            ? col.field.label
-                            : col.kind === "type_category"
-                              ? col.label
-                              : col.label}
+                          {col.kind === "field" ? col.field.label : col.label}
                         </th>
                       ))}
                       <th className="px-4 py-3 text-right">Actions</th>
