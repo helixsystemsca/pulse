@@ -47,7 +47,11 @@ OPERATIONAL_MATRIX_SLOT_LABELS: dict[str, str] = {
 
 def department_baseline_slot(department: str) -> str | None:
     """Baseline matrix row for a normalized permission-matrix department."""
-    return DEPARTMENT_BASELINE_SLOTS.get(department)
+    known = DEPARTMENT_BASELINE_SLOTS.get(department)
+    if known:
+        return known
+    # Tenant-defined departments inherit the generic operations tier.
+    return "operations"
 
 
 def operational_matrix_slot_label(slot: str, *, department: str | None = None) -> str:

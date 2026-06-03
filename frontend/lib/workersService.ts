@@ -142,6 +142,8 @@ export type WorkersSettings = {
   role_feature_access?: Record<string, string[]>;
   /** Company admin: department × permission-slot → enabled GLOBAL_SYSTEM_FEATURES keys. */
   department_role_feature_access?: Record<string, Record<string, string[]>>;
+  /** Permissions setup wizard completed for this tenant. */
+  permissions_setup_completed?: boolean;
   /** Roles allowed to edit procedures (CMMS SOP library). Company admins can always edit. */
   procedures_edit_roles?: string[];
   /** Roles allowed to PATCH work requests (assignee, zone, category, due date, etc.). Creators and company admins always can. */

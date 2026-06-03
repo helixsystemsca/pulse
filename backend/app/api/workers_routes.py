@@ -675,10 +675,9 @@ async def _get_settings_row(db: AsyncSession, cid: str) -> Optional[PulseWorkers
 
 @router.get("/settings", response_model=WorkersSettingsOut)
 async def get_workers_settings(db: Db, _: RosterPageUser, cid: CompanyId) -> WorkersSettingsOut:
-    row = await _get_settings_row(db, cid)
     cfn = await _contract_feature_names_for_company(db, cid)
     return WorkersSettingsOut(
-        settings=merge_workers_settings(row.settings if row else None),
+        settings=await load_merged_workers_settings(db, cid),
         contract_feature_names=cfn,
     )
 
@@ -729,7 +728,7 @@ async def patch_workers_settings(
 ) -> WorkersSettingsOut:
     await require_workers_roster_page(actor, db, cid)
     row = await _get_settings_row(db, cid)
-    base = merge_workers_settings(row.settings if row else None)
+    base = await load_merged_workers_settings(db, cid)
     cfn_list = await _contract_feature_names_for_company(db, cid)
     contract_set = set(cfn_list)
 
@@ -748,7 +747,10 @@ async def patch_workers_settings(
             detail="Only company administrators or delegated operational roles may update these settings.",
         )
 
-    sanitize_workers_policy_keys(base)
+    from app.core.tenant_departments import tenant_department_slug_set
+
+    allowed = await tenant_department_slug_set(db, cid)
+    sanitize_workers_policy_keys(base, allowed_departments=allowed if allowed else None)
     if row:
         row.settings = base
     else:

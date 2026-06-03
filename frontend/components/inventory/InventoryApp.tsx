@@ -192,8 +192,7 @@ export function InventoryApp() {
   const apiCompany = isSystemAdmin ? effectiveCompanyId : null;
 
   const [inventoryTab, setInventoryTab] = useState<InventoryWorkspaceTab>("list");
-  const [departmentFilter, setDepartmentFilter] = useState(() => (canConfigureOrg ? "" : userInventoryDepartment));
-  const directoryDepartmentSlug = canConfigureOrg ? departmentFilter || undefined : userInventoryDepartment;
+  const directoryDepartmentSlug = canConfigureOrg ? undefined : userInventoryDepartment;
   const [quickPurchases, setQuickPurchases] = useState<QuickPurchase[]>([]);
   const [purchasingVendors, setPurchasingVendors] = useState<VendorWithPerformance[]>([]);
 
@@ -203,7 +202,7 @@ export function InventoryApp() {
   const [typeFilter, setTypeFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [zoneFilter, setZoneFilter] = useState("");
-  const [scopeAdminFilter, setScopeAdminFilter] = useState("");
+  const [scopeFilter, setScopeFilter] = useState("");
   const [scopeOptions, setScopeOptions] = useState<{ id: string; name: string; slug: string }[]>([]);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -321,9 +320,9 @@ export function InventoryApp() {
   }, [effectiveCompanyId, session?.access_token]);
 
   useEffect(() => {
-    if (!canConfigureOrg || !dataEnabled || !effectiveCompanyId) {
+    if (!dataEnabled || !effectiveCompanyId) {
       setScopeOptions([]);
-      setScopeAdminFilter("");
+      setScopeFilter("");
       return;
     }
     void (async () => {
@@ -334,7 +333,7 @@ export function InventoryApp() {
         setScopeOptions([]);
       }
     })();
-  }, [canConfigureOrg, dataEnabled, effectiveCompanyId, apiCompany]);
+  }, [dataEnabled, effectiveCompanyId, apiCompany]);
 
   useEffect(() => {
     if (!isSystemAdmin || !session?.access_token) return;
@@ -500,8 +499,7 @@ export function InventoryApp() {
         item_type: typeFilter || undefined,
         category: categoryFilter || undefined,
         zone_id: zoneFilter || undefined,
-        department_slug: departmentFilter || undefined,
-        scope_id: canConfigureOrg && scopeAdminFilter ? scopeAdminFilter : undefined,
+        scope_id: scopeFilter || undefined,
         date_from,
         date_to,
         limit: pageSize,
@@ -525,9 +523,7 @@ export function InventoryApp() {
     typeFilter,
     categoryFilter,
     zoneFilter,
-    departmentFilter,
-    scopeAdminFilter,
-    canConfigureOrg,
+    scopeFilter,
     dateFrom,
     dateTo,
     page,
@@ -543,7 +539,6 @@ export function InventoryApp() {
     try {
       const res = await fetchInventoryList({
         companyId: apiCompany,
-        scope_id: canConfigureOrg && scopeAdminFilter ? scopeAdminFilter : undefined,
         limit: 1,
         offset: 0,
       });
@@ -553,7 +548,7 @@ export function InventoryApp() {
     } finally {
       setAnalyticsLoading(false);
     }
-  }, [dataEnabled, effectiveCompanyId, apiCompany, canConfigureOrg, scopeAdminFilter]);
+  }, [dataEnabled, effectiveCompanyId, apiCompany]);
 
   useEffect(() => {
     void loadAnalyticsSummary();
@@ -638,8 +633,7 @@ export function InventoryApp() {
     setTypeFilter("");
     setCategoryFilter("");
     setZoneFilter("");
-    setDepartmentFilter("");
-    setScopeAdminFilter("");
+    setScopeFilter("");
     setDateFrom("");
     setDateTo("");
     setPage(0);
@@ -1148,33 +1142,16 @@ export function InventoryApp() {
                   </option>
                 ))}
               </select>
-              {tenantDepartments.length > 0 ? (
-              <select
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
-                value={departmentFilter}
-                onChange={(e) => {
-                  setDepartmentFilter(e.target.value);
-                  setPage(0);
-                }}
-              >
-                <option value="">Department</option>
-                {tenantDepartments.map((d) => (
-                  <option key={d.slug} value={d.slug}>
-                    {d.name}
-                  </option>
-                ))}
-              </select>
-              ) : null}
-              {canConfigureOrg ? (
+              {scopeOptions.length > 1 ? (
                 <select
                   className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
-                  value={scopeAdminFilter}
+                  value={scopeFilter}
                   onChange={(e) => {
-                    setScopeAdminFilter(e.target.value);
+                    setScopeFilter(e.target.value);
                     setPage(0);
                   }}
                 >
-                  <option value="">All scopes</option>
+                  <option value="">All departments</option>
                   {scopeOptions.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name}

@@ -60,13 +60,18 @@ def normalize_matrix_slot(raw: object | None) -> str | None:
     return None
 
 
-def sanitize_department_role_feature_access(raw: object) -> dict[str, dict[str, list[str]]]:
+def sanitize_department_role_feature_access(
+    raw: object,
+    *,
+    allowed_departments: frozenset[str] | None = None,
+) -> dict[str, dict[str, list[str]]]:
+    dept_allow = allowed_departments if allowed_departments else PERMISSION_MATRIX_DEPARTMENTS
     if not isinstance(raw, dict):
         return {}
     out: dict[str, dict[str, list[str]]] = {}
     for dk, dv in raw.items():
         ds = str(dk)
-        if ds not in PERMISSION_MATRIX_DEPARTMENTS:
+        if ds not in dept_allow:
             continue
         if not isinstance(dv, dict):
             continue
@@ -89,11 +94,11 @@ def permission_matrix_department_for_user(user: User, hr: PulseWorkerHR | None) 
     if isinstance(raw, list):
         for x in raw:
             n = normalize_workspace_department_slug(str(x))
-            if n and n in PERMISSION_MATRIX_DEPARTMENTS:
+            if n:
                 return n
     if hr and hr.department:
         n = normalize_workspace_department_slug(hr.department.strip())
-        if n and n in PERMISSION_MATRIX_DEPARTMENTS:
+        if n:
             return n
     return "maintenance"
 
@@ -203,14 +208,17 @@ def matrix_slot_resolution_warnings(
 
 def expand_department_role_matrix_baselines(
     matrix: dict[str, dict[str, list[str]]],
+    *,
+    allowed_departments: frozenset[str] | None = None,
 ) -> dict[str, dict[str, list[str]]]:
     """Copy legacy ``team_member`` permissions into each department's baseline slot when empty."""
+    dept_allow = allowed_departments if allowed_departments else PERMISSION_MATRIX_DEPARTMENTS
     out: dict[str, dict[str, list[str]]] = {}
     for dept, row in matrix.items():
-        if dept not in PERMISSION_MATRIX_DEPARTMENTS:
+        if dept not in dept_allow:
             continue
         new_row = dict(row)
-        baseline = DEPARTMENT_BASELINE_SLOTS.get(dept)
+        baseline = department_baseline_slot(dept)
         if not baseline:
             out[dept] = new_row
             continue

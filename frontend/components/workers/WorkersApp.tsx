@@ -126,18 +126,24 @@ import {
 } from "@/config/platform/tenant-product-modules";
 import {
   computeLegacyRoleFeatureAccessFromMatrix,
-  DEPARTMENT_BASELINE_SLOTS,
+  baselineSlotForDepartment,
   legacyRoleBucketForSlot,
   MASTER_PERMISSION_FEATURE_GROUPS,
+  matrixDepartmentLabel,
+  matrixDepartmentSlugs,
   normalizeDepartmentRoleMatrixFromApi,
-  type PermissionMatrixDepartment,
   type PermissionMatrixRoleSlot,
-  PERMISSION_MATRIX_DEPARTMENTS,
-  PERMISSION_MATRIX_DEPARTMENT_LABEL,
   PERMISSION_MATRIX_ROLE_LABEL,
   PERMISSION_MATRIX_ROLE_SLOTS,
   toggleModuleForDepartmentMatrixSlot,
 } from "@/config/platform/permission-matrix";
+import { InventoryDepartmentsPanel } from "@/components/inventory/InventoryDepartmentsPanel";
+import { PermissionsSetupWizard } from "@/components/workers/PermissionsSetupWizard";
+import {
+  fetchTenantDepartments,
+  tenantDepartmentOptions,
+  type TenantDepartmentRow,
+} from "@/lib/tenantDepartmentsService";
 import {
   buildBypassPayload,
   bypassDraftFromProfile,
@@ -169,6 +175,7 @@ const ROTATION_PRESET_BUTTONS: { label: string; days: boolean[] }[] = [
 ];
 
 const SETTINGS_TABS = [
+  "Departments",
   "Roles",
   "Shifts",
   "Skill categories",
@@ -290,25 +297,15 @@ const CREATE_FORM_EMPTY: CreateFormState = {
   full_name: "",
   email: "",
   role: "worker",
-  role_key: DEPARTMENT_BASELINE_SLOTS.maintenance,
+  role_key: "operations",
   employment_type: "full_time",
-  department: "maintenance",
+  department: "",
   shift: "",
   start_date: "",
   skills: "",
   certifications: "",
   supervisor_id: "",
 };
-
-/** Invite / roster create - HR `department` field (slug). Role options depend on this. */
-const INVITE_DEPARTMENT_OPTIONS: { value: string; label: string }[] = [
-  { value: "maintenance", label: "Maintenance" },
-  { value: "reception", label: "Reception" },
-  { value: "communications", label: "Communications" },
-  { value: "aquatics", label: "Aquatics" },
-  { value: "fitness", label: "Fitness" },
-  { value: "racquets", label: "Racquets" },
-];
 
 function isMaintenanceInviteDepartment(department: string): boolean {
   return (department || "maintenance").trim() === "maintenance";
@@ -603,9 +600,14 @@ export function WorkersApp() {
   const [zoneManageRolesDraft, setZoneManageRolesDraft] = useState<string[]>(["manager", "supervisor"]);
   const { phase: accessSubmitPhase, run: runAccessSubmit } = useAsyncSubmitPhase();
   const accessSubmitPending = accessSubmitPhase === "loading" || accessSubmitPhase === "success";
-  const [permissionsDepartment, setPermissionsDepartment] =
-    useState<PermissionMatrixDepartment>("maintenance");
+  const [permissionsDepartment, setPermissionsDepartment] = useState("");
   const [permissionsSlot, setPermissionsSlot] = useState<PermissionMatrixRoleSlot>("manager");
+  const [tenantDepartments, setTenantDepartments] = useState<TenantDepartmentRow[]>([]);
+  const [permissionsSetupOpen, setPermissionsSetupOpen] = useState(false);
+  const [permissionsSetupDismissed, setPermissionsSetupDismissed] = useState(false);
+  const [permissionsOrgBusy, setPermissionsOrgBusy] = useState(false);
+  const [permissionsOrgError, setPermissionsOrgError] = useState<string | null>(null);
+  const { phase: permissionsSetupPhase, run: runPermissionsSetupSubmit } = useAsyncSubmitPhase();
   const [delegatedTargetRole, setDelegatedTargetRole] = useState<PermissionRole>("manager");
   const [departmentRoleFeatureAccessDraft, setDepartmentRoleFeatureAccessDraft] = useState<
     Record<string, Record<string, string[]>>
@@ -686,6 +688,42 @@ export function WorkersApp() {
     })();
   }, [isSystemAdmin, session?.access_token]);
 
+  const matrixDeptSlugs = useMemo(() => matrixDepartmentSlugs(tenantDepartments), [tenantDepartments]);
+  const departmentOptions = useMemo(() => tenantDepartmentOptions(tenantDepartments), [tenantDepartments]);
+
+  const permissionsSetupDismissKey =
+    effectiveCompanyId != null ? `pulse.permissions.setup.dismissed.${effectiveCompanyId}` : null;
+
+  useEffect(() => {
+    if (!permissionsSetupDismissKey || typeof window === "undefined") return;
+    setPermissionsSetupDismissed(window.localStorage.getItem(permissionsSetupDismissKey) === "1");
+  }, [permissionsSetupDismissKey]);
+
+  useEffect(() => {
+    if (!dataEnabled || !effectiveCompanyId) {
+      setTenantDepartments([]);
+      return;
+    }
+    void fetchTenantDepartments(apiCompany)
+      .then(setTenantDepartments)
+      .catch(() => setTenantDepartments([]));
+  }, [dataEnabled, effectiveCompanyId, apiCompany]);
+
+  useEffect(() => {
+    if (!matrixDeptSlugs.length) return;
+    setPermissionsDepartment((cur) => (cur && matrixDeptSlugs.includes(cur) ? cur : matrixDeptSlugs[0]!));
+  }, [matrixDeptSlugs]);
+
+  useEffect(() => {
+    if (!dataEnabled || !isTenantFullAdmin) return;
+    if (fullSettings.permissions_setup_completed) {
+      setPermissionsSetupOpen(false);
+      return;
+    }
+    if (permissionsSetupDismissed) return;
+    setPermissionsSetupOpen(true);
+  }, [dataEnabled, isTenantFullAdmin, fullSettings.permissions_setup_completed, permissionsSetupDismissed]);
+
   const loadList = useCallback(async () => {
     if (!dataEnabled || !effectiveCompanyId) return;
     setListLoading(true);
@@ -724,7 +762,12 @@ export function WorkersApp() {
       const matrixCatalog =
         st.contract_feature_names?.length ? st.contract_feature_names : cat.length ? cat : [];
       setDepartmentRoleFeatureAccessDraft(
-        normalizeDepartmentRoleMatrixFromApi(st.settings.department_role_feature_access, matrixCatalog, nextDraft),
+        normalizeDepartmentRoleMatrixFromApi(
+          st.settings.department_role_feature_access,
+          matrixCatalog,
+          nextDraft,
+          matrixDepartmentSlugs(tenantDepartments),
+        ),
       );
       setProceduresEditRolesDraft(
         Array.isArray(st.settings.procedures_edit_roles) && st.settings.procedures_edit_roles.length
@@ -748,7 +791,7 @@ export function WorkersApp() {
     } finally {
       setListLoading(false);
     }
-  }, [dataEnabled, effectiveCompanyId, apiCompany, q, session?.contract_enabled_features]);
+  }, [dataEnabled, effectiveCompanyId, apiCompany, q, session?.contract_enabled_features, tenantDepartments]);
 
   useEffect(() => {
     const t = window.setTimeout(() => void loadList(), 280);
@@ -1125,7 +1168,7 @@ export function WorkersApp() {
     });
   }
 
-  function toggleMasterMatrixModule(dept: PermissionMatrixDepartment, slot: PermissionMatrixRoleSlot, mod: string) {
+  function toggleMasterMatrixModule(dept: string, slot: PermissionMatrixRoleSlot, mod: string) {
     setDepartmentRoleFeatureAccessDraft((prev) => toggleModuleForDepartmentMatrixSlot(prev, dept, slot, mod));
   }
 
@@ -1227,11 +1270,33 @@ export function WorkersApp() {
     }
   }
 
+  async function completePermissionsSetup() {
+    if (!effectiveCompanyId || !isTenantFullAdmin) return;
+    try {
+      await runPermissionsSetupSubmit(async () => {
+        const r = await patchWorkerSettings(apiCompany, {
+          ...fullSettings,
+          permissions_setup_completed: true,
+        });
+        setFullSettings(r.settings);
+        setSettingsDraft(r.settings);
+        setPermissionsSetupOpen(false);
+        await loadList();
+      });
+    } catch {
+      /* error animation */
+    }
+  }
+
   async function saveAccessPolicy() {
     if (!effectiveCompanyId || !isTenantFullAdmin) return;
     try {
       await runAccessSubmit(async () => {
-      const rfaSync = computeLegacyRoleFeatureAccessFromMatrix(departmentRoleFeatureAccessDraft, contractCatalog);
+      const rfaSync = computeLegacyRoleFeatureAccessFromMatrix(
+        departmentRoleFeatureAccessDraft,
+        contractCatalog,
+        matrixDeptSlugs,
+      );
       const r = await patchWorkerSettings(apiCompany, {
         ...fullSettings,
         workers_page_delegation: delegationDraft,
@@ -1256,7 +1321,12 @@ export function WorkersApp() {
       const matrixCatalog =
         r.contract_feature_names?.length ? r.contract_feature_names : cat.length ? cat : [];
       setDepartmentRoleFeatureAccessDraft(
-        normalizeDepartmentRoleMatrixFromApi(r.settings.department_role_feature_access, matrixCatalog, nextDraft),
+        normalizeDepartmentRoleMatrixFromApi(
+          r.settings.department_role_feature_access,
+          matrixCatalog,
+          nextDraft,
+          matrixDeptSlugs,
+        ),
       );
       await refreshPulseUserFromServer();
       refresh();
@@ -1343,7 +1413,7 @@ export function WorkersApp() {
     const deptSlug = trim(positionDraft.department).toLowerCase();
     const effectiveRoleKey =
       positionDraft.matrix_slot.trim() ||
-      DEPARTMENT_BASELINE_SLOTS[deptSlug as keyof typeof DEPARTMENT_BASELINE_SLOTS] ||
+      baselineSlotForDepartment(deptSlug) ||
       "team_member";
     const curRoleKey = profile.assigned_role_key ?? profile.matrix_slot ?? "";
     if (positionDraft.matrix_slot !== curMatrixSlot) {
@@ -1533,11 +1603,11 @@ export function WorkersApp() {
       const [name, exp] = line.split("|").map((x) => x.trim());
       return exp ? { name, expiry_date: `${exp}T12:00:00.000Z` } : { name };
     });
-    const departmentSlug = createForm.department.trim() || "maintenance";
+    const departmentSlug = createForm.department.trim() || matrixDeptSlugs[0] || "";
     const role = effectiveInviteRole(departmentSlug, createForm.role, createRoleLimited);
     const roleKey =
       createForm.role_key.trim() ||
-      DEPARTMENT_BASELINE_SLOTS[departmentSlug as keyof typeof DEPARTMENT_BASELINE_SLOTS] ||
+      baselineSlotForDepartment(departmentSlug) ||
       "team_member";
     const department_slugs = departmentSlug ? [departmentSlug] : [];
     return {
@@ -1863,17 +1933,33 @@ export function WorkersApp() {
                   <span className="font-semibold text-ds-foreground">do not change</span> which modules appear in Helix.
                   Modules outside your contract stay hidden everywhere.
                 </p>
+                {!matrixDeptSlugs.length ? (
+                  <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
+                    Add organization departments before configuring module access.{" "}
+                    <button
+                      type="button"
+                      className="font-semibold underline underline-offset-2"
+                      onClick={() => setPermissionsSetupOpen(true)}
+                    >
+                      Run permissions setup
+                    </button>
+                  </p>
+                ) : null}
                 <div className="mt-4 space-y-4">
                   <div>
                     <label className={`block ${dsLabelClass}`}>Department</label>
                     <select
                       className={`${FIELD} mt-1.5`}
                       value={permissionsDepartment}
-                      onChange={(e) => setPermissionsDepartment(e.target.value as PermissionMatrixDepartment)}
+                      onChange={(e) => setPermissionsDepartment(e.target.value)}
+                      disabled={!matrixDeptSlugs.length}
                     >
-                      {PERMISSION_MATRIX_DEPARTMENTS.map((d) => (
+                      {matrixDeptSlugs.length ? null : (
+                        <option value="">Configure departments first</option>
+                      )}
+                      {matrixDeptSlugs.map((d) => (
                         <option key={d} value={d}>
-                          {PERMISSION_MATRIX_DEPARTMENT_LABEL[d]}
+                          {matrixDepartmentLabel(d, tenantDepartments)}
                         </option>
                       ))}
                     </select>
@@ -2812,9 +2898,7 @@ export function WorkersApp() {
                 const department = e.target.value;
                 setCreateForm((f) => {
                   const next: CreateFormState = { ...f, department };
-                  const baseline =
-                    DEPARTMENT_BASELINE_SLOTS[department as keyof typeof DEPARTMENT_BASELINE_SLOTS] ??
-                    "team_member";
+                  const baseline = baselineSlotForDepartment(department) ?? "team_member";
                   next.role_key = baseline;
                   if (!isMaintenanceInviteDepartment(department)) {
                     next.role = "worker";
@@ -2825,7 +2909,10 @@ export function WorkersApp() {
                 });
               }}
             >
-              {INVITE_DEPARTMENT_OPTIONS.map((o) => (
+              <option value="">
+                {departmentOptions.length ? "Select department…" : "Configure departments in settings"}
+              </option>
+              {departmentOptions.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
                 </option>
@@ -3347,8 +3434,10 @@ export function WorkersApp() {
                       value={positionDraft.department}
                       onChange={(e) => setPositionDraft((d) => ({ ...d, department: e.target.value }))}
                     >
-                      <option value="">Select department</option>
-                      {INVITE_DEPARTMENT_OPTIONS.map((o) => (
+                      <option value="">
+                        {departmentOptions.length ? "Select department" : "Configure departments in settings"}
+                      </option>
+                      {departmentOptions.map((o) => (
                         <option key={o.value} value={o.value}>
                           {o.label}
                         </option>
@@ -3380,9 +3469,7 @@ export function WorkersApp() {
                       <p className="mt-1 text-xs text-pulse-muted">
                         Auto uses{" "}
                         <span className="font-mono">
-                          {DEPARTMENT_BASELINE_SLOTS[
-                            positionDraft.department as keyof typeof DEPARTMENT_BASELINE_SLOTS
-                          ] ?? "team_member"}
+                          {baselineSlotForDepartment(positionDraft.department) ?? "team_member"}
                         </span>{" "}
                         for this department unless job title implies a higher slot.
                       </p>
@@ -3979,9 +4066,12 @@ export function WorkersApp() {
           <div>
             <p className={LABEL}>Section</p>
             <div className="mt-1.5 flex flex-wrap gap-1 rounded-[10px] border border-ds-border bg-ds-secondary p-1">
-              {SETTINGS_TABS.filter(
-                (t) => t !== "Notifications" || isCompanyAdmin || isTenantFullAdmin,
-              ).map((t) => (
+              {SETTINGS_TABS.filter((t) => {
+                if (t === "Departments" && !isTenantFullAdmin) return false;
+                if (t === "Notifications" && !(isCompanyAdmin || isTenantFullAdmin)) return false;
+                if (t === "Login activity" && !isTenantFullAdmin) return false;
+                return true;
+              }).map((t) => (
                 <button
                   key={t}
                   type="button"
@@ -3997,6 +4087,33 @@ export function WorkersApp() {
               ))}
             </div>
           </div>
+
+          {settingsTab === "Departments" && isTenantFullAdmin ? (
+            <div className="space-y-3">
+              <button
+                type="button"
+                className="text-xs font-semibold text-[#2B4C7E] underline-offset-2 hover:underline"
+                onClick={() => {
+                  setPermissionsSetupOpen(true);
+                  setPermissionsSetupDismissed(false);
+                  if (permissionsSetupDismissKey && typeof window !== "undefined") {
+                    window.localStorage.removeItem(permissionsSetupDismissKey);
+                  }
+                }}
+              >
+                Open setup wizard
+              </button>
+              <InventoryDepartmentsPanel
+                companyId={apiCompany}
+                departments={tenantDepartments}
+                onDepartmentsChange={setTenantDepartments}
+                canManage={isTenantFullAdmin}
+                busy={permissionsOrgBusy}
+                onBusyChange={setPermissionsOrgBusy}
+                onError={setPermissionsOrgError}
+              />
+            </div>
+          ) : null}
 
           {settingsTab === "Roles" ? (
             <div className="space-y-3">
@@ -4102,6 +4219,28 @@ export function WorkersApp() {
           ) : null}
         </div>
       </PulseDrawer>
+
+      <PermissionsSetupWizard
+        open={permissionsSetupOpen}
+        busy={permissionsOrgBusy}
+        submitPhase={permissionsSetupPhase}
+        companyId={apiCompany}
+        departments={tenantDepartments}
+        onDepartmentsChange={setTenantDepartments}
+        canManageOrgData={isTenantFullAdmin}
+        orgDataBusy={permissionsOrgBusy}
+        onOrgDataBusyChange={setPermissionsOrgBusy}
+        orgDataError={permissionsOrgError}
+        onOrgDataError={setPermissionsOrgError}
+        onComplete={() => completePermissionsSetup()}
+        onSkip={() => {
+          setPermissionsSetupOpen(false);
+          if (permissionsSetupDismissKey && typeof window !== "undefined") {
+            window.localStorage.setItem(permissionsSetupDismissKey, "1");
+          }
+          setPermissionsSetupDismissed(true);
+        }}
+      />
 
       <AccessDebugModal
         open={accessDebugOpen}

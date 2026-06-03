@@ -43,6 +43,8 @@ DEFAULT_WORKERS_SETTINGS: dict[str, Any] = {
     "role_feature_access": {},
     #: Department × permission-slot matrix (GLOBAL_SYSTEM_FEATURES keys). Empty => use role_feature_access only.
     "department_role_feature_access": {},
+    #: Permissions / Team Management setup wizard completed for this tenant.
+    "permissions_setup_completed": False,
     #: Roles (JWT `users.roles`) that may PATCH work requests (assignee, zone, due date, etc.). Company admins always can.
     "work_request_edit_roles": ["manager", "supervisor"],
     #: Roles that may add/rename/delete facility zones (work-request locations). Company admins always can.
@@ -102,7 +104,11 @@ def _sanitize_feature_key_list(v: object) -> list[str]:
     return sorted({str(x) for x in v if str(x) in cat})
 
 
-def sanitize_workers_policy_keys(base: dict[str, Any]) -> None:
+def sanitize_workers_policy_keys(
+    base: dict[str, Any],
+    *,
+    allowed_departments: frozenset[str] | None = None,
+) -> None:
     """Coerce policy JSON fields to expected shapes (guards `.get` on dict-only keys)."""
     rfa = base.get("role_feature_access")
     if isinstance(rfa, dict):
@@ -120,7 +126,8 @@ def sanitize_workers_policy_keys(base: dict[str, Any]) -> None:
         base["permission_matrix"] = copy.deepcopy(DEFAULT_WORKERS_SETTINGS["permission_matrix"])
 
     base["department_role_feature_access"] = sanitize_department_role_feature_access(
-        base.get("department_role_feature_access")
+        base.get("department_role_feature_access"),
+        allowed_departments=allowed_departments,
     )
 
     wpd = base.get("workers_page_delegation")
@@ -149,10 +156,14 @@ def sanitize_workers_policy_keys(base: dict[str, Any]) -> None:
         )
 
 
-def merge_workers_settings(raw: Optional[dict[str, Any]]) -> dict[str, Any]:
+def merge_workers_settings(
+    raw: Optional[dict[str, Any]],
+    *,
+    allowed_departments: frozenset[str] | None = None,
+) -> dict[str, Any]:
     out = copy.deepcopy(DEFAULT_WORKERS_SETTINGS)
     if not raw:
-        sanitize_workers_policy_keys(out)
+        sanitize_workers_policy_keys(out, allowed_departments=allowed_departments)
         return out
     for k, v in raw.items():
         if isinstance(v, dict) and isinstance(out.get(k), dict):
@@ -163,5 +174,5 @@ def merge_workers_settings(raw: Optional[dict[str, Any]]) -> dict[str, Any]:
             out[k] = _merge_keyed_list(out[k], v)  # type: ignore[arg-type]
         else:
             out[k] = v
-    sanitize_workers_policy_keys(out)
+    sanitize_workers_policy_keys(out, allowed_departments=allowed_departments)
     return out

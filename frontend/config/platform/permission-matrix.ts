@@ -27,6 +27,30 @@ export const PERMISSION_MATRIX_DEPARTMENT_LABEL: Record<PermissionMatrixDepartme
   admin: "Administration",
 };
 
+/** Tenant-configured department slugs for matrix UI (empty until departments are configured). */
+export function matrixDepartmentSlugs(
+  tenantDepartments: readonly { slug: string; name: string }[],
+): string[] {
+  if (!tenantDepartments.length) return [];
+  return [...tenantDepartments].sort((a, b) => a.name.localeCompare(b.name)).map((d) => d.slug);
+}
+
+export function matrixDepartmentLabel(
+  slug: string,
+  tenantDepartments: readonly { slug: string; name: string }[] = [],
+): string {
+  const hit = tenantDepartments.find((d) => d.slug === slug);
+  if (hit) return hit.name;
+  const legacy = PERMISSION_MATRIX_DEPARTMENT_LABEL[slug as PermissionMatrixDepartment];
+  if (legacy) return legacy;
+  return slug.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+export function baselineSlotForDepartment(slug: string): PermissionMatrixRoleSlot {
+  const known = DEPARTMENT_BASELINE_SLOTS[slug as PermissionMatrixDepartment];
+  return known ?? "operations";
+}
+
 /** Department → baseline frontline slot (organizational model). */
 export const DEPARTMENT_BASELINE_SLOTS: Record<PermissionMatrixDepartment, PermissionMatrixRoleSlot> = {
   maintenance: "operations",
@@ -395,13 +419,14 @@ export function permissionFeatureGroupsForDepartment(dept: PermissionMatrixDepar
 export function computeLegacyRoleFeatureAccessFromMatrix(
   matrix: Record<string, Record<string, string[]>>,
   contractCatalog: readonly string[],
+  departmentSlugs: readonly string[] = PERMISSION_MATRIX_DEPARTMENTS,
 ): Record<string, string[]> {
   const cset = new Set(contractCatalog);
   const uniq = (xs: string[]) => [...new Set(xs)].filter((x) => cset.has(x)).sort();
 
   const collect = (slot: PermissionMatrixRoleSlot): string[] => {
     const acc = new Set<string>();
-    for (const d of PERMISSION_MATRIX_DEPARTMENTS) {
+    for (const d of departmentSlugs) {
       const row = matrix[d];
       if (!row) continue;
       const list = row[slot];
@@ -423,9 +448,11 @@ export function computeLegacyRoleFeatureAccessFromMatrix(
   };
 }
 
-export function emptyDepartmentRoleMatrix(): Record<string, Record<string, string[]>> {
+export function emptyDepartmentRoleMatrix(
+  departmentSlugs: readonly string[] = PERMISSION_MATRIX_DEPARTMENTS,
+): Record<string, Record<string, string[]>> {
   const out: Record<string, Record<string, string[]>> = {};
-  for (const d of PERMISSION_MATRIX_DEPARTMENTS) {
+  for (const d of departmentSlugs) {
     out[d] = {};
     for (const s of PERMISSION_MATRIX_ROLE_SLOTS) {
       out[d][s] = [];
@@ -437,31 +464,41 @@ export function emptyDepartmentRoleMatrix(): Record<string, Record<string, strin
 export function seedDepartmentRoleMatrixFromLegacy(
   contractCatalog: readonly string[],
   legacy: Record<string, string[]>,
+  departmentSlugs: readonly string[] = PERMISSION_MATRIX_DEPARTMENTS,
 ): Record<string, Record<string, string[]>> {
-  const out = emptyDepartmentRoleMatrix();
+  const out = emptyDepartmentRoleMatrix(departmentSlugs);
   const cat = [...contractCatalog];
   const pick = (bucket: "manager" | "supervisor" | "lead" | "worker") => {
     const raw = legacy[bucket];
     if (raw?.length) return raw.filter((x) => cat.includes(x));
     return [...cat];
   };
-  for (const d of PERMISSION_MATRIX_DEPARTMENTS) {
-    const baseline = DEPARTMENT_BASELINE_SLOTS[d];
+  for (const d of departmentSlugs) {
+    const baseline = baselineSlotForDepartment(d);
     for (const s of PERMISSION_MATRIX_ROLE_SLOTS) {
       if (s === baseline) {
-        out[d][s] = [...pick("worker")];
+        out[d]![s] = [...pick("worker")];
       } else {
-        out[d][s] = [...pick(legacyRoleBucketForSlot(s))];
+        out[d]![s] = [...pick(legacyRoleBucketForSlot(s))];
       }
     }
   }
   return out;
 }
 
-export function hasPersistedDepartmentRoleMatrix(raw: unknown): boolean {
+export function hasPersistedDepartmentRoleMatrix(
+  raw: unknown,
+  departmentSlugs: readonly string[] = PERMISSION_MATRIX_DEPARTMENTS,
+): boolean {
   if (!raw || typeof raw !== "object") return false;
   const o = raw as Record<string, unknown>;
-  return PERMISSION_MATRIX_DEPARTMENTS.some((d) => {
+  if (departmentSlugs.length) {
+    return departmentSlugs.some((d) => {
+      const row = o[d];
+      return row !== undefined && row !== null && typeof row === "object";
+    });
+  }
+  return Object.keys(o).some((d) => {
     const row = o[d];
     return row !== undefined && row !== null && typeof row === "object";
   });
@@ -471,28 +508,27 @@ export function normalizeDepartmentRoleMatrixFromApi(
   raw: unknown,
   contractCatalog: readonly string[],
   legacy: Record<string, string[]>,
+  departmentSlugs: readonly string[] = PERMISSION_MATRIX_DEPARTMENTS,
 ): Record<string, Record<string, string[]>> {
-  const seed = seedDepartmentRoleMatrixFromLegacy(contractCatalog, legacy);
-  if (!hasPersistedDepartmentRoleMatrix(raw) || typeof raw !== "object" || raw === null) {
+  const seed = seedDepartmentRoleMatrixFromLegacy(contractCatalog, legacy, departmentSlugs);
+  if (!hasPersistedDepartmentRoleMatrix(raw, departmentSlugs) || typeof raw !== "object" || raw === null) {
     return seed;
   }
   const obj = raw as Record<string, Record<string, unknown>>;
-  // Contract rows often store parent `dashboard` only; matrix toggles use flyout keys
-  // (dashboard_operations, dashboard_dept_*). Must match expandContractKeysForMatrixFilter.
   const cat = expandContractKeysForMatrixFilter(contractCatalog);
-  for (const d of PERMISSION_MATRIX_DEPARTMENTS) {
+  for (const d of departmentSlugs) {
     const row = obj[d];
     if (!row || typeof row !== "object") continue;
-    const baseline = DEPARTMENT_BASELINE_SLOTS[d];
+    const baseline = baselineSlotForDepartment(d);
     for (const s of PERMISSION_MATRIX_ROLE_SLOTS) {
       const list = row[s];
       if (Array.isArray(list)) {
         seed[d]![s] = list
           .map((x) => {
-            const raw = String(x).trim();
-            const canonical = toCanonicalFeatureKey(raw);
+            const rawKey = String(x).trim();
+            const canonical = toCanonicalFeatureKey(rawKey);
             if (canonical === "logs_inspections") return "logs_inspections";
-            return raw;
+            return rawKey;
           })
           .filter((x) => cat.has(x) || cat.has(toCanonicalFeatureKey(x) ?? ""));
       }
@@ -507,7 +543,7 @@ export function normalizeDepartmentRoleMatrixFromApi(
 /** Toggle one module for exactly one `(department, role_slot)` cell — saves independently per department. */
 export function toggleModuleForDepartmentMatrixSlot(
   prev: Record<string, Record<string, string[]>>,
-  dept: PermissionMatrixDepartment,
+  dept: string,
   slot: PermissionMatrixRoleSlot,
   mod: string,
 ): Record<string, Record<string, string[]>> {

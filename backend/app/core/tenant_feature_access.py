@@ -35,9 +35,15 @@ def _contract_feature_names_normalized(raw: list[str]) -> list[str]:
 
 
 async def load_merged_workers_settings(db: AsyncSession, company_id: str) -> dict[str, Any]:
+    from app.core.tenant_departments import tenant_department_slug_set
+
     q = await db.execute(select(PulseWorkersSettings).where(PulseWorkersSettings.company_id == company_id))
     row = q.scalar_one_or_none()
-    return merge_workers_settings(row.settings if row else None)
+    allowed = await tenant_department_slug_set(db, company_id)
+    return merge_workers_settings(
+        row.settings if row else None,
+        allowed_departments=allowed if allowed else None,
+    )
 
 
 def tenant_full_admin_canonical_features(contract_names: list[str]) -> list[str]:
@@ -52,8 +58,7 @@ def _department_role_matrix_is_configured(matrix: object) -> bool:
     """True once any department row stores explicit slot lists (Team Management matrix)."""
     if not isinstance(matrix, dict):
         return False
-    for d in PERMISSION_MATRIX_DEPARTMENTS:
-        row = matrix.get(d)
+    for _dept, row in matrix.items():
         if not isinstance(row, dict):
             continue
         for s in PERMISSION_MATRIX_SLOTS:

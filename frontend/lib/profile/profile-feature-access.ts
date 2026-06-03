@@ -49,8 +49,7 @@ export function profileShowsExtendedAccountSettings(session: PulseAuthSession | 
   if (!session) return false;
   return (
     isUserFeatureEnabled(session, "dashboard") ||
-    canAccessClassicNavHref(session, "/settings") ||
-    profileShowsGamification(session)
+    canAccessClassicNavHref(session, "/settings")
   );
 }
 
