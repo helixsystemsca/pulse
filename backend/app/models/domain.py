@@ -112,8 +112,10 @@ class Company(Base):
     #: App chrome wordmark (e.g. tenant acronym); null → platform default on the client.
     header_wordmark: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     logo_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
+    logo_storage_key: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     header_image_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
     background_image_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
+    background_storage_key: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     theme: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
     timezone: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     latitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
@@ -190,7 +192,9 @@ class User(Base):
     )
     full_name: Mapped[Optional[str]] = mapped_column(String(255))
     avatar_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
+    avatar_storage_key: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     avatar_pending_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
+    avatar_pending_storage_key: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     avatar_status: Mapped[AvatarStatus] = mapped_column(
         Enum(AvatarStatus, values_callable=lambda x: [e.value for e in x], native_enum=False, length=16),
         nullable=False,
@@ -583,6 +587,7 @@ class InventoryItem(Base):
     unit_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     vendor: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     image_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
+    image_storage_key: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     custom_attributes: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, server_default=text("'{}'::jsonb")
     )

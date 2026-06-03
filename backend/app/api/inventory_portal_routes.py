@@ -48,7 +48,11 @@ from app.api.inventory_query_helpers import (
 )
 from app.core.tenant_context import resolve_tenant_company_id
 from app.core.tenant_departments import list_tenant_departments, validate_tenant_department_slug
-from app.core.pulse_storage import read_inventory_item_image_bytes, write_inventory_item_image_bytes
+from app.core.pulse_storage import (
+    read_inventory_item_image_bytes,
+    stored_object_display_url,
+    write_inventory_item_image_bytes,
+)
 from app.repositories import inventory_scope_repository as inv_scope_repo
 from app.schemas.inventory_transactions import (
     InventoryBatchTransactionIn,
@@ -131,7 +135,7 @@ async def _get_inventory_item_for_company(
     return item
 
 
-async def _save_inventory_item_image_upload(file: UploadFile, company_id: str, item_id: str) -> None:
+async def _save_inventory_item_image_upload(file: UploadFile, company_id: str, item_id: str):
     ct = (file.content_type or "").split(";")[0].strip().lower()
     if ct not in _ITEM_IMAGE_CT_EXT:
         raise HTTPException(
@@ -143,7 +147,7 @@ async def _save_inventory_item_image_upload(file: UploadFile, company_id: str, i
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Image too large (max 5MB)")
     ext = _ITEM_IMAGE_CT_EXT[ct]
     try:
-        await write_inventory_item_image_bytes(company_id, item_id, ext, raw, ct)
+        return await write_inventory_item_image_bytes(company_id, item_id, ext, raw, ct)
     except RuntimeError as e:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
 
@@ -1631,13 +1635,16 @@ async def get_inventory_item_image(
 ) -> Response:
     item = await _get_inventory_item_for_company(db, cid, policy, item_id)
     try:
-        blob = await read_inventory_item_image_bytes(cid, item_id)
+        blob = await read_inventory_item_image_bytes(
+            cid, item_id, storage_key=getattr(item, "image_storage_key", None)
+        )
     except RuntimeError as e:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
     if not blob:
         # Self-heal stale image_url pointers (e.g. ephemeral disk on Render after redeploy).
-        if item.image_url:
+        if item.image_url or getattr(item, "image_storage_key", None):
             item.image_url = None
+            item.image_storage_key = None
             await db.commit()
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     data, media_type = blob
@@ -1654,12 +1661,13 @@ async def upload_inventory_item_image(
     file: UploadFile = File(...),
 ) -> InventoryImageUploadOut:
     item = await _get_inventory_item_for_company(db, cid, policy, item_id, write=True)
-    await _save_inventory_item_image_upload(file, cid, item_id)
+    stored = await _save_inventory_item_image_upload(file, cid, item_id)
     internal = _inventory_image_internal_url(item_id)
-    item.image_url = internal
+    item.image_storage_key = stored.object_key
+    item.image_url = stored_object_display_url(stored, internal)
     await db.commit()
     await db.refresh(item)
-    return InventoryImageUploadOut(image_url=internal)
+    return InventoryImageUploadOut(image_url=item.image_url or internal)
 
 
 @router.post("/{item_id}/assign", response_model=InventoryDetailOut)

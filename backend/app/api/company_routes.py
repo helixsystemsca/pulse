@@ -14,6 +14,7 @@ from app.core.company_logo_upload import INTERNAL_LOGO_PATH, normalize_logo_cont
 from app.core.pulse_storage import (
     read_company_background_bytes,
     read_company_logo_bytes,
+    stored_object_display_url,
     write_company_background_bytes,
     write_company_logo_bytes,
 )
@@ -58,14 +59,15 @@ async def get_company_logo_file(
 ) -> Response:
     """Serve the uploaded logo for the authenticated user's company (Authorization required)."""
     cid = str(user.company_id)
+    co = await db.get(Company, cid)
     try:
-        blob = await read_company_logo_bytes(cid)
+        blob = await read_company_logo_bytes(cid, storage_key=getattr(co, "logo_storage_key", None) if co else None)
     except RuntimeError as e:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
     if not blob:
-        co = await db.get(Company, cid)
-        if co and (co.logo_url or "").strip() == INTERNAL_LOGO_PATH:
+        if co and ((co.logo_url or "").strip() == INTERNAL_LOGO_PATH or co.logo_storage_key):
             co.logo_url = None
+            co.logo_storage_key = None
             await db.commit()
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No uploaded logo")
     data, media_type = blob
@@ -78,14 +80,19 @@ async def get_company_background_file(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Response:
     cid = str(user.company_id)
+    co = await db.get(Company, cid)
     try:
-        blob = await read_company_background_bytes(cid)
+        blob = await read_company_background_bytes(
+            cid, storage_key=getattr(co, "background_storage_key", None) if co else None
+        )
     except RuntimeError as e:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
     if not blob:
-        co = await db.get(Company, cid)
-        if co and (co.background_image_url or "").strip() == INTERNAL_BACKGROUND_PATH:
+        if co and (
+            (co.background_image_url or "").strip() == INTERNAL_BACKGROUND_PATH or co.background_storage_key
+        ):
             co.background_image_url = None
+            co.background_storage_key = None
             await db.commit()
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No uploaded background")
     data, media_type = blob
@@ -107,19 +114,20 @@ async def upload_company_logo(
 
     cid = str(user.company_id)
     try:
-        await write_company_logo_bytes(cid, ext, ct, raw)
+        stored = await write_company_logo_bytes(cid, ext, ct, raw)
     except RuntimeError as e:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
 
     co = await db.get(Company, cid)
     if not co:
         raise HTTPException(status_code=404, detail="Company not found")
-    co.logo_url = INTERNAL_LOGO_PATH
+    co.logo_storage_key = stored.object_key
+    co.logo_url = stored_object_display_url(stored, INTERNAL_LOGO_PATH)
     await db.commit()
     await db.refresh(co)
 
     return CompanyLogoUploadOut(
-        logo_url=INTERNAL_LOGO_PATH,
+        logo_url=co.logo_url or INTERNAL_LOGO_PATH,
         header_image_url=co.header_image_url,
         background_image_url=getattr(co, "background_image_url", None),
     )
@@ -140,20 +148,21 @@ async def upload_company_background(
 
     cid = str(user.company_id)
     try:
-        await write_company_background_bytes(cid, ext, ct, raw)
+        stored = await write_company_background_bytes(cid, ext, ct, raw)
     except RuntimeError as e:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
 
     co = await db.get(Company, cid)
     if not co:
         raise HTTPException(status_code=404, detail="Company not found")
-    co.background_image_url = INTERNAL_BACKGROUND_PATH
+    co.background_storage_key = stored.object_key
+    co.background_image_url = stored_object_display_url(stored, INTERNAL_BACKGROUND_PATH)
     await db.commit()
     await db.refresh(co)
     return CompanyLogoUploadOut(
         logo_url=co.logo_url or "",
         header_image_url=co.header_image_url,
-        background_image_url=INTERNAL_BACKGROUND_PATH,
+        background_image_url=co.background_image_url or INTERNAL_BACKGROUND_PATH,
         message="Background updated",
     )
 

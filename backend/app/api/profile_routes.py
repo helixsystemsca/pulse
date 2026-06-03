@@ -12,7 +12,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_company_user, get_db
 from app.core.company_logo_upload import normalize_logo_content_type
 from app.core.supabase_storage import create_signed_upload_url, public_object_url
-from app.core.pulse_storage import read_user_avatar_bytes, read_user_avatar_pending_bytes, write_user_avatar_bytes
+from app.core.pulse_storage import (
+    read_user_avatar_bytes,
+    read_user_avatar_pending_bytes,
+    stored_object_display_url,
+    write_user_avatar_bytes,
+)
 from app.core.audit.security_events import record_security_event
 from app.limiter import limiter
 from app.core.auth.security import bump_access_token_version, hash_password, verify_password
@@ -36,14 +41,17 @@ async def get_my_avatar_file(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Response:
     uid = str(user.id)
+    row = await db.get(User, uid)
     try:
-        blob = await read_user_avatar_bytes(uid)
+        blob = await read_user_avatar_bytes(
+            uid, storage_key=getattr(row, "avatar_storage_key", None) if row else None
+        )
     except RuntimeError as e:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
     if not blob:
-        row = await db.get(User, uid)
-        if row and (row.avatar_url or "").strip() == INTERNAL_AVATAR_PATH:
+        if row and ((row.avatar_url or "").strip() == INTERNAL_AVATAR_PATH or row.avatar_storage_key):
             row.avatar_url = None
+            row.avatar_storage_key = None
             row.avatar_pending_url = None
             await db.commit()
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No uploaded avatar")
@@ -61,7 +69,9 @@ async def get_my_avatar_pending_file(
     if not q or q.avatar_status != AvatarStatus.pending:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No pending avatar")
     try:
-        blob = await read_user_avatar_pending_bytes(uid)
+        blob = await read_user_avatar_pending_bytes(
+            uid, storage_key=getattr(q, "avatar_pending_storage_key", None) if q else None
+        )
     except RuntimeError as e:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
     if not blob:
@@ -88,16 +98,21 @@ async def upload_my_avatar(
     if not q:
         raise HTTPException(status_code=404, detail="User not found")
 
+    if user.company_id is None:
+        raise HTTPException(status_code=400, detail="User has no company")
+
     # Make the new avatar immediately visible to teammates.
     try:
-        await write_user_avatar_bytes(uid, ext, ct, raw)
+        stored = await write_user_avatar_bytes(str(user.company_id), uid, ext, ct, raw)
     except RuntimeError as e:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
-    q.avatar_url = INTERNAL_AVATAR_PATH
+    q.avatar_storage_key = stored.object_key
+    q.avatar_url = stored_object_display_url(stored, INTERNAL_AVATAR_PATH)
     q.avatar_pending_url = None
+    q.avatar_pending_storage_key = None
     q.avatar_status = AvatarStatus.approved
     await db.commit()
-    return ProfileAvatarUploadOut(avatar_url=INTERNAL_AVATAR_PATH, message="Avatar updated")
+    return ProfileAvatarUploadOut(avatar_url=q.avatar_url or INTERNAL_AVATAR_PATH, message="Avatar updated")
 
 
 @router.post("/avatar/signed-upload", response_model=ProfileAvatarSignedUploadOut)

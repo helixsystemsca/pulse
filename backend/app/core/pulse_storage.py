@@ -15,6 +15,15 @@ from pathlib import Path
 from typing import Callable, Literal, Optional, TypeVar
 
 from app.core.config import get_settings
+from app.core.storage.service import (
+    delete_by_storage_key,
+    read_by_storage_key,
+    upload_company_branding,
+    upload_inventory_image,
+    upload_profile_photo,
+)
+from app.core.storage.types import StoredObject
+from app.core.storage.urls import display_url
 
 try:
     from botocore.exceptions import ClientError
@@ -188,7 +197,11 @@ async def _run_sync(fn: Callable[[], T]) -> T:
 # --- Company logo ---
 
 
-async def read_company_logo_bytes(company_id: str) -> Optional[tuple[bytes, str]]:
+async def read_company_logo_bytes(
+    company_id: str, storage_key: str | None = None
+) -> Optional[tuple[bytes, str]]:
+    if storage_key:
+        return await read_by_storage_key(storage_key)
     if _backend() == "s3":
         return await _run_sync(lambda: _s3_read_stem("company_logos", company_id, _LOGO_EXTS))
     return _local_read_stem("company_logos", company_id, _LOGO_EXTS)
@@ -196,18 +209,21 @@ async def read_company_logo_bytes(company_id: str) -> Optional[tuple[bytes, str]
 
 async def write_company_logo_bytes(
     company_id: str, ext_with_dot: str, raw: bytes, content_type: str
-) -> None:
+) -> StoredObject:
     ct = (content_type or "").split(";")[0].strip() or media_type_for_ext(ext_with_dot)
-    if _backend() == "s3":
-        await _run_sync(lambda: _s3_write_stem("company_logos", company_id, ext_with_dot, ct, raw))
-    else:
-        await _run_sync(lambda: _local_write_stem("company_logos", company_id, ext_with_dot, raw))
+    return await upload_company_branding(
+        company_id, "logo", ext_with_dot=ext_with_dot, raw=raw, content_type=ct
+    )
 
 
 # --- Company background ---
 
 
-async def read_company_background_bytes(company_id: str) -> Optional[tuple[bytes, str]]:
+async def read_company_background_bytes(
+    company_id: str, storage_key: str | None = None
+) -> Optional[tuple[bytes, str]]:
+    if storage_key:
+        return await read_by_storage_key(storage_key)
     if _backend() == "s3":
         return await _run_sync(lambda: _s3_read_stem("company_backgrounds", company_id, _LOGO_EXTS))
     return _local_read_stem("company_backgrounds", company_id, _LOGO_EXTS)
@@ -215,49 +231,61 @@ async def read_company_background_bytes(company_id: str) -> Optional[tuple[bytes
 
 async def write_company_background_bytes(
     company_id: str, ext_with_dot: str, raw: bytes, content_type: str
-) -> None:
+) -> StoredObject:
     ct = (content_type or "").split(";")[0].strip() or media_type_for_ext(ext_with_dot)
-    if _backend() == "s3":
-        await _run_sync(lambda: _s3_write_stem("company_backgrounds", company_id, ext_with_dot, ct, raw))
-    else:
-        await _run_sync(lambda: _local_write_stem("company_backgrounds", company_id, ext_with_dot, raw))
+    return await upload_company_branding(
+        company_id, "background", ext_with_dot=ext_with_dot, raw=raw, content_type=ct
+    )
 
 
 # --- User avatars ---
 
 
-async def read_user_avatar_bytes(user_id: str) -> Optional[tuple[bytes, str]]:
+async def read_user_avatar_bytes(
+    user_id: str, storage_key: str | None = None
+) -> Optional[tuple[bytes, str]]:
+    if storage_key:
+        return await read_by_storage_key(storage_key)
     if _backend() == "s3":
         return await _run_sync(lambda: _s3_read_stem("user_avatars", user_id, _LOGO_EXTS))
     return _local_read_stem("user_avatars", user_id, _LOGO_EXTS)
 
 
-async def read_user_avatar_pending_bytes(user_id: str) -> Optional[tuple[bytes, str]]:
+async def read_user_avatar_pending_bytes(
+    user_id: str, storage_key: str | None = None
+) -> Optional[tuple[bytes, str]]:
+    if storage_key:
+        return await read_by_storage_key(storage_key)
     if _backend() == "s3":
         return await _run_sync(lambda: _s3_read_stem("user_avatars_pending", user_id, _LOGO_EXTS))
     return _local_read_stem("user_avatars_pending", user_id, _LOGO_EXTS)
 
 
-async def write_user_avatar_bytes(user_id: str, ext_with_dot: str, raw: bytes, content_type: str) -> None:
+async def write_user_avatar_bytes(
+    tenant_id: str, user_id: str, ext_with_dot: str, raw: bytes, content_type: str
+) -> StoredObject:
     ct = (content_type or "").split(";")[0].strip() or media_type_for_ext(ext_with_dot)
-    if _backend() == "s3":
-        await _run_sync(lambda: _s3_write_stem("user_avatars", user_id, ext_with_dot, ct, raw))
-    else:
-        await _run_sync(lambda: _local_write_stem("user_avatars", user_id, ext_with_dot, raw))
+    return await upload_profile_photo(
+        tenant_id, user_id, pending=False, ext_with_dot=ext_with_dot, raw=raw, content_type=ct
+    )
 
 
 async def write_user_avatar_pending_bytes(
-    user_id: str, ext_with_dot: str, raw: bytes, content_type: str
-) -> None:
+    tenant_id: str, user_id: str, ext_with_dot: str, raw: bytes, content_type: str
+) -> StoredObject:
     ct = (content_type or "").split(";")[0].strip() or media_type_for_ext(ext_with_dot)
-    if _backend() == "s3":
-        await _run_sync(lambda: _s3_write_stem("user_avatars_pending", user_id, ext_with_dot, ct, raw))
-    else:
-        await _run_sync(lambda: _local_write_stem("user_avatars_pending", user_id, ext_with_dot, raw))
+    return await upload_profile_photo(
+        tenant_id, user_id, pending=True, ext_with_dot=ext_with_dot, raw=raw, content_type=ct
+    )
 
 
-async def delete_user_avatar_pending_files(user_id: str) -> None:
+async def delete_user_avatar_pending_files(
+    user_id: str, storage_key: str | None = None
+) -> None:
     """Remove pending avatar binaries (e.g. after reject or successful promote)."""
+    if storage_key:
+        await delete_by_storage_key(storage_key)
+        return
 
     def _s3() -> None:
         client, bucket = _require_s3_config()
@@ -269,19 +297,34 @@ async def delete_user_avatar_pending_files(user_id: str) -> None:
         await _run_sync(lambda: _local_delete_stem("user_avatars_pending", user_id))
 
 
-async def promote_user_avatar_pending_to_approved(user_id: str) -> bool:
+async def promote_user_avatar_pending_to_approved(
+    tenant_id: str,
+    user_id: str,
+    *,
+    pending_storage_key: str | None = None,
+) -> StoredObject | None:
     """
-    Copy pending avatar file into the approved ``user_avatars`` location and clear pending.
-    Returns False if there was no pending file on disk/S3.
+    Copy pending avatar into approved storage and clear pending.
+    Returns stored metadata when promoted; ``None`` if no pending file exists.
     """
+    if pending_storage_key:
+        pending = await read_by_storage_key(pending_storage_key)
+        if not pending:
+            return None
+        raw, media_type = pending
+        ext = _MEDIA_TO_EXT.get((media_type or "").split(";")[0].strip().lower(), ".png")
+        stored = await write_user_avatar_bytes(tenant_id, user_id, ext, raw, media_type)
+        await delete_by_storage_key(pending_storage_key)
+        return stored
+
     pending = await read_user_avatar_pending_bytes(user_id)
     if not pending:
-        return False
+        return None
     raw, media_type = pending
     ext = _MEDIA_TO_EXT.get((media_type or "").split(";")[0].strip().lower(), ".png")
-    await write_user_avatar_bytes(user_id, ext, raw, media_type)
+    stored = await write_user_avatar_bytes(tenant_id, user_id, ext, raw, media_type)
     await delete_user_avatar_pending_files(user_id)
-    return True
+    return stored
 
 
 # --- Facility equipment + part images ---
@@ -339,7 +382,13 @@ async def write_part_image_bytes(
         await _run_sync(_local)
 
 
-async def read_inventory_item_image_bytes(company_id: str, item_id: str) -> Optional[tuple[bytes, str]]:
+async def read_inventory_item_image_bytes(
+    company_id: str, item_id: str, storage_key: str | None = None
+) -> Optional[tuple[bytes, str]]:
+    if storage_key:
+        blob = await read_by_storage_key(storage_key)
+        if blob:
+            return blob
     sub = f"inventory_item_images/{company_id}"
 
     def _local() -> Optional[tuple[bytes, str]]:
@@ -381,17 +430,23 @@ async def write_purchase_receipt_bytes(
 
 async def write_inventory_item_image_bytes(
     company_id: str, item_id: str, ext_with_dot: str, raw: bytes, content_type: str
-) -> None:
-    sub = f"inventory_item_images/{company_id}"
+) -> StoredObject:
     ct = (content_type or "").split(";")[0].strip() or media_type_for_ext(ext_with_dot)
+    return await upload_inventory_image(
+        company_id, item_id, ext_with_dot=ext_with_dot, raw=raw, content_type=ct
+    )
 
-    def _local() -> None:
-        _local_write_stem(sub, item_id, ext_with_dot, raw)
 
-    if _backend() == "s3":
-        await _run_sync(lambda: _s3_write_stem(sub, item_id, ext_with_dot, ct, raw))
-    else:
-        await _run_sync(_local)
+def stored_object_display_url(stored: StoredObject, internal_proxy_path: str) -> str:
+    """Resolve API-facing URL: public CDN when configured, else authenticated proxy path."""
+    return (
+        display_url(
+            public_url=stored.public_url,
+            storage_key=stored.object_key,
+            internal_proxy_path=internal_proxy_path,
+        )
+        or internal_proxy_path
+    )
 
 
 # --- Procedure step images (per step index, stem = procedure_id + "_" + index) ---
@@ -532,6 +587,7 @@ __all__ = [
     "read_procedure_assignment_photo_bytes",
     "read_user_avatar_bytes",
     "read_user_avatar_pending_bytes",
+    "stored_object_display_url",
     "write_company_background_bytes",
     "write_procedure_acknowledgment_pdf_bytes",
     "write_company_logo_bytes",

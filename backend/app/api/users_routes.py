@@ -26,6 +26,7 @@ from app.core.pulse_storage import (
     delete_user_avatar_pending_files,
     promote_user_avatar_pending_to_approved,
     read_user_avatar_pending_bytes,
+    stored_object_display_url,
 )
 from app.core.user_avatar_upload import INTERNAL_AVATAR_PATH
 from app.core.login_activity import list_recent_login_events, login_events_to_out
@@ -330,7 +331,9 @@ async def get_pending_avatar_file(
     if q.avatar_status != AvatarStatus.pending:
         raise HTTPException(status_code=404, detail="No pending avatar")
     try:
-        blob = await read_user_avatar_pending_bytes(user_id)
+        blob = await read_user_avatar_pending_bytes(
+            user_id, storage_key=getattr(q, "avatar_pending_storage_key", None)
+        )
     except RuntimeError as e:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
     if not blob:
@@ -350,15 +353,22 @@ async def approve_avatar(
         raise HTTPException(status_code=404, detail="User not found")
     if u.avatar_status != AvatarStatus.pending:
         raise HTTPException(status_code=400, detail="Avatar is not pending")
+    if u.company_id is None:
+        raise HTTPException(status_code=400, detail="User has no company")
     try:
-        promoted = await promote_user_avatar_pending_to_approved(user_id)
+        stored = await promote_user_avatar_pending_to_approved(
+            str(u.company_id),
+            user_id,
+            pending_storage_key=getattr(u, "avatar_pending_storage_key", None),
+        )
     except RuntimeError as e:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
-    if not promoted:
+    if not stored:
         raise HTTPException(status_code=404, detail="No pending avatar file")
-    # Approve: coworkers load /pulse/workers/{id}/avatar from user_avatars storage.
-    u.avatar_url = INTERNAL_AVATAR_PATH
+    u.avatar_storage_key = stored.object_key
+    u.avatar_url = stored_object_display_url(stored, INTERNAL_AVATAR_PATH)
     u.avatar_pending_url = None
+    u.avatar_pending_storage_key = None
     u.avatar_status = AvatarStatus.approved
     await db.commit()
     return {"id": user_id, "avatar_status": "approved"}
@@ -376,10 +386,13 @@ async def reject_avatar(
     if u.avatar_status != AvatarStatus.pending:
         raise HTTPException(status_code=400, detail="Avatar is not pending")
     try:
-        await delete_user_avatar_pending_files(user_id)
+        await delete_user_avatar_pending_files(
+            user_id, storage_key=getattr(u, "avatar_pending_storage_key", None)
+        )
     except RuntimeError as e:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
     u.avatar_pending_url = None
+    u.avatar_pending_storage_key = None
     u.avatar_status = AvatarStatus.rejected
     await db.commit()
     return {"id": user_id, "avatar_status": "rejected"}

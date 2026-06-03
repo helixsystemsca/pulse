@@ -36,7 +36,7 @@ from app.core.features.system_catalog import (
 )
 from app.core.company_logo_upload import INTERNAL_LOGO_PATH, normalize_logo_content_type, validate_logo_bytes
 from app.core.login_activity import latest_login_event_per_user, list_recent_login_events, log_login_event, login_events_to_out
-from app.core.pulse_storage import write_company_logo_bytes
+from app.core.pulse_storage import write_company_logo_bytes, stored_object_display_url
 from app.core.system_audit import record_system_log
 from app.core.system_tokens import generate_raw_token, hash_system_token as hash_opaque_token
 from app.models.domain import (
@@ -612,10 +612,11 @@ async def upload_company_logo_as_system_admin(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
     try:
-        await write_company_logo_bytes(company_id, ext, ct, raw)
+        stored = await write_company_logo_bytes(company_id, ext, ct, raw)
     except RuntimeError as e:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
-    c.logo_url = INTERNAL_LOGO_PATH
+    c.logo_storage_key = stored.object_key
+    c.logo_url = stored_object_display_url(stored, INTERNAL_LOGO_PATH)
     await record_system_log(
         db,
         action="company.logo_uploaded",

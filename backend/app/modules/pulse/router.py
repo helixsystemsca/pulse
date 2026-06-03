@@ -515,12 +515,15 @@ async def get_worker_avatar_file(
     if raw.lower().startswith("http://") or raw.lower().startswith("https://"):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No uploaded avatar")
     try:
-        blob = await read_user_avatar_bytes(user_id)
+        blob = await read_user_avatar_bytes(
+            user_id, storage_key=getattr(u, "avatar_storage_key", None)
+        )
     except RuntimeError as e:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
     if not blob:
-        if (u.avatar_url or "").strip() == INTERNAL_AVATAR_PATH:
+        if (u.avatar_url or "").strip() == INTERNAL_AVATAR_PATH or u.avatar_storage_key:
             u.avatar_url = None
+            u.avatar_storage_key = None
             u.avatar_pending_url = None
             await db.commit()
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No uploaded avatar")

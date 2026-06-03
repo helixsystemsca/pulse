@@ -63,6 +63,7 @@ from app.api.public_routes import router as public_router
 from app.api.rbac_debug_routes import router as rbac_debug_router
 from app.api.realtime import router as realtime_router
 from app.api.system_routes import router as system_router
+from app.api.storage_routes import router as storage_router
 from app.api.users_routes import router as users_router
 from app.api.maintenance_hub_routes import router as maintenance_hub_router
 from app.api.pm_task_routes import internal_router as pm_internal_router
@@ -284,6 +285,7 @@ app.include_router(tenant_departments_router, prefix="/api")
 app.include_router(workers_router, prefix="/api")
 app.include_router(tenant_roles_router, prefix="/api")
 app.include_router(inventory_portal_router, prefix="/api")
+app.include_router(storage_router, prefix="/api")
 app.include_router(material_requests_router, prefix="/api")
 app.include_router(purchasing_router, prefix="/api")
 app.include_router(schedule_router, prefix="/api")

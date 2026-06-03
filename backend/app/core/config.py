@@ -196,6 +196,7 @@ class Settings(BaseSettings):
         default=None,
         validation_alias=AliasChoices(
             "PULSE_S3_ENDPOINT_URL",
+            "S3_ENDPOINT",
             "AWS_ENDPOINT_URL",
             "S3_ENDPOINT_URL",
             "pulse_s3_endpoint_url",
@@ -209,6 +210,7 @@ class Settings(BaseSettings):
         default="",
         validation_alias=AliasChoices(
             "PULSE_S3_ACCESS_KEY_ID",
+            "S3_ACCESS_KEY",
             "AWS_ACCESS_KEY_ID",
             "pulse_s3_access_key_id",
         ),
@@ -217,17 +219,28 @@ class Settings(BaseSettings):
         default="",
         validation_alias=AliasChoices(
             "PULSE_S3_SECRET_ACCESS_KEY",
+            "S3_SECRET_KEY",
             "AWS_SECRET_ACCESS_KEY",
             "pulse_s3_secret_access_key",
         ),
     )
     pulse_s3_region: str = Field(
-        default="us-east-1",
+        default="auto",
         validation_alias=AliasChoices(
             "PULSE_S3_REGION",
+            "S3_REGION",
             "AWS_REGION",
             "AWS_DEFAULT_REGION",
             "pulse_s3_region",
+        ),
+    )
+    #: Optional public CDN / R2.dev base URL (no trailing slash). When set, ``get_public_url`` returns direct links.
+    pulse_s3_public_base_url: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "PULSE_S3_PUBLIC_BASE_URL",
+            "S3_PUBLIC_BASE_URL",
+            "pulse_s3_public_base_url",
         ),
     )
     #: Logical prefix inside the bucket (no leading/trailing slashes).
