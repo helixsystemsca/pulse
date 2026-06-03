@@ -3,6 +3,7 @@ import {
   ClipboardList,
   History,
   LayoutList,
+  LineChart,
   Monitor,
   PackagePlus,
   Receipt,
@@ -14,6 +15,7 @@ import type { PurchasingModuleConfig } from "@/lib/purchasing/purchasing-module-
 
 export type InventoryWorkspaceTab =
   | "list"
+  | "analytics"
   | "queue"
   | "vendors"
   | "quick_purchase"
@@ -48,6 +50,7 @@ export function buildInventoryWorkspaceNav(options: {
   const { purchasing, replenishmentLabel, canScanner, issueHref, receiveHref, kioskHref } = options;
   const items: InventoryNavItem[] = [
     { kind: "tab", id: "list", label: "List", icon: LayoutList },
+    { kind: "tab", id: "analytics", label: "Analytics", icon: LineChart },
   ];
 
   if (!purchasing.enabled || purchasing.enable_replenishment_requests) {
@@ -94,5 +97,5 @@ export function buildInventoryWorkspaceNav(options: {
 }
 
 export function isWorkspaceTab(id: string): id is InventoryWorkspaceTab {
-  return ["list", "queue", "vendors", "quick_purchase", "receipts", "history"].includes(id);
+  return ["list", "analytics", "queue", "vendors", "quick_purchase", "receipts", "history"].includes(id);
 }

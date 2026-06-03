@@ -1,15 +1,13 @@
 "use client";
 
 /**
- * Inventory management: assets, parts, consumables — filters, KPIs, table, detail drawer,
+ * Inventory management: assets, parts, consumables — filters, table, detail drawer,
  * movements / WR usage, settings (categories, thresholds, locations, alerts).
  * Matches Work Requests / Workers industrial shell styling.
  */
 import {
-  AlertTriangle,
   Box,
   ChevronDown,
-  ClipboardList,
   Download,
   Loader2,
   MoreVertical,
@@ -17,7 +15,6 @@ import {
   Plus,
   Search,
   Settings,
-  TrendingUp,
   Wrench,
 } from "lucide-react";
 import Link from "next/link";
@@ -79,6 +76,7 @@ import { InventoryDepartmentsPanel } from "@/components/inventory/InventoryDepar
 import { InventoryLocationsPanel } from "@/components/inventory/InventoryLocationsPanel";
 import { InventoryTransactionSettingsPanel } from "@/components/inventory/InventoryTransactionSettingsPanel";
 import { InventoryMaterialRequestsPanel } from "@/components/inventory/InventoryMaterialRequestsPanel";
+import { InventoryAnalyticsPanel } from "@/components/inventory/InventoryAnalyticsPanel";
 import { InventoryEnterprisePanel } from "@/components/inventory/InventoryEnterprisePanel";
 import { InventoryItemDetailFields } from "@/components/inventory/InventoryItemDetailFields";
 import { InventoryTableFieldCell } from "@/components/inventory/InventoryTableFieldCell";
@@ -174,17 +172,6 @@ function typeIcon(t: string) {
   return Package;
 }
 
-/** Short labels so KPI tiles fit in one mobile row. */
-function inventoryMetricShortLabel(label: string): string {
-  if (label === "Total items") return "Items";
-  if (label === "In stock") return "Stock";
-  if (label === "Low stock") return "Low";
-  if (label === "Inventory value") return "Value";
-  const top = /^Top (\d) by uses$/.exec(label);
-  if (top) return `Top ${top[1]}`;
-  return label;
-}
-
 export function InventoryApp() {
   const { session } = usePulseAuth();
   const { can } = usePermissions();
@@ -244,6 +231,7 @@ export function InventoryApp() {
   const [rows, setRows] = useState<InventoryRow[]>([]);
   const [total, setTotal] = useState(0);
   const [summary, setSummary] = useState<InventorySummary | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
 
   const inventoryPrimaryTenant = useMemo(() => isInventoryPrimaryTenant(session), [session]);
   const storageZones = useMemo(
@@ -521,12 +509,10 @@ export function InventoryApp() {
       });
       setRows(res.items);
       setTotal(res.total);
-      setSummary(res.summary);
     } catch (e: unknown) {
       setListError(e instanceof Error ? e.message : "Failed to load");
       setRows([]);
       setTotal(0);
-      setSummary(null);
     } finally {
       setListLoading(false);
     }
@@ -550,6 +536,28 @@ export function InventoryApp() {
   useEffect(() => {
     void loadList();
   }, [loadList]);
+
+  const loadAnalyticsSummary = useCallback(async () => {
+    if (!dataEnabled || !effectiveCompanyId) return;
+    setAnalyticsLoading(true);
+    try {
+      const res = await fetchInventoryList({
+        companyId: apiCompany,
+        scope_id: canConfigureOrg && scopeAdminFilter ? scopeAdminFilter : undefined,
+        limit: 1,
+        offset: 0,
+      });
+      setSummary(res.summary);
+    } catch {
+      setSummary(null);
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  }, [dataEnabled, effectiveCompanyId, apiCompany, canConfigureOrg, scopeAdminFilter]);
+
+  useEffect(() => {
+    void loadAnalyticsSummary();
+  }, [loadAnalyticsSummary]);
 
   const loadDetail = useCallback(async () => {
     if (!detailId || !effectiveCompanyId) return;
@@ -911,8 +919,6 @@ export function InventoryApp() {
     );
   }
 
-  const sum = summary;
-
   return (
     <div className="space-y-6">
       <PageHeader
@@ -1050,97 +1056,13 @@ export function InventoryApp() {
             />
           ) : null}
 
-          {inventoryTab === "list" && sum ? (
-            <div className="mt-4 grid grid-cols-7 gap-1.5 sm:mt-6 sm:gap-2 lg:gap-3">
-              {[
-                {
-                  label: "Total items",
-                  value: sum.total_items,
-                  icon: Package,
-                  sub: null as string | null,
-                  tone: "text-ds-accent",
-                },
-                {
-                  label: "In stock",
-                  value: sum.in_stock,
-                  icon: Box,
-                  sub: null,
-                  tone: "text-[#3182ce]",
-                },
-                {
-                  label: "Low stock",
-                  value: sum.low_stock,
-                  icon: AlertTriangle,
-                  sub: sum.low_stock > 0 ? "Review thresholds" : null,
-                  tone: "text-amber-800",
-                  alert: sum.low_stock > 0,
-                },
-                ...([0, 1, 2] as const).map((i) => {
-                  const row = sum.most_used?.[i];
-                  return {
-                    label: `Top ${i + 1} by uses`,
-                    value: row ? row.usage_count.toLocaleString() : "—",
-                    icon: TrendingUp,
-                    sub: row
-                      ? `${row.name}${row.sku ? ` · ${row.sku}` : ""}`
-                      : "No logged usage yet",
-                    tone: "text-emerald-800 dark:text-emerald-400/90",
-                  };
-                }),
-                {
-                  label: "Inventory value",
-                  value: sum.estimated_value != null ? `$${sum.estimated_value.toLocaleString()}` : "—",
-                  icon: ClipboardList,
-                  sub: "Qty × unit cost",
-                  tone: "text-slate-800",
-                },
-              ].map((card) => (
-                <div
-                  key={card.label}
-                  className={cn(
-                    "flex aspect-square min-w-0 flex-col items-center justify-center rounded-md border bg-white p-1.5 text-center shadow-sm ring-1 dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)] sm:p-2",
-                    "lg:aspect-auto lg:items-stretch lg:justify-start lg:p-4 lg:text-left",
-                    "alert" in card && card.alert
-                      ? "border-amber-200 ring-amber-100/90 dark:border-amber-500/35 dark:ring-amber-500/20"
-                      : "border-pulse-border ring-slate-100/80 dark:border-ds-border dark:ring-white/[0.06]",
-                  )}
-                >
-                  <div className="flex min-w-0 flex-col items-center justify-center gap-0.5 lg:hidden">
-                    <card.icon className={cn("h-3.5 w-3.5 shrink-0 opacity-80", card.tone)} aria-hidden />
-                    <p className="line-clamp-2 text-[9px] font-bold uppercase leading-tight tracking-wide text-pulse-muted sm:text-[10px]">
-                      {inventoryMetricShortLabel(card.label)}
-                    </p>
-                    <p className="max-w-full truncate text-sm font-bold tabular-nums text-pulse-navy dark:text-gray-100">
-                      {card.value}
-                    </p>
-                  </div>
-                  <div className="hidden min-w-0 lg:block">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-xs font-bold uppercase tracking-wide text-pulse-muted">{card.label}</p>
-                      <card.icon className={cn("h-5 w-5 shrink-0 opacity-80", card.tone)} aria-hidden />
-                    </div>
-                    <p className="mt-2 text-2xl font-bold tracking-tight text-pulse-navy dark:text-gray-100">
-                      {card.value}
-                    </p>
-                    {card.sub ? (
-                      <p
-                        className={cn(
-                          "mt-0.5 text-xs font-semibold",
-                          "alert" in card && card.alert ? "text-rose-600" : "text-pulse-muted",
-                        )}
-                      >
-                        {card.sub}
-                      </p>
-                    ) : null}
-                  </div>
-                </div>
-              ))}
-            </div>
+          {inventoryTab === "analytics" ? (
+            <InventoryAnalyticsPanel summary={summary} loading={analyticsLoading} />
           ) : null}
 
           {inventoryTab === "list" ? (
           <>
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2">
             {[
               { id: "", label: "All" },
               { id: "in_stock", label: "In stock" },
