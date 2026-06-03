@@ -25,7 +25,7 @@ function normalizePath(path: string): string {
 const DASHBOARD_OVERVIEW_TOUR: ProductTourDef = {
   id: "dashboard-overview",
   paths: ["/overview"],
-  welcomeTitle: "Welcome to Panorama",
+  welcomeTitle: "Welcome to Helix",
   welcomeSubtitle: "Let's tour your facility platform.",
   showCompletionScreen: true,
   steps: DASHBOARD_TOUR_STEPS,

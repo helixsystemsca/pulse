@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from typing import Callable, TypeVar
 
 from app.core.storage.factory import get_storage_provider
@@ -14,6 +15,13 @@ from app.core.storage.keys import (
 from app.core.storage.types import StoredObject
 
 T = TypeVar("T")
+
+_log = logging.getLogger(__name__)
+
+try:
+    from botocore.exceptions import ClientError
+except ImportError:
+    ClientError = Exception  # type: ignore[misc, assignment]
 
 
 async def _run_sync(fn: Callable[[], T]) -> T:
@@ -38,8 +46,27 @@ async def upload_inventory_image(
 async def read_by_storage_key(storage_key: str | None) -> tuple[bytes, str] | None:
     if not storage_key or not str(storage_key).strip():
         return None
+    key = str(storage_key).strip()
     provider = get_storage_provider()
-    return await _run_sync(lambda: provider.read_file(str(storage_key).strip()))
+    _log.debug("storage_read start object_key=%s backend=%s", key, type(provider).__name__)
+    try:
+        result = await _run_sync(lambda: provider.read_file(key))
+    except ClientError as exc:  # type: ignore[misc]
+        code = exc.response.get("Error", {}).get("Code", "") if hasattr(exc, "response") else ""
+        if code in ("404", "NoSuchKey", "NotFound"):
+            _log.info("storage_read miss object_key=%s code=%s", key, code)
+            return None
+        _log.warning("storage_read s3_error object_key=%s code=%s", key, code)
+        raise RuntimeError(f"Storage read failed ({code or 'ClientError'})") from exc
+    except Exception as exc:
+        _log.exception("storage_read failed object_key=%s", key)
+        raise RuntimeError("Storage read failed") from exc
+    if result is None:
+        _log.info("storage_read miss object_key=%s", key)
+    else:
+        data, ct = result
+        _log.info("storage_read ok object_key=%s bytes=%d content_type=%s", key, len(data), ct)
+    return result
 
 
 async def delete_by_storage_key(storage_key: str | None) -> None:

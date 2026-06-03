@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: { absolute: "Settings | Helix" },
-  description: "Configure Pulse for your facility.",
+  description: "Configure Helix for your facility.",
 };
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {

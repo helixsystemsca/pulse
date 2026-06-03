@@ -130,6 +130,14 @@ class S3StorageProvider:
     def read_file(self, key: str) -> tuple[bytes, str] | None:
         client, bucket = self._require_client()
         full_key = self._full_key(key)
+        endpoint = (self._settings.pulse_s3_endpoint_url or "").strip() or "(aws-default)"
+        _log.debug(
+            "S3 get_object bucket=%s object_key=%s logical_key=%s endpoint=%s",
+            bucket,
+            full_key,
+            key,
+            endpoint[:80],
+        )
         try:
             resp = client.get_object(Bucket=bucket, Key=full_key)
             body = resp["Body"].read()
@@ -138,7 +146,14 @@ class S3StorageProvider:
         except ClientError as exc:  # type: ignore[misc]
             code = exc.response.get("Error", {}).get("Code", "") if hasattr(exc, "response") else ""
             if code in ("404", "NoSuchKey", "NotFound"):
+                _log.info("S3 get_object miss bucket=%s key=%s code=%s", bucket, full_key, code)
                 return None
+            _log.warning(
+                "S3 get_object error bucket=%s key=%s code=%s",
+                bucket,
+                full_key,
+                code,
+            )
             raise
 
     def head_bucket(self) -> tuple[bool, str]:

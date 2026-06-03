@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: { absolute: "Schedule | Helix" },
-  description: "Shift calendar, personnel, and staffing for Pulse.",
+  description: "Shift calendar, personnel, and staffing for Helix.",
 };
 
 export default function ScheduleLayout({ children }: { children: React.ReactNode }) {

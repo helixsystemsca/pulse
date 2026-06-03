@@ -57,7 +57,7 @@ export function HelixNavbar() {
 
         <div className="flex items-center gap-3">
           <Link href={pulseHref} className={`hidden md:inline-flex ${launchPulseClass}`}>
-            Launch Pulse
+            Launch Helix
           </Link>
         </div>
       </nav>
@@ -86,7 +86,7 @@ export function HelixNavbar() {
           Contact
         </a>
         <Link href={pulseHref} className={`${launchPulseClass} text-xs`}>
-          Launch Pulse
+          Launch Helix
         </Link>
       </div>
     </header>

@@ -273,7 +273,7 @@ def build_procedure_acknowledgment_pdf_bytes(
         topMargin=0.72 * inch,
         bottomMargin=0.72 * inch,
         title=f"Acknowledgment {archive_snapshot_id}",
-        author=company_display_name[:120] if company_display_name else "Pulse",
+        author=company_display_name[:120] if company_display_name else "Helix",
     )
     doc.build(story, onFirstPage=_footer, onLaterPages=_footer)
     out = buf.getvalue()

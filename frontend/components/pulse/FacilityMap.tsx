@@ -135,7 +135,7 @@ export function FacilityMap({ className = "", compact = false }: FacilityMapProp
           </div>
         </div>
         <p className="mt-2 text-left text-[9px] leading-snug text-pulse-muted sm:text-[10px]">
-          Live view mirrors Pulse check-in zones and asset tags.
+          Live view mirrors Helix check-in zones and asset tags.
         </p>
       </div>
     </div>

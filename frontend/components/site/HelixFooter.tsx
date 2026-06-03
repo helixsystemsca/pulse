@@ -51,10 +51,10 @@ export function HelixFooter({ classNames }: { classNames?: HelixFooterClassNames
           ))}
           <Link
             href="/pulse"
-            title="Pulse — by Helix Systems"
+            title="Helix — by Helix Systems"
             className={`text-sm font-semibold text-helix-primary no-underline transition-all duration-200 ease-in-out hover:underline ${cn.pulseLink ?? ""}`.trim()}
           >
-            Pulse
+            Helix
           </Link>
         </nav>
 

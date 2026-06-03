@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: { absolute: "SOP | Helix" },
-  description: "Standard operating procedures (Pulse).",
+  description: "Standard operating procedures (Helix).",
 };
 
 export default function SopLayout({ children }: { children: React.ReactNode }) {

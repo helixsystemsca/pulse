@@ -409,7 +409,7 @@ export function SettingsApp() {
   if (session && !mayAccessOrgSettings) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Settings" description="Configure Pulse for your facility." icon={Settings} />
+        <PageHeader title="Settings" description="Configure Helix for your facility." icon={Settings} />
         <p className="text-sm text-ds-muted">
           Organization settings are restricted to company administrators. Contact an administrator if you need changes.
         </p>
@@ -419,7 +419,7 @@ export function SettingsApp() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Settings" description="Configure Pulse for your facility." icon={Settings} />
+      <PageHeader title="Settings" description="Configure Helix for your facility." icon={Settings} />
 
       <nav className="flex flex-wrap gap-1 rounded-md border border-ds-border bg-ds-secondary p-1" aria-label="Settings sections">
         {TABS.map((tab) => (

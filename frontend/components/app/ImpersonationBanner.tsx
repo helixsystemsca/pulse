@@ -67,7 +67,7 @@ export function ImpersonationBanner() {
         <div className="min-w-0 leading-snug">
           <p className="font-semibold">Impersonation mode</p>
           <p className="mt-0.5 text-xs opacity-90 sm:text-sm">
-            You are viewing Pulse as <span className="font-medium">{label}</span>
+            You are viewing Helix as <span className="font-medium">{label}</span>
             {session.email && label !== session.email ? (
               <span className="text-amber-800/90 dark:text-amber-200/90"> ({session.email})</span>
             ) : null}

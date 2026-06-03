@@ -30,7 +30,7 @@ export function ResetDashboardTourButton({
       const label = fullName?.trim() || "this person";
       if (
         !window.confirm(
-          `Reset the initial dashboard tour for ${label}? They will see “Welcome to Panorama” again on Overview.`,
+          `Reset the initial dashboard tour for ${label}? They will see “Welcome to Helix” again on Overview.`,
         )
       ) {
         return;
@@ -57,7 +57,7 @@ export function ResetDashboardTourButton({
         type="button"
         className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-ds-border bg-ds-primary text-ds-foreground transition-colors hover:bg-ds-secondary disabled:opacity-50 dark:bg-ds-secondary"
         aria-label="Reset dashboard tour"
-        title="Reset initial dashboard tour (Welcome to Panorama on Overview)"
+        title="Reset initial dashboard tour (Welcome to Helix on Overview)"
         disabled={busy}
         onClick={(e) => void handleReset(e)}
       >

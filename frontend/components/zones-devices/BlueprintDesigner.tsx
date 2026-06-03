@@ -2383,7 +2383,7 @@ export function BlueprintDesigner({
     setSaveNotice(null);
     if (standalone) {
       setError(
-        "This public demo does not save to the cloud. Use Publish → Download PNG/PDF, or sign in on Pulse under Zones → Blueprint designer.",
+        "This public demo does not save to the cloud. Use Publish → Download PNG/PDF, or sign in on Helix under Zones → Blueprint designer.",
       );
       setSaving(false);
       return;
@@ -2445,7 +2445,7 @@ export function BlueprintDesigner({
       }
       await refreshList();
       setSaveNotice(
-        "Saved to your organization in Pulse. The blueprint is stored on the server (tenant database, with your company’s other data) and appears in the Blueprint menu above. Open Zones → Blueprint anytime to edit it again.",
+        "Saved to your organization in Helix. The blueprint is stored on the server (tenant database, with your company’s other data) and appears in the Blueprint menu above. Open Zones → Blueprint anytime to edit it again.",
       );
     } catch (e) {
       setSaveNotice(null);
@@ -3649,10 +3649,10 @@ export function BlueprintDesigner({
       >
         {standalone ? (
           <p className="bp-hint" style={{ marginBottom: 12 }}>
-            Public playground: same editor as Pulse. <strong>Publish</strong> to export PNG/PDF. Saving to your org
+            Public playground: same editor as Helix. <strong>Publish</strong> to export PNG/PDF. Saving to your org
             requires signing in on the{" "}
             <a href={pulseApp.login()} className="ds-link font-semibold">
-              Pulse app
+              Helix app
             </a>
             .
           </p>
@@ -3814,7 +3814,7 @@ export function BlueprintDesigner({
             type="button"
             className="bp-btn"
             disabled={saving || isPublish || standalone}
-            title={standalone ? "Sign in on Pulse to save blueprints to your organization" : undefined}
+            title={standalone ? "Sign in on Helix to save blueprints to your organization" : undefined}
             onClick={() => void saveBlueprint()}
             whileHover={saving ? undefined : { scale: 1.02, boxShadow: "0 8px 24px rgba(59, 130, 246, 0.2)" }}
             whileTap={saving ? undefined : { scale: 0.985 }}

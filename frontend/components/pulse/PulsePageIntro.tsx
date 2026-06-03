@@ -24,7 +24,7 @@ export function PulsePageIntro() {
           </span>
 
           <h1 className="font-headline mt-5 text-4xl font-bold tracking-tight text-white sm:mt-6 sm:text-5xl md:text-6xl lg:text-[3.5rem] lg:leading-[1.05]">
-            Pulse
+            Helix
           </h1>
 
           <p className="mt-3 text-xl font-medium text-sky-50 sm:mt-4 sm:text-2xl md:text-[1.65rem] md:leading-snug">
@@ -65,7 +65,7 @@ export function PulsePageIntro() {
               Buy Now
             </Link>
             <a
-              href={mailtoInfo("Pulse — request a demo", "Hello,\n\nI'd like to request a demo of Pulse.\n\n")}
+              href={mailtoInfo("Helix — request a demo", "Hello,\n\nI'd like to request a demo of Helix.\n\n")}
               className="inline-flex items-center justify-center rounded-md border border-slate-400/50 bg-[#152338]/80 px-6 py-3 text-center text-sm font-semibold text-white no-underline backdrop-blur-sm transition-colors hover:border-slate-300/60 hover:bg-[#1a2d45]/90"
             >
               Request Demo

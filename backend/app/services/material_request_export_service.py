@@ -30,7 +30,7 @@ def build_material_request_workbook(
             project=draft.draft_number.replace(" ", "_"),
             location="",
             cost_object="",
-            comments=f"Pulse draft {draft.draft_number}",
+            comments=f"Helix draft {draft.draft_number}",
             export_date=date.today(),
         )
     except TemplateExportError:

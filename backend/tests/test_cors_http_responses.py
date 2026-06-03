@@ -15,6 +15,27 @@ PANORAMA_ORIGIN = "https://panorama.helixsystems.ca"
 OPS_ORIGIN = "https://ops.helixsystems.ca"
 
 
+def test_profile_avatar_preflight_includes_ops_origin() -> None:
+    client = TestClient(app)
+    res = client.options(
+        "/api/v1/profile/avatar",
+        headers={
+            "Origin": OPS_ORIGIN,
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "authorization",
+        },
+    )
+    assert res.status_code == 200
+    assert res.headers.get("access-control-allow-origin") == OPS_ORIGIN
+
+
+def test_profile_avatar_get_unauthenticated_includes_ops_cors() -> None:
+    client = TestClient(app)
+    res = client.get("/api/v1/profile/avatar", headers={"Origin": OPS_ORIGIN})
+    assert res.status_code == 401
+    assert res.headers.get("access-control-allow-origin") == OPS_ORIGIN
+
+
 def test_options_preflight_includes_ops_origin() -> None:
     client = TestClient(app)
     res = client.options(

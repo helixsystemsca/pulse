@@ -543,7 +543,7 @@ export function ProfilePage() {
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-ds-muted">Level &amp; XP</p>
                   <p className="mt-1 font-headline text-lg font-extrabold text-ds-foreground">Experience arc</p>
-                  <p className="mt-1 text-xs text-ds-muted">Same progression curve shown across Pulse gamification.</p>
+                  <p className="mt-1 text-xs text-ds-muted">Same progression curve shown across Helix gamification.</p>
                 </div>
                 <span className="rounded-full bg-[#36F1CD]/15 px-3 py-1 text-xs font-extrabold text-[#0E7C66]">
                   Level {analytics?.level ?? 1}

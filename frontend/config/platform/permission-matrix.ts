@@ -239,7 +239,7 @@ export function permissionFeatureGroupsForDepartment(dept: PermissionMatrixDepar
         description: "Operations, leadership, project, and department dashboards.",
         keys: [...DASHBOARD_ACCESS_KEYS],
       },
-      { id: "ops", label: "Maintenance & operations", description: "Classic Pulse modules for this department.", keys: [...maintenanceOps] },
+      { id: "ops", label: "Maintenance & operations", description: "Classic Helix modules for this department.", keys: [...maintenanceOps] },
       {
         id: "planning_schedule",
         label: "Planning · Scheduling",

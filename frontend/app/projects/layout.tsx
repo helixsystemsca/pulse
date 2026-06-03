@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: { absolute: "Projects | Helix" },
-  description: "Projects, tasks, and schedule-linked due dates for Pulse.",
+  description: "Projects, tasks, and schedule-linked due dates for Helix.",
 };
 
 export default function ProjectsLayout({ children }: { children: React.ReactNode }) {

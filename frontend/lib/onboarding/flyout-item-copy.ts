@@ -41,5 +41,5 @@ const FLYOUT_ITEM_DESCRIPTIONS: Partial<Record<string, string>> = {
 export function flyoutItemTourDescription(featureKey: string, label: string): string {
   const custom = FLYOUT_ITEM_DESCRIPTIONS[featureKey];
   if (custom) return custom;
-  return `Open ${label} for day-to-day work in this area of Panorama.`;
+  return `Open ${label} for day-to-day work in this area of Helix.`;
 }

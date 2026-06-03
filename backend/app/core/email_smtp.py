@@ -116,15 +116,15 @@ async def send_company_admin_invite(
     display = settings.email_from_display.strip() or "Helix Systems"
     noreply = settings.email_from_noreply.strip()
 
-    subject = f"Pulse — complete setup for {company_name}"
+    subject = f"Helix — complete setup for {company_name}"
     text = (
         f"Hello,\n\n"
-        f"You've been invited to create your Pulse company administrator account for "
+        f"You've been invited to create your Helix company administrator account for "
         f"“{company_name}” on behalf of {display}.\n\n"
         "What to do next:\n"
         "1. Open the secure link below (or paste it into your browser).\n"
         "2. Choose a password and confirm your details to finish account setup.\n"
-        "3. Sign in at your organization's Pulse URL to manage your operation.\n\n"
+        "3. Sign in at your organization's Helix URL to manage your operation.\n\n"
         f"This link expires in {hours} hour(s) for security. If it expires, ask your Helix "
         "contact to send a new invitation.\n\n"
         f"Your personal link:\n{invite_url}\n\n"
@@ -144,7 +144,7 @@ async def send_company_admin_invite(
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f6f8;padding:24px 12px;">
     <tr><td align="center">
       <table role="presentation" width="100%" style="max-width:560px;background:#ffffff;border-radius:12px;border:1px solid #e2e8f0;overflow:hidden;">
-        <tr><td style="padding:28px 28px 8px;font-size:18px;font-weight:700;color:#0f172a;">You’re invited to Pulse</td></tr>
+        <tr><td style="padding:28px 28px 8px;font-size:18px;font-weight:700;color:#0f172a;">You’re invited to Helix</td></tr>
         <tr><td style="padding:8px 28px 16px;font-size:15px;color:#334155;">
           Hello,
         </td></tr>
@@ -157,7 +157,7 @@ async def send_company_admin_invite(
           <ol style="margin:0;padding-left:20px;color:#475569;">
             <li style="margin-bottom:6px;">Click the button below (or use the link at the bottom).</li>
             <li style="margin-bottom:6px;">Create your password and complete the short setup form.</li>
-            <li>Sign in to Pulse to manage maintenance, scheduling, and your team.</li>
+            <li>Sign in to Helix to manage maintenance, scheduling, and your team.</li>
           </ol>
         </td></tr>
         <tr><td style="padding:16px 28px 24px;">
@@ -219,10 +219,10 @@ async def send_employee_invite(
     display = settings.email_from_display.strip() or "Helix Systems"
     noreply = settings.email_from_noreply.strip()
 
-    subject = f"Pulse — you’re invited to join {company_name}"
+    subject = f"Helix — you’re invited to join {company_name}"
     text = (
         f"Hello,\n\n"
-        f"You’ve been invited to join “{company_name}” on Pulse ({display}).\n\n"
+        f"You’ve been invited to join “{company_name}” on Helix ({display}).\n\n"
         "Open the link below to choose your password and activate your account:\n\n"
         f"{invite_url}\n\n"
         f"This link expires in {hours} hour(s). Ask your administrator for a new invite if needed.\n\n"
@@ -240,7 +240,7 @@ async def send_employee_invite(
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f6f8;padding:24px 12px;">
     <tr><td align="center">
       <table role="presentation" width="100%" style="max-width:560px;background:#ffffff;border-radius:12px;border:1px solid #e2e8f0;overflow:hidden;">
-        <tr><td style="padding:28px 28px 8px;font-size:18px;font-weight:700;color:#0f172a;">Join your team on Pulse</td></tr>
+        <tr><td style="padding:28px 28px 8px;font-size:18px;font-weight:700;color:#0f172a;">Join your team on Helix</td></tr>
         <tr><td style="padding:8px 28px 16px;font-size:15px;color:#334155;">
           You’ve been invited to <strong>{safe_company}</strong> ({safe_display}).
         </td></tr>
@@ -291,7 +291,7 @@ async def send_password_reset_email(
 ) -> bool:
     if not settings.smtp_configured:
         return False
-    subject = "Reset your Pulse password"
+    subject = "Reset your Helix password"
     text = (
         "A password reset was requested for your account.\n\n"
         f"Open this link to choose a new password:\n{reset_url}\n\n"
@@ -341,7 +341,7 @@ async def send_planning_idea_approval_request(
 
     from decimal import Decimal
 
-    display = settings.email_from_display.strip() or "Pulse"
+    display = settings.email_from_display.strip() or "Helix"
     noreply = settings.email_from_noreply.strip()
     cost_line = "—"
     if estimated_cost is not None:
@@ -515,8 +515,8 @@ async def send_inventory_low_stock_alert_email(
         f"Minimum level: {minimum_qty:g}{unit_label}\n"
         f"{vendor_line}"
         f"{reorder_line}\n"
-        "This item was added to the Material Request queue in Pulse.\n"
-        "Review inventory in Pulse → Material requests or Inventory.\n"
+        "This item was added to the Material Request queue in Helix.\n"
+        "Review inventory in Helix → Material requests or Inventory.\n"
     )
 
     safe_name = html.escape(item_name, quote=True)
@@ -534,7 +534,7 @@ async def send_inventory_low_stock_alert_email(
     <tr><td style="padding:4px 12px 4px 0;font-weight:600;">Current qty</td><td>{current_qty:g}{html.escape(unit_label)}</td></tr>
     <tr><td style="padding:4px 12px 4px 0;font-weight:600;">Minimum</td><td>{minimum_qty:g}{html.escape(unit_label)}</td></tr>
   </table>
-  <p style="font-size:14px;color:#64748b;">Open Pulse → Material requests to build a purchase draft.</p>
+  <p style="font-size:14px;color:#64748b;">Open Helix → Material requests to build a purchase draft.</p>
 </body></html>"""
 
     msg = _build_message(

@@ -137,7 +137,7 @@ export function ProfileAccountSection({
           <div>
             <p className="text-sm font-extrabold text-ds-foreground">Password &amp; sign-in</p>
             <p className="mt-0.5 text-xs text-ds-muted">
-              {microsoftAuth ? "Microsoft SSO manages your password." : "Update your Pulse password."}
+              {microsoftAuth ? "Microsoft SSO manages your password." : "Update your Helix password."}
             </p>
           </div>
           <ChevronDown className={cn("h-5 w-5 shrink-0 text-ds-muted transition-transform", pwOpen && "rotate-180")} />

@@ -178,7 +178,7 @@ export function EditProfileDrawer({
       open={open}
       onClose={onClose}
       title="Edit profile"
-      subtitle="Update how you show up across Pulse — saved to your live account."
+      subtitle="Update how you show up across Helix — saved to your live account."
       wide
       footer={
         <div className="flex w-full flex-wrap justify-end gap-2 border-t border-ds-border bg-ds-secondary/40 px-4 py-3 dark:bg-ds-secondary/25">

@@ -8,7 +8,7 @@ export function PulsePreviewSection() {
         <div className="mx-auto max-w-2xl rounded-md border border-helix-outline/20 bg-helix-bg p-8 text-center shadow-md md:p-10">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-helix-primary">Product</p>
           <h2 className="mt-3 font-headline text-3xl font-extrabold tracking-tight text-helix-onSurface md:text-4xl">
-            Pulse
+            Helix
           </h2>
           <p className="mt-4 text-lg leading-relaxed text-helix-onSurfaceVariant">
             Our flagship operational intelligence layer—workforce signals, asset state, maintenance, and inventory

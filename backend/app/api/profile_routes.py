@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from urllib.parse import urlparse
 from typing import Annotated
 
@@ -33,29 +34,62 @@ from app.schemas.profile import (
 
 router = APIRouter(prefix="/profile", tags=["profile"])
 
+_log = logging.getLogger(__name__)
+
 _AVATAR_BUCKET = "avatars"
+
 
 @router.get("/avatar")
 async def get_my_avatar_file(
+    request: Request,
     user: Annotated[User, Depends(get_current_company_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Response:
     uid = str(user.id)
     row = await db.get(User, uid)
+    storage_key = getattr(row, "avatar_storage_key", None) if row else None
+    origin = (request.headers.get("origin") or "").strip()
+    _log.info(
+        "avatar_get start user_id=%s storage_key=%s origin=%s",
+        uid,
+        storage_key or "(legacy)",
+        origin[:120] if origin else "(none)",
+    )
     try:
-        blob = await read_user_avatar_bytes(
-            uid, storage_key=getattr(row, "avatar_storage_key", None) if row else None
-        )
+        blob = await read_user_avatar_bytes(uid, storage_key=storage_key)
     except RuntimeError as e:
+        _log.warning(
+            "avatar_get storage_unavailable user_id=%s storage_key=%s detail=%s",
+            uid,
+            storage_key or "(legacy)",
+            e,
+        )
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
+    except Exception as e:
+        _log.exception(
+            "avatar_get storage_error user_id=%s storage_key=%s",
+            uid,
+            storage_key or "(legacy)",
+        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Avatar storage unavailable",
+        ) from e
     if not blob:
         if row and ((row.avatar_url or "").strip() == INTERNAL_AVATAR_PATH or row.avatar_storage_key):
+            _log.info("avatar_get missing_bytes_clearing_stale_refs user_id=%s storage_key=%s", uid, storage_key)
             row.avatar_url = None
             row.avatar_storage_key = None
             row.avatar_pending_url = None
             await db.commit()
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No uploaded avatar")
     data, media_type = blob
+    _log.info(
+        "avatar_get ok user_id=%s bytes=%d content_type=%s",
+        uid,
+        len(data),
+        media_type,
+    )
     return Response(content=data, media_type=media_type, headers={"Cache-Control": "private, no-store"})
 
 
@@ -103,7 +137,13 @@ async def upload_my_avatar(
 
     # Make the new avatar immediately visible to teammates.
     try:
-        stored = await write_user_avatar_bytes(str(user.company_id), uid, ext, ct, raw)
+        stored = await write_user_avatar_bytes(
+            str(user.company_id),
+            uid,
+            ext,
+            raw=raw,
+            content_type=ct,
+        )
     except RuntimeError as e:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
     q.avatar_storage_key = stored.object_key

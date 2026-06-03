@@ -124,7 +124,7 @@ export function LandingVariantNavbar({
 
         <div className="flex items-center gap-3">
           <Link href={pulseHref} className={`hidden md:inline-flex ${p.launch}`}>
-            Launch Pulse
+            Launch Helix
           </Link>
         </div>
       </nav>
@@ -140,7 +140,7 @@ export function LandingVariantNavbar({
           Contact
         </a>
         <Link href={pulseHref} className={`${p.launch} text-xs`}>
-          Launch Pulse
+          Launch Helix
         </Link>
       </div>
     </header>

@@ -520,6 +520,11 @@ async def get_worker_avatar_file(
         )
     except RuntimeError as e:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Avatar storage unavailable",
+        ) from e
     if not blob:
         if (u.avatar_url or "").strip() == INTERNAL_AVATAR_PATH or u.avatar_storage_key:
             u.avatar_url = None

@@ -1,8 +1,8 @@
 # Helix Systems — Marketing site (helixsystems.ca)
 
-Standalone **Next.js** landing that showcases **Pulse**. This is **not** the Pulse web application; deploy it on **helixsystems.ca** (or www) and host the actual app on another host or subdomain.
+Standalone **Next.js** landing that showcases **Helix**. This is **not** the Helix web application; deploy it on **helixsystems.ca** (or www) and host the actual app on another host or subdomain.
 
-## Pulse app URL
+## Helix app URL
 
 All “Login”, “Get Started”, “View Demo”, and “Launch Admin Panel” buttons use:
 

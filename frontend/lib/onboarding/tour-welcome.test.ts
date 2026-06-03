@@ -7,6 +7,6 @@ describe("formatTourWelcomeLine", () => {
   });
 
   it("keeps titles that already start with Welcome", () => {
-    expect(formatTourWelcomeLine("Welcome to Panorama")).toBe("Welcome to Panorama");
+    expect(formatTourWelcomeLine("Welcome to Helix")).toBe("Welcome to Helix");
   });
 });

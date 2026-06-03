@@ -3,7 +3,7 @@ import { AppLayout } from "@/components/app/AppLayout";
 
 export const metadata: Metadata = {
   title: { absolute: "Operations Dashboard | Helix" },
-  description: "Operations dashboard embedded in the Pulse app.",
+  description: "Operations dashboard embedded in the Helix app.",
 };
 
 export default function WorkerLayout({ children }: { children: React.ReactNode }) {

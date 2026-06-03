@@ -491,7 +491,7 @@ export function ScheduleApp() {
 
   const saveScheduleToServer = useCallback(async () => {
     if (!isApiMode()) {
-      window.alert("Connect to the Pulse API to sync shifts to the server. Demo data is kept in this browser automatically.");
+      window.alert("Connect to Helix to sync shifts to the server. Demo data is kept in this browser automatically.");
       return;
     }
     const raw = useScheduleStore.getState().shifts;

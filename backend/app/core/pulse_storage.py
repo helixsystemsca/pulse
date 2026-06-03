@@ -262,20 +262,64 @@ async def read_user_avatar_pending_bytes(
 
 
 async def write_user_avatar_bytes(
-    tenant_id: str, user_id: str, ext_with_dot: str, raw: bytes, content_type: str
+    tenant_id: str,
+    user_id: str,
+    ext_with_dot: str,
+    *,
+    raw: bytes,
+    content_type: str,
 ) -> StoredObject:
-    ct = (content_type or "").split(";")[0].strip() or media_type_for_ext(ext_with_dot)
+    logger.info(
+        "write_user_avatar_bytes types content_type=%s ext_with_dot=%s raw=%s user_id=%s tenant_id=%s",
+        type(content_type).__name__,
+        type(ext_with_dot).__name__,
+        type(raw).__name__,
+        type(user_id).__name__,
+        type(tenant_id).__name__,
+    )
+    if not isinstance(raw, (bytes, bytearray)):
+        raise TypeError(f"write_user_avatar_bytes: raw must be bytes, got {type(raw).__name__}")
+    if not isinstance(content_type, str):
+        raise TypeError(
+            f"write_user_avatar_bytes: content_type must be str, got {type(content_type).__name__}"
+        )
+    ext_s = str(ext_with_dot)
+    body = bytes(raw)
+    ct = (content_type or "").split(";")[0].strip() or media_type_for_ext(ext_s)
     return await upload_profile_photo(
-        tenant_id, user_id, pending=False, ext_with_dot=ext_with_dot, raw=raw, content_type=ct
+        str(tenant_id),
+        str(user_id),
+        pending=False,
+        ext_with_dot=ext_s,
+        raw=body,
+        content_type=ct,
     )
 
 
 async def write_user_avatar_pending_bytes(
-    tenant_id: str, user_id: str, ext_with_dot: str, raw: bytes, content_type: str
+    tenant_id: str,
+    user_id: str,
+    ext_with_dot: str,
+    *,
+    raw: bytes,
+    content_type: str,
 ) -> StoredObject:
-    ct = (content_type or "").split(";")[0].strip() or media_type_for_ext(ext_with_dot)
+    if not isinstance(raw, (bytes, bytearray)):
+        raise TypeError(f"write_user_avatar_pending_bytes: raw must be bytes, got {type(raw).__name__}")
+    if not isinstance(content_type, str):
+        raise TypeError(
+            f"write_user_avatar_pending_bytes: content_type must be str, got {type(content_type).__name__}"
+        )
+    ext_s = str(ext_with_dot)
+    body = bytes(raw)
+    ct = (content_type or "").split(";")[0].strip() or media_type_for_ext(ext_s)
     return await upload_profile_photo(
-        tenant_id, user_id, pending=True, ext_with_dot=ext_with_dot, raw=raw, content_type=ct
+        str(tenant_id),
+        str(user_id),
+        pending=True,
+        ext_with_dot=ext_s,
+        raw=body,
+        content_type=ct,
     )
 
 
@@ -313,7 +357,9 @@ async def promote_user_avatar_pending_to_approved(
             return None
         raw, media_type = pending
         ext = _MEDIA_TO_EXT.get((media_type or "").split(";")[0].strip().lower(), ".png")
-        stored = await write_user_avatar_bytes(tenant_id, user_id, ext, raw, media_type)
+        stored = await write_user_avatar_bytes(
+            tenant_id, user_id, ext, raw=raw, content_type=media_type
+        )
         await delete_by_storage_key(pending_storage_key)
         return stored
 
@@ -322,7 +368,9 @@ async def promote_user_avatar_pending_to_approved(
         return None
     raw, media_type = pending
     ext = _MEDIA_TO_EXT.get((media_type or "").split(";")[0].strip().lower(), ".png")
-    stored = await write_user_avatar_bytes(tenant_id, user_id, ext, raw, media_type)
+    stored = await write_user_avatar_bytes(
+        tenant_id, user_id, ext, raw=raw, content_type=media_type
+    )
     await delete_user_avatar_pending_files(user_id)
     return stored
 

@@ -91,7 +91,7 @@ function buildChecklistItem(
     return {
       programId: item.id,
       title: item.label,
-      meta: "External training — complete outside Pulse",
+      meta: "External training — complete outside Helix",
       flowTag: "EXTERNAL",
       tier: "general",
       done: false,

@@ -1653,7 +1653,7 @@ export function WorkersApp() {
           If noreply invite emails are delayed or blocked, use{" "}
           <span className="font-semibold text-ds-foreground">Join link</span> on someone with{" "}
           <span className="font-semibold text-ds-foreground">Invited</span> status to copy a fresh activation URL
-          without sending another email from Pulse.
+          without sending another email from Helix.
         </p>
       ) : null}
 
@@ -1851,7 +1851,7 @@ export function WorkersApp() {
                   <span className="font-semibold text-ds-foreground">role slot</span> (manager, coordination, supervisor,
                   ...).                   <span className="font-semibold text-ds-foreground">Access overlays</span> (below) are legacy labels/toggles
                   and{" "}
-                  <span className="font-semibold text-ds-foreground">do not change</span> which modules appear in Pulse.
+                  <span className="font-semibold text-ds-foreground">do not change</span> which modules appear in Helix.
                   Modules outside your contract stay hidden everywhere.
                 </p>
                 <div className="mt-4 space-y-4">
@@ -2057,7 +2057,7 @@ export function WorkersApp() {
                 <h2 className="text-sm font-bold tracking-tight text-ds-foreground">Adjust modules for your team</h2>
                 <p className="mt-1 text-xs text-ds-muted">
                   Your company administrator enabled downstream access control for your role. Pick a subordinate role,
-                  then choose which Panorama modules people in that role may use (within your organization&apos;s contract).
+                  then choose which Helix modules people in that role may use (within your organization&apos;s contract).
                 </p>
                 <label className={`${LABEL} mt-4 block`}>Role</label>
                 <select
@@ -3085,7 +3085,7 @@ export function WorkersApp() {
               <p className="mt-1 max-w-prose text-xs text-pulse-muted">
                 {profileIsEquipmentAccount
                   ? "Dedicated equipment sign-in used on the inventory scanner kiosk tablet. Update the password when rotating kiosk credentials."
-                  : "Changes here update this person's roster record for Pulse (schedule assignments, projects, device ownership where linked by user, and permissions)."}
+                  : "Changes here update this person's roster record for Helix (schedule assignments, projects, device ownership where linked by user, and permissions)."}
               </p>
               <div className="mt-3 flex items-center gap-3 sm:col-span-2">
                 <UserProfileAvatarPreview

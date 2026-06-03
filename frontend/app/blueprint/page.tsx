@@ -6,7 +6,7 @@ import { HelixNavbar } from "@/components/site/HelixNavbar";
 export const metadata: Metadata = {
   title: { absolute: "Blueprint playground | Helix" },
   description:
-    "Try the Pulse floor plan editor: draw rooms, place devices and doors, and export PNG or PDF. Sign in on Pulse to save layouts to your organization.",
+    "Try the Helix floor plan editor: draw rooms, place devices and doors, and export PNG or PDF. Sign in on Helix to save layouts to your organization.",
 };
 
 export default function MarketingBlueprintPage() {

@@ -7,7 +7,7 @@ export const landingHero = {
   h1Accent: "made clear.",
   lead:
     "We partner with operators who run complex sites—manufacturing, terminals, logistics, and infrastructure. Helix bridges the gap between what happens on the ground and what your leadership needs to see.",
-  ctaExplore: "Explore Pulse",
+  ctaExplore: "Explore Helix",
   ctaWhatWeBuild: "What we build",
   zoneStats: [
     { throughputPercent: 65 },
@@ -17,7 +17,7 @@ export const landingHero = {
   snapshotTitle: "Operations snapshot",
   snapshotBody:
     "Live roll-up across lines, bays, and shifts—without another spreadsheet export.",
-  pulseBadge: "Real-time Pulse",
+  pulseBadge: "Real-time Helix",
   pulseTitle: "Feed healthy · 124 nodes",
   pulseSub: "Streaming telemetry & workforce signals",
 } as const;
@@ -81,7 +81,7 @@ export const whatWeBuild = {
 
 export const pulsePreview = {
   kicker: "Product",
-  title: "Pulse",
+  title: "Helix",
   body:
     "Our flagship operational intelligence layer—workforce signals, asset state, maintenance, and inventory awareness in one coherent picture for the front line and the control room.",
   cta: "Learn more",

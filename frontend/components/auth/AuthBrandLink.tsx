@@ -18,10 +18,7 @@ export function AuthBrandLink() {
           unoptimized
         />
       </span>
-      <span className="inline-flex items-baseline gap-[0.06em] leading-none tracking-normal">
-        <span className="font-normal tracking-[0.06em]">Panorama</span>
-        <span className="font-extralight tracking-[0.06em]">Pulse</span>
-      </span>
+      <span className="font-semibold tracking-[0.06em] leading-none">Helix</span>
     </Link>
   );
 }

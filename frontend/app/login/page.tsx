@@ -166,7 +166,7 @@ export default function LoginPage() {
         <header className="login-header pointer-events-none absolute inset-x-0 top-0 z-20 flex w-full items-center justify-end gap-4 px-5 py-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] sm:px-8 sm:py-3 lg:px-12">
           <nav className="pointer-events-auto flex items-center gap-1 sm:gap-2" aria-label="Login header">
             <a
-              href={mailtoSupport("Pulse — Support")}
+              href={mailtoSupport("Helix — Support")}
               className="inline-flex rounded-full bg-[#4c6085] px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-white shadow-sm transition-colors hover:bg-[#3f5274] sm:px-4 sm:py-2.5 sm:text-xs dark:bg-[#556b8e] dark:hover:bg-[#4c6085]"
             >
               Support
@@ -304,7 +304,7 @@ export default function LoginPage() {
 
                   <div className="mt-4 flex flex-wrap items-center justify-between gap-2 pt-0.5 text-[11px] font-semibold uppercase tracking-wide">
                     <a
-                      href={mailtoInfo("Pulse — credentials help")}
+                      href={mailtoInfo("Helix — credentials help")}
                       className="text-ds-accent no-underline hover:underline"
                     >
                       Forgot credentials?

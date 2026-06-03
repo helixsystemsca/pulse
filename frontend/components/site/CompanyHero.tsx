@@ -30,7 +30,7 @@ export function CompanyHero() {
               href="/pulse"
               className="inline-flex items-center gap-2 rounded-md bg-helix-primary px-8 py-4 font-headline text-base font-bold text-white shadow-helix transition-all hover:bg-helix-primary-dim no-underline"
             >
-              Explore Pulse
+              Explore Helix
               <ArrowRight className="h-5 w-5" />
             </Link>
             <a
@@ -78,7 +78,7 @@ export function CompanyHero() {
                   <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
                 </span>
                 <span className="text-xs font-bold uppercase tracking-wide text-helix-primary">
-                  Real-time Pulse
+                  Real-time Helix
                 </span>
               </div>
               <p className="mt-2 text-sm font-semibold text-helix-onSurface">Feed healthy · 124 nodes</p>

@@ -1851,7 +1851,7 @@ function DashboardBody({
                   <p className={`mt-1 ${UI.subheader}`}>
                     {isDeptDashboard
                       ? "Build a compact peek from a module you have unlocked (pick slices and options)."
-                      : 'Re-enable a built-in card, or build a compact "peek" from another Pulse page (pick slices and options).'}
+                      : 'Re-enable a built-in card, or build a compact "peek" from another Helix page (pick slices and options).'}
                   </p>
                 </div>
                 <Button

@@ -32,7 +32,7 @@ export function UpcomingShiftCard({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="font-headline text-base font-extrabold text-ds-foreground">Upcoming shifts</p>
-          <p className="mt-1 text-xs text-ds-muted">From your published Pulse schedule</p>
+          <p className="mt-1 text-xs text-ds-muted">From your published Helix schedule</p>
         </div>
         <Link
           href="/schedule"

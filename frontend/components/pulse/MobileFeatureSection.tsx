@@ -41,7 +41,7 @@ function PhoneChrome() {
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-1.5">
                     <MapPin className="h-3.5 w-3.5 shrink-0 text-sky-200" aria-hidden />
-                    <span className="truncate text-sm font-medium text-white drop-shadow-sm">Panorama</span>
+                    <span className="truncate text-sm font-medium text-white drop-shadow-sm">Helix</span>
                   </div>
                   <button
                     type="button"

@@ -43,7 +43,7 @@ function kioskFacilityLabel(): string {
   if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_KIOSK_FACILITY_NAME?.trim()) {
     return process.env.NEXT_PUBLIC_KIOSK_FACILITY_NAME.trim();
   }
-  return "Panorama Recreation";
+  return "Demo Recreation";
 }
 
 function targetCompletionMeta(

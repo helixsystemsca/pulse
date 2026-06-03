@@ -133,7 +133,7 @@ function EquipmentSetupScreen() {
               </div>
               <label className="mt-1.5 block text-[8px] font-bold uppercase tracking-wider text-slate-500">Site / facility</label>
               <div className="mt-0.5 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-medium text-pulse-navy">
-                Panorama
+                Helix
               </div>
               <label className="mt-1.5 block text-[8px] font-bold uppercase tracking-wider text-slate-500">Designated area</label>
               <div className="mt-0.5 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-medium text-pulse-navy">

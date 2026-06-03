@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: { absolute: "Overview | Helix" },
-  description: "Pulse operational dashboard overview.",
+  description: "Helix operational dashboard overview.",
 };
 
 export default function OverviewLayout({ children }: { children: React.ReactNode }) {

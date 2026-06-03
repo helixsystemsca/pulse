@@ -7,7 +7,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: { absolute: "Dashboard | Helix" },
-  description: "Pulse operational dashboards.",
+  description: "Helix operational dashboards.",
 };
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

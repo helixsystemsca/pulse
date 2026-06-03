@@ -447,7 +447,7 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
   );
 
   const step = steps[currentStep];
-  const welcomeTitle = activeTour?.welcomeTitle?.trim() || "Welcome to Panorama";
+  const welcomeTitle = activeTour?.welcomeTitle?.trim() || "Welcome to Helix";
   const welcomeSubtitle =
     activeTour?.welcomeSubtitle?.trim() || "Let's walk through the key areas of your workspace.";
 

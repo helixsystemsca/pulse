@@ -280,7 +280,7 @@ export function OrganizationBrandingPanel({ initialCompany, onCompanyUpdated }: 
           <label htmlFor="org-header-wordmark" className={dsLabelClass}>
             Header wordmark
           </label>
-          <p className={dsFormHintClass}>Same style as the legacy Panorama / Pulse app header.</p>
+          <p className={dsFormHintClass}>Same style as the Helix app header.</p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <input
               id="org-header-wordmark"
@@ -309,7 +309,7 @@ export function OrganizationBrandingPanel({ initialCompany, onCompanyUpdated }: 
       <Card variant="secondary" padding="lg">
         <SectionHeader
           title="Default employee password"
-          description="Used when an administrator creates a roster-only employee (no email invite). New accounts must change this password on first sign-in. Leave blank to use the platform default (Panorama)."
+          description="Used when an administrator creates a roster-only employee (no email invite). New accounts must change this password on first sign-in. Leave blank to use the platform default password."
         />
         <div className="mt-4">
           <label htmlFor="org-default-roster-password" className={dsLabelClass}>
@@ -407,7 +407,7 @@ export function OrganizationBrandingPanel({ initialCompany, onCompanyUpdated }: 
       <Card variant="secondary" padding="lg">
         <SectionHeader
           title="Mobile app header background"
-          description="Large image behind the blurred hero on the Pulse mobile app for everyone in your organization. Upload (max 2MB) or use a public https URL."
+          description="Large image behind the blurred hero on the Helix mobile app for everyone in your organization. Upload (max 2MB) or use a public https URL."
         />
 
         <HeroBackgroundPreview url={company.background_image_url ?? null} />
