@@ -11,6 +11,9 @@ from app.models.domain import User, UserRole
 
 
 class _QueryResult:
+    def scalars(self):
+        return self
+
     def all(self):
         return []
 

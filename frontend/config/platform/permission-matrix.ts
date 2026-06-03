@@ -94,6 +94,38 @@ export const PERMISSION_MATRIX_ROLE_LABEL: Record<PermissionMatrixRoleSlot, stri
 
 export const UNRESOLVED_MATRIX_SLOT = "unresolved";
 
+/** Elevated slots available on every department. */
+export const UNIVERSAL_MATRIX_ROLE_SLOTS: readonly PermissionMatrixRoleSlot[] = [
+  "manager",
+  "supervisor",
+  "lead",
+];
+
+/** Role slots for worker assignment and per-department matrix editing (not the full legacy catalog). */
+export function matrixRoleSlotsForDepartment(
+  departmentSlug: string,
+  options?: { includeSlot?: string | null },
+): PermissionMatrixRoleSlot[] {
+  const slug = (departmentSlug || "").trim();
+  const allowed = new Set<PermissionMatrixRoleSlot>(UNIVERSAL_MATRIX_ROLE_SLOTS);
+  if (slug) {
+    allowed.add(baselineSlotForDepartment(slug));
+  }
+  const extra = (options?.includeSlot ?? "").trim();
+  if (extra && (PERMISSION_MATRIX_ROLE_SLOTS as readonly string[]).includes(extra)) {
+    allowed.add(extra as PermissionMatrixRoleSlot);
+  }
+  return PERMISSION_MATRIX_ROLE_SLOTS.filter((s) => allowed.has(s));
+}
+
+/** Label for the empty matrix_slot option on worker profiles. */
+export function autoMatrixSlotLabel(departmentSlug: string): string {
+  const slug = (departmentSlug || "").trim();
+  if (!slug) return "Auto (department default)";
+  const baseline = baselineSlotForDepartment(slug);
+  return `Auto (${PERMISSION_MATRIX_ROLE_LABEL[baseline]})`;
+}
+
 /** Maps matrix slot → legacy `role_feature_access` bucket (for sync + delegated edits). */
 export function legacyRoleBucketForSlot(slot: PermissionMatrixRoleSlot): "manager" | "supervisor" | "lead" | "worker" {
   if (slot === "manager") return "manager";

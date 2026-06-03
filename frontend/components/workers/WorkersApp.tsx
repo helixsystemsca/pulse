@@ -126,11 +126,13 @@ import {
 } from "@/config/platform/tenant-product-modules";
 import {
   computeLegacyRoleFeatureAccessFromMatrix,
+  autoMatrixSlotLabel,
   baselineSlotForDepartment,
   legacyRoleBucketForSlot,
   MASTER_PERMISSION_FEATURE_GROUPS,
   matrixDepartmentLabel,
   matrixDepartmentSlugs,
+  matrixRoleSlotsForDepartment,
   normalizeDepartmentRoleMatrixFromApi,
   type PermissionMatrixRoleSlot,
   PERMISSION_MATRIX_ROLE_LABEL,
@@ -690,6 +692,18 @@ export function WorkersApp() {
 
   const matrixDeptSlugs = useMemo(() => matrixDepartmentSlugs(tenantDepartments), [tenantDepartments]);
   const departmentOptions = useMemo(() => tenantDepartmentOptions(tenantDepartments), [tenantDepartments]);
+  const permissionsMatrixRoleSlots = useMemo(
+    () => matrixRoleSlotsForDepartment(permissionsDepartment, { includeSlot: permissionsSlot }),
+    [permissionsDepartment, permissionsSlot],
+  );
+  const createMatrixRoleSlots = useMemo(
+    () => matrixRoleSlotsForDepartment(createForm.department, { includeSlot: createForm.role_key }),
+    [createForm.department, createForm.role_key],
+  );
+  const profileMatrixRoleSlots = useMemo(
+    () => matrixRoleSlotsForDepartment(positionDraft.department, { includeSlot: positionDraft.matrix_slot }),
+    [positionDraft.department, positionDraft.matrix_slot],
+  );
 
   const permissionsSetupDismissKey =
     effectiveCompanyId != null ? `pulse.permissions.setup.dismissed.${effectiveCompanyId}` : null;
@@ -713,6 +727,15 @@ export function WorkersApp() {
     if (!matrixDeptSlugs.length) return;
     setPermissionsDepartment((cur) => (cur && matrixDeptSlugs.includes(cur) ? cur : matrixDeptSlugs[0]!));
   }, [matrixDeptSlugs]);
+
+  useEffect(() => {
+    if (!permissionsDepartment) return;
+    setPermissionsSlot((cur) => {
+      const slots = matrixRoleSlotsForDepartment(permissionsDepartment, { includeSlot: cur });
+      if (cur && slots.includes(cur)) return cur;
+      return baselineSlotForDepartment(permissionsDepartment);
+    });
+  }, [permissionsDepartment]);
 
   useEffect(() => {
     if (!dataEnabled || !isTenantFullAdmin) return;
@@ -1425,6 +1448,9 @@ export function WorkersApp() {
     if (trim(positionDraft.department) !== (profile.department ?? "").trim()) {
       payload.department = trim(positionDraft.department) || null;
     }
+    if (trim(positionDraft.department)) {
+      payload.role_key = effectiveRoleKey;
+    }
     const primaryDept = trim(positionDraft.department).toLowerCase();
     const wsNorm = primaryDept ? [primaryDept] : [];
     const prevWs = [...(profile.department_slugs ?? [])].map((x) => trim(x).toLowerCase()).sort();
@@ -1971,7 +1997,7 @@ export function WorkersApp() {
                       value={permissionsSlot}
                       onChange={(e) => setPermissionsSlot(e.target.value as PermissionMatrixRoleSlot)}
                     >
-                      {PERMISSION_MATRIX_ROLE_SLOTS.map((s) => (
+                      {permissionsMatrixRoleSlots.map((s) => (
                         <option key={s} value={s}>
                           {PERMISSION_MATRIX_ROLE_LABEL[s]}
                         </option>
@@ -2951,7 +2977,7 @@ export function WorkersApp() {
               value={createForm.role_key}
               onChange={(e) => setCreateForm((f) => ({ ...f, role_key: e.target.value }))}
             >
-              {PERMISSION_MATRIX_ROLE_SLOTS.map((s) => (
+              {createMatrixRoleSlots.map((s) => (
                 <option key={s} value={s}>
                   {PERMISSION_MATRIX_ROLE_LABEL[s]}
                 </option>
@@ -3454,8 +3480,8 @@ export function WorkersApp() {
                       value={positionDraft.matrix_slot}
                       onChange={(e) => setPositionDraft((d) => ({ ...d, matrix_slot: e.target.value }))}
                     >
-                      <option value="">Auto (department baseline)</option>
-                      {PERMISSION_MATRIX_ROLE_SLOTS.map((s) => (
+                      <option value="">{autoMatrixSlotLabel(positionDraft.department)}</option>
+                      {profileMatrixRoleSlots.map((s) => (
                         <option key={s} value={s}>
                           {PERMISSION_MATRIX_ROLE_LABEL[s]}
                         </option>
@@ -3467,11 +3493,13 @@ export function WorkersApp() {
                     </p>
                     {!positionDraft.matrix_slot.trim() && positionDraft.department ? (
                       <p className="mt-1 text-xs text-pulse-muted">
-                        Auto uses{" "}
-                        <span className="font-mono">
-                          {baselineSlotForDepartment(positionDraft.department) ?? "team_member"}
+                        When unset, access uses the{" "}
+                        <span className="font-semibold">
+                          {PERMISSION_MATRIX_ROLE_LABEL[baselineSlotForDepartment(positionDraft.department)]}
                         </span>{" "}
-                        for this department unless job title implies a higher slot.
+                        row for{" "}
+                        {matrixDepartmentLabel(positionDraft.department, tenantDepartments)}. Job title or account
+                        role may imply manager, supervisor, or lead instead.
                       </p>
                     ) : null}
                   </div>

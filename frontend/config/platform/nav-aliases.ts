@@ -12,6 +12,7 @@ export const NAV_ROUTE_ALIASES: Readonly<Record<string, string>> = {
   "/dashboard/maintenance/preventative": "/dashboard/maintenance",
   "/operations": "/monitoring",
   "/admin": "/overview",
+  "/dashboard/purchasing": "/dashboard/inventory",
 };
 
 export function resolveNavRouteAlias(pathname: string): string {

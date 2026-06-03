@@ -133,6 +133,53 @@ def _hr_department_slugs_list(hr: PulseWorkerHR | None) -> list[str]:
     return []
 
 
+def _worker_matrix_fields_for_roster(
+    u: User,
+    h: PulseWorkerHR | None,
+    asn: TenantRoleAssignment | None,
+) -> dict[str, Any]:
+    """Matrix slot display + unresolved flag for roster rows (HR resolver, not assignment-only)."""
+    matrix_dept = permission_matrix_department_for_user(u, h)
+    audit = worker_slot_audit_fields(u, h, department=matrix_dept)
+
+    if asn:
+        dept_slug = asn.department_slug
+        role_key = asn.role_key
+        return {
+            "dept_slug": dept_slug,
+            "role_key": role_key,
+            "assignment_status": "assigned",
+            "matrix_display": operational_matrix_slot_label(role_key, department=dept_slug),
+            "resolved_slot": role_key,
+            "matrix_source": "explicit_matrix_slot",
+            "matrix_inferred": False,
+            "is_unresolved": False,
+            "matrix_source_kind": "explicit",
+            "matrix_source_label": "Explicit",
+        }
+
+    is_unresolved = bool(audit.get("is_unresolved"))
+    if is_unresolved:
+        assignment_status = "unassigned"
+    elif audit.get("matrix_slot_inferred"):
+        assignment_status = "inferred"
+    else:
+        assignment_status = "assigned"
+
+    return {
+        "dept_slug": h.department if h else None,
+        "role_key": audit.get("hr_matrix_slot") or audit["resolved_matrix_slot"],
+        "assignment_status": assignment_status,
+        "matrix_display": audit["matrix_slot_display"],
+        "resolved_slot": audit["resolved_matrix_slot"],
+        "matrix_source": audit["matrix_slot_source"],
+        "matrix_inferred": bool(audit.get("matrix_slot_inferred")),
+        "is_unresolved": is_unresolved,
+        "matrix_source_kind": audit["matrix_slot_source_kind"],
+        "matrix_source_label": audit.get("matrix_slot_source_label") or "",
+    }
+
+
 def _merge_hr_department_slugs(body_department_slugs: list[str] | None, body_department: str | None) -> list[str]:
     slugs = normalize_workspace_department_slug_list(body_department_slugs)
     if slugs:
@@ -956,24 +1003,17 @@ async def list_workers(
         employment_type = _employment_type_from_scheduling_payload(sched_row)
         gg_assignable = bool((sched_row or {}).get("gg_assignable"))
         asn = assign_map.get(uid_s)
-        if asn:
-            dept_slug = asn.department_slug
-            role_key = asn.role_key
-            assignment_status = "assigned"
-            matrix_display = operational_matrix_slot_label(role_key, department=dept_slug)
-            resolved_slot = role_key
-            matrix_source = "explicit_matrix_slot"
-            matrix_inferred = False
-            is_unresolved = False
-        else:
-            dept_slug = h.department if h else None
-            role_key = None
-            assignment_status = "unassigned"
-            matrix_display = "Unassigned"
-            resolved_slot = "unassigned"
-            matrix_source = "unresolved"
-            matrix_inferred = True
-            is_unresolved = True
+        matrix = _worker_matrix_fields_for_roster(u, h, asn)
+        dept_slug = matrix["dept_slug"]
+        role_key = matrix["role_key"]
+        assignment_status = matrix["assignment_status"]
+        matrix_display = matrix["matrix_display"]
+        resolved_slot = matrix["resolved_slot"]
+        matrix_source = matrix["matrix_source"]
+        matrix_inferred = matrix["matrix_inferred"]
+        is_unresolved = matrix["is_unresolved"]
+        matrix_source_kind = matrix["matrix_source_kind"]
+        matrix_source_label = matrix["matrix_source_label"]
         tr_id = getattr(u, "tenant_role_id", None)
         tenant_role_slug = tenant_role_slug_by_id.get(str(tr_id)) if tr_id else None
         equipment_account = is_equipment_roster_account(
@@ -1006,11 +1046,11 @@ async def list_workers(
                 last_login_user_agent=le.user_agent if le else None,
                 resolved_matrix_slot=resolved_slot,
                 matrix_slot_source=matrix_source,
-                matrix_slot_source_kind="explicit" if asn else "unresolved",
+                matrix_slot_source_kind=matrix_source_kind,
                 matrix_slot_inferred=matrix_inferred,
                 matrix_slot_display=matrix_display,
                 matrix_slot_operational_label=matrix_display,
-                matrix_slot_source_label="Explicit" if asn else "Unresolved",
+                matrix_slot_source_label=matrix_source_label,
                 is_unresolved=is_unresolved,
                 assignment_status=assignment_status,
                 assigned_department_slug=dept_slug,
@@ -1521,8 +1561,9 @@ async def patch_worker(
         if "job_title" in data:
             hr.job_title = data["job_title"]
         if "matrix_slot" in data:
-            hr.matrix_slot = data["matrix_slot"]
-        if "role_key" in data and data["role_key"]:
+            raw_ms = data["matrix_slot"]
+            hr.matrix_slot = normalize_role_key(str(raw_ms)) if raw_ms else None
+        elif "role_key" in data and data["role_key"]:
             hr.matrix_slot = normalize_role_key(data["role_key"])
         if "shift" in data:
             hr.shift = data["shift"]
@@ -1535,22 +1576,28 @@ async def patch_worker(
         if "supervisor_notes" in data:
             hr.supervisor_notes = data["supervisor_notes"]
 
-    if hr and ("role_key" in data or "department" in data or "department_slugs" in data):
         dept_slug = normalize_department_slug(hr.department)
-        role = normalize_role_key(data.get("role_key") if "role_key" in data else hr.matrix_slot)
-        if dept_slug and role:
-            await assign_user_department_role(
-                db,
-                company_id=cid,
-                user_id=user_id,
-                department_slug=dept_slug,
-                role_key=role,
-                assigned_by=str(actor.id),
-            )
-            hr.matrix_slot = role
-            hr.department = dept_slug
-            if not hr.department_slugs:
-                hr.department_slugs = [dept_slug]
+        if not dept_slug and hr.department_slugs:
+            dept_slug = normalize_department_slug(hr.department_slugs[0])
+        if dept_slug:
+            if hr.matrix_slot:
+                role = normalize_role_key(hr.matrix_slot)
+            elif "role_key" in data and data.get("role_key"):
+                role = normalize_role_key(data["role_key"])
+            else:
+                role = department_baseline_slot(dept_slug)
+            if role:
+                await assign_user_department_role(
+                    db,
+                    company_id=cid,
+                    user_id=user_id,
+                    department_slug=dept_slug,
+                    role_key=role,
+                    assigned_by=str(actor.id),
+                )
+                hr.department = dept_slug
+                if not hr.department_slugs:
+                    hr.department_slugs = [dept_slug]
 
     if "profile_notes" in data:
         prof = await _ensure_profile(db, cid, user_id)

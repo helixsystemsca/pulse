@@ -598,7 +598,7 @@ export const MASTER_FEATURES: readonly MasterFeatureDef[] = [
     route: "/dashboard/purchasing",
     feature: "inventory",
     rbacAnyOf: ["inventory.view", "inventory.manage"],
-    navVisible: true,
+    navVisible: false,
     sortOrder: 408,
     navDomain: "Assets",
     navGroup: "Inventory",

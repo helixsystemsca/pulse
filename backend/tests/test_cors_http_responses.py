@@ -50,6 +50,20 @@ def test_options_preflight_includes_ops_origin() -> None:
     assert res.headers.get("access-control-allow-origin") == OPS_ORIGIN
 
 
+def test_options_preflight_tenant_roles_includes_ops_origin() -> None:
+    client = TestClient(app)
+    res = client.options(
+        "/api/workers/tenant-roles",
+        headers={
+            "Origin": OPS_ORIGIN,
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "authorization,content-type",
+        },
+    )
+    assert res.status_code == 200
+    assert res.headers.get("access-control-allow-origin") == OPS_ORIGIN
+
+
 def test_options_preflight_includes_panorama_origin() -> None:
     client = TestClient(app)
     res = client.options(
