@@ -8,7 +8,8 @@ from typing import Any, Optional
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.core.permission_feature_matrix import normalize_matrix_slot
-from app.core.tenant_role_assignments import ASSIGNABLE_ROLE_KEYS, normalize_department_slug
+from app.core.tenant_departments import normalize_department_slug_format
+from app.core.tenant_role_assignments import ASSIGNABLE_ROLE_KEYS, normalize_matrix_slot
 
 _EMPLOYMENT_TYPES = {"full_time", "regular_part_time", "part_time"}
 
@@ -216,9 +217,9 @@ class WorkerCreateIn(BaseModel):
     @field_validator("department", mode="before")
     @classmethod
     def _validate_department_create(cls, v: object) -> str:
-        slug = normalize_department_slug(str(v) if v is not None else None)
+        slug = normalize_department_slug_format(str(v) if v is not None else None)
         if not slug:
-            raise ValueError("Invalid department — must be a known workspace department slug")
+            raise ValueError("Invalid department — choose a department configured for this organization")
         return slug
 
     @field_validator("role_key", mode="before")

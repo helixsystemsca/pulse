@@ -100,6 +100,7 @@ def populate_header(
     cost_object: str,
     comments: str,
     export_date: date | None = None,
+    requester_name: str = "",
 ) -> None:
     when = export_date or date.today()
     if cell := template_map.header_cell("project"):
@@ -112,6 +113,9 @@ def populate_header(
         _set_cell(ws, cell, comments.strip())
     if cell := template_map.header_cell("date"):
         _set_cell(ws, cell, when)
+    if name := (requester_name or "").strip():
+        if cell := template_map.header_cell("requesterName"):
+            _set_cell(ws, cell, name)
 
 
 def _copy_cell_style(src: Cell, tgt: Cell) -> None:
@@ -246,6 +250,7 @@ class TemplateExportService:
         cost_object: str,
         comments: str,
         export_date: date | None = None,
+        requester_name: str = "",
     ) -> None:
         populate_header(
             ws,
@@ -255,6 +260,7 @@ class TemplateExportService:
             cost_object=cost_object,
             comments=comments,
             export_date=export_date,
+            requester_name=requester_name,
         )
 
     def populate_rows(self, ws: Worksheet, template_map: TemplateMap, rows: Sequence[Mapping[str, Any]]) -> None:
@@ -272,6 +278,7 @@ class TemplateExportService:
         cost_object: str = "",
         comments: str = "",
         export_date: date | None = None,
+        requester_name: str = "",
     ) -> tuple[bytes, str]:
         tm = self.load_template_map()
         wb = load_template(tm)
@@ -284,6 +291,7 @@ class TemplateExportService:
             cost_object=cost_object,
             comments=comments,
             export_date=export_date,
+            requester_name=requester_name,
         )
         populate_rows(ws, tm, rows)
         pattern = str(tm.raw.get("fileNamePattern") or "MR_{project}_{date}.xlsx")

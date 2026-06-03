@@ -45,7 +45,7 @@ from app.core.workers_permission_delegation import (
     actor_may_set_worker_feature_allow_extra,
 )
 from app.core.tenant_context import resolve_tenant_company_id
-from app.core.tenant_departments import validate_tenant_department_slug
+from app.core.tenant_departments import normalize_department_slug_format, validate_tenant_department_slug
 from app.core.workspace_departments import (
     normalize_workspace_department_slug,
     normalize_workspace_department_slug_list,
@@ -186,6 +186,16 @@ def _merge_hr_department_slugs(body_department_slugs: list[str] | None, body_dep
         return slugs
     one = normalize_workspace_department_slug((body_department or "").strip() or None)
     return [one] if one else []
+
+
+def _resolve_hr_department_slug(raw: str | None) -> str | None:
+    """Legacy Panorama slug or tenant-configured department slug."""
+    if not raw:
+        return None
+    legacy = normalize_department_slug(raw)
+    if legacy:
+        return legacy
+    return normalize_department_slug_format(raw)
 
 
 async def _tenant_validated_hr_department_slugs(
@@ -1144,7 +1154,7 @@ async def _apply_worker_hr_and_extras(
         list(body.department_slugs) if body.department_slugs else None,
         body.department,
     )
-    primary_department = normalize_department_slug(body.department) or (
+    primary_department = _resolve_hr_department_slug(body.department) or (
         merged_slugs[0] if merged_slugs else None
     )
     matrix_slot = body.matrix_slot or body.role_key
@@ -1576,9 +1586,9 @@ async def patch_worker(
         if "supervisor_notes" in data:
             hr.supervisor_notes = data["supervisor_notes"]
 
-        dept_slug = normalize_department_slug(hr.department)
+        dept_slug = _resolve_hr_department_slug(hr.department)
         if not dept_slug and hr.department_slugs:
-            dept_slug = normalize_department_slug(hr.department_slugs[0])
+            dept_slug = _resolve_hr_department_slug(hr.department_slugs[0])
         if dept_slug:
             if hr.matrix_slot:
                 role = normalize_role_key(hr.matrix_slot)

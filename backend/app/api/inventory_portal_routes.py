@@ -1254,7 +1254,7 @@ def _scan_lookup_out(
         low_stock_threshold=item.low_stock_threshold,
         location_name=z.name if z else None,
         zone_id=str(item.zone_id) if item.zone_id else None,
-        image_url=t.image_url if t else None,
+        image_url=item.image_url or (t.image_url if t else None),
         department_slug=item.department_slug or "maintenance",
     )
 

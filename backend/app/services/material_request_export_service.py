@@ -4,13 +4,16 @@ from __future__ import annotations
 
 from datetime import date
 
-from app.models.domain import MaterialRequestDraft, MaterialRequestDraftItem
+from app.models.domain import MaterialRequestDraft, MaterialRequestDraftItem, User
+from app.services.material_request_template_export_service import resolve_material_request_requester_name
 from app.services.template_export_service import TemplateExportError, TemplateExportService
 
 
 def build_material_request_workbook(
     draft: MaterialRequestDraft,
     items: list[MaterialRequestDraftItem],
+    *,
+    user: User | None = None,
 ) -> tuple[bytes, str]:
     rows = [
         {
@@ -32,6 +35,7 @@ def build_material_request_workbook(
             cost_object="",
             comments=f"Helix draft {draft.draft_number}",
             export_date=date.today(),
+            requester_name=resolve_material_request_requester_name(user),
         )
     except TemplateExportError:
         raise

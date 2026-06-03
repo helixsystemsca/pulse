@@ -222,7 +222,6 @@ export function InventoryMaterialRequestsPanel({
         notify_emails: form.notify_emails.length ? form.notify_emails : undefined,
       });
       setExportOpen(false);
-      setSelected(new Set());
       await loadQueue();
       void loadExportHistory();
     } catch (e) {
@@ -254,8 +253,9 @@ export function InventoryMaterialRequestsPanel({
           <div>
             <h2 className="text-lg font-bold text-pulse-navy dark:text-gray-100">{replenishmentLabel}</h2>
             <p className="text-sm text-pulse-muted">
-              Items at or below minimum quantity appear here automatically. The list stays until you export or clear it
-              — creating a draft does not remove items.
+              Items at or below minimum quantity appear here automatically. The list stays until you use{" "}
+              <span className="font-medium text-pulse-navy dark:text-gray-200">Clear list</span> — exporting does not
+              remove items, so you can add more before clearing.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">

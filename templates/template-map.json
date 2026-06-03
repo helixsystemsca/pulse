@@ -34,6 +34,12 @@
       "labelCell": "G24",
       "description": "Free-text comments. Merged range G25:G29."
     },
+    "requesterName": {
+      "cell": "D25",
+      "label": "Name",
+      "labelCell": "C25",
+      "description": "Requester full name (from the exporting user's profile)."
+    },
     "excluded": {
       "mrNumber": {
         "cells": ["H1", "I1"],
@@ -46,7 +52,7 @@
       },
       "signatures": {
         "rows": [24, 25, 26, 27, 28, 29],
-        "description": "Requester, Site Manager, Client Approval — leave blank."
+        "description": "Requester name is filled from the exporter's profile; Site Manager and Client Approval signatures stay blank."
       }
     }
   },
@@ -55,6 +61,7 @@
   "dateCell": "H3",
   "costObjectCell": "G3",
   "commentsCell": "G25",
+  "requesterNameCell": "D25",
   "headerRow": 4,
   "firstDataRow": 5,
   "lastTemplateDataRow": 23,

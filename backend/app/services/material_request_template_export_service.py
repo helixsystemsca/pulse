@@ -14,12 +14,21 @@ from app.core.config import get_settings
 from app.core.email_smtp import send_material_request_export_email
 from app.models.domain import Company, InventoryItem, InventoryModuleSettings, MaterialRequestExport, MaterialRequestQueue, User
 from app.services.inventory_notifications import notifications_from_settings, parse_email_list
-from app.services.material_request_queue_service import (
-    QUEUE_STATUS_EXPORTED,
-    QUEUE_STATUS_PENDING,
-    get_queue_rows_for_export,
-)
+from app.services.material_request_queue_service import get_queue_rows_for_export
 from app.services.template_export_service import TemplateExportError, TemplateExportService
+
+
+def resolve_material_request_requester_name(user: User | None) -> str:
+    """Display name for MR template Requester field (profile full name preferred)."""
+    if user is None:
+        return ""
+    name = (user.full_name or "").strip()
+    if name:
+        return name
+    email = (user.email or "").strip()
+    if email and "@" in email:
+        return email.split("@", 1)[0].replace(".", " ").replace("_", " ").title()
+    return email
 
 
 def _queue_row_payload(row: MaterialRequestQueue) -> dict[str, Any]:
@@ -94,6 +103,7 @@ async def export_queue_to_workbook(
             row.unit = inv_by_id[row.inventory_item_id].unit
 
     payloads = [_queue_row_payload(r) for r in rows]
+    requester_name = resolve_material_request_requester_name(user)
     engine = TemplateExportService()
     try:
         data, filename = engine.export(
@@ -103,6 +113,7 @@ async def export_queue_to_workbook(
             cost_object=cost_object or "",
             comments=comments or "",
             export_date=date.today(),
+            requester_name=requester_name,
         )
     except TemplateExportError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -123,21 +134,13 @@ async def export_queue_to_workbook(
     db.add(export_record)
     await db.flush()
 
-    for row in rows:
-        row.status = QUEUE_STATUS_EXPORTED
-        row.exported_at = now
-        row.export_batch_id = export_record.id
-        row.updated_at = now
-
     inv_settings = await _load_inventory_settings(db, company_id)
     recipients = resolve_mr_export_recipients(inv_settings, notify_emails)
     if recipients:
         settings = get_settings()
         co = await db.get(Company, company_id)
         company_name = co.name if co else "Your organization"
-        exported_by = None
-        if user:
-            exported_by = (user.full_name or user.email or "").strip() or None
+        exported_by = resolve_material_request_requester_name(user) or None
         await send_material_request_export_email(
             settings,
             to_emails=recipients,

@@ -83,7 +83,11 @@ export async function resolveInventoryProduct(input: {
 }): Promise<InventoryScanProduct> {
   if (input.row) {
     try {
-      return await lookupInventoryBySku(input.row.sku);
+      const fresh = await lookupInventoryBySku(input.row.sku);
+      return {
+        ...fresh,
+        image_url: fresh.image_url ?? input.row.image_url ?? null,
+      };
     } catch {
       return input.row;
     }

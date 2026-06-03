@@ -251,7 +251,7 @@ async def submit_material_request_draft(
 @router.post("/drafts/{draft_id}/export")
 async def export_material_request_draft(
     db: Db,
-    _: InvUser,
+    user: InvUser,
     cid: CompanyId,
     draft_id: str,
 ) -> Response:
@@ -259,7 +259,7 @@ async def export_material_request_draft(
     if draft is None:
         raise HTTPException(status_code=404, detail="Not found")
     items = await draft_svc.load_draft_items(db, draft.id)
-    data, filename = export_svc.build_material_request_workbook(draft, items)
+    data, filename = export_svc.build_material_request_workbook(draft, items, user=user)
     return Response(
         content=data,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

@@ -97,7 +97,8 @@ export function MaterialRequestExportModal({
     >
       <form id="mr-export-form" className="space-y-4" onSubmit={(e) => void handleSubmit(e)}>
         <p className="text-sm text-pulse-muted">
-          MR and PO numbers, signatures, and approval fields are left blank for completion outside Helix.
+          MR and PO numbers, Site Manager / Client Approval signatures, and approval fields are left blank for
+          completion outside Helix. Your profile full name is written in the Requester field when set.
         </p>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block space-y-1 sm:col-span-1">

@@ -309,13 +309,12 @@ const CREATE_FORM_EMPTY: CreateFormState = {
   supervisor_id: "",
 };
 
-function isMaintenanceInviteDepartment(department: string): boolean {
-  return (department || "maintenance").trim() === "maintenance";
+function createFormWorkerRoleLabel(department: string): string {
+  return workerRoleDisplayLabel(department, "worker");
 }
 
-/** API has no `coordinator` role - non-maintenance coordinators use `worker` permissions. */
-function effectiveInviteRole(department: string, role: string, createRoleLimited: boolean): string {
-  if (!isMaintenanceInviteDepartment(department)) return "worker";
+/** JWT/API role for invite — same ladder for every tenant department. */
+function effectiveInviteRole(_department: string, role: string, createRoleLimited: boolean): string {
   const allowed = createRoleLimited
     ? (["worker", "lead"] as const)
     : (["worker", "lead", "supervisor", "manager", "demo_viewer"] as const);
@@ -360,6 +359,15 @@ function roleBadge(role: string): string {
   if (role === "supervisor") return "app-badge-blue";
   if (role === "lead") return "app-badge-emerald";
   return "app-badge-slate";
+}
+
+function workerRosterDepartmentLabel(
+  row: WorkerRow,
+  tenantDepartments: readonly { slug: string; name: string }[],
+): string {
+  const raw = (row.department ?? "").trim();
+  if (raw) return matrixDepartmentLabel(raw, tenantDepartments);
+  return rosterDepartmentTitle(rosterDepartmentSlug(row));
 }
 
 function shiftRosterLabel(
@@ -2377,9 +2385,8 @@ export function WorkersApp() {
                               </th>
                               <th className="min-w-[9rem] px-2 py-2 align-bottom">
                                 <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-ds-muted">
-                                  Matrix slot
+                                  Department
                                 </label>
-                                <p className="text-[9px] font-normal normal-case text-ds-muted">Resolved access row</p>
                               </th>
                               <th className="min-w-[7rem] px-2 py-2 align-bottom">
                                 <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-ds-muted">
@@ -2577,7 +2584,9 @@ export function WorkersApp() {
                               </div>
                             </td>
                             <td className="px-4 py-3">
-                              <WorkerMatrixSlotCell row={row} />
+                              <span className="inline-flex rounded-full border border-ds-border bg-ds-secondary px-2.5 py-0.5 text-[11px] font-semibold text-ds-foreground">
+                                {workerRosterDepartmentLabel(row, tenantDepartments)}
+                              </span>
                             </td>
                             <td className="px-4 py-3">
                               <div className="flex flex-wrap gap-1">
@@ -2926,9 +2935,7 @@ export function WorkersApp() {
                   const next: CreateFormState = { ...f, department };
                   const baseline = baselineSlotForDepartment(department) ?? "team_member";
                   next.role_key = baseline;
-                  if (!isMaintenanceInviteDepartment(department)) {
-                    next.role = "worker";
-                  } else if (createRoleLimited) {
+                  if (createRoleLimited) {
                     next.role = "worker";
                   }
                   return next;
@@ -2951,22 +2958,15 @@ export function WorkersApp() {
               className={FIELD}
               value={effectiveInviteRole(createForm.department, createForm.role, createRoleLimited)}
               onChange={(e) => setCreateForm((f) => ({ ...f, role: e.target.value }))}
-              disabled={!isMaintenanceInviteDepartment(createForm.department)}
             >
-              {isMaintenanceInviteDepartment(createForm.department) ? (
+              <option value="worker">{createFormWorkerRoleLabel(createForm.department)}</option>
+              <option value="lead">Lead</option>
+              {createRoleLimited ? null : (
                 <>
-                  <option value="worker">Operations</option>
-                  <option value="lead">Lead</option>
-                  {createRoleLimited ? null : (
-                    <>
-                      <option value="supervisor">Supervisor</option>
-                      <option value="manager">Manager</option>
-                      <option value="demo_viewer">Demo viewer</option>
-                    </>
-                  )}
+                  <option value="supervisor">Supervisor</option>
+                  <option value="manager">Manager</option>
+                  <option value="demo_viewer">Demo viewer</option>
                 </>
-              ) : (
-                <option value="worker">Coordinator</option>
               )}
             </select>
           </div>
