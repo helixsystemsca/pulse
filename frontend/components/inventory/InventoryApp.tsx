@@ -1649,6 +1649,19 @@ export function InventoryApp() {
                     </p>
                   );
                 })()}
+                {(() => {
+                  const shelfField = mergedSettings.register_form.fields.find(
+                    (f) => f.id === "shelf" && f.enabled,
+                  );
+                  const shelf = String(detail.custom_attributes?.shelf ?? "").trim();
+                  if (!shelfField || !shelf) return null;
+                  return (
+                    <>
+                      <p className={`${LABEL} mt-3`}>{shelfField.label}</p>
+                      <p className="text-sm text-pulse-navy">{shelf}</p>
+                    </>
+                  );
+                })()}
                 {canMutateInventory && parseLocationStock(detail.custom_attributes).length > 1 ? (
                   <p className="mt-2 text-xs text-pulse-muted">
                     Edit the item to change stock across multiple locations.

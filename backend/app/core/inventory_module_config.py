@@ -10,6 +10,7 @@ InventoryLocationMode = Literal["single", "rooms", "buildings", "seacans", "cust
 DEFAULT_INVENTORY_BLOCK: dict[str, Any] = {
     "asset_types": ["consumables", "tools", "materials"],
     "location_mode": "single",
+    "enable_shelf": False,
     "procurement_mode": "excel",
     "procurement_action_label": "Export Request",
     "reference_mode": "none",
@@ -26,6 +27,8 @@ def merge_inventory_block(raw: Optional[dict[str, Any]]) -> dict[str, Any]:
     for key in ("location_mode", "procurement_mode", "procurement_action_label", "reference_mode", "approval_mode"):
         if raw.get(key):
             out[key] = raw[key]
+    if isinstance(raw.get("enable_shelf"), bool):
+        out["enable_shelf"] = raw["enable_shelf"]
     label = str(out.get("procurement_action_label") or "").strip()
     out["procurement_action_label"] = label or DEFAULT_INVENTORY_BLOCK["procurement_action_label"]
     return out

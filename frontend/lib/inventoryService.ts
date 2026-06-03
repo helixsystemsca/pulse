@@ -123,6 +123,7 @@ export type InventoryModuleSettings = {
   inventory?: {
     asset_types?: string[];
     location_mode?: string;
+    enable_shelf?: boolean;
     procurement_mode?: string;
     procurement_action_label?: string;
     reference_mode?: string;

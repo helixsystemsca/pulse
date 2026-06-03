@@ -13,7 +13,8 @@ from app.models.domain import InventoryItem, InventoryMovement, User, Zone
 from app.modules.pulse import service as pulse_svc
 from app.repositories import inventory_scope_repository as inv_scope_repo
 from app.services.inventory_alert_service import maybe_send_low_stock_alert
-from app.services.material_request_queue_service import is_item_low_stock, sync_queue_for_inventory_item
+from app.services.inventory_low_stock import is_item_low_stock
+from app.services.material_request_queue_service import sync_queue_for_inventory_item
 from app.schemas.inventory_transactions import (
     InventoryBatchTransactionIn,
     InventoryBatchTransactionOut,

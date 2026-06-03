@@ -52,6 +52,8 @@ export type InventoryBuiltinFieldId =
 
   | "zone_id"
 
+  | "shelf"
+
   | "assigned_user_id"
 
   | "linked_tool_id"
@@ -161,6 +163,8 @@ const BUILTIN_FIELD_IDS = new Set<string>([
 
   "zone_id",
 
+  "shelf",
+
   "assigned_user_id",
 
   "linked_tool_id",
@@ -198,6 +202,8 @@ const DEFAULT_INPUT_TYPES: Record<InventoryBuiltinFieldId, InventoryFieldInputTy
   condition: "select",
 
   zone_id: "zone_select",
+
+  shelf: "text",
 
   assigned_user_id: "worker_select",
 
@@ -406,6 +412,26 @@ export const DEFAULT_REGISTER_FORM_FIELDS: InventoryRegisterFieldConfig[] = [
     order: 100,
 
     input_type: "zone_select",
+
+    show_in_table: true,
+
+  },
+
+  {
+
+    id: "shelf",
+
+    enabled: false,
+
+    label: "Shelf",
+
+    order: 105,
+
+    input_type: "text",
+
+    placeholder: "e.g. A-12, Bin 3, Rack B",
+
+    help_text: "Optional sub-location within the storage location (shelf, bin, or rack).",
 
     show_in_table: true,
 
@@ -650,6 +676,19 @@ export function mergeRegisterFormConfig(raw?: InventoryRegisterFormConfig | null
 
 
 
+/** Keep register form shelf field aligned with inventory module config. */
+export function syncShelfRegisterField(
+  registerForm: InventoryRegisterFormConfig,
+  enableShelf: boolean,
+): InventoryRegisterFormConfig {
+  return {
+    ...registerForm,
+    fields: registerForm.fields.map((f) => (f.id === "shelf" ? { ...f, enabled: enableShelf } : f)),
+  };
+}
+
+
+
 export type InventoryTransactionSettingsConfig = {
   require_reference: boolean;
   enable_references: boolean;
@@ -714,11 +753,13 @@ export function mergeInventoryModuleSettings(raw: InventoryModuleSettings = {}):
     (Array.isArray(raw.categories) && raw.categories.length > 0) || raw.register_form?.fields?.length,
   );
 
+  const inventory = inventoryConfigFromModuleSettings(raw);
+
   return {
 
     setup_completed: raw.setup_completed === true || (raw.setup_completed !== false && hasLegacyConfig),
 
-    register_form: mergeRegisterFormConfig(raw.register_form),
+    register_form: syncShelfRegisterField(mergeRegisterFormConfig(raw.register_form), inventory.enable_shelf),
 
     status_rules: { ...DEFAULT_STATUS_RULES, ...raw.status_rules },
 
@@ -743,7 +784,7 @@ export function mergeInventoryModuleSettings(raw: InventoryModuleSettings = {}):
       };
     })(),
 
-    inventory: inventoryConfigFromModuleSettings(raw),
+    inventory,
 
     purchasing: mergePurchasingConfig(raw),
 

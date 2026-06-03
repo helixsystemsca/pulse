@@ -24,6 +24,8 @@ export type InventoryApprovalMode = "none" | "single" | "multi";
 export type InventoryModuleConfig = {
   asset_types: InventoryAssetType[];
   location_mode: InventoryLocationMode;
+  /** When true, items can record a shelf/bin/rack sub-location under storage location. */
+  enable_shelf: boolean;
   procurement_mode: InventoryProcurementMode;
   procurement_action_label: string;
   reference_mode: InventoryReferenceMode;
@@ -33,6 +35,7 @@ export type InventoryModuleConfig = {
 export const DEFAULT_INVENTORY_MODULE_CONFIG: InventoryModuleConfig = {
   asset_types: ["consumables", "tools", "materials"],
   location_mode: "single",
+  enable_shelf: false,
   procurement_mode: "excel",
   procurement_action_label: "Export Request",
   reference_mode: "none",
@@ -124,6 +127,9 @@ export function mergeInventoryModuleConfig(
   if (raw?.location_mode && LOCATION_SET.has(raw.location_mode)) {
     base.location_mode = raw.location_mode;
   }
+  if (typeof raw?.enable_shelf === "boolean") {
+    base.enable_shelf = raw.enable_shelf;
+  }
   if (raw?.procurement_mode && PROCUREMENT_SET.has(raw.procurement_mode)) {
     base.procurement_mode = raw.procurement_mode;
   }
@@ -160,6 +166,9 @@ export function inventoryConfigLabel(
   }
   if (key === "location_mode") {
     return LOCATION_MODE_OPTIONS.find((o) => o.value === value)?.label ?? String(value);
+  }
+  if (key === "enable_shelf") {
+    return value ? "Shelf / bin tracking enabled" : "Not tracked";
   }
   if (key === "procurement_mode") {
     return PROCUREMENT_MODE_OPTIONS.find((o) => o.value === value)?.label ?? String(value);

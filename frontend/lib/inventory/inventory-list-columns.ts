@@ -24,6 +24,7 @@ const DEFAULT_SHOW_IN_TABLE: Partial<Record<string, boolean>> = {
   vendor: true,
   unit_cost: true,
   zone_id: true,
+  shelf: true,
   department_slug: true,
 };
 
@@ -127,6 +128,11 @@ export function formatRegisterFieldValue(
       ]);
     case "zone_id":
       return zoneName ? resolveItemLocationDisplay(row, zoneName) : row.location_name?.trim() || "—";
+    case "shelf": {
+      const raw = row.custom_attributes?.shelf;
+      const text = raw == null || raw === "" ? "" : String(raw).trim();
+      return text || "—";
+    }
     case "assigned_user_id":
       return row.assignee_name?.trim() || "Unassigned";
     case "linked_tool_id":

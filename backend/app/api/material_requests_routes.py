@@ -109,8 +109,8 @@ async def patch_material_request_queue_item(
     row = await queue_svc.get_queue_row(db, cid, queue_id)
     if row is None:
         raise HTTPException(status_code=404, detail="Not found")
-    if row.status != queue_svc.QUEUE_STATUS_PENDING:
-        raise HTTPException(status_code=400, detail="Only pending queue items can be edited")
+    if row.status not in queue_svc.QUEUE_ACTIVE_STATUSES:
+        raise HTTPException(status_code=400, detail="Only active queue items can be edited")
     if (
         body.reorder_qty is None
         and body.reimbursable is None
@@ -142,6 +142,16 @@ async def remove_material_request_queue_item(
     if row is None:
         raise HTTPException(status_code=404, detail="Not found")
     await queue_svc.remove_from_queue(db, row)
+    await db.commit()
+
+
+@router.post("/queue/clear", status_code=204)
+async def clear_material_request_queue(
+    db: Db,
+    _: InvManageUser,
+    cid: CompanyId,
+) -> None:
+    await queue_svc.clear_active_queue(db, cid)
     await db.commit()
 
 

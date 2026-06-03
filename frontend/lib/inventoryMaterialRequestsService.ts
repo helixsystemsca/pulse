@@ -104,6 +104,10 @@ export async function removeMaterialRequestQueueItem(companyId: string | null, q
   );
 }
 
+export async function clearMaterialRequestQueue(companyId: string | null): Promise<void> {
+  await apiFetch<void>(withCompany("/api/material-requests/queue/clear", companyId), { method: "POST" });
+}
+
 export async function createMaterialRequestDraft(
   companyId: string | null,
   queueItemIds: string[],

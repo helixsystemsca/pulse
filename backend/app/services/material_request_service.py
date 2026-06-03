@@ -10,7 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.domain import MaterialRequestDraft, MaterialRequestDraftItem, MaterialRequestQueue
-from app.services.material_request_queue_service import QUEUE_STATUS_DRAFTED, QUEUE_STATUS_PENDING
+from app.services.material_request_queue_service import QUEUE_ACTIVE_STATUSES
 
 DRAFT_STATUS_DRAFT = "draft"
 DRAFT_STATUS_SUBMITTED = "submitted"
@@ -49,12 +49,12 @@ async def create_draft_from_queue(
         select(MaterialRequestQueue).where(
             MaterialRequestQueue.company_id == company_id,
             MaterialRequestQueue.id.in_(unique_ids),
-            MaterialRequestQueue.status == QUEUE_STATUS_PENDING,
+            MaterialRequestQueue.status.in_(QUEUE_ACTIVE_STATUSES),
         )
     )
     rows = list(q.scalars().all())
     if len(rows) != len(unique_ids):
-        raise HTTPException(status_code=400, detail="One or more queue items are missing or not pending")
+        raise HTTPException(status_code=400, detail="One or more queue items are missing or not in the active queue")
 
     now = datetime.now(timezone.utc)
     draft = MaterialRequestDraft(
@@ -85,7 +85,7 @@ async def create_draft_from_queue(
                 estimated_cost=_line_estimated_cost(qty, unit),
             )
         )
-        row.status = QUEUE_STATUS_DRAFTED
+        # Keep queue rows visible until export or explicit clear — draft is a snapshot only.
         row.updated_at = now
 
     return draft

@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.domain import InventoryItem, MaterialRequestQueue
 from app.services.inventory_enterprise.intelligence import apply_queue_intelligence
+from app.services.inventory_low_stock import is_item_low_stock
 
 QUEUE_STATUS_PENDING = "pending"
 QUEUE_STATUS_DRAFTED = "drafted"
@@ -16,6 +17,9 @@ QUEUE_STATUS_SUBMITTED = "submitted"
 QUEUE_STATUS_ORDERED = "ordered"
 QUEUE_STATUS_RECEIVED = "received"
 QUEUE_STATUS_EXPORTED = "exported"
+
+# Rows visible in the replenishment queue (exported items are kept for history only).
+QUEUE_ACTIVE_STATUSES = (QUEUE_STATUS_PENDING, QUEUE_STATUS_DRAFTED)
 
 
 def compute_reorder_qty(item: InventoryItem) -> float:
@@ -47,13 +51,6 @@ def _snapshot_from_item(item: InventoryItem) -> dict:
         "reorder_qty": compute_reorder_qty(item),
         "estimated_unit_cost": float(item.unit_cost) if item.unit_cost is not None else None,
     }
-
-
-def is_item_low_stock(item: InventoryItem) -> bool:
-    minimum = float(item.low_stock_threshold or 0)
-    if minimum <= 0:
-        return False
-    return float(item.quantity or 0) <= minimum
 
 
 async def sync_queue_for_inventory_item(db: AsyncSession, item: InventoryItem) -> bool:
@@ -107,11 +104,12 @@ async def sync_queue_for_inventory_item(db: AsyncSession, item: InventoryItem) -
 
 
 async def list_pending_queue(db: AsyncSession, company_id: str) -> list[MaterialRequestQueue]:
+    """Active replenishment rows (pending + legacy drafted — not exported)."""
     q = await db.execute(
         select(MaterialRequestQueue)
         .where(
             MaterialRequestQueue.company_id == company_id,
-            MaterialRequestQueue.status == QUEUE_STATUS_PENDING,
+            MaterialRequestQueue.status.in_(QUEUE_ACTIVE_STATUSES),
         )
         .order_by(
             MaterialRequestQueue.priority_score.desc(),
@@ -120,6 +118,20 @@ async def list_pending_queue(db: AsyncSession, company_id: str) -> list[Material
         )
     )
     return list(q.scalars().all())
+
+
+async def clear_active_queue(db: AsyncSession, company_id: str) -> int:
+    """Remove all visible queue rows for a company. Returns count deleted."""
+    q = await db.execute(
+        select(MaterialRequestQueue).where(
+            MaterialRequestQueue.company_id == company_id,
+            MaterialRequestQueue.status.in_(QUEUE_ACTIVE_STATUSES),
+        )
+    )
+    rows = list(q.scalars().all())
+    for row in rows:
+        await db.delete(row)
+    return len(rows)
 
 
 async def get_queue_row(db: AsyncSession, company_id: str, queue_id: str) -> MaterialRequestQueue | None:
@@ -169,7 +181,7 @@ async def get_queue_rows_for_export(
         select(MaterialRequestQueue).where(
             MaterialRequestQueue.company_id == company_id,
             MaterialRequestQueue.id.in_(queue_item_ids),
-            MaterialRequestQueue.status == QUEUE_STATUS_PENDING,
+            MaterialRequestQueue.status.in_(QUEUE_ACTIVE_STATUSES),
         )
     )
     rows = list(q.scalars().all())

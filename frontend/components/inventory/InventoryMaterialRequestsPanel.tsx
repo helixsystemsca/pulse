@@ -7,6 +7,7 @@ import { cn } from "@/lib/cn";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { MaterialRequestExportModal, type MaterialRequestExportForm } from "@/components/inventory/MaterialRequestExportModal";
 import {
+  clearMaterialRequestQueue,
   createMaterialRequestDraft,
   exportMaterialRequestDraft,
   exportMaterialRequestQueue,
@@ -144,6 +145,28 @@ export function InventoryMaterialRequestsPanel({
     }
   }
 
+  async function clearQueue() {
+    if (
+      !window.confirm(
+        "Clear the entire replenishment list? Items still below minimum stock will reappear when inventory is updated.",
+      )
+    ) {
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await clearMaterialRequestQueue(apiCompany);
+      setSelected(new Set());
+      setDraft(null);
+      await loadQueue();
+    } catch (e) {
+      setError(parseClientApiError(e).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function createDraft() {
     const ids = [...selected];
     if (!ids.length) return;
@@ -231,7 +254,8 @@ export function InventoryMaterialRequestsPanel({
           <div>
             <h2 className="text-lg font-bold text-pulse-navy dark:text-gray-100">{replenishmentLabel}</h2>
             <p className="text-sm text-pulse-muted">
-              Items at or below minimum quantity appear here automatically when stock is updated.
+              Items at or below minimum quantity appear here automatically. The list stays until you export or clear it
+              — creating a draft does not remove items.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -249,6 +273,14 @@ export function InventoryMaterialRequestsPanel({
             </button>
             {canMutate ? (
               <>
+                <button
+                  type="button"
+                  className={SECONDARY_BTN}
+                  disabled={busy || queue.length === 0}
+                  onClick={() => void clearQueue()}
+                >
+                  Clear list
+                </button>
                 <button
                   type="button"
                   className={SECONDARY_BTN}

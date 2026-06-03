@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.domain import InventoryItem, InventoryReorderPolicy, MaterialRequestQueue
 from app.services.inventory_enterprise.forecasting import consumption_rate_per_day, forecast_stockout
-from app.services.material_request_queue_service import is_item_low_stock
+from app.services.inventory_low_stock import is_item_low_stock
 
 
 async def detect_consumption_anomaly(

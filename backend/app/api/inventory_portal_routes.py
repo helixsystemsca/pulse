@@ -71,7 +71,8 @@ from app.services.inventory_transaction_service import (
     transaction_settings_from_inventory_module,
     transaction_settings_to_out,
 )
-from app.services.material_request_queue_service import is_item_low_stock, sync_queue_for_inventory_item
+from app.services.inventory_low_stock import is_item_low_stock
+from app.services.material_request_queue_service import sync_queue_for_inventory_item
 from app.models.pulse_models import PulseWorkRequest
 from app.modules.pulse import service as pulse_svc
 from app.schemas.inventory_portal import (
@@ -180,6 +181,7 @@ DEFAULT_INVENTORY_SETTINGS: dict[str, Any] = {
     "inventory": {
         "asset_types": ["consumables", "tools", "materials"],
         "location_mode": "single",
+        "enable_shelf": False,
         "procurement_mode": "excel",
         "procurement_action_label": "Export Request",
         "reference_mode": "none",

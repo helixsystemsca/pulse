@@ -93,6 +93,20 @@ export function StorageLocationsStep({
           </label>
         ))}
       </div>
+      <label className={optionCardClass(value.enable_shelf)}>
+        <input
+          type="checkbox"
+          className="mt-1"
+          checked={value.enable_shelf}
+          onChange={(e) => onChange({ ...value, enable_shelf: e.target.checked })}
+        />
+        <span>
+          <span className="block text-sm font-semibold text-ds-foreground">Track shelf / bin sub-locations</span>
+          <span className="mt-0.5 block text-xs text-ds-muted">
+            Adds an optional shelf, bin, or rack field on items and a column in the inventory list.
+          </span>
+        </span>
+      </label>
     </div>
   );
 }

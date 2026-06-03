@@ -39,7 +39,7 @@ import type { MergedInventorySettings } from "@/lib/inventory/register-form-conf
 import { filterInventoryStorageZones } from "@/lib/inventory/inventory-zones";
 import type { PulseZoneOpt } from "@/lib/pulse/pulse-reference-data";
 import type { TenantDepartmentRow } from "@/lib/tenantDepartmentsService";
-import { effectiveInputType, settingsPayloadFromMerged } from "@/lib/inventory/register-form-config";
+import { effectiveInputType, settingsPayloadFromMerged, syncShelfRegisterField } from "@/lib/inventory/register-form-config";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
 
@@ -157,6 +157,10 @@ export function InventorySetupWizard({
   const summaryRows: { label: string; value: string }[] = [
     { label: "Inventory Structure", value: inventoryConfigLabel("asset_types", draft.inventory.asset_types) },
     { label: "Location Structure", value: inventoryConfigLabel("location_mode", draft.inventory.location_mode) },
+    {
+      label: "Shelf sub-locations",
+      value: inventoryConfigLabel("enable_shelf", draft.inventory.enable_shelf),
+    },
     {
       label: "Departments",
       value: departments.length ? departments.map((d) => d.name).join(", ") : "None configured",
@@ -443,7 +447,11 @@ function applyInventoryConfig(draft: MergedInventorySettings): MergedInventorySe
     ...transactionsFromReferenceMode(inv.reference_mode, draft.transactions),
     enable_location_selection: locationSelectionFromMode(inv.location_mode),
   };
-  return { ...draft, transactions };
+  return {
+    ...draft,
+    transactions,
+    register_form: syncShelfRegisterField(draft.register_form, inv.enable_shelf),
+  };
 }
 
 function WizardStepIntro({ title, description }: { title: string; description: string }) {

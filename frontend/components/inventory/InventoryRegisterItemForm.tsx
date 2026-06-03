@@ -426,6 +426,12 @@ export function InventoryRegisterItemForm({
             onChange={(patch) => setForm(patch)}
           />
         );
+      case "shelf":
+        return renderTextOrSelect(
+          field,
+          String(form.custom_attributes.shelf ?? ""),
+          (shelf) => setCustom("shelf", shelf),
+        );
       case "assigned_user_id":
         return renderSelect(
           form.assigned_user_id,
@@ -527,6 +533,11 @@ export function registerFormStateToPayload(
   const custom_attributes: Record<string, string | number | boolean | null> = {};
 
   for (const field of enabled) {
+    if (field.id === "shelf") {
+      const raw = form.custom_attributes.shelf;
+      custom_attributes.shelf = String(raw ?? "").trim() || null;
+      continue;
+    }
     if (!field.is_custom && isBuiltinFieldId(field.id)) continue;
     const raw = form.custom_attributes[field.id];
     const inputType = effectiveInputType(field);
