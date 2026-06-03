@@ -2,6 +2,8 @@
 
 import { X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { AsyncSubmitButton } from "@/components/ui/AsyncSubmitButton";
+import { useAsyncSubmitPhase } from "@/hooks/useAsyncSubmitPhase";
 import { apiFetch } from "@/lib/api";
 import {
   boundsForScheduleMonth,
@@ -35,7 +37,8 @@ export function SchedulePeriodModal({ open, onClose, onSaved, existing }: Props)
   const [periodMonth, setPeriodMonth] = useState("");
   const [availDeadline, setAvailDeadline] = useState("");
   const [publishDeadline, setPublishDeadline] = useState("");
-  const [saving, setSaving] = useState(false);
+  const { phase: submitPhase, run: runSubmit } = useAsyncSubmitPhase();
+  const submitPending = submitPhase === "loading" || submitPhase === "success";
   const [err, setErr] = useState<string | null>(null);
 
   const title = useMemo(() => (existing ? "Edit period" : "Create availability period"), [existing]);
@@ -43,7 +46,6 @@ export function SchedulePeriodModal({ open, onClose, onSaved, existing }: Props)
   useEffect(() => {
     if (!open) return;
     setErr(null);
-    setSaving(false);
     setPeriodMonth(
       existing?.start_date ? scheduleMonthFromStartDate(existing.start_date) : defaultCreateScheduleMonth(),
     );
@@ -67,42 +69,41 @@ export function SchedulePeriodModal({ open, onClose, onSaved, existing }: Props)
       return;
     }
 
-    setSaving(true);
     setErr(null);
     try {
-      const json = {
-        start_date,
-        end_date,
-        availability_deadline: availDeadline ? `${availDeadline}T23:59:00Z` : null,
-        publish_deadline: publishDeadline ? `${publishDeadline}T23:59:00Z` : null,
-      };
+      await runSubmit(async () => {
+        const json = {
+          start_date,
+          end_date,
+          availability_deadline: availDeadline ? `${availDeadline}T23:59:00Z` : null,
+          publish_deadline: publishDeadline ? `${publishDeadline}T23:59:00Z` : null,
+        };
 
-      if (existing) {
-        await apiFetch(`/api/v1/pulse/schedule/periods/${existing.id}`, { method: "PATCH", json });
-        if (isMayScheduleMonth(periodMonth) && existing.status !== "published") {
-          await apiFetch(`/api/v1/pulse/schedule/periods/${existing.id}`, {
-            method: "PATCH",
-            json: { status: "published" },
+        if (existing) {
+          await apiFetch(`/api/v1/pulse/schedule/periods/${existing.id}`, { method: "PATCH", json });
+          if (isMayScheduleMonth(periodMonth) && existing.status !== "published") {
+            await apiFetch(`/api/v1/pulse/schedule/periods/${existing.id}`, {
+              method: "PATCH",
+              json: { status: "published" },
+            });
+          }
+        } else {
+          const created = await apiFetch<SchedulePeriodLite>(`/api/v1/pulse/schedule/periods`, {
+            method: "POST",
+            json,
           });
+          if (isMayScheduleMonth(periodMonth)) {
+            await apiFetch(`/api/v1/pulse/schedule/periods/${created.id}`, {
+              method: "PATCH",
+              json: { status: "published" },
+            });
+          }
         }
-      } else {
-        const created = await apiFetch<SchedulePeriodLite>(`/api/v1/pulse/schedule/periods`, {
-          method: "POST",
-          json,
-        });
-        if (isMayScheduleMonth(periodMonth)) {
-          await apiFetch(`/api/v1/pulse/schedule/periods/${created.id}`, {
-            method: "PATCH",
-            json: { status: "published" },
-          });
-        }
-      }
-      onSaved();
+        onSaved();
+      });
       onClose();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Failed to save period");
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -163,14 +164,14 @@ export function SchedulePeriodModal({ open, onClose, onSaved, existing }: Props)
           >
             Cancel
           </button>
-          <button
-            type="button"
+          <AsyncSubmitButton
+            phase={submitPhase}
+            idleLabel={existing ? "Save changes" : "Create period"}
+            loadingLabel="Saving"
+            disabled={submitPending}
             onClick={() => void save()}
-            disabled={saving}
-            className="rounded-md bg-ds-accent px-4 py-2 text-xs font-bold text-ds-accent-foreground hover:bg-ds-accent/90 disabled:opacity-60"
-          >
-            {saving ? "Saving…" : existing ? "Save changes" : "Create period"}
-          </button>
+            className="rounded-md px-4 py-2 text-xs font-bold"
+          />
         </div>
       </div>
     </div>

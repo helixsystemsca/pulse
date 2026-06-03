@@ -22,6 +22,10 @@ class MaterialRequestQueueOut(BaseModel):
     minimum_qty: float
     maximum_qty: Optional[float] = None
     reorder_qty: float
+    priority_score: float = 0
+    days_until_stockout: Optional[float] = None
+    urgency_tier: str = "normal"
+    anomaly_flag: bool = False
     estimated_unit_cost: Optional[float] = None
     status: str
     exported_at: Optional[datetime] = None

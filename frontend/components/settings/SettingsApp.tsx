@@ -9,6 +9,8 @@
  * Deep-linkable via ?tab=schedule (or any module name).
  */
 
+import { AsyncSubmitButton } from "@/components/ui/AsyncSubmitButton";
+import { useAsyncSubmitPhase } from "@/hooks/useAsyncSubmitPhase";
 import {
   Activity,
   Bell,
@@ -175,10 +177,13 @@ function ListField({
 // ── Section wrapper ────────────────────────────────────────────────────────────
 
 function Section({
-  title, description, children, onSave, saving, saved, canEdit,
+  title, description, children, onSave, submitPhase, submitPending, canEdit,
 }: {
   title: string; description?: string; children: ReactNode;
-  onSave: () => void; saving: boolean; saved: boolean; canEdit: boolean;
+  onSave: () => void;
+  submitPhase: ReturnType<typeof useAsyncSubmitPhase>["phase"];
+  submitPending: boolean;
+  canEdit: boolean;
 }) {
   return (
     <div className="rounded-lg border border-ds-border bg-ds-primary overflow-hidden mb-4">
@@ -188,14 +193,14 @@ function Section({
           {description && <p className="text-xs text-ds-muted mt-0.5 leading-relaxed">{description}</p>}
         </div>
         {canEdit && (
-          <button
-            type="button"
+          <AsyncSubmitButton
+            phase={submitPhase}
+            idleLabel="Save"
+            loadingLabel="Saving"
+            disabled={submitPending}
             onClick={onSave}
-            disabled={saving}
-            className="shrink-0 rounded-md bg-ds-accent px-3 py-1.5 text-xs font-semibold text-ds-accent-foreground hover:bg-ds-accent/90 disabled:opacity-60 transition-colors"
-          >
-            {saving ? "Saving…" : saved ? "✓ Saved" : "Save"}
-          </button>
+            className="shrink-0 rounded-md px-3 py-1.5 text-xs font-semibold"
+          />
         )}
       </div>
       <div className="px-5 py-1">
@@ -212,28 +217,31 @@ function useSection(
   patch: (mod: ConfigModule, vals: ModuleConfig) => Promise<boolean>,
   module: ConfigModule,
 ) {
-  const [draft,  setDraft]  = useState<ModuleConfig>(initial ?? {});
-  const [saving, setSaving] = useState(false);
-  const [saved,  setSaved]  = useState(false);
+  const [draft, setDraft] = useState<ModuleConfig>(initial ?? {});
+  const { phase: submitPhase, run: runSubmit } = useAsyncSubmitPhase();
+  const submitPending = submitPhase === "loading" || submitPhase === "success";
 
   useEffect(() => { if (initial) setDraft(initial); }, [initial]);
 
   const set = useCallback((key: string, value: unknown) => {
     setDraft(d => ({ ...d, [key]: value }));
-    setSaved(false);
   }, []);
 
   const save = useCallback(async (keys?: string[]) => {
-    setSaving(true);
     const values = keys
       ? Object.fromEntries(keys.map(k => [k, draft[k]]))
       : draft;
-    const ok = await patch(module, values);
-    setSaving(false);
-    if (ok) { setSaved(true); setTimeout(() => setSaved(false), 2000); }
-  }, [draft, module, patch]);
+    try {
+      await runSubmit(async () => {
+        const ok = await patch(module, values);
+        if (!ok) throw new Error("save failed");
+      });
+    } catch {
+      /* error animation */
+    }
+  }, [draft, module, patch, runSubmit]);
 
-  return { draft, set, save, saving, saved };
+  return { draft, set, save, submitPhase, submitPending };
 }
 
 // ── GENERAL tab ───────────────────────────────────────────────────────────────
@@ -247,18 +255,18 @@ function GeneralTab({ config, patch, canEdit }: {
   const d = s.draft;
   return (
     <>
-      <Section title="Facility" description="Basic info shown across the product." onSave={() => s.save(["facility_name","industry","timezone"])} saving={s.saving} saved={s.saved} canEdit={canEdit}>
+      <Section title="Facility" description="Basic info shown across the product." onSave={() => s.save(["facility_name","industry","timezone"])} submitPhase={s.submitPhase} submitPending={s.submitPending} canEdit={canEdit}>
         <TextField label="Facility name" value={String(d.facility_name ?? "")} onChange={v => s.set("facility_name", v)} disabled={!canEdit} />
         <TextField label="Industry" description="Helps tailor terminology. e.g. Recreation, Healthcare, Warehousing" value={String(d.industry ?? "")} onChange={v => s.set("industry", v)} placeholder="Recreation" disabled={!canEdit} />
         <TextField label="Timezone" description="All times in the app use this timezone." value={String(d.timezone ?? "UTC")} onChange={v => s.set("timezone", v)} placeholder="America/Edmonton" disabled={!canEdit} />
       </Section>
 
-      <Section title="Location" description="Used for the weather widget on the dashboard. Leave blank to hide the widget." onSave={() => s.save(["latitude","longitude"])} saving={s.saving} saved={s.saved} canEdit={canEdit}>
+      <Section title="Location" description="Used for the weather widget on the dashboard. Leave blank to hide the widget." onSave={() => s.save(["latitude","longitude"])} submitPhase={s.submitPhase} submitPending={s.submitPending} canEdit={canEdit}>
         <NumberField label="Latitude" value={Number(d.latitude ?? 0)} onChange={v => s.set("latitude", v)} disabled={!canEdit} />
         <NumberField label="Longitude" value={Number(d.longitude ?? 0)} onChange={v => s.set("longitude", v)} disabled={!canEdit} />
       </Section>
 
-      <Section title="Display" onSave={() => s.save(["date_format","time_format","currency"])} saving={s.saving} saved={s.saved} canEdit={canEdit}>
+      <Section title="Display" onSave={() => s.save(["date_format","time_format","currency"])} submitPhase={s.submitPhase} submitPending={s.submitPending} canEdit={canEdit}>
         <TextField label="Date format" value={String(d.date_format ?? "MMM D, YYYY")} onChange={v => s.set("date_format", v)} disabled={!canEdit} />
         <Toggle label="24-hour time" value={d.time_format === "24h"} onChange={v => s.set("time_format", v ? "24h" : "12h")} disabled={!canEdit} />
         <TextField label="Currency code" value={String(d.currency ?? "CAD")} onChange={v => s.set("currency", v)} placeholder="CAD" disabled={!canEdit} />
@@ -278,7 +286,7 @@ function WorkRequestsTab({ config, patch, canEdit }: {
   const d = s.draft;
   return (
     <>
-      <Section title="Behaviour" onSave={() => s.save(["requirePhotoOnClose","lockAfterCompletion","allowManualOverride","autoAssignTechnician","enablePriorityLevels"])} saving={s.saving} saved={s.saved} canEdit={canEdit}>
+      <Section title="Behaviour" onSave={() => s.save(["requirePhotoOnClose","lockAfterCompletion","allowManualOverride","autoAssignTechnician","enablePriorityLevels"])} submitPhase={s.submitPhase} submitPending={s.submitPending} canEdit={canEdit}>
         <Toggle label="Enable priority levels" description="Show Low / Medium / High / Critical on work orders." value={Boolean(d.enablePriorityLevels)} onChange={v => s.set("enablePriorityLevels", v)} disabled={!canEdit} />
         <Toggle label="Auto-assign to creator" description="New requests assign to the creating user if no assignee is chosen." value={Boolean(d.autoAssignTechnician)} onChange={v => s.set("autoAssignTechnician", v)} disabled={!canEdit} />
         <Toggle label="Require photo to close" description="Technicians must attach a file before marking completed." value={Boolean(d.requirePhotoOnClose)} onChange={v => s.set("requirePhotoOnClose", v)} disabled={!canEdit} />
@@ -286,11 +294,11 @@ function WorkRequestsTab({ config, patch, canEdit }: {
         <Toggle label="Managers may reopen" description="When locking is on, managers can still move status off completed." value={Boolean(d.allowManualOverride)} onChange={v => s.set("allowManualOverride", v)} disabled={!canEdit} />
       </Section>
 
-      <Section title="Categories" description="Custom category labels available when creating a work request." onSave={() => s.save(["categories"])} saving={s.saving} saved={s.saved} canEdit={canEdit}>
+      <Section title="Categories" description="Custom category labels available when creating a work request." onSave={() => s.save(["categories"])} submitPhase={s.submitPhase} submitPending={s.submitPending} canEdit={canEdit}>
         <ListField label="Categories" value={Array.isArray(d.categories) ? d.categories as string[] : []} onChange={v => s.set("categories", v)} placeholder={"Electrical\nPlumbing\nHVAC\nJanitorial\nGeneral"} disabled={!canEdit} />
       </Section>
 
-      <Section title="SLA" description="Response time targets by priority. Set to 0 to disable." onSave={() => s.save(["sla.enabled","sla.p1_response_minutes","sla.p2_response_minutes","sla.p3_response_minutes"])} saving={s.saving} saved={s.saved} canEdit={canEdit}>
+      <Section title="SLA" description="Response time targets by priority. Set to 0 to disable." onSave={() => s.save(["sla.enabled","sla.p1_response_minutes","sla.p2_response_minutes","sla.p3_response_minutes"])} submitPhase={s.submitPhase} submitPending={s.submitPending} canEdit={canEdit}>
         <Toggle label="Enable SLA tracking" value={Boolean(d["sla.enabled"])} onChange={v => s.set("sla.enabled", v)} disabled={!canEdit} />
         <NumberField label="P1 Critical — response target" value={Number(d["sla.p1_response_minutes"] ?? 60)} onChange={v => s.set("sla.p1_response_minutes", v)} suffix="min" disabled={!canEdit} />
         <NumberField label="P2 High — response target" value={Number(d["sla.p2_response_minutes"] ?? 240)} onChange={v => s.set("sla.p2_response_minutes", v)} suffix="min" disabled={!canEdit} />
@@ -315,7 +323,7 @@ function WorkersTab({ config, patch, canEdit }: {
 
   return (
     <>
-      <Section title="Operational Roles" description="Custom role names for your facility. These appear in scheduling, work orders, and inference matching." onSave={() => s.save(["operational_roles"])} saving={s.saving} saved={s.saved} canEdit={canEdit}>
+      <Section title="Operational Roles" description="Custom role names for your facility. These appear in scheduling, work orders, and inference matching." onSave={() => s.save(["operational_roles"])} submitPhase={s.submitPhase} submitPending={s.submitPending} canEdit={canEdit}>
         <ListField label="Roles" value={Array.isArray(d.operational_roles) ? d.operational_roles as string[] : []} onChange={v => s.set("operational_roles", v)} placeholder={"Pool Technician\nIce Technician\nHVAC Technician\nGeneral Maintenance\nFacility Manager"} disabled={!canEdit} />
       </Section>
 
@@ -325,7 +333,7 @@ function WorkersTab({ config, patch, canEdit }: {
           .filter(d => d.code && d.label);
         s.set("certifications", { definitions: defs, priority_order: defs.map(d => d.code) });
         void s.save(["certifications"]);
-      }} saving={s.saving} saved={s.saved} canEdit={canEdit}>
+      }} submitPhase={s.submitPhase} submitPending={s.submitPending} canEdit={canEdit}>
         <ListField
           label="Certification codes"
           value={certDefs.map(c => `${c.code}: ${c.label}`)}
@@ -338,7 +346,7 @@ function WorkersTab({ config, patch, canEdit }: {
         />
       </Section>
 
-      <Section title="Features" onSave={() => s.save(["skill_tags_enabled","cert_tracking_enabled","gamification_enabled"])} saving={s.saving} saved={s.saved} canEdit={canEdit}>
+      <Section title="Features" onSave={() => s.save(["skill_tags_enabled","cert_tracking_enabled","gamification_enabled"])} submitPhase={s.submitPhase} submitPending={s.submitPending} canEdit={canEdit}>
         <Toggle label="Skill tags" description="Allow tagging workers with skill categories." value={Boolean(d.skill_tags_enabled)} onChange={v => s.set("skill_tags_enabled", v)} disabled={!canEdit} />
         <Toggle label="Certification tracking" description="Track cert expiry and enforce cert requirements on shifts." value={Boolean(d.cert_tracking_enabled)} onChange={v => s.set("cert_tracking_enabled", v)} disabled={!canEdit} />
         <Toggle label="Gamification" description="Show XP, badges, and leaderboard for workers." value={Boolean(d.gamification_enabled)} onChange={v => s.set("gamification_enabled", v)} disabled={!canEdit} />
@@ -358,7 +366,7 @@ function AutomationTab({ config, patch, canEdit }: {
   const d = s.draft;
   return (
     <>
-      <Section title="Proximity Tracking" description="Controls how BLE beacon proximity events are detected and fired." onSave={() => s.save(["proximity_tracking_enabled","min_duration_seconds","cooldown_seconds","min_consecutive_near","max_session_seconds"])} saving={s.saving} saved={s.saved} canEdit={canEdit}>
+      <Section title="Proximity Tracking" description="Controls how BLE beacon proximity events are detected and fired." onSave={() => s.save(["proximity_tracking_enabled","min_duration_seconds","cooldown_seconds","min_consecutive_near","max_session_seconds"])} submitPhase={s.submitPhase} submitPending={s.submitPending} canEdit={canEdit}>
         <Toggle label="Enable proximity tracking" value={Boolean(d.proximity_tracking_enabled)} onChange={v => s.set("proximity_tracking_enabled", v)} disabled={!canEdit} />
         <NumberField label="Minimum dwell time" description="How long a worker must be near equipment before an event fires." value={Number(d.min_duration_seconds ?? 10)} onChange={v => s.set("min_duration_seconds", v)} suffix="sec" disabled={!canEdit} />
         <NumberField label="Cooldown between events" description="Minimum gap before the same pair can fire again." value={Number(d.cooldown_seconds ?? 60)} onChange={v => s.set("cooldown_seconds", v)} suffix="sec" disabled={!canEdit} />
@@ -366,13 +374,13 @@ function AutomationTab({ config, patch, canEdit }: {
         <NumberField label="Max session length" value={Number(d.max_session_seconds ?? 300)} onChange={v => s.set("max_session_seconds", v)} suffix="sec" disabled={!canEdit} />
       </Section>
 
-      <Section title="Maintenance Inference" description="Confidence thresholds for the PM inference engine." onSave={() => s.save(["inference_enabled","inference_notify_threshold","inference_flag_threshold"])} saving={s.saving} saved={s.saved} canEdit={canEdit}>
+      <Section title="Maintenance Inference" description="Confidence thresholds for the PM inference engine." onSave={() => s.save(["inference_enabled","inference_notify_threshold","inference_flag_threshold"])} submitPhase={s.submitPhase} submitPending={s.submitPending} canEdit={canEdit}>
         <Toggle label="Enable PM inference" description="Automatically detect when a worker is performing maintenance and prompt confirmation." value={Boolean(d.inference_enabled)} onChange={v => s.set("inference_enabled", v)} disabled={!canEdit} />
         <NumberField label="Notify worker threshold" description="Confidence % to send a push notification to the worker." value={Math.round(Number(d.inference_notify_threshold ?? 0.9) * 100)} onChange={v => s.set("inference_notify_threshold", v / 100)} suffix="%" disabled={!canEdit} />
         <NumberField label="Flag for manager threshold" description="Confidence % to flag for manager review (no worker notification)." value={Math.round(Number(d.inference_flag_threshold ?? 0.7) * 100)} onChange={v => s.set("inference_flag_threshold", v / 100)} suffix="%" disabled={!canEdit} />
       </Section>
 
-      <Section title="Escalation" onSave={() => s.save(["escalation_delay_seconds","sop_alerts_enabled"])} saving={s.saving} saved={s.saved} canEdit={canEdit}>
+      <Section title="Escalation" onSave={() => s.save(["escalation_delay_seconds","sop_alerts_enabled"])} submitPhase={s.submitPhase} submitPending={s.submitPending} canEdit={canEdit}>
         <Toggle label="SOP alerts enabled" value={Boolean(d.sop_alerts_enabled)} onChange={v => s.set("sop_alerts_enabled", v)} disabled={!canEdit} />
         <NumberField label="Escalation delay" description="How long before an unacknowledged alert escalates." value={Number(d.escalation_delay_seconds ?? 120)} onChange={v => s.set("escalation_delay_seconds", v)} suffix="sec" disabled={!canEdit} />
       </Section>

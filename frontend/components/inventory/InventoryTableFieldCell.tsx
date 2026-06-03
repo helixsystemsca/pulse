@@ -2,6 +2,7 @@
 
 import { ArrowRightLeft, MapPin } from "lucide-react";
 import type { InventoryRow } from "@/lib/inventoryService";
+import { resolveItemLocationDisplay } from "@/lib/inventory/inventory-location-stock";
 import {
   formatRegisterFieldValue,
   type InventoryTableColumn,
@@ -51,9 +52,10 @@ type Props = {
   column: InventoryTableColumn;
   row: InventoryRow;
   departmentNamesBySlug?: Record<string, string>;
+  zoneNameById?: (zoneId: string) => string | null | undefined;
 };
 
-export function InventoryTableFieldCell({ column, row, departmentNamesBySlug }: Props) {
+export function InventoryTableFieldCell({ column, row, departmentNamesBySlug, zoneNameById }: Props) {
   if (column.kind === "status") {
     return (
       <td className="px-4 py-3 align-top">
@@ -90,7 +92,7 @@ export function InventoryTableFieldCell({ column, row, departmentNamesBySlug }: 
   const field = column.field;
 
   if (field.id === "item_type") {
-    const text = formatRegisterFieldValue(field, row, departmentNamesBySlug);
+    const text = formatRegisterFieldValue(field, row, departmentNamesBySlug, zoneNameById);
     return (
       <td className="whitespace-nowrap px-4 py-3 align-top capitalize text-pulse-navy">{text}</td>
     );
@@ -120,11 +122,14 @@ export function InventoryTableFieldCell({ column, row, departmentNamesBySlug }: 
   }
 
   if (field.id === "zone_id") {
+    const label = zoneNameById
+      ? resolveItemLocationDisplay(row, zoneNameById)
+      : row.location_name ?? "—";
     return (
       <td className="px-4 py-3 align-top">
-        <span className="inline-flex items-center gap-1 text-pulse-navy">
-          <MapPin className="h-3.5 w-3.5 text-[#3182ce]" aria-hidden />
-          {row.location_name ?? "—"}
+        <span className="inline-flex items-center gap-1 text-pulse-navy" title={label !== "—" ? label : undefined}>
+          <MapPin className="h-3.5 w-3.5 shrink-0 text-[#3182ce]" aria-hidden />
+          <span className="line-clamp-2">{label}</span>
         </span>
       </td>
     );

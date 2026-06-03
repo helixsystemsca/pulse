@@ -7,7 +7,9 @@ import { cn } from "@/lib/cn";
 import { isApiMode } from "@/lib/api";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { fetchFeedbackFeatures, submitFeedback, type FeedbackFeatureOption } from "@/lib/feedbackApi";
+import { AsyncSubmitButton } from "@/components/ui/AsyncSubmitButton";
 import { dsInputClass } from "@/components/ui/ds-form-classes";
+import { useAsyncSubmitPhase } from "@/hooks/useAsyncSubmitPhase";
 
 type Props = {
   open: boolean;
@@ -19,7 +21,9 @@ export function FeedbackModal({ open, onClose, onSubmitted }: Props) {
   const [features, setFeatures] = useState<FeedbackFeatureOption[]>([]);
   const [featureKey, setFeatureKey] = useState("");
   const [comment, setComment] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [featuresLoading, setFeaturesLoading] = useState(false);
+  const { phase: submitPhase, run: runSubmit } = useAsyncSubmitPhase();
+  const submitPending = submitPhase === "loading" || submitPhase === "success";
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [submitErr, setSubmitErr] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -42,7 +46,7 @@ export function FeedbackModal({ open, onClose, onSubmitted }: Props) {
       return;
     }
     let cancelled = false;
-    setLoading(true);
+    setFeaturesLoading(true);
     void (async () => {
       try {
         const list = await fetchFeedbackFeatures();
@@ -52,7 +56,7 @@ export function FeedbackModal({ open, onClose, onSubmitted }: Props) {
       } catch (e) {
         if (!cancelled) setLoadErr(parseClientApiError(e).message);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setFeaturesLoading(false);
       }
     })();
     return () => {
@@ -86,18 +90,17 @@ export function FeedbackModal({ open, onClose, onSubmitted }: Props) {
       setSubmitErr("Please add a bit more detail (at least a few characters).");
       return;
     }
-    setLoading(true);
     try {
-      await submitFeedback({ feature_key: featureKey.trim(), body: comment.trim() });
-      setDone(true);
-      onSubmitted?.();
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("pulse-feedback-submitted"));
-      }
+      await runSubmit(async () => {
+        await submitFeedback({ feature_key: featureKey.trim(), body: comment.trim() });
+        setDone(true);
+        onSubmitted?.();
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("pulse-feedback-submitted"));
+        }
+      });
     } catch (err) {
       setSubmitErr(parseClientApiError(err).message);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -157,7 +160,7 @@ export function FeedbackModal({ open, onClose, onSubmitted }: Props) {
                   className={cn(dsInputClass, "w-full")}
                   value={featureKey}
                   onChange={(e) => setFeatureKey(e.target.value)}
-                  disabled={loading || features.length === 0}
+                  disabled={submitPending || features.length === 0}
                 >
                   {features.map((f) => (
                     <option key={f.id} value={f.id}>
@@ -177,7 +180,7 @@ export function FeedbackModal({ open, onClose, onSubmitted }: Props) {
                   onChange={(e) => setComment(e.target.value)}
                   placeholder="What would you improve or what went wrong?"
                   maxLength={4000}
-                  disabled={loading}
+                  disabled={submitPending}
                 />
                 <p className="mt-1 text-[10px] text-ds-muted">{comment.length} / 4000</p>
               </div>
@@ -194,13 +197,14 @@ export function FeedbackModal({ open, onClose, onSubmitted }: Props) {
                 >
                   Cancel
                 </button>
-                <button
+                <AsyncSubmitButton
                   type="submit"
-                  disabled={loading}
-                  className="rounded-lg bg-[var(--ds-accent)] px-3 py-2 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-50"
-                >
-                  {loading ? "Sending…" : "Submit feedback"}
-                </button>
+                  phase={submitPhase}
+                  idleLabel="Submit feedback"
+                  loadingLabel="Sending"
+                  disabled={submitPending}
+                  className="rounded-lg px-3 py-2 text-sm font-semibold"
+                />
               </div>
             </form>
           )}

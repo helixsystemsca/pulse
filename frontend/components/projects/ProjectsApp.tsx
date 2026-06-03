@@ -16,7 +16,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/pulse/Card";
 import { HintCallout } from "@/components/ui/HintCallout";
 import { FeatureTourToolbar } from "@/components/onboarding/FeatureTourRegions";
+import { AsyncSubmitButton } from "@/components/ui/AsyncSubmitButton";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { useAsyncSubmitPhase } from "@/hooks/useAsyncSubmitPhase";
 import { PageBody } from "@/components/ui/PageBody";
 import { SegmentedControl } from "@/components/schedule/SegmentedControl";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
@@ -237,7 +239,8 @@ export function ProjectsApp() {
   const [editOpen, setEditOpen] = useState(false);
   const [editFor, setEditFor] = useState<ProjectRow | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const { phase: projectSubmitPhase, run: runProjectSubmit } = useAsyncSubmitPhase();
+  const projectSubmitPending = projectSubmitPhase === "loading" || projectSubmitPhase === "success";
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [closeoutOpen, setCloseoutOpen] = useState(false);
@@ -246,7 +249,8 @@ export function ProjectsApp() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsFor, setSettingsFor] = useState<ProjectRow | null>(null);
   const [settingsLoading, setSettingsLoading] = useState(false);
-  const [settingsSaving, setSettingsSaving] = useState(false);
+  const { phase: settingsSubmitPhase, run: runSettingsSubmit } = useAsyncSubmitPhase();
+  const settingsSubmitPending = settingsSubmitPhase === "loading" || settingsSubmitPhase === "success";
   const [notifEnabled, setNotifEnabled] = useState(false);
   const [notifMatDays, setNotifMatDays] = useState("30");
   const [notifEqDays, setNotifEqDays] = useState("7");
@@ -503,13 +507,13 @@ export function ProjectsApp() {
   }
 
   async function submitCreate() {
-    if (!formName.trim() || !formStart || !formEnd || saving) return;
+    if (!formName.trim() || !formStart || !formEnd || projectSubmitPending) return;
     if (formEnd < formStart) {
       setToast("End date must be on or after start date.");
       return;
     }
-    setSaving(true);
     try {
+      await runProjectSubmit(async () => {
       const created = await createProject({
         name: formName.trim(),
         description: formScope.trim() || null,
@@ -526,6 +530,8 @@ export function ProjectsApp() {
         staffing_priority: formStaffingPriority,
       });
       setRows((prev) => (prev ? [created, ...prev] : prev));
+      setToast("Project created.");
+      });
       setCreateOpen(false);
       setFormName("");
       setFormStart("");
@@ -540,11 +546,8 @@ export function ProjectsApp() {
       setFormOverlayColor("");
       setFormImpact("medium");
       setFormStaffingPriority("normal");
-      setToast("Project created.");
     } catch {
       setToast("Could not create project.");
-    } finally {
-      setSaving(false);
     }
   }
 
@@ -576,11 +579,11 @@ export function ProjectsApp() {
   }
 
   async function submitNotificationSettings() {
-    if (!settingsFor || settingsSaving) return;
+    if (!settingsFor || settingsSubmitPending) return;
     const md = Math.max(1, Math.min(365, Math.round(Number(notifMatDays) || 30)));
     const ed = Math.max(1, Math.min(365, Math.round(Number(notifEqDays) || 7)));
-    setSettingsSaving(true);
     try {
+      await runSettingsSubmit(async () => {
       const s = await patchProjectNotificationSettings(settingsFor.id, {
         notification_enabled: notifEnabled,
         notification_material_days: md,
@@ -605,18 +608,17 @@ export function ProjectsApp() {
         ) ?? null,
       );
       setToast("Notification settings saved.");
+      });
       setSettingsOpen(false);
       setSettingsFor(null);
     } catch (e) {
       const { message } = parseClientApiError(e);
       setToast(message || "Could not save settings.");
-    } finally {
-      setSettingsSaving(false);
     }
   }
 
   async function submitEdit() {
-    if (!editFor || !formName.trim() || !formStart || !formEnd || saving) return;
+    if (!editFor || !formName.trim() || !formStart || !formEnd || projectSubmitPending) return;
     if (formEnd < formStart) {
       setToast("End date must be on or after start date.");
       return;
@@ -630,8 +632,8 @@ export function ProjectsApp() {
       formStatus === "on_hold" || formStatus === "completed"
         ? formStatus
         : inferredStatusFromStartDate(formStart);
-    setSaving(true);
     try {
+      await runProjectSubmit(async () => {
       const out = await patchProject(editFor.id, {
         name: formName.trim(),
         description: formScope.trim() || null,
@@ -660,14 +662,13 @@ export function ProjectsApp() {
             : r,
         ) ?? null,
       );
+      setToast("Project updated.");
+      });
       setEditOpen(false);
       setEditFor(null);
-      setToast("Project updated.");
     } catch (e) {
       const { message } = parseClientApiError(e);
       setToast(message || "Could not update project.");
-    } finally {
-      setSaving(false);
     }
   }
 
@@ -865,7 +866,7 @@ export function ProjectsApp() {
                               <button
                                 type="button"
                                 className={PROJECT_CARD_ACTION_BTN}
-                                disabled={saving || completingId === p.id || deletingId === p.id}
+                                disabled={projectSubmitPending || completingId === p.id || deletingId === p.id}
                                 aria-label={`Edit ${p.name}`}
                                 title="Edit project"
                                 onClick={() => openEdit(p)}
@@ -1033,7 +1034,7 @@ export function ProjectsApp() {
               <button
                 type="button"
                 className={SECONDARY_BTN}
-                disabled={settingsSaving}
+                disabled={settingsSubmitPending}
                 onClick={() => {
                   setSettingsOpen(false);
                   setSettingsFor(null);
@@ -1041,14 +1042,14 @@ export function ProjectsApp() {
               >
                 Cancel
               </button>
-              <button
-                type="button"
-                className={PRIMARY_BTN}
-                disabled={settingsSaving || settingsLoading}
+              <AsyncSubmitButton
+                phase={settingsSubmitPhase}
+                idleLabel="Save"
+                loadingLabel="Saving"
+                disabled={settingsSubmitPending || settingsLoading}
                 onClick={() => void submitNotificationSettings()}
-              >
-                {settingsSaving ? "Saving…" : "Save"}
-              </button>
+                className={PRIMARY_BTN}
+              />
             </div>
           </div>
         </div>
@@ -1271,14 +1272,14 @@ export function ProjectsApp() {
               >
                 Cancel
               </button>
-              <button
-                type="button"
-                className={PRIMARY_BTN}
-                disabled={saving || !formName.trim() || !formStart || !formEnd}
+              <AsyncSubmitButton
+                phase={projectSubmitPhase}
+                idleLabel="Create"
+                loadingLabel="Creating"
+                disabled={projectSubmitPending || !formName.trim() || !formStart || !formEnd}
                 onClick={() => void submitCreate()}
-              >
-                {saving ? "Creating…" : "Create"}
-              </button>
+                className={PRIMARY_BTN}
+              />
             </div>
           </div>
         </div>
@@ -1632,14 +1633,14 @@ export function ProjectsApp() {
               >
                 Cancel
               </button>
-              <button
-                type="button"
-                className={PRIMARY_BTN}
-                disabled={saving || !formName.trim() || !formStart || !formEnd}
+              <AsyncSubmitButton
+                phase={projectSubmitPhase}
+                idleLabel="Save changes"
+                loadingLabel="Saving"
+                disabled={projectSubmitPending || !formName.trim() || !formStart || !formEnd}
                 onClick={() => void submitEdit()}
-              >
-                {saving ? "Saving…" : "Save changes"}
-              </button>
+                className={PRIMARY_BTN}
+              />
             </div>
           </div>
         </div>

@@ -3,6 +3,8 @@
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PulseDrawer } from "@/components/schedule/PulseDrawer";
+import { AsyncSubmitButton } from "@/components/ui/AsyncSubmitButton";
+import { useAsyncSubmitPhase } from "@/hooks/useAsyncSubmitPhase";
 import { buttonVariants } from "@/styles/button-variants";
 import { cn } from "@/lib/cn";
 import {
@@ -89,6 +91,7 @@ type FormState = {
   postal_code: string;
   country: string;
   is_active: boolean;
+  lead_time_days: string;
 };
 
 function rowToForm(r: InventoryVendorRow): FormState {
@@ -109,6 +112,7 @@ function rowToForm(r: InventoryVendorRow): FormState {
     postal_code: r.postal_code ?? "",
     country: r.country ?? "",
     is_active: r.is_active,
+    lead_time_days: r.lead_time_days != null ? String(r.lead_time_days) : "",
   };
 }
 
@@ -130,6 +134,7 @@ function emptyForm(): FormState {
     postal_code: "",
     country: "",
     is_active: true,
+    lead_time_days: "",
   };
 }
 
@@ -153,7 +158,9 @@ export function InventoryVendorsPanel({
   const [drawerMode, setDrawerMode] = useState<"create" | "edit">("create");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm());
-  const [saveBusy, setSaveBusy] = useState(false);
+  const { phase: submitPhase, run: runSubmit } = useAsyncSubmitPhase();
+  const submitPending = submitPhase === "loading" || submitPhase === "success";
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   useEffect(() => {
     const t = window.setTimeout(() => {
@@ -208,48 +215,53 @@ export function InventoryVendorsPanel({
 
   async function submitForm() {
     if (!form.name.trim()) return;
-    setSaveBusy(true);
     try {
-      const body = {
-        name: form.name.trim(),
-        contact_name: form.contact_name.trim() || null,
-        contact_email: form.contact_email.trim() || null,
-        contact_phone: form.contact_phone.trim() || null,
-        account_number: form.account_number.trim() || null,
-        payment_terms: form.payment_terms.trim() || null,
-        item_specialty: form.item_specialty.trim() || null,
-        notes: form.notes.trim() || null,
-        website: form.website.trim() || null,
-        address_line1: form.address_line1.trim() || null,
-        address_line2: form.address_line2.trim() || null,
-        city: form.city.trim() || null,
-        region: form.region.trim() || null,
-        postal_code: form.postal_code.trim() || null,
-        country: form.country.trim() || null,
-        is_active: form.is_active,
-      };
-      if (drawerMode === "create") {
-        await createInventoryVendor(apiCompany, {
-          ...body,
-          ...(departmentSlug?.trim() ? { department_slug: departmentSlug.trim() } : {}),
-        });
-      } else if (editingId) {
-        await patchInventoryVendor(apiCompany, editingId, body);
-      }
+      await runSubmit(async () => {
+        const body = {
+          name: form.name.trim(),
+          contact_name: form.contact_name.trim() || null,
+          contact_email: form.contact_email.trim() || null,
+          contact_phone: form.contact_phone.trim() || null,
+          account_number: form.account_number.trim() || null,
+          payment_terms: form.payment_terms.trim() || null,
+          item_specialty: form.item_specialty.trim() || null,
+          notes: form.notes.trim() || null,
+          website: form.website.trim() || null,
+          address_line1: form.address_line1.trim() || null,
+          address_line2: form.address_line2.trim() || null,
+          city: form.city.trim() || null,
+          region: form.region.trim() || null,
+          postal_code: form.postal_code.trim() || null,
+          country: form.country.trim() || null,
+          is_active: form.is_active,
+          lead_time_days: (() => {
+            const s = form.lead_time_days.trim();
+            if (!s) return null;
+            const n = Number.parseInt(s, 10);
+            return Number.isFinite(n) && n >= 0 ? n : null;
+          })(),
+        };
+        if (drawerMode === "create") {
+          await createInventoryVendor(apiCompany, {
+            ...body,
+            ...(departmentSlug?.trim() ? { department_slug: departmentSlug.trim() } : {}),
+          });
+        } else if (editingId) {
+          await patchInventoryVendor(apiCompany, editingId, body);
+        }
+        await load();
+      });
       setDrawerOpen(false);
-      await load();
     } catch (e) {
       const { message } = parseClientApiError(e);
       setErr(message || "Could not save vendor.");
-    } finally {
-      setSaveBusy(false);
     }
   }
 
   async function onDelete() {
     if (!editingId) return;
     if (!window.confirm("Delete this vendor? Inventory items that reference the vendor name are unchanged.")) return;
-    setSaveBusy(true);
+    setDeleteBusy(true);
     try {
       await deleteInventoryVendor(apiCompany, editingId);
       setDrawerOpen(false);
@@ -258,11 +270,11 @@ export function InventoryVendorsPanel({
       const { message } = parseClientApiError(e);
       setErr(message || "Could not delete vendor.");
     } finally {
-      setSaveBusy(false);
+      setDeleteBusy(false);
     }
   }
 
-  const colCount = useMemo(() => TEXT_COLUMNS.length + 2, []);
+  const colCount = useMemo(() => TEXT_COLUMNS.length + 3, []);
 
   return (
     <div className="space-y-4">
@@ -308,6 +320,9 @@ export function InventoryVendorsPanel({
                   </th>
                 ))}
                 <th className="whitespace-nowrap px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-pulse-muted">
+                  Lead (days)
+                </th>
+                <th className="whitespace-nowrap px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-pulse-muted">
                   Active
                 </th>
                 <th className="whitespace-nowrap px-3 py-2 text-right text-[11px] font-bold uppercase tracking-wide text-pulse-muted">
@@ -327,6 +342,7 @@ export function InventoryVendorsPanel({
                     />
                   </th>
                 ))}
+                <th className="px-2 py-2" />
                 <th className="px-2 py-2 align-top">
                   <select
                     className={FILTER_FIELD}
@@ -381,6 +397,9 @@ export function InventoryVendorsPanel({
                         </td>
                       );
                     })}
+                    <td className="px-3 py-2 align-top tabular-nums text-pulse-muted">
+                      {r.lead_time_days != null ? r.lead_time_days : "—"}
+                    </td>
                     <td className="px-3 py-2 align-top">
                       <span
                         className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
@@ -429,7 +448,7 @@ export function InventoryVendorsPanel({
                 <button
                   type="button"
                   className={cn(SECONDARY_BTN, "border-rose-200 text-rose-700 hover:bg-rose-50")}
-                  disabled={saveBusy}
+                  disabled={deleteBusy || submitPending}
                   onClick={() => void onDelete()}
                 >
                   <span className="inline-flex items-center gap-2">
@@ -445,9 +464,13 @@ export function InventoryVendorsPanel({
               <button type="button" className={SECONDARY_BTN} onClick={() => setDrawerOpen(false)}>
                 Cancel
               </button>
-              <button type="button" className={PRIMARY_BTN} disabled={saveBusy || !form.name.trim()} onClick={() => void submitForm()}>
-                {saveBusy ? "Saving…" : "Save"}
-              </button>
+              <AsyncSubmitButton
+                phase={submitPhase}
+                idleLabel="Save"
+                loadingLabel="Saving"
+                disabled={submitPending || !form.name.trim()}
+                onClick={() => void submitForm()}
+              />
             </div>
           </div>
         }
@@ -476,6 +499,17 @@ export function InventoryVendorsPanel({
           <div>
             <label className={LABEL}>Payment terms</label>
             <input className={FIELD} value={form.payment_terms} onChange={(e) => setForm((f) => ({ ...f, payment_terms: e.target.value }))} />
+          </div>
+          <div>
+            <label className={LABEL}>Lead time (days)</label>
+            <input
+              className={FIELD}
+              type="number"
+              min={0}
+              value={form.lead_time_days}
+              onChange={(e) => setForm((f) => ({ ...f, lead_time_days: e.target.value }))}
+              placeholder="e.g. 14"
+            />
           </div>
           <div className="sm:col-span-2">
             <label className={LABEL}>Item specialty</label>

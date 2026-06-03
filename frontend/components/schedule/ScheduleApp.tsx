@@ -91,6 +91,7 @@ import { readSession } from "@/lib/pulse-session";
 import { AvailabilitySupervisorDrawer } from "./availability/AvailabilitySupervisorDrawer";
 import { EmployeeAvailabilityDrawer } from "./availability/EmployeeAvailabilityDrawer";
 import type { SchedulePeriodHeaderState } from "./ScheduleBuilderHeader";
+import { useAsyncSubmitPhase } from "@/hooks/useAsyncSubmitPhase";
 import { ScheduleWorkflowBar } from "./ScheduleWorkflowBar";
 import { AssignmentsLockedNotice } from "./AssignmentsLockedNotice";
 import { deriveScheduleWorkflow, pickPeriodForVisibleRange } from "@/lib/schedule/schedule-workflow";
@@ -238,7 +239,7 @@ export function ScheduleApp() {
   const [buildingDraft, setBuildingDraft] = useState(false);
   const [trashHovering, setTrashHovering] = useState(false);
   const [deleteToast, setDeleteToast] = useState<string | null>(null);
-  const [saveBusy, setSaveBusy] = useState(false);
+  const { phase: savePhase, run: runSaveSubmit } = useAsyncSubmitPhase();
   const [activePeriod, setActivePeriod] = useState<SchedulePeriodLite | null>(null);
   const [showPeriodModal, setShowPeriodModal] = useState(false);
   const [scheduleProjects, setScheduleProjects] = useState<ProjectRow[] | null>(null);
@@ -518,46 +519,45 @@ export function ScheduleApp() {
       window.alert("Nothing new to save — shift edits are already on the server, or add a shift first.");
       return;
     }
-    setSaveBusy(true);
     try {
-      for (const s of toUpdate) {
-        await apiFetch(`/api/v1/pulse/schedule/shifts/${s.id}`, {
-          method: "PATCH",
-          json: {
-            assigned_user_id: s.workerId,
-            starts_at: localDateTimeToIso(s.date, s.startTime),
-            ends_at: localDateTimeToIso(s.date, s.endTime),
-            facility_id: s.zoneId || null,
-            shift_type: s.shiftType,
-            requires_supervisor: !!s.requires_supervisor,
-            requires_ticketed: false,
-            department_slug: scheduleDepartmentSlug,
-          },
-        });
-      }
-      for (const s of toCreate) {
-        await apiFetch("/api/v1/pulse/schedule/shifts", {
-          method: "POST",
-          json: {
-            assigned_user_id: s.workerId,
-            starts_at: localDateTimeToIso(s.date, s.startTime),
-            ends_at: localDateTimeToIso(s.date, s.endTime),
-            facility_id: s.zoneId || null,
-            shift_type: s.shiftType,
-            requires_supervisor: !!s.requires_supervisor,
-            requires_ticketed: false,
-            department_slug: scheduleDepartmentSlug,
-          },
-        });
-      }
-      await reloadPulseSchedule();
-      setDeleteToast(`Saved ${toCreate.length + toUpdate.length} shift${toCreate.length + toUpdate.length === 1 ? "" : "s"} to the server.`);
+      await runSaveSubmit(async () => {
+        for (const s of toUpdate) {
+          await apiFetch(`/api/v1/pulse/schedule/shifts/${s.id}`, {
+            method: "PATCH",
+            json: {
+              assigned_user_id: s.workerId,
+              starts_at: localDateTimeToIso(s.date, s.startTime),
+              ends_at: localDateTimeToIso(s.date, s.endTime),
+              facility_id: s.zoneId || null,
+              shift_type: s.shiftType,
+              requires_supervisor: !!s.requires_supervisor,
+              requires_ticketed: false,
+              department_slug: scheduleDepartmentSlug,
+            },
+          });
+        }
+        for (const s of toCreate) {
+          await apiFetch("/api/v1/pulse/schedule/shifts", {
+            method: "POST",
+            json: {
+              assigned_user_id: s.workerId,
+              starts_at: localDateTimeToIso(s.date, s.startTime),
+              ends_at: localDateTimeToIso(s.date, s.endTime),
+              facility_id: s.zoneId || null,
+              shift_type: s.shiftType,
+              requires_supervisor: !!s.requires_supervisor,
+              requires_ticketed: false,
+              department_slug: scheduleDepartmentSlug,
+            },
+          });
+        }
+        await reloadPulseSchedule();
+        setDeleteToast(`Saved ${toCreate.length + toUpdate.length} shift${toCreate.length + toUpdate.length === 1 ? "" : "s"} to the server.`);
+      });
     } catch (e) {
       window.alert(formatScheduleSaveError(e));
-    } finally {
-      setSaveBusy(false);
     }
-  }, [reloadPulseSchedule, scheduleDepartmentSlug]);
+  }, [reloadPulseSchedule, runSaveSubmit, scheduleDepartmentSlug]);
 
   const ensureShiftOnServer = useCallback(
     async (shift: Shift) =>
@@ -1448,7 +1448,7 @@ export function ScheduleApp() {
         workflow={scheduleWorkflow}
         canManage={canPublishSchedule}
         buildingDraft={buildingDraft}
-        saveBusy={saveBusy}
+        savePhase={savePhase}
         publishBusy={publishBusy}
         hasPendingServerSave={hasPendingServerSave}
         onCreatePeriod={() => setShowPeriodModal(true)}

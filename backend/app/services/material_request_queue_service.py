@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.domain import InventoryItem, MaterialRequestQueue
+from app.services.inventory_enterprise.intelligence import apply_queue_intelligence
 
 QUEUE_STATUS_PENDING = "pending"
 QUEUE_STATUS_DRAFTED = "drafted"
@@ -100,6 +101,8 @@ async def sync_queue_for_inventory_item(db: AsyncSession, item: InventoryItem) -
         for k, v in snap.items():
             setattr(row, k, v)
         row.updated_at = now
+    await db.flush()
+    await apply_queue_intelligence(db, row, item)
     return created
 
 
@@ -110,7 +113,11 @@ async def list_pending_queue(db: AsyncSession, company_id: str) -> list[Material
             MaterialRequestQueue.company_id == company_id,
             MaterialRequestQueue.status == QUEUE_STATUS_PENDING,
         )
-        .order_by(MaterialRequestQueue.created_at.asc())
+        .order_by(
+            MaterialRequestQueue.priority_score.desc(),
+            MaterialRequestQueue.days_until_stockout.asc().nulls_last(),
+            MaterialRequestQueue.created_at.asc(),
+        )
     )
     return list(q.scalars().all())
 

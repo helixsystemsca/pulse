@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { Check } from "lucide-react";
 import { PremiumModal } from "@/components/ui/premium-modal";
+import { AsyncSubmitButton } from "@/components/ui/AsyncSubmitButton";
+import { useAsyncSubmitPhase } from "@/hooks/useAsyncSubmitPhase";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
 import {
@@ -21,34 +21,35 @@ export function AssignmentHandoverModal({
   open,
   onClose,
   context,
-  saving,
   onSubmit,
 }: {
   open: boolean;
   onClose: () => void;
   context: AssignmentHandoverContext;
-  saving: boolean;
   onSubmit: (body: { content: string; note_type: HandoverNoteType }) => Promise<void>;
 }) {
   const [content, setContent] = useState("");
   const [noteType, setNoteType] = useState<HandoverNoteType>("informational");
-  const [success, setSuccess] = useState(false);
+  const { phase: submitPhase, run: runSubmit } = useAsyncSubmitPhase();
+  const submitPending = submitPhase === "loading" || submitPhase === "success";
 
   useEffect(() => {
     if (!open) return;
     setContent("");
     setNoteType("informational");
-    setSuccess(false);
   }, [open]);
 
   async function handleDone() {
     const text = content.trim();
-    if (!text || saving) return;
-    await onSubmit({ content: text, note_type: noteType });
-    setSuccess(true);
-    window.setTimeout(() => {
+    if (!text || submitPending) return;
+    try {
+      await runSubmit(async () => {
+        await onSubmit({ content: text, note_type: noteType });
+      });
       onClose();
-    }, 520);
+    } catch {
+      /* error animation */
+    }
   }
 
   return (
@@ -64,37 +65,21 @@ export function AssignmentHandoverModal({
             type="button"
             className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-4 py-2 text-sm")}
             onClick={onClose}
-            disabled={saving}
+            disabled={submitPending}
           >
             Cancel
           </button>
-          <button
-            type="button"
-            className={cn(
-              buttonVariants({ surface: "light", intent: "accent" }),
-              "relative min-w-[7rem] px-4 py-2 text-sm font-bold",
-            )}
-            disabled={saving || !content.trim()}
+          <AsyncSubmitButton
+            phase={submitPhase}
+            idleLabel="Done"
+            loadingLabel="Saving"
+            showSuccessLabel
+            successLabel="Saved"
+            disabled={submitPending || !content.trim()}
             onClick={() => void handleDone()}
-          >
-            <AnimatePresence mode="wait" initial={false}>
-              {success ? (
-                <motion.span
-                  key="ok"
-                  initial={{ opacity: 0, scale: 0.85 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="inline-flex items-center gap-1.5"
-                >
-                  <Check className="h-4 w-4" aria-hidden />
-                  Saved
-                </motion.span>
-              ) : (
-                <motion.span key="done" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                  {saving ? "Saving…" : "Done"}
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </button>
+            className="px-4 py-2 text-sm font-bold"
+            minWidth="min-w-[7rem]"
+          />
         </div>
       }
     >

@@ -1,5 +1,6 @@
 import type { InventoryDetail, InventoryRow } from "@/lib/inventoryService";
 import type { InventoryRegisterFieldConfig, InventoryRegisterFormConfig } from "@/lib/inventory/register-form-config";
+import { resolveItemLocationDisplay } from "@/lib/inventory/inventory-location-stock";
 import {
   effectiveInputType,
   enabledRegisterFields,
@@ -69,6 +70,7 @@ export function detailFieldsFromRegisterForm(
 ): InventoryRegisterFieldConfig[] {
   return enabledRegisterFields(config).filter((f) => {
     if (f.id === "photo") return false;
+    if (f.id === "zone_id") return false;
     if (DETAIL_HEADER_FIELD_IDS.has(f.id)) return false;
     if (!f.enabled) return false;
     return !isRegisterFieldInTable(f);
@@ -89,6 +91,7 @@ export function formatRegisterFieldValue(
   field: InventoryRegisterFieldConfig,
   row: InventoryRow | InventoryDetail,
   departmentNamesBySlug?: Record<string, string>,
+  zoneName?: (zoneId: string) => string | null | undefined,
 ): string {
   const inputType = effectiveInputType(field);
 
@@ -123,7 +126,7 @@ export function formatRegisterFieldValue(
         { value: "critical", label: "Critical / out of service" },
       ]);
     case "zone_id":
-      return row.location_name?.trim() || "—";
+      return zoneName ? resolveItemLocationDisplay(row, zoneName) : row.location_name?.trim() || "—";
     case "assigned_user_id":
       return row.assignee_name?.trim() || "Unassigned";
     case "linked_tool_id":

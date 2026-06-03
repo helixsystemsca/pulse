@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { AsyncSubmitButton } from "@/components/ui/AsyncSubmitButton";
+import { useAsyncSubmitPhase } from "@/hooks/useAsyncSubmitPhase";
 import {
   createPreventativeRule,
   fetchPreventativeRules,
@@ -23,7 +25,8 @@ export function PreventativeMaintenanceApp() {
   const [editAsset, setEditAsset] = useState("");
   const [editFrequency, setEditFrequency] = useState("");
   const [editProcedureId, setEditProcedureId] = useState("");
-  const [saving, setSaving] = useState(false);
+  const { phase: submitPhase, run: runSubmit } = useAsyncSubmitPhase();
+  const submitPending = submitPhase === "loading" || submitPhase === "success";
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -53,20 +56,19 @@ export function PreventativeMaintenanceApp() {
   const addRule = async () => {
     const aid = assetId.trim();
     if (!aid) return;
-    setSaving(true);
     setErr(null);
     try {
-      await createPreventativeRule({
-        asset_id: aid,
-        frequency: frequency.trim() || "30 days",
-        procedure_id: procedureId || null,
+      await runSubmit(async () => {
+        await createPreventativeRule({
+          asset_id: aid,
+          frequency: frequency.trim() || "30 days",
+          procedure_id: procedureId || null,
+        });
+        setAssetId("");
+        await load();
       });
-      setAssetId("");
-      await load();
     } catch (e) {
       setErr(parseClientApiError(e).message);
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -74,20 +76,19 @@ export function PreventativeMaintenanceApp() {
     if (!editing) return;
     const aid = editAsset.trim();
     if (!aid) return;
-    setSaving(true);
     setErr(null);
     try {
-      await patchPreventativeRule(editing.id, {
-        asset_id: aid,
-        frequency: editFrequency.trim() || "30 days",
-        procedure_id: editProcedureId || null,
+      await runSubmit(async () => {
+        await patchPreventativeRule(editing.id, {
+          asset_id: aid,
+          frequency: editFrequency.trim() || "30 days",
+          procedure_id: editProcedureId || null,
+        });
+        await load();
       });
       setEditing(null);
-      await load();
     } catch (e) {
       setErr(parseClientApiError(e).message);
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -210,14 +211,14 @@ export function PreventativeMaintenanceApp() {
             </select>
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={saving || !editAsset.trim()}
+            <AsyncSubmitButton
+              phase={submitPhase}
+              idleLabel="Save"
+              loadingLabel="Saving"
+              disabled={submitPending || !editAsset.trim()}
               onClick={() => void saveEdit()}
-              className="rounded-lg bg-pulse-accent px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
-            >
-              Save
-            </button>
+              className="rounded-lg px-3 py-2 text-sm font-semibold"
+            />
             <button
               type="button"
               onClick={() => setEditing(null)}

@@ -3,6 +3,8 @@
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { PremiumModal } from "@/components/ui/premium-modal";
+import { AsyncSubmitButton } from "@/components/ui/AsyncSubmitButton";
+import type { AsyncSubmitPhase } from "@/hooks/useAsyncSubmitPhase";
 import { InventoryDepartmentsPanel } from "@/components/inventory/InventoryDepartmentsPanel";
 import { InventoryLocationsPanel } from "@/components/inventory/InventoryLocationsPanel";
 import { InventoryRegisterFieldsEditor } from "@/components/inventory/InventoryRegisterFieldsEditor";
@@ -72,6 +74,7 @@ const SECONDARY = cn(
 type Props = {
   open: boolean;
   busy?: boolean;
+  submitPhase?: AsyncSubmitPhase;
   draft: MergedInventorySettings;
   onDraftChange: (next: MergedInventorySettings) => void;
   onComplete: (settings: MergedInventorySettings) => void | Promise<void>;
@@ -93,6 +96,7 @@ type Props = {
 export function InventorySetupWizard({
   open,
   busy,
+  submitPhase,
   draft,
   onDraftChange,
   onComplete,
@@ -235,16 +239,28 @@ export function InventorySetupWizard({
               </button>
             )}
             {step === "Review" ? (
-              <button type="button" className={PRIMARY} disabled={busy} onClick={() => void finish()}>
-                {busy ? (
-                  <>
-                    <Loader2 className="mr-2 inline h-4 w-4 animate-spin" aria-hidden />
-                    Saving…
-                  </>
-                ) : (
-                  "Finish setup"
-                )}
-              </button>
+              submitPhase != null ? (
+                <AsyncSubmitButton
+                  className={PRIMARY}
+                  phase={submitPhase}
+                  idleLabel="Finish setup"
+                  loadingLabel="Saving"
+                  successSrLabel="Setup complete"
+                  disabled={busy}
+                  onClick={() => void finish()}
+                />
+              ) : (
+                <button type="button" className={PRIMARY} disabled={busy} onClick={() => void finish()}>
+                  {busy ? (
+                    <>
+                      <Loader2 className="mr-2 inline h-4 w-4 animate-spin" aria-hidden />
+                      Saving…
+                    </>
+                  ) : (
+                    "Finish setup"
+                  )}
+                </button>
+              )
             ) : (
               <button type="button" className={PRIMARY} disabled={busy} onClick={goNext}>
                 Continue

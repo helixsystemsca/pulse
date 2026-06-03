@@ -2,6 +2,8 @@
 
 import { Building2, Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { AsyncSubmitButton } from "@/components/ui/AsyncSubmitButton";
+import { useAsyncSubmitPhase } from "@/hooks/useAsyncSubmitPhase";
 import { CompanyLogo } from "@/components/branding/CompanyLogo";
 import { PulseDrawer } from "@/components/schedule/PulseDrawer";
 import { useTheme } from "@/components/theme/ThemeProvider";
@@ -79,7 +81,8 @@ export function EditProfileDrawer({
   const [coTz, setCoTz] = useState(initialCoTz);
   const [coIndustry, setCoIndustry] = useState(initialCoIndustry);
 
-  const [saving, setSaving] = useState(false);
+  const { phase: submitPhase, run: runSubmit } = useAsyncSubmitPhase();
+  const submitPending = submitPhase === "loading" || submitPhase === "success";
   const [logoBusy, setLogoBusy] = useState(false);
 
   useEffect(() => {
@@ -128,50 +131,48 @@ export function EditProfileDrawer({
 
   async function onSave() {
     onError(null);
-    setSaving(true);
     try {
-      await apiFetch("/api/v1/profile/settings", {
-        method: "PATCH",
-        json: {
-          full_name: fullName.trim() || null,
-          job_title: jobTitle.trim() || null,
-          operational_role: participate ? opRole : null,
-          ...(isCompanyAdmin
-            ? {
-                company: {
-                  name: coName.trim() || undefined,
-                  timezone: coTz.trim() || null,
-                  industry: coIndustry.trim() || null,
-                },
-              }
-            : {}),
-        },
-      });
+      await runSubmit(async () => {
+        await apiFetch("/api/v1/profile/settings", {
+          method: "PATCH",
+          json: {
+            full_name: fullName.trim() || null,
+            job_title: jobTitle.trim() || null,
+            operational_role: participate ? opRole : null,
+            ...(isCompanyAdmin
+              ? {
+                  company: {
+                    name: coName.trim() || undefined,
+                    timezone: coTz.trim() || null,
+                    industry: coIndustry.trim() || null,
+                  },
+                }
+              : {}),
+          },
+        });
 
-      if (companyId && userId) {
-        try {
-          await patchWorker(companyId, userId, {
-            phone: phone.trim() || null,
-            profile_notes: bio.trim() || null,
-          });
-        } catch {
-          onToast("Profile saved. Phone or notes may need a supervisor to update in Permissions.");
+        if (companyId && userId) {
+          try {
+            await patchWorker(companyId, userId, {
+              phone: phone.trim() || null,
+              profile_notes: bio.trim() || null,
+            });
+          } catch {
+            onToast("Profile saved. Phone or notes may need a supervisor to update in Permissions.");
+          }
         }
-      }
 
-      await refreshPulseUserFromServer();
-      onProfileUpdated();
-      onToast("Profile saved.");
+        await refreshPulseUserFromServer();
+        onProfileUpdated();
+        onToast("Profile saved.");
+      });
       onClose();
     } catch (e) {
       onError(parseClientApiError(e).message);
-    } finally {
-      setSaving(false);
     }
   }
 
   const SECONDARY = cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-4 py-2.5");
-  const PRIMARY = cn(buttonVariants({ surface: "light", intent: "accent" }), "inline-flex items-center justify-center gap-2 px-5 py-2.5");
 
   return (
     <PulseDrawer
@@ -185,16 +186,13 @@ export function EditProfileDrawer({
           <button type="button" className={SECONDARY} onClick={onClose}>
             Cancel
           </button>
-          <button type="button" className={PRIMARY} disabled={saving} onClick={() => void onSave()}>
-            {saving ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                Saving…
-              </>
-            ) : (
-              "Save changes"
-            )}
-          </button>
+          <AsyncSubmitButton
+            phase={submitPhase}
+            idleLabel="Save changes"
+            loadingLabel="Saving"
+            disabled={submitPending}
+            onClick={() => void onSave()}
+          />
         </div>
       }
     >

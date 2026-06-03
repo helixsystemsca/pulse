@@ -2,7 +2,9 @@
 
 import { ArrowLeft, ClipboardList, ImagePlus, Loader2, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useId, useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import { AsyncSubmitButton } from "@/components/ui/AsyncSubmitButton";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { useAsyncSubmitPhase } from "@/hooks/useAsyncSubmitPhase";
 import { PageBody } from "@/components/ui/PageBody";
 import {
   createProcedure,
@@ -245,7 +247,9 @@ export function ProceduresApp() {
   const [editRevisionNotes, setEditRevisionNotes] = useState("");
   const [editPublishedAtLocal, setEditPublishedAtLocal] = useState("");
   const [editing, setEditing] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const { phase: submitPhase, run: runSubmit } = useAsyncSubmitPhase();
+  const submitPending = submitPhase === "loading" || submitPhase === "success";
+  const [reviewBusy, setReviewBusy] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignKind, setAssignKind] = useState<"complete" | "revise" | "create">("complete");
   const [assignWorkerId, setAssignWorkerId] = useState("");
@@ -510,42 +514,41 @@ export function ProceduresApp() {
       setErr("Add at least one step with text or a picture.");
       return;
     }
-    setSaving(true);
     setErr(null);
     try {
-      const creatorName = (session?.full_name?.trim() || session?.email?.trim() || "Unknown").slice(0, 80);
-      const creatorId = session?.sub ?? null;
-      const needsReview = !sessionHasAnyRole(session, "lead", "supervisor", "manager", "company_admin");
-      const proc = await createProcedure({
-        title: t,
-        steps: normalized,
-        search_keywords: parseKeywordCsv(createKeywordsCsv),
-        created_by_user_id: creatorId,
-        created_by_name: creatorName,
-        review_required: needsReview,
-      });
-      await uploadPendingFiles(proc.id, draftSteps);
-      try {
-        await persistProcedureComplianceSettings(proc.id, {
-          tier: createTrainingTier,
-          tracking_tags: createTrackingTags,
-          onboarding_required: createOnboardingRequired,
+      await runSubmit(async () => {
+        const creatorName = (session?.full_name?.trim() || session?.email?.trim() || "Unknown").slice(0, 80);
+        const creatorId = session?.sub ?? null;
+        const needsReview = !sessionHasAnyRole(session, "lead", "supervisor", "manager", "company_admin");
+        const proc = await createProcedure({
+          title: t,
+          steps: normalized,
+          search_keywords: parseKeywordCsv(createKeywordsCsv),
+          created_by_user_id: creatorId,
+          created_by_name: creatorName,
+          review_required: needsReview,
         });
-      } catch (e) {
-        setNotice(parseClientApiError(e).message || "Could not save training priority — update it under Standards → Training.");
-      }
-      setTitle("");
-      setCreateKeywordsCsv("");
-      setCreateTrainingTier("general");
-      setCreateTrackingTags([]);
-      setCreateOnboardingRequired(false);
-      setDraftSteps([{ key: newKey(), text: "", file: null, image_url: null, recommended_workers: null, tools_csv: "" }]);
-      await load();
-      setIsCreating(false);
+        await uploadPendingFiles(proc.id, draftSteps);
+        try {
+          await persistProcedureComplianceSettings(proc.id, {
+            tier: createTrainingTier,
+            tracking_tags: createTrackingTags,
+            onboarding_required: createOnboardingRequired,
+          });
+        } catch (e) {
+          setNotice(parseClientApiError(e).message || "Could not save training priority — update it under Standards → Training.");
+        }
+        setTitle("");
+        setCreateKeywordsCsv("");
+        setCreateTrainingTier("general");
+        setCreateTrackingTags([]);
+        setCreateOnboardingRequired(false);
+        setDraftSteps([{ key: newKey(), text: "", file: null, image_url: null, recommended_workers: null, tools_csv: "" }]);
+        await load();
+        setIsCreating(false);
+      });
     } catch (e) {
       setErr(parseClientApiError(e).message);
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -643,41 +646,40 @@ export function ProceduresApp() {
       setErr("Add at least one step with text or a picture.");
       return;
     }
-    setSaving(true);
     setErr(null);
     try {
-      const reviserName = (session?.full_name?.trim() || session?.email?.trim() || "Supervisor").slice(0, 80);
-      const reviserId = session?.sub ?? null;
-      await patchProcedure(selectedId, {
-        title: t,
-        steps: normalized,
-        search_keywords: parseKeywordCsv(editKeywordsCsv),
-        revised_by_user_id: reviserId,
-        revised_by_name: reviserName,
-        is_critical: editIsCritical,
-        revision_notes: editRevisionNotes.trim() || null,
-        published_at: editPublishedAtLocal ? new Date(editPublishedAtLocal).toISOString() : null,
-        ...(canReview
-          ? {
-              created_by_name: editCreatorName.trim() || null,
-            }
-          : {}),
-      });
-      await uploadPendingFiles(selectedId, editSteps);
-      try {
-        await persistProcedureComplianceSettings(selectedId, {
-          tier: editTrainingTier,
-          tracking_tags: editTrackingTags,
-          onboarding_required: editOnboardingRequired,
+      await runSubmit(async () => {
+        const reviserName = (session?.full_name?.trim() || session?.email?.trim() || "Supervisor").slice(0, 80);
+        const reviserId = session?.sub ?? null;
+        await patchProcedure(selectedId, {
+          title: t,
+          steps: normalized,
+          search_keywords: parseKeywordCsv(editKeywordsCsv),
+          revised_by_user_id: reviserId,
+          revised_by_name: reviserName,
+          is_critical: editIsCritical,
+          revision_notes: editRevisionNotes.trim() || null,
+          published_at: editPublishedAtLocal ? new Date(editPublishedAtLocal).toISOString() : null,
+          ...(canReview
+            ? {
+                created_by_name: editCreatorName.trim() || null,
+              }
+            : {}),
         });
-      } catch (e) {
-        setNotice(parseClientApiError(e).message || "Procedure saved; training priority could not be updated.");
-      }
-      await load();
+        await uploadPendingFiles(selectedId, editSteps);
+        try {
+          await persistProcedureComplianceSettings(selectedId, {
+            tier: editTrainingTier,
+            tracking_tags: editTrackingTags,
+            onboarding_required: editOnboardingRequired,
+          });
+        } catch (e) {
+          setNotice(parseClientApiError(e).message || "Procedure saved; training priority could not be updated.");
+        }
+        await load();
+      });
     } catch (e) {
       setErr(parseClientApiError(e).message);
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -808,7 +810,7 @@ export function ProceduresApp() {
   const markReviewed = async () => {
     if (!selectedId || !selected) return;
     if (!canReview) return;
-    setSaving(true);
+    setReviewBusy(true);
     setErr(null);
     try {
       const reviewerName = (session?.full_name?.trim() || session?.email?.trim() || "Supervisor").slice(0, 80);
@@ -822,7 +824,7 @@ export function ProceduresApp() {
     } catch (e) {
       setErr(parseClientApiError(e).message);
     } finally {
-      setSaving(false);
+      setReviewBusy(false);
     }
   };
 
@@ -975,7 +977,7 @@ export function ProceduresApp() {
                 setCreateTrainingTier("general");
                 setErr(null);
               }}
-              disabled={saving}
+              disabled={submitPending}
             >
               Cancel
             </button>
@@ -1146,7 +1148,7 @@ export function ProceduresApp() {
                 className="mt-1 w-full rounded-md border border-ds-border/90 bg-white px-3 py-2 text-sm dark:bg-ds-secondary"
                 value={createTrainingTier}
                 onChange={(e) => setCreateTrainingTier(e.target.value as TrainingTier)}
-                disabled={saving || (isApiMode() && !canSetProcedureTrainingTier)}
+                disabled={submitPending || (isApiMode() && !canSetProcedureTrainingTier)}
                 title={
                   isApiMode() && !canSetProcedureTrainingTier
                     ? "Lead, supervisor, or manager can set training priority."
@@ -1181,7 +1183,7 @@ export function ProceduresApp() {
                             prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
                           )
                         }
-                        disabled={saving || (isApiMode() && !canSetProcedureTrainingTier)}
+                        disabled={submitPending || (isApiMode() && !canSetProcedureTrainingTier)}
                       />
                       {PROCEDURE_TRACKING_TAG_LABELS[id]}
                     </label>
@@ -1193,7 +1195,7 @@ export function ProceduresApp() {
                     className="mt-1 rounded border-ds-border"
                     checked={createOnboardingRequired}
                     onChange={(e) => setCreateOnboardingRequired(e.target.checked)}
-                    disabled={saving || (isApiMode() && !canSetProcedureTrainingTier)}
+                    disabled={submitPending || (isApiMode() && !canSetProcedureTrainingTier)}
                   />
                   <span>
                     <span className="font-semibold">Onboarding</span>
@@ -1225,19 +1227,18 @@ export function ProceduresApp() {
                     setCreateOnboardingRequired(false);
                     setErr(null);
                   }}
-                  disabled={saving}
+                  disabled={submitPending}
                 >
                   Cancel
                 </button>
-                <button
-                  type="button"
-                  disabled={saving || !title.trim()}
+                <AsyncSubmitButton
+                  phase={submitPhase}
+                  idleLabel="Create procedure"
+                  loadingLabel="Saving"
+                  disabled={submitPending || !title.trim()}
                   onClick={() => void create()}
                   className={cn(buttonVariants({ surface: "light", intent: "accent" }), "inline-flex items-center gap-2 px-4 py-2.5 text-sm disabled:opacity-50")}
-                >
-                  {saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
-                  Create procedure
-                </button>
+                />
               </div>
             </div>
           </section>
@@ -1262,7 +1263,7 @@ export function ProceduresApp() {
                       type="button"
                       className="rounded-md border border-ds-border px-3 py-2 text-sm font-semibold text-ds-foreground hover:bg-ds-secondary"
                       onClick={() => setEditing(false)}
-                      disabled={saving}
+                      disabled={submitPending}
                     >
                       Cancel edit
                     </button>
@@ -1399,7 +1400,7 @@ export function ProceduresApp() {
                   className="mt-1 w-full rounded-md border border-ds-border/90 bg-white px-3 py-2 text-sm dark:bg-ds-secondary"
                   value={editTrainingTier}
                   onChange={(e) => setEditTrainingTier(e.target.value as TrainingTier)}
-                  disabled={saving || (isApiMode() && !canSetProcedureTrainingTier)}
+                  disabled={submitPending || (isApiMode() && !canSetProcedureTrainingTier)}
                   title={
                     isApiMode() && !canSetProcedureTrainingTier
                       ? "Lead, supervisor, or manager can set training priority."
@@ -1434,7 +1435,7 @@ export function ProceduresApp() {
                               prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
                             )
                           }
-                          disabled={saving || (isApiMode() && !canSetProcedureTrainingTier)}
+                          disabled={submitPending || (isApiMode() && !canSetProcedureTrainingTier)}
                         />
                         {PROCEDURE_TRACKING_TAG_LABELS[id]}
                       </label>
@@ -1446,7 +1447,7 @@ export function ProceduresApp() {
                       className="mt-1 rounded border-ds-border"
                       checked={editOnboardingRequired}
                       onChange={(e) => setEditOnboardingRequired(e.target.checked)}
-                      disabled={saving || (isApiMode() && !canSetProcedureTrainingTier)}
+                      disabled={submitPending || (isApiMode() && !canSetProcedureTrainingTier)}
                     />
                     <span>
                       <span className="font-semibold">Onboarding</span>
@@ -1466,18 +1467,18 @@ export function ProceduresApp() {
                   Add step
                 </button>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    disabled={saving || !editTitle.trim()}
+                  <AsyncSubmitButton
+                    phase={submitPhase}
+                    idleLabel="Save changes"
+                    loadingLabel="Saving"
+                    disabled={submitPending || !editTitle.trim()}
                     onClick={() => void saveEdit()}
-                    className="rounded-md bg-ds-accent px-4 py-2 text-sm font-semibold text-ds-accent-foreground disabled:opacity-50"
-                  >
-                    {saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : "Save changes"}
-                  </button>
+                    className="rounded-md px-4 py-2 text-sm font-semibold"
+                  />
                   {selected.review_required && canReview ? (
                     <button
                       type="button"
-                      disabled={saving}
+                      disabled={reviewBusy || submitPending}
                       onClick={() => void markReviewed()}
                       className="rounded-md border border-ds-border bg-ds-secondary/60 px-4 py-2 text-sm font-semibold text-ds-foreground hover:bg-ds-interactive-hover disabled:opacity-50"
                     >

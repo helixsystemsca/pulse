@@ -1,7 +1,9 @@
 "use client";
 
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { AsyncSubmitButton } from "@/components/ui/AsyncSubmitButton";
+import { useAsyncSubmitPhase } from "@/hooks/useAsyncSubmitPhase";
 import { buttonVariants } from "@/styles/button-variants";
 import { cn } from "@/lib/cn";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
@@ -28,7 +30,8 @@ type Props = {
 };
 
 export function QuickPurchaseForm({ apiCompany, config, vendors, onSaved }: Props) {
-  const [busy, setBusy] = useState(false);
+  const { phase: submitPhase, run: runSubmit } = useAsyncSubmitPhase();
+  const submitPending = submitPhase === "loading" || submitPhase === "success";
   const [err, setErr] = useState<string | null>(null);
   const [purchaseDate, setPurchaseDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [vendorId, setVendorId] = useState("");
@@ -83,38 +86,37 @@ export function QuickPurchaseForm({ apiCompany, config, vendors, onSaved }: Prop
       setErr("A receipt upload is required for this organization.");
       return;
     }
-    setBusy(true);
     try {
-      const created = await createQuickPurchase(apiCompany, {
-        purchase_date: purchaseDate,
-        vendor_id: vendorId || null,
-        vendor_name: vendorName.trim() || null,
-        total_amount: amount,
-        notes: notes.trim() || null,
-        add_to_inventory: addToInventory,
-        lines: cleanLines.map((l) => ({
-          name: l.name.trim(),
-          quantity: l.quantity,
-          unit_cost: l.unit_cost ?? undefined,
-          category: l.category?.trim() || undefined,
-          add_to_inventory: addToInventory || Boolean(l.add_to_inventory),
-          zone_id: l.zone_id || undefined,
-        })),
+      await runSubmit(async () => {
+        const created = await createQuickPurchase(apiCompany, {
+          purchase_date: purchaseDate,
+          vendor_id: vendorId || null,
+          vendor_name: vendorName.trim() || null,
+          total_amount: amount,
+          notes: notes.trim() || null,
+          add_to_inventory: addToInventory,
+          lines: cleanLines.map((l) => ({
+            name: l.name.trim(),
+            quantity: l.quantity,
+            unit_cost: l.unit_cost ?? undefined,
+            category: l.category?.trim() || undefined,
+            add_to_inventory: addToInventory || Boolean(l.add_to_inventory),
+            zone_id: l.zone_id || undefined,
+          })),
+        });
+        if (receiptFile && config.enable_receipt_uploads) {
+          await uploadPurchaseReceipt(apiCompany, created.id, receiptFile);
+        }
+        onSaved();
+        setVendorId("");
+        setVendorName("");
+        setTotalAmount("");
+        setNotes("");
+        setReceiptFile(null);
+        setLines([{ key: "1", name: "", quantity: 1, unit_cost: null, category: "", add_to_inventory: false, zone_id: null }]);
       });
-      if (receiptFile && config.enable_receipt_uploads) {
-        await uploadPurchaseReceipt(apiCompany, created.id, receiptFile);
-      }
-      onSaved();
-      setVendorId("");
-      setVendorName("");
-      setTotalAmount("");
-      setNotes("");
-      setReceiptFile(null);
-      setLines([{ key: "1", name: "", quantity: 1, unit_cost: null, category: "", add_to_inventory: false, zone_id: null }]);
     } catch (e) {
       setErr(parseClientApiError(e).message);
-    } finally {
-      setBusy(false);
     }
   };
 
@@ -271,16 +273,14 @@ export function QuickPurchaseForm({ apiCompany, config, vendors, onSaved }: Prop
         <textarea className={cn(FIELD, "min-h-[4rem]")} value={notes} onChange={(e) => setNotes(e.target.value)} />
       </label>
 
-      <button type="button" className={PRIMARY} disabled={busy} onClick={() => void submit()}>
-        {busy ? (
-          <>
-            <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
-            Saving…
-          </>
-        ) : (
-          "Save purchase"
-        )}
-      </button>
+      <AsyncSubmitButton
+        phase={submitPhase}
+        idleLabel="Save purchase"
+        loadingLabel="Saving"
+        disabled={submitPending}
+        onClick={() => void submit()}
+        className={PRIMARY}
+      />
     </div>
   );
 }

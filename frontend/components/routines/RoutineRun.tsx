@@ -2,8 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Loader2, Save } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Card } from "@/components/pulse/Card";
+import { AsyncSubmitButton } from "@/components/ui/AsyncSubmitButton";
+import { useAsyncSubmitPhase } from "@/hooks/useAsyncSubmitPhase";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
@@ -52,7 +54,8 @@ export function RoutineRun({
   >([]);
 
   const [items, setItems] = useState<RunItem[]>([]);
-  const [saving, setSaving] = useState(false);
+  const { phase: submitPhase, run: runSubmit } = useAsyncSubmitPhase();
+  const submitPending = submitPhase === "loading" || submitPhase === "success";
   const [requireNotes, setRequireNotes] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -202,7 +205,7 @@ export function RoutineRun({
   }, [routineId, assignmentId, shiftId, currentUserId]);
 
   async function signOff() {
-    if (!routine || saving) return;
+    if (!routine || submitPending) return;
     setErr(null);
 
     // Enforce missed-item notes before submit (items + extras).
@@ -223,32 +226,31 @@ export function RoutineRun({
       }
     }
 
-    setSaving(true);
     try {
-      await createRoutineRun({
-        routine_id: routine.id,
-        shift_id: shiftId,
-        routine_assignment_id: assignmentId,
-        items: items.map((i) => ({
-          routine_item_id: i.routine_item_id,
-          completed: Boolean(i.completed),
-          note: i.completed ? null : (i.note || "").trim() || null,
-        })),
-        extras: assignmentId
-          ? assignmentExtras.map((e) => ({
-              id: e.id,
-              completed: Boolean(e.completed),
-              note: e.completed ? null : (e.note || "").trim() || null,
-            }))
-          : [],
+      await runSubmit(async () => {
+        await createRoutineRun({
+          routine_id: routine.id,
+          shift_id: shiftId,
+          routine_assignment_id: assignmentId,
+          items: items.map((i) => ({
+            routine_item_id: i.routine_item_id,
+            completed: Boolean(i.completed),
+            note: i.completed ? null : (i.note || "").trim() || null,
+          })),
+          extras: assignmentId
+            ? assignmentExtras.map((e) => ({
+                id: e.id,
+                completed: Boolean(e.completed),
+                note: e.completed ? null : (e.note || "").trim() || null,
+              }))
+            : [],
+        });
+        setToast("Routine signed off.");
+        onCompleted?.();
       });
-      setToast("Routine signed off.");
-      onCompleted?.();
     } catch (e) {
       const { message } = parseClientApiError(e);
       setErr(message || "Could not sign off routine.");
-    } finally {
-      setSaving(false);
     }
   }
 
@@ -287,7 +289,7 @@ export function RoutineRun({
           className={FIELD}
           value={routineId}
           onChange={(e) => setRoutineId(e.target.value)}
-          disabled={saving}
+          disabled={submitPending}
         >
           <option value="">Select a routine…</option>
           {routines.map((r) => (
@@ -337,7 +339,7 @@ export function RoutineRun({
                             ),
                           )
                         }
-                        disabled={saving}
+                        disabled={submitPending}
                       />
                       <span className="min-w-0 flex-1">
                         <span className="block text-sm font-semibold text-ds-foreground">
@@ -380,7 +382,7 @@ export function RoutineRun({
                           )
                         }
                         placeholder="Explain why this was not completed"
-                        disabled={saving}
+                        disabled={submitPending}
                       />
                     </div>
                   ) : null}
@@ -408,7 +410,7 @@ export function RoutineRun({
                                 prev.map((x) => (x.id === ex.id ? { ...x, completed: e.target.checked } : x)),
                               )
                             }
-                            disabled={saving}
+                            disabled={submitPending}
                           />
                           <span className="min-w-0 flex-1">
                             <span className="block text-sm font-semibold text-ds-foreground">{ex.label}</span>
@@ -439,7 +441,7 @@ export function RoutineRun({
                               )
                             }
                             placeholder="Explain why this was not completed"
-                            disabled={saving}
+                            disabled={submitPending}
                           />
                         </div>
                       ) : null}
@@ -456,17 +458,14 @@ export function RoutineRun({
               {requireNotes && missingNotes.length > 0 ? ` · ${missingNotes.length} note(s) missing` : ""}
               {assignmentId ? ` · extras: ${assignmentExtras.filter((e) => !e.completed).length} missed` : ""}
             </div>
-            <button
-              type="button"
-              className={PRIMARY_BTN}
+            <AsyncSubmitButton
+              phase={submitPhase}
+              idleLabel="Complete / Sign off"
+              loadingLabel="Signing off"
+              disabled={submitPending || !routineId}
               onClick={() => void signOff()}
-              disabled={saving || !routineId}
-            >
-              <span className="inline-flex items-center gap-2">
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Save className="h-4 w-4" aria-hidden />}
-                {saving ? "Signing off…" : "Complete / Sign off"}
-              </span>
-            </button>
+              className={PRIMARY_BTN}
+            />
           </div>
         </>
       )}

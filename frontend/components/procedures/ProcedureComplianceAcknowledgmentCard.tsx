@@ -1,6 +1,8 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
+import { AsyncSubmitButton } from "@/components/ui/AsyncSubmitButton";
+import { useAsyncSubmitPhase } from "@/hooks/useAsyncSubmitPhase";
 import { useCallback, useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
 import {
@@ -36,7 +38,8 @@ export function ProcedureComplianceAcknowledgmentCard({
 }: Props) {
   const [state, setState] = useState<ProcedureLightCompletionState | null>(null);
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
+  const { phase: submitPhase, run: runSubmit } = useAsyncSubmitPhase();
+  const submitPending = submitPhase === "loading" || submitPhase === "success";
   const [primary, setPrimary] = useState(false);
   const [secondary, setSecondary] = useState(false);
 
@@ -66,20 +69,19 @@ export function ProcedureComplianceAcknowledgmentCard({
 
   const onComplete = async () => {
     if (!canSubmit) return;
-    setSubmitting(true);
     try {
-      const next = await postProcedureLightCompletion(procedureId, {
-        primary_acknowledged: true,
-        secondary_acknowledged: secondary,
+      await runSubmit(async () => {
+        const next = await postProcedureLightCompletion(procedureId, {
+          primary_acknowledged: true,
+          secondary_acknowledged: secondary,
+        });
+        setState(next);
+        setPrimary(false);
+        setSecondary(false);
+        onRecorded?.();
       });
-      setState(next);
-      setPrimary(false);
-      setSecondary(false);
-      onRecorded?.();
     } catch (e) {
       onError?.(parseClientApiError(e).message);
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -165,18 +167,17 @@ export function ProcedureComplianceAcknowledgmentCard({
               "sticky bottom-0 -mx-4 -mb-4 bg-white/95 px-4 pb-4 pt-3 backdrop-blur-sm dark:bg-ds-secondary/95 sm:mx-0 sm:mb-0",
             )}
           >
-            <button
-              type="button"
-              disabled={!canSubmit || submitting}
+            <AsyncSubmitButton
+              phase={submitPhase}
+              idleLabel="Complete procedure"
+              loadingLabel="Saving"
+              disabled={!canSubmit || submitPending}
               onClick={() => void onComplete()}
               className={cn(
                 buttonVariants({ surface: "light", intent: "accent" }),
                 "min-h-[44px] px-5 py-2.5 text-sm font-semibold disabled:opacity-50",
               )}
-            >
-              {submitting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
-              {submitting ? "Saving…" : "Complete procedure"}
-            </button>
+            />
           </div>
         </div>
       ) : null}

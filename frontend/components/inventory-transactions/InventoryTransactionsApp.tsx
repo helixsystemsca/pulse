@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Clock, LogOut, MapPin, Package, Trash2, TrendingUp } from "lucide-react";
 
 import { Card } from "@/components/pulse/Card";
+import { AsyncSubmitButton } from "@/components/ui/AsyncSubmitButton";
+import { useAsyncSubmitPhase } from "@/hooks/useAsyncSubmitPhase";
 import { TenantBrandMark } from "@/components/branding/TenantBrandMark";
 import { ScannerSearchStrip } from "@/components/inventory-scanner/ScannerSearchStrip";
 import {
@@ -177,7 +179,9 @@ export function InventoryTransactionsApp({ presentation = "dedicated" }: Invento
   const [batchReference, setBatchReference] = useState<TransactionReference>(emptyReference());
   const [lines, setLines] = useState<TransactionCartLine[]>([]);
 
-  const [busy, setBusy] = useState(false);
+  const { phase: submitPhase, run: runSubmit } = useAsyncSubmitPhase();
+  const submitPending = submitPhase === "loading" || submitPhase === "success";
+  const [lookupBusy, setLookupBusy] = useState(false);
   const [logoutBusy, setLogoutBusy] = useState(false);
   const [lookupErr, setLookupErr] = useState<string | null>(null);
   const [submitErr, setSubmitErr] = useState<string | null>(null);
@@ -263,7 +267,7 @@ export function InventoryTransactionsApp({ presentation = "dedicated" }: Invento
 
   const resolveProduct = useCallback(
     async (input: { sku?: string; row?: InventoryScanProduct }) => {
-      setBusy(true);
+      setLookupBusy(true);
       setLookupErr(null);
       setSubmitErr(null);
       setSuggestOpen(false);
@@ -283,7 +287,7 @@ export function InventoryTransactionsApp({ presentation = "dedicated" }: Invento
         setLookupErr(message || "Product not found");
         return null;
       } finally {
-        setBusy(false);
+        setLookupBusy(false);
       }
     },
     [rememberProduct, screen],
@@ -292,10 +296,10 @@ export function InventoryTransactionsApp({ presentation = "dedicated" }: Invento
   const handleScan = useCallback(
     (raw: string) => {
       const sku = raw.trim();
-      if (!sku || busy || !mode) return;
+      if (!sku || submitPending || !mode) return;
       void resolveProduct({ sku });
     },
-    [busy, mode, resolveProduct],
+    [submitPending, mode, resolveProduct],
   );
 
   const { inputRef: scannerInputRef, handleKeyDown, handleChange, connectionStatus } =
@@ -320,27 +324,26 @@ export function InventoryTransactionsApp({ presentation = "dedicated" }: Invento
   }, [txSettings, lineReference, batchReference]);
 
   const commitSingle = async () => {
-    if (!product || !mode || !txSettings || busy) return;
+    if (!product || !mode || !txSettings || submitPending) return;
     if (!referenceOk) {
       setSubmitErr("Enter a reference before confirming.");
       return;
     }
-    setBusy(true);
     setSubmitErr(null);
     try {
-      const ref = txSettings.enable_references ? lineReference : null;
-      const result = await commitInventoryTransactionSingle(mode, product, qty, locationId, ref, txSettings);
-      rememberProduct(result.product);
-      setFlash(
-        `${mode === "receive" ? "Received" : "Issued"} ${qty} ${result.product.unit} · On hand ${result.quantity_after}`,
-      );
-      resetTransaction();
-      setScreen("search");
-      window.setTimeout(() => searchRef.current?.focus(), 0);
+      await runSubmit(async () => {
+        const ref = txSettings.enable_references ? lineReference : null;
+        const result = await commitInventoryTransactionSingle(mode, product, qty, locationId, ref, txSettings);
+        rememberProduct(result.product);
+        setFlash(
+          `${mode === "receive" ? "Received" : "Issued"} ${qty} ${result.product.unit} · On hand ${result.quantity_after}`,
+        );
+        resetTransaction();
+        setScreen("search");
+        window.setTimeout(() => searchRef.current?.focus(), 0);
+      });
     } catch (e) {
       setSubmitErr(parseClientApiError(e).message || "Transaction failed");
-    } finally {
-      setBusy(false);
     }
   };
 
@@ -367,7 +370,7 @@ export function InventoryTransactionsApp({ presentation = "dedicated" }: Invento
   };
 
   const commitBatch = async () => {
-    if (!mode || !txSettings || !lines.length || busy) return;
+    if (!mode || !txSettings || !lines.length || submitPending) return;
     if (txSettings.require_reference && txSettings.enable_references && !referenceFilled(batchReference)) {
       const anyLineRef = lines.some((l) => referenceFilled(l.reference));
       if (!anyLineRef) {
@@ -375,21 +378,20 @@ export function InventoryTransactionsApp({ presentation = "dedicated" }: Invento
         return;
       }
     }
-    setBusy(true);
     setSubmitErr(null);
     try {
-      const batchRef = txSettings.enable_references && referenceFilled(batchReference) ? batchReference : null;
-      await commitInventoryTransactionBatch(mode, lines, batchRef, txSettings);
-      setFlash(`${lines.length} line(s) confirmed.`);
-      setLines([]);
-      setBatchReference(emptyReference());
-      setScreen("search");
-      resetTransaction();
-      window.setTimeout(() => searchRef.current?.focus(), 0);
+      await runSubmit(async () => {
+        const batchRef = txSettings.enable_references && referenceFilled(batchReference) ? batchReference : null;
+        await commitInventoryTransactionBatch(mode, lines, batchRef, txSettings);
+        setFlash(`${lines.length} line(s) confirmed.`);
+        setLines([]);
+        setBatchReference(emptyReference());
+        setScreen("search");
+        resetTransaction();
+        window.setTimeout(() => searchRef.current?.focus(), 0);
+      });
     } catch (e) {
       setSubmitErr(parseClientApiError(e).message || "Batch transaction failed");
-    } finally {
-      setBusy(false);
     }
   };
 
@@ -438,7 +440,7 @@ export function InventoryTransactionsApp({ presentation = "dedicated" }: Invento
             <TxBubbleButton
               type="button"
               onClick={onLogout}
-              disabled={logoutBusy || busy}
+              disabled={logoutBusy || submitPending}
               className="inline-flex items-center gap-2 px-3 py-2 text-sm font-semibold"
             >
               <LogOut className="h-4 w-4" aria-hidden />
@@ -448,7 +450,7 @@ export function InventoryTransactionsApp({ presentation = "dedicated" }: Invento
             <TxBubbleButton
               type="button"
               onClick={onBackToInventory}
-              disabled={busy}
+              disabled={submitPending}
               className="inline-flex items-center gap-2 px-3 py-2 text-sm font-semibold"
             >
               <ArrowLeft className="h-4 w-4" aria-hidden />
@@ -463,7 +465,7 @@ export function InventoryTransactionsApp({ presentation = "dedicated" }: Invento
           <TxBubbleButton
             type="button"
             className="px-3 py-2 text-sm font-semibold"
-            disabled={busy}
+            disabled={submitPending}
             onClick={() => {
               if (screen === "quantity" || screen === "batch") {
                 resetTransaction();
@@ -485,7 +487,7 @@ export function InventoryTransactionsApp({ presentation = "dedicated" }: Invento
             <TxBubbleButton
               type="button"
               className="ml-auto px-3 py-2 text-sm font-semibold"
-              disabled={busy}
+              disabled={submitPending}
               onClick={() => setScreen("batch")}
             >
               Review ({lines.length})
@@ -506,7 +508,7 @@ export function InventoryTransactionsApp({ presentation = "dedicated" }: Invento
           suggestions={suggestions}
           suggestOpen={suggestOpen}
           onSuggestOpen={setSuggestOpen}
-          busy={busy}
+          busy={lookupBusy || submitPending}
           inputRef={searchRef}
           label={screen === "find" ? "Find item" : "Scan or search item"}
           placeholder="Name, SKU, or scan barcode…"
@@ -541,14 +543,14 @@ export function InventoryTransactionsApp({ presentation = "dedicated" }: Invento
                 description="Remove items from a location"
                 className={txBubbleIssue}
                 onClick={() => startMode("issue")}
-                disabled={busy}
+                disabled={submitPending}
               />
               <TxHomeTile
                 label="Receive stock"
                 description="Add items to a location"
                 className={txBubbleReceive}
                 onClick={() => startMode("receive")}
-                disabled={busy}
+                disabled={submitPending}
               />
               <TxHomeTile
                 label="Find item"
@@ -559,7 +561,7 @@ export function InventoryTransactionsApp({ presentation = "dedicated" }: Invento
                   resetTransaction();
                   window.setTimeout(() => searchRef.current?.focus(), 0);
                 }}
-                disabled={busy}
+                disabled={submitPending}
               />
               <TxHomeTile
                 label="Inventory count"
@@ -568,7 +570,7 @@ export function InventoryTransactionsApp({ presentation = "dedicated" }: Invento
                   setCountNotice("Inventory counts are coming soon. Use Issue or Receive for stock changes.");
                   window.setTimeout(() => setCountNotice(null), 4000);
                 }}
-                disabled={busy}
+                disabled={submitPending}
               />
             </div>
           ) : null}
@@ -604,7 +606,7 @@ export function InventoryTransactionsApp({ presentation = "dedicated" }: Invento
                     </p>
                   </div>
                   {product.item_type !== "tool" ? (
-                    <TxQtyStepper quantity={qty} onChange={setQty} busy={busy} />
+                    <TxQtyStepper quantity={qty} onChange={setQty} busy={submitPending} />
                   ) : (
                     <p className="text-sm text-ds-muted">Tools issue one at a time.</p>
                   )}
@@ -613,7 +615,7 @@ export function InventoryTransactionsApp({ presentation = "dedicated" }: Invento
                       <span className={txLabelClass}>{locationLabel}</span>
                       <select
                         className={txFieldClass}
-                        disabled={busy}
+                        disabled={submitPending}
                         value={locationId ?? ""}
                         onChange={(e) => setLocationId(e.target.value || null)}
                       >
@@ -627,22 +629,22 @@ export function InventoryTransactionsApp({ presentation = "dedicated" }: Invento
                     </label>
                   ) : null}
                   {txSettings?.enable_references ? (
-                    <ReferenceFields value={lineReference} onChange={setLineReference} disabled={busy} />
+                    <ReferenceFields value={lineReference} onChange={setLineReference} disabled={submitPending} />
                   ) : null}
                   <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                    <TxBubbleButton
-                      type="button"
-                      className={cn(txBubblePrimary, "min-h-[3.25rem] flex-1 px-4 py-4 text-base font-bold")}
-                      disabled={busy || !referenceOk}
+                    <AsyncSubmitButton
+                      phase={submitPhase}
+                      idleLabel="Confirm transaction"
+                      loadingLabel="Saving"
+                      disabled={submitPending || !referenceOk}
                       onClick={() => void commitSingle()}
-                    >
-                      {busy ? "Saving…" : "Confirm transaction"}
-                    </TxBubbleButton>
+                      className={cn(txBubblePrimary, "min-h-[3.25rem] flex-1 px-4 py-4 text-base font-bold")}
+                    />
                     {batchEnabled ? (
                       <TxBubbleButton
                         type="button"
                         className="min-h-[3.25rem] flex-1 px-4 py-4 text-base font-semibold"
-                        disabled={busy || !referenceOk}
+                        disabled={submitPending || !referenceOk}
                         onClick={addLineToBatch}
                       >
                         Add another item
@@ -688,15 +690,15 @@ export function InventoryTransactionsApp({ presentation = "dedicated" }: Invento
                 ))}
               </ul>
               {txSettings?.enable_references ? (
-                <ReferenceFields value={batchReference} onChange={setBatchReference} disabled={busy} />
+                <ReferenceFields value={batchReference} onChange={setBatchReference} disabled={submitPending} />
               ) : null}
               <TxBubbleButton
                 type="button"
-                disabled={busy || !lines.length}
+                disabled={submitPending || !lines.length}
                 onClick={() => void commitBatch()}
                 className={cn(txBubblePrimary, "w-full py-4 text-lg font-bold")}
               >
-                {busy ? "Processing…" : "Confirm all"}
+                {submitPending ? "Processing…" : "Confirm all"}
               </TxBubbleButton>
             </section>
           ) : null}

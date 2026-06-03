@@ -11,6 +11,7 @@ import { departmentNameForSlug, tenantDepartmentOptions } from "@/lib/tenantDepa
 import { InventoryItemPhotoUpload } from "@/components/inventory/InventoryItemPhotoUpload";
 import { InventoryRegisterLookupHints } from "@/components/inventory/InventoryRegisterLookupHints";
 import {
+  normalizeLocationLinesForSave,
   parseLocationStock,
   sumLocationStockQuantity,
   type LocationStockLine,
@@ -84,16 +85,31 @@ function locationLinesFromStock(
   return [{ zone_id: "", quantity: "" }];
 }
 
+function lineQtyForSync(line: InventoryRegisterLocationLineState, itemType: string, formQuantity: string): number {
+  if (itemType === "tool") return 1;
+  const parsed = Number.parseFloat(line.quantity);
+  if (parsed > 0) return parsed;
+  return Number.parseFloat(formQuantity) || 0;
+}
+
 function syncLocationLinesToForm(
   lines: InventoryRegisterLocationLineState[],
   itemType: string,
+  formQuantity: string,
 ): Pick<InventoryRegisterFormState, "location_lines" | "zone_id" | "quantity"> {
-  const valid = lines.filter((l) => l.zone_id.trim() && (Number.parseFloat(l.quantity) || 0) > 0);
+  const withZone = lines.filter((l) => l.zone_id.trim());
+  const valid = withZone.filter((l) => lineQtyForSync(l, itemType, formQuantity) > 0);
   const total =
-    itemType === "tool" ? "1" : String(sumLocationStockQuantity(valid.map((l) => ({
-      zone_id: l.zone_id,
-      quantity: Number.parseFloat(l.quantity) || 0,
-    }))));
+    itemType === "tool"
+      ? "1"
+      : String(
+          sumLocationStockQuantity(
+            valid.map((l) => ({
+              zone_id: l.zone_id,
+              quantity: lineQtyForSync(l, itemType, formQuantity),
+            })),
+          ),
+        );
   return {
     location_lines: lines,
     zone_id: valid[0]?.zone_id ?? "",
@@ -106,21 +122,23 @@ function InventoryLocationLinesEditor({
   zones,
   disabled,
   itemType,
+  formQuantity,
   onChange,
 }: {
   lines: InventoryRegisterLocationLineState[];
   zones: ZoneOpt[];
   disabled?: boolean;
   itemType: string;
+  formQuantity: string;
   onChange: (patch: Pick<InventoryRegisterFormState, "location_lines" | "zone_id" | "quantity">) => void;
 }) {
   function updateLine(index: number, patch: Partial<InventoryRegisterLocationLineState>) {
     const next = lines.map((line, i) => (i === index ? { ...line, ...patch } : line));
-    onChange(syncLocationLinesToForm(next, itemType));
+    onChange(syncLocationLinesToForm(next, itemType, formQuantity));
   }
 
   function addLine() {
-    onChange(syncLocationLinesToForm([...lines, { zone_id: "", quantity: "" }], itemType));
+    onChange(syncLocationLinesToForm([...lines, { zone_id: "", quantity: "" }], itemType, formQuantity));
   }
 
   function removeLine(index: number) {
@@ -129,6 +147,7 @@ function InventoryLocationLinesEditor({
       syncLocationLinesToForm(
         next.length ? next : [{ zone_id: "", quantity: "" }],
         itemType,
+        formQuantity,
       ),
     );
   }
@@ -137,12 +156,14 @@ function InventoryLocationLinesEditor({
 
   return (
     <div className="space-y-2">
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="min-w-[10rem] flex-1" />
+        <div className={`w-24 ${LABEL}`}>Quantity</div>
+        {lines.length > 1 ? <div className="w-14" /> : null}
+      </div>
       {lines.map((line, index) => (
         <div key={index} className="flex flex-wrap items-end gap-2">
           <div className="min-w-[10rem] flex-1">
-            {index === 0 ? (
-              <span className={LABEL}>Location</span>
-            ) : null}
             {renderSelect(
               line.zone_id,
               (zone_id) => updateLine(index, { zone_id }),
@@ -151,7 +172,6 @@ function InventoryLocationLinesEditor({
             )}
           </div>
           <div className="w-24">
-            {index === 0 ? <span className={LABEL}>Qty</span> : null}
             <input
               className={FIELD}
               inputMode="decimal"
@@ -402,6 +422,7 @@ export function InventoryRegisterItemForm({
             zones={zones}
             disabled={disabled}
             itemType={form.item_type}
+            formQuantity={form.quantity}
             onChange={(patch) => setForm(patch)}
           />
         );
@@ -469,19 +490,23 @@ export function InventoryRegisterItemForm({
             </div>
           );
         }
+        const skipOuterLabel =
+          field.id === "zone_id" ||
+          (field.id === "name" && effectiveInputType(field) !== "select");
+
         return (
           <div
             key={field.id}
             className={field.id === "zone_id" || field.col_span === 2 ? "sm:col-span-2" : undefined}
           >
             {field.id === "zone_id" ? (
-              <>
+              <div>
                 <p className={LABEL}>{field.label}</p>
                 {renderField(field)}
-              </>
+              </div>
             ) : (
               <>
-                <label className={LABEL}>{field.label}</label>
+                {!skipOuterLabel ? <label className={LABEL}>{field.label}</label> : null}
                 {renderField(field)}
               </>
             )}
@@ -515,17 +540,18 @@ export function registerFormStateToPayload(
     }
   }
 
-  const location_lines = form.location_lines
-    .map((l) => ({
+  const formQuantity = Number.parseFloat(form.quantity) || 0;
+  const location_lines = normalizeLocationLinesForSave(
+    form.location_lines.map((l) => ({
       zone_id: l.zone_id.trim(),
       quantity: Number.parseFloat(l.quantity) || 0,
-    }))
-    .filter((l) => l.zone_id && l.quantity > 0);
+    })),
+    form.item_type,
+    formQuantity,
+  );
 
   const quantity =
-    location_lines.length > 0
-      ? sumLocationStockQuantity(location_lines)
-      : Number.parseFloat(form.quantity) || 0;
+    location_lines.length > 0 ? sumLocationStockQuantity(location_lines) : formQuantity;
 
   return {
     name: form.name.trim(),

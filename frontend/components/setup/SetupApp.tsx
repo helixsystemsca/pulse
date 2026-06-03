@@ -743,29 +743,15 @@ export function SetupApp({ defaultTab }: { defaultTab?: TabId }) {
   };
 
   const saveProx = async (body: { enabled: boolean; config: Record<string, unknown> }) => {
-    setSavingConfig(true);
     setError(null);
-    try {
-      const res = await patchFeatureConfig(isSystemAdmin ? effectiveCompanyId : null, "proximity_tracking", body);
-      setFeatures(res.features ?? {});
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Save failed");
-    } finally {
-      setSavingConfig(false);
-    }
+    const res = await patchFeatureConfig(isSystemAdmin ? effectiveCompanyId : null, "proximity_tracking", body);
+    setFeatures(res.features ?? {});
   };
 
   const saveSop = async (body: { enabled: boolean; config: Record<string, unknown> }) => {
-    setSavingConfig(true);
     setError(null);
-    try {
-      const res = await patchFeatureConfig(isSystemAdmin ? effectiveCompanyId : null, "sop_alerts", body);
-      setFeatures(res.features ?? {});
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Save failed");
-    } finally {
-      setSavingConfig(false);
-    }
+    const res = await patchFeatureConfig(isSystemAdmin ? effectiveCompanyId : null, "sop_alerts", body);
+    setFeatures(res.features ?? {});
   };
 
   const unassignWorkerLabels = useMemo(() => {
@@ -1462,7 +1448,6 @@ export function SetupApp({ defaultTab }: { defaultTab?: TabId }) {
         <ConfigPanel
           proximity={features.proximity_tracking}
           sopAlerts={features.sop_alerts}
-          saving={savingConfig}
           onSaveProximity={saveProx}
           onSaveSop={saveSop}
         />

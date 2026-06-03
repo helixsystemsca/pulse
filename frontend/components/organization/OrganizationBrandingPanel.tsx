@@ -4,6 +4,8 @@ import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { CompanyLogo } from "@/components/branding/CompanyLogo";
 import { Card } from "@/components/pulse/Card";
+import { AsyncSubmitButton } from "@/components/ui/AsyncSubmitButton";
+import { useAsyncSubmitPhase } from "@/hooks/useAsyncSubmitPhase";
 import { useTheme } from "@/components/theme/ThemeProvider";
 import { dsFormHintClass, dsInputClass, dsLabelClass } from "@/components/ui/ds-form-classes";
 import { SectionHeader } from "@/components/ui/SectionHeader";
@@ -57,10 +59,14 @@ export function OrganizationBrandingPanel({ initialCompany, onCompanyUpdated }: 
   const [defaultRosterPasswordLoaded, setDefaultRosterPasswordLoaded] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingBg, setUploadingBg] = useState(false);
-  const [savingLogoUrl, setSavingLogoUrl] = useState(false);
-  const [savingBgUrl, setSavingBgUrl] = useState(false);
-  const [savingHeaderWordmark, setSavingHeaderWordmark] = useState(false);
-  const [savingDefaultPassword, setSavingDefaultPassword] = useState(false);
+  const { phase: logoUrlPhase, run: runLogoUrlSubmit } = useAsyncSubmitPhase();
+  const logoUrlPending = logoUrlPhase === "loading" || logoUrlPhase === "success";
+  const { phase: bgUrlPhase, run: runBgUrlSubmit } = useAsyncSubmitPhase();
+  const bgUrlPending = bgUrlPhase === "loading" || bgUrlPhase === "success";
+  const { phase: headerWordmarkPhase, run: runHeaderWordmarkSubmit } = useAsyncSubmitPhase();
+  const headerWordmarkPending = headerWordmarkPhase === "loading" || headerWordmarkPhase === "success";
+  const { phase: defaultPasswordPhase, run: runDefaultPasswordSubmit } = useAsyncSubmitPhase();
+  const defaultPasswordPending = defaultPasswordPhase === "loading" || defaultPasswordPhase === "success";
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
 
@@ -148,27 +154,26 @@ export function OrganizationBrandingPanel({ initialCompany, onCompanyUpdated }: 
     setOk(null);
     const trimmed = logoUrlDraft.trim();
     const body = { logo_url: trimmed || null };
-    setSavingLogoUrl(true);
     try {
-      const out = await apiFetch<{ logo_url?: string | null }>("/api/v1/company/profile", {
-        method: "PATCH",
-        json: body,
+      await runLogoUrlSubmit(async () => {
+        const out = await apiFetch<{ logo_url?: string | null }>("/api/v1/company/profile", {
+          method: "PATCH",
+          json: body,
+        });
+        await refreshPulseUserFromServer();
+        const next: CompanySummary = {
+          ...company,
+          logo_url: out.logo_url ?? null,
+        };
+        syncParent(next);
+        setLogoUrlDraft(next.logo_url ?? "");
+        setOk("Logo link saved.");
+        if (typeof window !== "undefined" && getImpersonationOverlayAccessToken()) {
+          window.dispatchEvent(new Event("pulse-auth-change"));
+        }
       });
-      await refreshPulseUserFromServer();
-      const next: CompanySummary = {
-        ...company,
-        logo_url: out.logo_url ?? null,
-      };
-      syncParent(next);
-      setLogoUrlDraft(next.logo_url ?? "");
-      setOk("Logo link saved.");
-      if (typeof window !== "undefined" && getImpersonationOverlayAccessToken()) {
-        window.dispatchEvent(new Event("pulse-auth-change"));
-      }
     } catch (e) {
       setErr(parseClientApiError(e).message);
-    } finally {
-      setSavingLogoUrl(false);
     }
   };
 
@@ -177,27 +182,26 @@ export function OrganizationBrandingPanel({ initialCompany, onCompanyUpdated }: 
     setOk(null);
     const trimmed = bgUrlDraft.trim();
     const body = { background_image_url: trimmed || null };
-    setSavingBgUrl(true);
     try {
-      const out = await apiFetch<{ background_image_url?: string | null }>("/api/v1/company/profile", {
-        method: "PATCH",
-        json: body,
+      await runBgUrlSubmit(async () => {
+        const out = await apiFetch<{ background_image_url?: string | null }>("/api/v1/company/profile", {
+          method: "PATCH",
+          json: body,
+        });
+        await refreshPulseUserFromServer();
+        const next: CompanySummary = {
+          ...company,
+          background_image_url: out.background_image_url ?? null,
+        };
+        syncParent(next);
+        setBgUrlDraft(next.background_image_url ?? "");
+        setOk("Header background URL saved.");
+        if (typeof window !== "undefined" && getImpersonationOverlayAccessToken()) {
+          window.dispatchEvent(new Event("pulse-auth-change"));
+        }
       });
-      await refreshPulseUserFromServer();
-      const next: CompanySummary = {
-        ...company,
-        background_image_url: out.background_image_url ?? null,
-      };
-      syncParent(next);
-      setBgUrlDraft(next.background_image_url ?? "");
-      setOk("Header background URL saved.");
-      if (typeof window !== "undefined" && getImpersonationOverlayAccessToken()) {
-        window.dispatchEvent(new Event("pulse-auth-change"));
-      }
     } catch (e) {
       setErr(parseClientApiError(e).message);
-    } finally {
-      setSavingBgUrl(false);
     }
   };
 
@@ -213,18 +217,17 @@ export function OrganizationBrandingPanel({ initialCompany, onCompanyUpdated }: 
       setErr("Default employee password must be at least 8 characters.");
       return;
     }
-    setSavingDefaultPassword(true);
     try {
-      await apiFetch("/api/v1/company/profile", {
-        method: "PATCH",
-        json: { default_roster_password: trimmed || null },
+      await runDefaultPasswordSubmit(async () => {
+        await apiFetch("/api/v1/company/profile", {
+          method: "PATCH",
+          json: { default_roster_password: trimmed || null },
+        });
+        setDefaultRosterPasswordDraft(trimmed);
+        setOk("Default employee password saved.");
       });
-      setDefaultRosterPasswordDraft(trimmed);
-      setOk("Default employee password saved.");
     } catch (e) {
       setErr(parseClientApiError(e).message);
-    } finally {
-      setSavingDefaultPassword(false);
     }
   };
 
@@ -232,27 +235,26 @@ export function OrganizationBrandingPanel({ initialCompany, onCompanyUpdated }: 
     setErr(null);
     setOk(null);
     const trimmed = headerWordmarkDraft.trim();
-    setSavingHeaderWordmark(true);
     try {
-      const out = await apiFetch<{ header_wordmark?: string | null }>("/api/v1/company/profile", {
-        method: "PATCH",
-        json: { header_wordmark: trimmed || null },
+      await runHeaderWordmarkSubmit(async () => {
+        const out = await apiFetch<{ header_wordmark?: string | null }>("/api/v1/company/profile", {
+          method: "PATCH",
+          json: { header_wordmark: trimmed || null },
+        });
+        await refreshPulseUserFromServer();
+        const next: CompanySummary = {
+          ...company,
+          header_wordmark: out.header_wordmark ?? null,
+        };
+        syncParent(next);
+        setHeaderWordmarkDraft(next.header_wordmark ?? "");
+        setOk("App header name saved.");
+        if (typeof window !== "undefined" && getImpersonationOverlayAccessToken()) {
+          window.dispatchEvent(new Event("pulse-auth-change"));
+        }
       });
-      await refreshPulseUserFromServer();
-      const next: CompanySummary = {
-        ...company,
-        header_wordmark: out.header_wordmark ?? null,
-      };
-      syncParent(next);
-      setHeaderWordmarkDraft(next.header_wordmark ?? "");
-      setOk("App header name saved.");
-      if (typeof window !== "undefined" && getImpersonationOverlayAccessToken()) {
-        window.dispatchEvent(new Event("pulse-auth-change"));
-      }
     } catch (e) {
       setErr(parseClientApiError(e).message);
-    } finally {
-      setSavingHeaderWordmark(false);
     }
   };
 
@@ -290,14 +292,14 @@ export function OrganizationBrandingPanel({ initialCompany, onCompanyUpdated }: 
               maxLength={64}
               className={`min-w-[12rem] flex-1 ${dsInputClass}`}
             />
-            <button
-              type="button"
-              disabled={!headerWordmarkDirty || savingHeaderWordmark}
+            <AsyncSubmitButton
+              phase={headerWordmarkPhase}
+              idleLabel="Save"
+              loadingLabel="Saving"
+              disabled={!headerWordmarkDirty || headerWordmarkPending}
               onClick={() => void saveHeaderWordmark()}
               className={cn(buttonVariants({ surface: "light", intent: "accent" }), "px-4 py-2.5 text-sm")}
-            >
-              {savingHeaderWordmark ? "Saving…" : "Save"}
-            </button>
+            />
           </div>
           <p className="mt-3 text-xs font-medium text-ds-muted">Preview in header style</p>
           <p className="mt-1 inline-block rounded-lg bg-[var(--ds-palette-iron-grey)] px-3 py-2 font-panoramaBrand text-[clamp(1.05rem,2.1vw,1.45rem)] font-normal uppercase leading-none tracking-[0.04em] text-white">
@@ -330,14 +332,14 @@ export function OrganizationBrandingPanel({ initialCompany, onCompanyUpdated }: 
               disabled={!defaultRosterPasswordLoaded}
               className={`min-w-[12rem] flex-1 ${dsInputClass}`}
             />
-            <button
-              type="button"
-              disabled={!defaultRosterPasswordLoaded || savingDefaultPassword}
+            <AsyncSubmitButton
+              phase={defaultPasswordPhase}
+              idleLabel="Save"
+              loadingLabel="Saving"
+              disabled={!defaultRosterPasswordLoaded || defaultPasswordPending}
               onClick={() => void saveDefaultRosterPassword()}
               className={cn(buttonVariants({ surface: "light", intent: "accent" }), "px-4 py-2.5 text-sm")}
-            >
-              {savingDefaultPassword ? "Saving…" : "Save"}
-            </button>
+            />
           </div>
         </div>
       </Card>
@@ -392,14 +394,14 @@ export function OrganizationBrandingPanel({ initialCompany, onCompanyUpdated }: 
               placeholder="https://…"
               className={`min-w-[12rem] flex-1 ${dsInputClass}`}
             />
-            <button
-              type="button"
-              disabled={!logoUrlDirty || savingLogoUrl}
+            <AsyncSubmitButton
+              phase={logoUrlPhase}
+              idleLabel="Save URL"
+              loadingLabel="Saving"
+              disabled={!logoUrlDirty || logoUrlPending}
               onClick={() => void saveLogoUrl()}
               className={cn(buttonVariants({ surface: "light", intent: "accent" }), "px-4 py-2.5 text-sm")}
-            >
-              {savingLogoUrl ? "Saving…" : "Save URL"}
-            </button>
+            />
           </div>
         </div>
       </Card>
@@ -448,14 +450,14 @@ export function OrganizationBrandingPanel({ initialCompany, onCompanyUpdated }: 
               placeholder="https://…"
               className={`min-w-[12rem] flex-1 ${dsInputClass}`}
             />
-            <button
-              type="button"
-              disabled={!bgUrlDirty || savingBgUrl}
+            <AsyncSubmitButton
+              phase={bgUrlPhase}
+              idleLabel="Save URL"
+              loadingLabel="Saving"
+              disabled={!bgUrlDirty || bgUrlPending}
               onClick={() => void saveBgUrl()}
               className={cn(buttonVariants({ surface: "light", intent: "accent" }), "px-4 py-2.5 text-sm")}
-            >
-              {savingBgUrl ? "Saving…" : "Save URL"}
-            </button>
+            />
           </div>
         </div>
       </Card>

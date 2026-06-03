@@ -3,6 +3,8 @@
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PulseDrawer } from "@/components/schedule/PulseDrawer";
+import { AsyncSubmitButton } from "@/components/ui/AsyncSubmitButton";
+import { useAsyncSubmitPhase } from "@/hooks/useAsyncSubmitPhase";
 import { buttonVariants } from "@/styles/button-variants";
 import { cn } from "@/lib/cn";
 import {
@@ -156,7 +158,9 @@ export function InventoryContractorsPanel({
   const [drawerMode, setDrawerMode] = useState<"create" | "edit">("create");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm());
-  const [saveBusy, setSaveBusy] = useState(false);
+  const { phase: submitPhase, run: runSubmit } = useAsyncSubmitPhase();
+  const submitPending = submitPhase === "loading" || submitPhase === "success";
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   useEffect(() => {
     const t = window.setTimeout(() => {
@@ -211,48 +215,47 @@ export function InventoryContractorsPanel({
 
   async function submitForm() {
     if (!form.name.trim()) return;
-    setSaveBusy(true);
     try {
-      const body = {
-        name: form.name.trim(),
-        contact_name: form.contact_name.trim() || null,
-        contact_email: form.contact_email.trim() || null,
-        contact_phone: form.contact_phone.trim() || null,
-        account_number: form.account_number.trim() || null,
-        payment_terms: form.payment_terms.trim() || null,
-        item_specialty: form.item_specialty.trim() || null,
-        notes: form.notes.trim() || null,
-        website: form.website.trim() || null,
-        address_line1: form.address_line1.trim() || null,
-        address_line2: form.address_line2.trim() || null,
-        city: form.city.trim() || null,
-        region: form.region.trim() || null,
-        postal_code: form.postal_code.trim() || null,
-        country: form.country.trim() || null,
-        is_active: form.is_active,
-      };
-      if (drawerMode === "create") {
-        await createInventoryContractor(apiCompany, {
-          ...body,
-          ...(departmentSlug?.trim() ? { department_slug: departmentSlug.trim() } : {}),
-        });
-      } else if (editingId) {
-        await patchInventoryContractor(apiCompany, editingId, body);
-      }
+      await runSubmit(async () => {
+        const body = {
+          name: form.name.trim(),
+          contact_name: form.contact_name.trim() || null,
+          contact_email: form.contact_email.trim() || null,
+          contact_phone: form.contact_phone.trim() || null,
+          account_number: form.account_number.trim() || null,
+          payment_terms: form.payment_terms.trim() || null,
+          item_specialty: form.item_specialty.trim() || null,
+          notes: form.notes.trim() || null,
+          website: form.website.trim() || null,
+          address_line1: form.address_line1.trim() || null,
+          address_line2: form.address_line2.trim() || null,
+          city: form.city.trim() || null,
+          region: form.region.trim() || null,
+          postal_code: form.postal_code.trim() || null,
+          country: form.country.trim() || null,
+          is_active: form.is_active,
+        };
+        if (drawerMode === "create") {
+          await createInventoryContractor(apiCompany, {
+            ...body,
+            ...(departmentSlug?.trim() ? { department_slug: departmentSlug.trim() } : {}),
+          });
+        } else if (editingId) {
+          await patchInventoryContractor(apiCompany, editingId, body);
+        }
+        await load();
+      });
       setDrawerOpen(false);
-      await load();
     } catch (e) {
       const { message } = parseClientApiError(e);
       setErr(message || "Could not save contractor.");
-    } finally {
-      setSaveBusy(false);
     }
   }
 
   async function onDelete() {
     if (!editingId) return;
     if (!window.confirm("Delete this contractor from the directory?")) return;
-    setSaveBusy(true);
+    setDeleteBusy(true);
     try {
       await deleteInventoryContractor(apiCompany, editingId);
       setDrawerOpen(false);
@@ -261,7 +264,7 @@ export function InventoryContractorsPanel({
       const { message } = parseClientApiError(e);
       setErr(message || "Could not delete contractor.");
     } finally {
-      setSaveBusy(false);
+      setDeleteBusy(false);
     }
   }
 
@@ -433,7 +436,7 @@ export function InventoryContractorsPanel({
                 <button
                   type="button"
                   className={cn(SECONDARY_BTN, "border-rose-200 text-rose-700 hover:bg-rose-50")}
-                  disabled={saveBusy}
+                  disabled={deleteBusy || submitPending}
                   onClick={() => void onDelete()}
                 >
                   <span className="inline-flex items-center gap-2">
@@ -449,9 +452,13 @@ export function InventoryContractorsPanel({
               <button type="button" className={SECONDARY_BTN} onClick={() => setDrawerOpen(false)}>
                 Cancel
               </button>
-              <button type="button" className={PRIMARY_BTN} disabled={saveBusy || !form.name.trim()} onClick={() => void submitForm()}>
-                {saveBusy ? "Saving…" : "Save"}
-              </button>
+              <AsyncSubmitButton
+                phase={submitPhase}
+                idleLabel="Save"
+                loadingLabel="Saving"
+                disabled={submitPending || !form.name.trim()}
+                onClick={() => void submitForm()}
+              />
             </div>
           </div>
         }

@@ -4,6 +4,8 @@ import { AlertTriangle, Camera, Loader2, Pencil, Plus, Trash2 } from "lucide-rea
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/pulse/Card";
+import { AsyncSubmitButton } from "@/components/ui/AsyncSubmitButton";
+import { useAsyncSubmitPhase } from "@/hooks/useAsyncSubmitPhase";
 import {
   addDaysToDateString,
   comparePartsByPriorityThenName,
@@ -81,7 +83,9 @@ export function EquipmentPartsPanel({ equipmentId, equipmentName, canMutate, onP
   const prevStatusByPartId = useRef<Map<string, string>>(new Map());
   const didInitStatusRef = useRef(false);
   const [showAdd, setShowAdd] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [partOpBusy, setPartOpBusy] = useState(false);
+  const { phase: submitPhase, run: runSubmit } = useAsyncSubmitPhase();
+  const submitPending = submitPhase === "loading" || submitPhase === "success";
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const [newName, setNewName] = useState("");
@@ -163,17 +167,20 @@ export function EquipmentPartsPanel({ equipmentId, equipmentName, canMutate, onP
   const onAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newName.trim() || !canMutate) return;
-    setSaving(true);
     try {
-      const intervalRaw = newInterval.trim();
-      const intervalParsed = intervalRaw ? parseInt(intervalRaw, 10) : NaN;
-      await createEquipmentPart(equipmentId, {
-        name: newName.trim(),
-        quantity: Math.max(0, parseInt(newQty, 10) || 1),
-        replacement_interval_days:
-          intervalRaw && !Number.isNaN(intervalParsed) && intervalParsed >= 1 ? intervalParsed : null,
-        last_replaced_date: newLast || null,
-        notes: newNotes.trim() || null,
+      await runSubmit(async () => {
+        const intervalRaw = newInterval.trim();
+        const intervalParsed = intervalRaw ? parseInt(intervalRaw, 10) : NaN;
+        await createEquipmentPart(equipmentId, {
+          name: newName.trim(),
+          quantity: Math.max(0, parseInt(newQty, 10) || 1),
+          replacement_interval_days:
+            intervalRaw && !Number.isNaN(intervalParsed) && intervalParsed >= 1 ? intervalParsed : null,
+          last_replaced_date: newLast || null,
+          notes: newNotes.trim() || null,
+        });
+        await load();
+        notify();
       });
       setNewName("");
       setNewQty("1");
@@ -181,12 +188,8 @@ export function EquipmentPartsPanel({ equipmentId, equipmentName, canMutate, onP
       setNewLast("");
       setNewNotes("");
       setShowAdd(false);
-      await load();
-      notify();
     } catch {
       setError("Could not add part.");
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -206,26 +209,25 @@ export function EquipmentPartsPanel({ equipmentId, equipmentName, canMutate, onP
 
   const onEditSave = async (partId: string) => {
     if (!canMutate) return;
-    setSaving(true);
     try {
-      const intervalRaw = editInterval.trim();
-      const intervalParsed = intervalRaw ? parseInt(intervalRaw, 10) : NaN;
-      await patchEquipmentPart(partId, {
-        name: editName.trim(),
-        quantity: Math.max(0, parseInt(editQty, 10) || 0),
-        replacement_interval_days:
-          intervalRaw && !Number.isNaN(intervalParsed) && intervalParsed >= 1 ? intervalParsed : null,
-        last_replaced_date: editLast || null,
-        next_replacement_date: editNext || null,
-        notes: editNotes.trim() || null,
+      await runSubmit(async () => {
+        const intervalRaw = editInterval.trim();
+        const intervalParsed = intervalRaw ? parseInt(intervalRaw, 10) : NaN;
+        await patchEquipmentPart(partId, {
+          name: editName.trim(),
+          quantity: Math.max(0, parseInt(editQty, 10) || 0),
+          replacement_interval_days:
+            intervalRaw && !Number.isNaN(intervalParsed) && intervalParsed >= 1 ? intervalParsed : null,
+          last_replaced_date: editLast || null,
+          next_replacement_date: editNext || null,
+          notes: editNotes.trim() || null,
+        });
+        await load();
+        notify();
       });
       setEditingId(null);
-      await load();
-      notify();
     } catch {
       setError("Could not update part.");
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -242,7 +244,7 @@ export function EquipmentPartsPanel({ equipmentId, equipmentName, canMutate, onP
 
   const onPartImage = async (partId: string, file: File | null) => {
     if (!file || !canMutate) return;
-    setSaving(true);
+    setPartOpBusy(true);
     try {
       await uploadEquipmentPartImage(partId, file);
       await load();
@@ -250,7 +252,7 @@ export function EquipmentPartsPanel({ equipmentId, equipmentName, canMutate, onP
     } catch {
       setError("Image upload failed.");
     } finally {
-      setSaving(false);
+      setPartOpBusy(false);
     }
   };
 
@@ -268,7 +270,7 @@ export function EquipmentPartsPanel({ equipmentId, equipmentName, canMutate, onP
       setToast("Set a replacement interval (days) before using Mark as replaced.");
       return;
     }
-    setSaving(true);
+    setPartOpBusy(true);
     try {
       const today = localDateString();
       const next = addDaysToDateString(today, interval);
@@ -282,7 +284,7 @@ export function EquipmentPartsPanel({ equipmentId, equipmentName, canMutate, onP
     } catch {
       setError("Could not update replacement date.");
     } finally {
-      setSaving(false);
+      setPartOpBusy(false);
     }
   };
 
@@ -370,9 +372,14 @@ export function EquipmentPartsPanel({ equipmentId, equipmentName, canMutate, onP
               <textarea id="new-part-notes" className={`${FIELD} min-h-[72px]`} value={newNotes} onChange={(e) => setNewNotes(e.target.value)} />
             </div>
             <div className="flex flex-wrap gap-2 md:col-span-2">
-              <button type="submit" className={PRIMARY_BTN} disabled={saving}>
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save part"}
-              </button>
+              <AsyncSubmitButton
+                type="submit"
+                phase={submitPhase}
+                idleLabel="Save part"
+                loadingLabel="Saving"
+                disabled={submitPending}
+                className={PRIMARY_BTN}
+              />
               <button type="button" className={SECONDARY_BTN} onClick={() => setShowAdd(false)}>
                 Cancel
               </button>
@@ -474,9 +481,14 @@ export function EquipmentPartsPanel({ equipmentId, equipmentName, canMutate, onP
                             <textarea className={`${FIELD} min-h-[60px]`} value={editNotes} onChange={(e) => setEditNotes(e.target.value)} />
                           </div>
                           <div className="flex flex-wrap gap-1">
-                            <button type="button" className={PRIMARY_BTN} disabled={saving} onClick={() => void onEditSave(p.id)}>
-                              Save
-                            </button>
+                            <AsyncSubmitButton
+                              phase={submitPhase}
+                              idleLabel="Save"
+                              loadingLabel="Saving"
+                              disabled={submitPending}
+                              onClick={() => void onEditSave(p.id)}
+                              className={PRIMARY_BTN}
+                            />
                             <button type="button" className={SECONDARY_BTN} onClick={cancelEdit}>
                               Cancel
                             </button>
@@ -488,7 +500,7 @@ export function EquipmentPartsPanel({ equipmentId, equipmentName, canMutate, onP
                             <button
                               type="button"
                               className="rounded-[10px] bg-emerald-700 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-800 disabled:opacity-50"
-                              disabled={saving}
+                              disabled={submitPending || partOpBusy}
                               title="Sets last replaced to today and next date from interval"
                               onClick={() => void markAsReplaced(p)}
                             >

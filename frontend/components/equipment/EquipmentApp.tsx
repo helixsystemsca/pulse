@@ -24,7 +24,9 @@ import { Card } from "@/components/pulse/Card";
 import { HintCallout } from "@/components/ui/HintCallout";
 import { ModuleSettingsGear } from "@/components/module-settings/ModuleSettingsGear";
 import { dataTableBodyRow, dataTableHeadRowClass } from "@/components/ui/DataTable";
+import { AsyncSubmitButton } from "@/components/ui/AsyncSubmitButton";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { useAsyncSubmitPhase } from "@/hooks/useAsyncSubmitPhase";
 import { apiFetch } from "@/lib/api";
 import {
   createEquipment,
@@ -137,7 +139,8 @@ export function EquipmentApp() {
   const [formNextService, setFormNextService] = useState("");
   const [formServiceInterval, setFormServiceInterval] = useState("");
   const [formNotes, setFormNotes] = useState("");
-  const [formSubmitting, setFormSubmitting] = useState(false);
+  const { phase: submitPhase, run: runSubmit } = useAsyncSubmitPhase();
+  const submitPending = submitPhase === "loading" || submitPhase === "success";
   const [formError, setFormError] = useState<string | null>(null);
 
   const loadZones = useCallback(async () => {
@@ -301,7 +304,6 @@ export function EquipmentApp() {
       setFormError("Serial number is required for equipment in your organization settings.");
       return;
     }
-    setFormSubmitting(true);
     setFormError(null);
     const intervalRaw = formServiceInterval.trim();
     const intervalParsed = intervalRaw ? parseInt(intervalRaw, 10) : NaN;
@@ -323,21 +325,21 @@ export function EquipmentApp() {
       notes: formNotes.trim() || null,
     };
     try {
-      if (formMode === "create") {
-        await createEquipment(payload);
-        setToast("Equipment added.");
-      } else if (formId) {
-        await patchEquipment(formId, payload);
-        setToast("Equipment updated.");
-      }
+      await runSubmit(async () => {
+        if (formMode === "create") {
+          await createEquipment(payload);
+          setToast("Equipment added.");
+        } else if (formId) {
+          await patchEquipment(formId, payload);
+          setToast("Equipment updated.");
+        }
+        await loadList();
+        await loadStats();
+      });
       resetForm();
       setTab("list");
-      await loadList();
-      await loadStats();
     } catch {
       setFormError("Save failed. Check your connection and permissions.");
-    } finally {
-      setFormSubmitting(false);
     }
   };
 
@@ -960,20 +962,18 @@ export function EquipmentApp() {
 
             {formMode !== "view" ? (
               <div className="flex flex-wrap gap-3">
-                <button type="submit" className={PRIMARY_BTN} disabled={formSubmitting}>
-                  {formSubmitting ? (
-                    <>
-                      <Loader2 className="mr-2 inline h-4 w-4 animate-spin" aria-hidden />
-                      Saving…
-                    </>
-                  ) : (
-                    "Save"
-                  )}
-                </button>
+                <AsyncSubmitButton
+                  type="submit"
+                  phase={submitPhase}
+                  idleLabel="Save"
+                  loadingLabel="Saving"
+                  disabled={submitPending}
+                  className={PRIMARY_BTN}
+                />
                 <button
                   type="button"
                   className={SECONDARY_BTN}
-                  disabled={formSubmitting}
+                  disabled={submitPending}
                   onClick={() => {
                     resetForm();
                     setTab("list");

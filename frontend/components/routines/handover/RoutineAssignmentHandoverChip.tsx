@@ -53,8 +53,6 @@ export function RoutineAssignmentHandoverChip({
 
   const [addOpen, setAddOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-
   const total = summary?.total_count ?? 0;
   const open = summary?.open_count ?? 0;
 
@@ -67,22 +65,17 @@ export function RoutineAssignmentHandoverChip({
   };
 
   async function submitHandover(body: { content: string; note_type: HandoverNoteType }) {
-    setSaving(true);
-    try {
-      if (handoverUsesLiveApi() && !assignment.assignmentId.startsWith("demo-")) {
-        await createAssignmentHandover(assignment.assignmentId, {
-          ...body,
-          employee_name: workerName,
-          operational_area: context.operationalArea,
-          shift_label: shiftWindow,
-        });
-      } else {
-        demoCreateHandover(assignment.assignmentId, context, body, userId, userName);
-      }
-      onHandoverChange?.();
-    } finally {
-      setSaving(false);
+    if (handoverUsesLiveApi() && !assignment.assignmentId.startsWith("demo-")) {
+      await createAssignmentHandover(assignment.assignmentId, {
+        ...body,
+        employee_name: workerName,
+        operational_area: context.operationalArea,
+        shift_label: shiftWindow,
+      });
+    } else {
+      demoCreateHandover(assignment.assignmentId, context, body, userId, userName);
     }
+    onHandoverChange?.();
   }
 
   async function loadHandovers() {
@@ -191,7 +184,6 @@ export function RoutineAssignmentHandoverChip({
         open={addOpen}
         onClose={() => setAddOpen(false)}
         context={context}
-        saving={saving}
         onSubmit={submitHandover}
       />
 

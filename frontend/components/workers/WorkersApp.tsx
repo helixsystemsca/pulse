@@ -17,6 +17,8 @@ import {
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/pulse/Card";
+import { AsyncSubmitButton } from "@/components/ui/AsyncSubmitButton";
+import { useAsyncSubmitPhase } from "@/hooks/useAsyncSubmitPhase";
 import { PulseDrawer } from "@/components/schedule/PulseDrawer";
 import { dataTableBodyRow, dataTableHeadRowClass } from "@/components/ui/DataTable";
 import {
@@ -568,6 +570,8 @@ export function WorkersApp() {
   const [noteDraft, setNoteDraft] = useState("");
   const [supervisorNoteDraft, setSupervisorNoteDraft] = useState("");
   const [profileBusy, setProfileBusy] = useState(false);
+  const { phase: profileSubmitPhase, run: runProfileSubmit } = useAsyncSubmitPhase();
+  const profileSubmitPending = profileSubmitPhase === "loading" || profileSubmitPhase === "success";
   const [equipmentPasswordDraft, setEquipmentPasswordDraft] = useState("");
   const [equipmentPasswordConfirm, setEquipmentPasswordConfirm] = useState("");
   const [equipmentPasswordBusy, setEquipmentPasswordBusy] = useState(false);
@@ -597,7 +601,8 @@ export function WorkersApp() {
   const [proceduresEditRolesDraft, setProceduresEditRolesDraft] = useState<string[]>(["manager", "supervisor", "lead"]);
   const [workRequestEditRolesDraft, setWorkRequestEditRolesDraft] = useState<string[]>(["manager", "supervisor"]);
   const [zoneManageRolesDraft, setZoneManageRolesDraft] = useState<string[]>(["manager", "supervisor"]);
-  const [accessPolicySaving, setAccessPolicySaving] = useState(false);
+  const { phase: accessSubmitPhase, run: runAccessSubmit } = useAsyncSubmitPhase();
+  const accessSubmitPending = accessSubmitPhase === "loading" || accessSubmitPhase === "success";
   const [permissionsDepartment, setPermissionsDepartment] =
     useState<PermissionMatrixDepartment>("maintenance");
   const [permissionsSlot, setPermissionsSlot] = useState<PermissionMatrixRoleSlot>("manager");
@@ -1224,8 +1229,8 @@ export function WorkersApp() {
 
   async function saveAccessPolicy() {
     if (!effectiveCompanyId || !isTenantFullAdmin) return;
-    setAccessPolicySaving(true);
     try {
+      await runAccessSubmit(async () => {
       const rfaSync = computeLegacyRoleFeatureAccessFromMatrix(departmentRoleFeatureAccessDraft, contractCatalog);
       const r = await patchWorkerSettings(apiCompany, {
         ...fullSettings,
@@ -1255,15 +1260,16 @@ export function WorkersApp() {
       );
       await refreshPulseUserFromServer();
       refresh();
-    } finally {
-      setAccessPolicySaving(false);
+      });
+    } catch {
+      /* error animation */
     }
   }
 
   async function saveDelegatedRoleModules() {
     if (!effectiveCompanyId || !mayEditDelegatedRoleModules) return;
-    setAccessPolicySaving(true);
     try {
+      await runAccessSubmit(async () => {
       const slice: Record<string, string[]> = {};
       for (const r of delegatedRoleTargetsForMe) {
         slice[r] = roleFeatureAccessDraft[r] ?? [];
@@ -1283,23 +1289,25 @@ export function WorkersApp() {
       });
       await refreshPulseUserFromServer();
       refresh();
-    } finally {
-      setAccessPolicySaving(false);
+      });
+    } catch {
+      /* error animation */
     }
   }
 
   async function saveProfileNotes() {
     if (!profileId || !profile) return;
-    setProfileBusy(true);
     try {
-      await patchWorker(apiCompany, profileId, {
-        profile_notes: noteDraft || null,
-        supervisor_notes: supervisorNoteDraft || null,
+      await runProfileSubmit(async () => {
+        await patchWorker(apiCompany, profileId, {
+          profile_notes: noteDraft || null,
+          supervisor_notes: supervisorNoteDraft || null,
+        });
+        await loadProfile();
+        await loadList();
       });
-      await loadProfile();
-      await loadList();
-    } finally {
-      setProfileBusy(false);
+    } catch {
+      /* error animation */
     }
   }
 
@@ -1451,15 +1459,16 @@ export function WorkersApp() {
     }
 
     if (Object.keys(payload).length === 0) return;
-    setProfileBusy(true);
     try {
-      await patchWorker(apiCompany, profileId, payload);
-      await loadProfile();
-      await loadList();
-      await refreshPulseUserFromServer();
-      refresh();
-    } finally {
-      setProfileBusy(false);
+      await runProfileSubmit(async () => {
+        await patchWorker(apiCompany, profileId, payload);
+        await loadProfile();
+        await loadList();
+        await refreshPulseUserFromServer();
+        refresh();
+      });
+    } catch {
+      /* error animation */
     }
   }
 
@@ -1932,14 +1941,14 @@ export function WorkersApp() {
                     );
                   })}
                 </div>
-                <button
-                  type="button"
-                  className={`${PRIMARY_BTN} mt-4 w-full`}
-                  disabled={accessPolicySaving}
+                <AsyncSubmitButton
+                  phase={accessSubmitPhase}
+                  idleLabel="Save permissions"
+                  loadingLabel="Saving"
+                  disabled={accessSubmitPending}
                   onClick={() => void saveAccessPolicy()}
-                >
-                  {accessPolicySaving ? "Saving..." : "Save permissions"}
-                </button>
+                  className={`${PRIMARY_BTN} mt-4 w-full`}
+                />
               </Card>
             ) : null}
 
@@ -2115,14 +2124,14 @@ export function WorkersApp() {
                     );
                   })}
                 </div>
-                <button
-                  type="button"
-                  className={`${PRIMARY_BTN} mt-4 w-full`}
-                  disabled={accessPolicySaving}
+                <AsyncSubmitButton
+                  phase={accessSubmitPhase}
+                  idleLabel="Save team module access"
+                  loadingLabel="Saving"
+                  disabled={accessSubmitPending}
                   onClick={() => void saveDelegatedRoleModules()}
-                >
-                  {accessPolicySaving ? "Saving..." : "Save team module access"}
-                </button>
+                  className={`${PRIMARY_BTN} mt-4 w-full`}
+                />
               </Card>
             ) : null}
 
@@ -3000,18 +3009,23 @@ export function WorkersApp() {
               </>
             ) : null}
             {canEditWorkerBasics ? (
-              <button
-                type="button"
-                className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-4 py-2.5 text-sm font-semibold")}
-                disabled={profileBusy}
+              <AsyncSubmitButton
+                phase={profileSubmitPhase}
+                idleLabel="Save profile details"
+                loadingLabel="Saving"
+                disabled={profileSubmitPending}
                 onClick={() => void saveProfileHr()}
-              >
-                {profileBusy ? "Saving..." : "Save profile details"}
-              </button>
+                className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-4 py-2.5 text-sm font-semibold")}
+              />
             ) : null}
-            <button type="button" className={PRIMARY_BTN} disabled={profileBusy} onClick={() => void saveProfileNotes()}>
-              {profileBusy ? "Saving..." : "Save notes"}
-            </button>
+            <AsyncSubmitButton
+              phase={profileSubmitPhase}
+              idleLabel="Save notes"
+              loadingLabel="Saving"
+              disabled={profileSubmitPending}
+              onClick={() => void saveProfileNotes()}
+              className={PRIMARY_BTN}
+            />
           </div>
         }
       >

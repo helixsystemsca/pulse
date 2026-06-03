@@ -3,6 +3,8 @@
 import { CalendarClock, Loader2, Plus, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/pulse/Card";
+import { AsyncSubmitButton } from "@/components/ui/AsyncSubmitButton";
+import { useAsyncSubmitPhase } from "@/hooks/useAsyncSubmitPhase";
 import {
   dsCheckboxClass,
   dsInputClass,
@@ -54,7 +56,8 @@ export function EquipmentPmTasksSection({ equipmentId, canMutate, onTasksChanged
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const { phase: submitPhase, run: runSubmit } = useAsyncSubmitPhase();
+  const submitPending = submitPhase === "loading" || submitPhase === "success";
   const [parts, setParts] = useState<EquipmentPartRow[]>([]);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -129,19 +132,18 @@ export function EquipmentPmTasksSection({ equipmentId, canMutate, onTasksChanged
       parts: [...selectedPartIds].map((part_id) => ({ part_id, quantity: 1 })),
       checklist: checklist.filter((c) => c.label.trim()).map((c, i) => ({ label: c.label.trim(), sort_order: i })),
     };
-    setSaving(true);
     setError(null);
     try {
-      await createPmTask(equipmentId, payload);
+      await runSubmit(async () => {
+        await createPmTask(equipmentId, payload);
+        await load();
+        onTasksChanged?.();
+      });
       setModalOpen(false);
-      await load();
-      onTasksChanged?.();
     } catch (e: unknown) {
       const msg =
         e && typeof e === "object" && "body" in e && (e as { body?: { detail?: string } }).body?.detail;
       setError(typeof msg === "string" ? msg : "Could not save PM task.");
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -374,14 +376,14 @@ export function EquipmentPmTasksSection({ equipmentId, canMutate, onTasksChanged
               >
                 Cancel
               </button>
-              <button
-                type="button"
-                disabled={saving || !name.trim()}
+              <AsyncSubmitButton
+                phase={submitPhase}
+                idleLabel="Save"
+                loadingLabel="Saving"
+                disabled={submitPending || !name.trim()}
                 onClick={() => void submitModal()}
                 className={cn(buttonVariants({ surface: "light", intent: "accent" }), "px-4 py-2 hover:opacity-95 disabled:opacity-50")}
-              >
-                {saving ? "Saving…" : "Save"}
-              </button>
+              />
             </div>
           </div>
         </div>

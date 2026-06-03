@@ -299,6 +299,8 @@ export function InventoryMaterialRequestsPanel({
                   ) : null}
                   <th className="px-4 py-3">Item</th>
                   <th className="px-4 py-3">SKU</th>
+                  <th className="px-4 py-3">Priority</th>
+                  <th className="px-4 py-3">Stockout</th>
                   <th className="px-4 py-3">Current</th>
                   <th className="px-4 py-3">Min</th>
                   <th className="px-4 py-3">Suggested reorder</th>
@@ -320,8 +322,31 @@ export function InventoryMaterialRequestsPanel({
                         />
                       </td>
                     ) : null}
-                    <td className="px-4 py-3 font-semibold text-pulse-navy dark:text-gray-100">{row.item_name}</td>
+                    <td className="px-4 py-3 font-semibold text-pulse-navy dark:text-gray-100">
+                      {row.item_name}
+                      {row.anomaly_flag ? (
+                        <span className="ml-1 text-xs font-normal text-amber-700 dark:text-amber-300">
+                          (anomaly)
+                        </span>
+                      ) : null}
+                    </td>
                     <td className="px-4 py-3 text-pulse-muted">{row.sku}</td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                          row.urgency_tier === "critical"
+                            ? "bg-rose-100 text-rose-900 dark:bg-rose-900/50 dark:text-rose-100"
+                            : row.urgency_tier === "high"
+                              ? "bg-amber-100 text-amber-900 dark:bg-amber-900/50 dark:text-amber-100"
+                              : "bg-slate-100 text-slate-700 dark:bg-ds-secondary dark:text-ds-muted"
+                        }`}
+                      >
+                        {(row.urgency_tier ?? "normal").toUpperCase()}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 tabular-nums text-pulse-muted">
+                      {row.days_until_stockout != null ? `${row.days_until_stockout}d` : "—"}
+                    </td>
                     <td className="px-4 py-3 tabular-nums">{row.current_qty}</td>
                     <td className="px-4 py-3 tabular-nums">{row.minimum_qty}</td>
                     <td className="px-4 py-3">

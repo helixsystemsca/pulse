@@ -1,6 +1,8 @@
 "use client";
 
 import { Bell, CalendarPlus, Pencil, Settings, Sparkles } from "lucide-react";
+import { AsyncSubmitButton } from "@/components/ui/AsyncSubmitButton";
+import type { AsyncSubmitPhase } from "@/hooks/useAsyncSubmitPhase";
 import type { SchedulePrimaryAction, ScheduleWorkflowViewModel } from "@/lib/schedule/schedule-workflow";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
@@ -10,7 +12,7 @@ export type ScheduleWorkflowBarProps = {
   workflow: ScheduleWorkflowViewModel;
   canManage: boolean;
   buildingDraft: boolean;
-  saveBusy: boolean;
+  savePhase: AsyncSubmitPhase;
   publishBusy: boolean;
   hasPendingServerSave?: boolean;
   notifyBusy?: boolean;
@@ -40,7 +42,7 @@ export function ScheduleWorkflowBar({
   workflow,
   canManage,
   buildingDraft,
-  saveBusy,
+  savePhase,
   publishBusy,
   hasPendingServerSave = false,
   notifyBusy,
@@ -59,6 +61,7 @@ export function ScheduleWorkflowBar({
 }: ScheduleWorkflowBarProps) {
   if (!canManage) return null;
 
+  const savePending = savePhase === "loading" || savePhase === "success";
   const primary = workflow.primaryAction;
 
   return (
@@ -95,11 +98,11 @@ export function ScheduleWorkflowBar({
       {workflow.showSecondarySave && primary !== "save_changes" ? (
         <button
           type="button"
-          disabled={saveBusy || !hasPendingServerSave}
+          disabled={savePending || !hasPendingServerSave}
           onClick={onSaveChanges}
           className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-3 py-2 text-sm")}
         >
-          {saveBusy ? "Saving…" : "Save"}
+          {savePending ? "Saving…" : "Save"}
         </button>
       ) : null}
 
@@ -132,7 +135,7 @@ export function ScheduleWorkflowBar({
       <PrimaryActionButton
         action={primary}
         buildingDraft={buildingDraft}
-        saveBusy={saveBusy}
+        savePhase={savePhase}
         publishBusy={publishBusy}
         notifyBusy={notifyBusy}
         hasPendingServerSave={hasPendingServerSave}
@@ -165,7 +168,7 @@ export function ScheduleWorkflowBar({
 function PrimaryActionButton({
   action,
   buildingDraft,
-  saveBusy,
+  savePhase,
   publishBusy,
   notifyBusy,
   hasPendingServerSave,
@@ -178,7 +181,7 @@ function PrimaryActionButton({
 }: {
   action: SchedulePrimaryAction | null;
   buildingDraft: boolean;
-  saveBusy: boolean;
+  savePhase: AsyncSubmitPhase;
   publishBusy: boolean;
   notifyBusy?: boolean;
   hasPendingServerSave: boolean;
@@ -191,6 +194,7 @@ function PrimaryActionButton({
 }) {
   if (!action) return null;
 
+  const savePending = savePhase === "loading" || savePhase === "success";
   const accent = cn(buttonVariants({ surface: "light", intent: "accent" }), "px-4 py-2.5 text-sm font-bold");
 
   switch (action) {
@@ -210,9 +214,14 @@ function PrimaryActionButton({
       );
     case "save_changes":
       return (
-        <button type="button" disabled={saveBusy} onClick={onSaveChanges} className={accent}>
-          {saveBusy ? "Saving…" : "Save Changes"}
-        </button>
+        <AsyncSubmitButton
+          phase={savePhase}
+          idleLabel="Save Changes"
+          loadingLabel="Saving"
+          disabled={savePending}
+          onClick={onSaveChanges}
+          className={accent}
+        />
       );
     case "publish_schedule":
       return (

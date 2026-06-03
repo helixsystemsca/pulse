@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CheckCircle2, ChevronRight, ClipboardList, Loader2 } from "lucide-react";
+import { AsyncSubmitButton } from "@/components/ui/AsyncSubmitButton";
+import { useAsyncSubmitPhase } from "@/hooks/useAsyncSubmitPhase";
 import { cn } from "@/lib/cn";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import {
@@ -27,6 +29,8 @@ export function ProcedureKnowledgeVerification({
   const [state, setState] = useState<ProcedureVerificationStateApi | null>(null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const { phase: quizSubmitPhase, run: runQuizSubmit } = useAsyncSubmitPhase();
+  const quizSubmitPending = quizSubmitPhase === "loading" || quizSubmitPhase === "success";
   const [ackConfirm, setAckConfirm] = useState(false);
 
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -131,32 +135,31 @@ export function ProcedureKnowledgeVerification({
 
   const submitQuiz = async () => {
     if (!sessionId) return;
-    setBusy(true);
     setLoadErr(null);
     try {
-      const res = await postProcedureQuizSubmit(procedureId, { session_id: sessionId, answers });
-      setSubmitResult({
-        passed: res.passed,
-        score_percent: res.score_percent,
-        reveal: res.reveal ?? {},
+      await runQuizSubmit(async () => {
+        const res = await postProcedureQuizSubmit(procedureId, { session_id: sessionId, answers });
+        setSubmitResult({
+          passed: res.passed,
+          score_percent: res.score_percent,
+          reveal: res.reveal ?? {},
+        });
+        if (res.passed) {
+          setSessionId(null);
+          setQuestions([]);
+          setFailedQuestionsSnapshot(null);
+          await reload();
+          await onRefreshTraining();
+        } else {
+          setFailedQuestionsSnapshot(questions);
+          setSessionId(null);
+          setQuestions([]);
+          setQIndex(0);
+          setAnswers({});
+        }
       });
-      if (res.passed) {
-        setSessionId(null);
-        setQuestions([]);
-        setFailedQuestionsSnapshot(null);
-        await reload();
-        await onRefreshTraining();
-      } else {
-        setFailedQuestionsSnapshot(questions);
-        setSessionId(null);
-        setQuestions([]);
-        setQIndex(0);
-        setAnswers({});
-      }
     } catch (e) {
       setLoadErr(parseClientApiError(e).message);
-    } finally {
-      setBusy(false);
     }
   };
 
@@ -327,15 +330,14 @@ export function ProcedureKnowledgeVerification({
                 Next
               </button>
             ) : (
-              <button
-                type="button"
-                disabled={busy || questions.some((q) => answers[q.id] === undefined)}
-                className="flex min-h-12 items-center gap-2 rounded-xl bg-sky-600 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+              <AsyncSubmitButton
+                phase={quizSubmitPhase}
+                idleLabel="Submit answers"
+                loadingLabel="Submitting"
+                disabled={quizSubmitPending || busy || questions.some((q) => answers[q.id] === undefined)}
                 onClick={() => void submitQuiz()}
-              >
-                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                Submit answers
-              </button>
+                className="flex min-h-12 items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold"
+              />
             )}
           </div>
         </div>

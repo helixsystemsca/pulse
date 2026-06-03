@@ -208,6 +208,7 @@ class InventoryVendorOut(BaseModel):
     country: Optional[str] = None
     is_active: bool
     preferred_vendor: bool = False
+    lead_time_days: Optional[int] = None
     created_at: datetime
     updated_at: datetime
 
@@ -231,6 +232,7 @@ class InventoryVendorCreateIn(BaseModel):
     country: Optional[str] = Field(None, max_length=128)
     is_active: bool = True
     preferred_vendor: bool = False
+    lead_time_days: Optional[int] = Field(None, ge=0, le=3650)
 
 
 class InventoryVendorPatchIn(BaseModel):
@@ -251,6 +253,7 @@ class InventoryVendorPatchIn(BaseModel):
     country: Optional[str] = Field(None, max_length=128)
     is_active: Optional[bool] = None
     preferred_vendor: Optional[bool] = None
+    lead_time_days: Optional[int] = Field(None, ge=0, le=3650)
 
 
 class InventoryContractorOut(BaseModel):

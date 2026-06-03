@@ -2,7 +2,9 @@
 
 import { ClipboardList } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { AsyncSubmitButton } from "@/components/ui/AsyncSubmitButton";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { useAsyncSubmitPhase } from "@/hooks/useAsyncSubmitPhase";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
@@ -83,7 +85,8 @@ export function ProjectSummaryPage({ projectId }: ProjectSummaryPageProps) {
   const [lessons, setLessons] = useState<SummaryLessons | null>(null);
   const [outcome, setOutcome] = useState<SummaryOutcome | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const { phase: submitPhase, run: runSubmit } = useAsyncSubmitPhase();
+  const submitPending = submitPhase === "loading" || submitPhase === "success";
   const [err, setErr] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -115,16 +118,15 @@ export function ProjectSummaryPage({ projectId }: ProjectSummaryPageProps) {
 
   async function onSave() {
     if (!lessons || !outcome) return;
-    setSaving(true);
     setToast(null);
     setErr(null);
     try {
-      await saveProjectSummaryDraft(projectId, { lessons, outcome });
-      setToast("Draft saved.");
+      await runSubmit(async () => {
+        await saveProjectSummaryDraft(projectId, { lessons, outcome });
+        setToast("Draft saved.");
+      });
     } catch (e) {
       setErr(parseClientApiError(e).message);
-    } finally {
-      setSaving(false);
     }
   }
 
@@ -149,9 +151,14 @@ export function ProjectSummaryPage({ projectId }: ProjectSummaryPageProps) {
         description="Auto-filled overview, scope, and schedule from your project data. Add lessons learned and an outcome, then save a draft."
         icon={ClipboardList}
         actions={
-          <button type="button" className={PRIMARY_BTN} disabled={saving} onClick={() => void onSave()}>
-            {saving ? "Saving…" : "Save draft"}
-          </button>
+          <AsyncSubmitButton
+            phase={submitPhase}
+            idleLabel="Save draft"
+            loadingLabel="Saving"
+            disabled={submitPending}
+            onClick={() => void onSave()}
+            className={PRIMARY_BTN}
+          />
         }
       />
 
@@ -182,8 +189,8 @@ export function ProjectSummaryPage({ projectId }: ProjectSummaryPageProps) {
           Your inputs
         </h2>
         <div className="grid gap-4 lg:grid-cols-2">
-          <LessonsSection value={lessons} onChange={setLessons} disabled={saving} />
-          <OutcomeSection value={outcome} onChange={setOutcome} disabled={saving} />
+          <LessonsSection value={lessons} onChange={setLessons} disabled={submitPending} />
+          <OutcomeSection value={outcome} onChange={setOutcome} disabled={submitPending} />
         </div>
       </section>
     </div>

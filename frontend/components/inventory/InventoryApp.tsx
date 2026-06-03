@@ -22,7 +22,9 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { AsyncSubmitButton } from "@/components/ui/AsyncSubmitButton";
 import { PulseDrawer } from "@/components/schedule/PulseDrawer";
+import { useAsyncSubmitPhase } from "@/hooks/useAsyncSubmitPhase";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { apiFetch } from "@/lib/api";
 import { pulseAppHref } from "@/lib/pulse-app";
@@ -47,7 +49,6 @@ import {
   fetchInventorySettings,
   patchInventoryItem,
   patchInventorySettings,
-  postInventoryAssign,
   postInventoryMove,
   postInventoryUse,
   uploadInventoryItemImage,
@@ -78,6 +79,7 @@ import { InventoryDepartmentsPanel } from "@/components/inventory/InventoryDepar
 import { InventoryLocationsPanel } from "@/components/inventory/InventoryLocationsPanel";
 import { InventoryTransactionSettingsPanel } from "@/components/inventory/InventoryTransactionSettingsPanel";
 import { InventoryMaterialRequestsPanel } from "@/components/inventory/InventoryMaterialRequestsPanel";
+import { InventoryEnterprisePanel } from "@/components/inventory/InventoryEnterprisePanel";
 import { InventoryItemDetailFields } from "@/components/inventory/InventoryItemDetailFields";
 import { InventoryTableFieldCell } from "@/components/inventory/InventoryTableFieldCell";
 import {
@@ -271,6 +273,11 @@ export function InventoryApp() {
     [tenantDepartments],
   );
 
+  const zoneNameById = useCallback(
+    (zoneId: string) => storageZones.find((z) => z.id === zoneId)?.name,
+    [storageZones],
+  );
+
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("Register form");
@@ -278,7 +285,8 @@ export function InventoryApp() {
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [settingsLocationError, setSettingsLocationError] = useState<string | null>(null);
   const [settingsDepartmentError, setSettingsDepartmentError] = useState<string | null>(null);
-  const [actionBusy, setActionBusy] = useState(false);
+  const { phase: submitPhase, run: runSubmit, setPhase: setSubmitPhase } = useAsyncSubmitPhase();
+  const submitPending = submitPhase === "loading" || submitPhase === "success";
 
   const [detailId, setDetailId] = useState<string | null>(null);
   const [detail, setDetail] = useState<InventoryDetail | null>(null);
@@ -294,13 +302,12 @@ export function InventoryApp() {
   const [pendingPhotoPreview, setPendingPhotoPreview] = useState<string | null>(null);
   const [form, setForm] = useState<InventoryRegisterFormState>(() => emptyRegisterFormState());
 
-  const [assignUserId, setAssignUserId] = useState("");
   const [moveZoneId, setMoveZoneId] = useState("");
   const [useWrId, setUseWrId] = useState("");
   const [useQty, setUseQty] = useState("1");
   const [wrOptions, setWrOptions] = useState<{ id: string; title: string }[]>([]);
 
-  const [detailPanel, setDetailPanel] = useState<"none" | "assign" | "move" | "use">("none");
+  const [detailPanel, setDetailPanel] = useState<"none" | "move" | "use">("none");
 
   useEffect(() => {
     if (settingsOpen) return;
@@ -550,7 +557,6 @@ export function InventoryApp() {
     try {
       const d = await fetchInventoryDetail(apiCompany, detailId);
       setDetail(d);
-      setAssignUserId(d.assigned_user_id ?? "");
       setMoveZoneId(d.zone_id ?? "");
     } catch (e) {
       setDetail(null);
@@ -743,95 +749,82 @@ export function InventoryApp() {
 
   async function submitForm() {
     if (!effectiveCompanyId || !form.name.trim() || !canMutateInventory) return;
-    setActionBusy(true);
     try {
-      const payload = registerFormStateToPayload(form, mergedSettings.register_form);
       let savedId: string | null = editTargetId;
-      if (editMode === "create") {
-        const d = await createInventoryItem(apiCompany, payload);
-        savedId = d.id;
-        setEditOpen(false);
-        setEditTargetId(null);
-        setDetailId(d.id);
-      } else if (editTargetId) {
-        const eid = editTargetId;
-        await patchInventoryItem(apiCompany, eid, {
-          ...payload,
-          sku: payload.sku ?? undefined,
-        });
-        savedId = eid;
-        setEditOpen(false);
-        setEditTargetId(null);
-        if (detailId === eid) await loadDetail();
-      }
-      if (savedId && pendingPhotoFile) {
-        await uploadInventoryItemImage(apiCompany, savedId, pendingPhotoFile);
-        clearPendingPhoto();
-      }
-      await loadList();
-    } finally {
-      setActionBusy(false);
+      await runSubmit(async () => {
+        const payload = registerFormStateToPayload(form, mergedSettings.register_form);
+        if (editMode === "create") {
+          const d = await createInventoryItem(apiCompany, payload);
+          savedId = d.id;
+          setDetailId(d.id);
+        } else if (editTargetId) {
+          const eid = editTargetId;
+          await patchInventoryItem(apiCompany, eid, {
+            ...payload,
+            sku: payload.sku ?? undefined,
+          });
+          savedId = eid;
+          if (detailId === eid) await loadDetail();
+        }
+        if (savedId && pendingPhotoFile) {
+          await uploadInventoryItemImage(apiCompany, savedId, pendingPhotoFile);
+          clearPendingPhoto();
+        }
+        await loadList();
+      });
+      setEditOpen(false);
+      setEditTargetId(null);
+    } catch {
+      /* error animation */
     }
   }
 
   async function saveSettings() {
     if (!effectiveCompanyId || !canMutateInventory) return;
-    setActionBusy(true);
     try {
-      await patchInventorySettings(apiCompany, mergedSettingsForSave(settingsDraft));
+      await runSubmit(async () => {
+        await patchInventorySettings(apiCompany, mergedSettingsForSave(settingsDraft));
+        await loadSettings();
+      });
       setSettingsOpen(false);
-      await loadSettings();
-    } finally {
-      setActionBusy(false);
+    } catch {
+      /* error animation */
     }
   }
 
   async function completeSetupWizard(next: MergedInventorySettings) {
     if (!effectiveCompanyId || !canRunInventorySetup) return;
-    setActionBusy(true);
     setSetupSaveError(null);
     try {
-      const payload = mergedSettingsForSave(next);
-      const saved = await patchInventorySettings(apiCompany, payload);
-      setSettingsBaseline(saved.settings ?? payload);
-      setSettingsHydrated(true);
-      if (inventorySetupDismissKey) {
-        sessionStorage.removeItem(inventorySetupDismissKey);
-      }
+      await runSubmit(async () => {
+        const payload = mergedSettingsForSave(next);
+        const saved = await patchInventorySettings(apiCompany, payload);
+        setSettingsBaseline(saved.settings ?? payload);
+        setSettingsHydrated(true);
+        if (inventorySetupDismissKey) {
+          sessionStorage.removeItem(inventorySetupDismissKey);
+        }
+        await loadList();
+        void loadPurchasingData();
+      });
       setSetupWizardOpen(false);
       setSetupWizardDraft(null);
-      await loadList();
-      void loadPurchasingData();
     } catch (e: unknown) {
       setSetupSaveError(e instanceof Error ? e.message : "Could not save inventory setup");
-    } finally {
-      setActionBusy(false);
-    }
-  }
-
-  async function runAssignFromDetail() {
-    if (!detailId || !canMutateInventory) return;
-    setActionBusy(true);
-    try {
-      await postInventoryAssign(apiCompany, detailId, assignUserId || null);
-      await loadDetail();
-      await loadList();
-      setDetailPanel("none");
-    } finally {
-      setActionBusy(false);
     }
   }
 
   async function runMoveFromDetail() {
     if (!detailId || !canMutateInventory) return;
-    setActionBusy(true);
     try {
-      await postInventoryMove(apiCompany, detailId, moveZoneId || null);
-      await loadDetail();
-      await loadList();
-      setDetailPanel("none");
-    } finally {
-      setActionBusy(false);
+      await runSubmit(async () => {
+        await postInventoryMove(apiCompany, detailId, moveZoneId || null);
+        await loadDetail();
+        await loadList();
+        setDetailPanel("none");
+      });
+    } catch {
+      /* error animation */
     }
   }
 
@@ -839,29 +832,31 @@ export function InventoryApp() {
     if (!detailId || !useWrId || !canMutateInventory) return;
     const qn = Number.parseFloat(useQty);
     if (Number.isNaN(qn) || qn <= 0) return;
-    setActionBusy(true);
     try {
-      await postInventoryUse(apiCompany, detailId, { work_request_id: useWrId, quantity: qn });
-      setUseQty("1");
-      setUseWrId("");
-      await loadDetail();
-      await loadList();
-      setDetailPanel("none");
-    } finally {
-      setActionBusy(false);
+      await runSubmit(async () => {
+        await postInventoryUse(apiCompany, detailId, { work_request_id: useWrId, quantity: qn });
+        setUseQty("1");
+        setUseWrId("");
+        await loadDetail();
+        await loadList();
+        setDetailPanel("none");
+      });
+    } catch {
+      /* error animation */
     }
   }
 
   async function quickPatch(id: string, body: Record<string, unknown>) {
     if (!canMutateInventory) return;
-    setActionBusy(true);
     try {
-      await patchInventoryItem(apiCompany, id, body);
-      setMenuFor(null);
-      await loadList();
-      if (detailId === id) await loadDetail();
-    } finally {
-      setActionBusy(false);
+      await runSubmit(async () => {
+        await patchInventoryItem(apiCompany, id, body);
+        setMenuFor(null);
+        await loadList();
+        if (detailId === id) await loadDetail();
+      });
+    } catch {
+      /* error animation */
     }
   }
 
@@ -1371,6 +1366,7 @@ export function InventoryApp() {
                               column={col}
                               row={row}
                               departmentNamesBySlug={departmentNamesBySlug}
+                              zoneNameById={zoneNameById}
                             />
                           ))}
                           <td className="relative px-4 py-3 text-right align-top" onClick={(e) => e.stopPropagation()}>
@@ -1395,17 +1391,6 @@ export function InventoryApp() {
                                       }}
                                     >
                                       Edit item
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="block w-full px-3 py-2 text-left text-sm hover:bg-ds-interactive-hover"
-                                      onClick={() => {
-                                        setMenuFor(null);
-                                        setDetailId(row.id);
-                                        setDetailPanel("assign");
-                                      }}
-                                    >
-                                      Assign / return
                                     </button>
                                     <button
                                       type="button"
@@ -1502,13 +1487,6 @@ export function InventoryApp() {
                   <button
                     type="button"
                     className="rounded-[10px] border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy hover:bg-ds-interactive-hover dark:border-ds-border dark:bg-ds-elevated dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
-                    onClick={() => setDetailPanel(detailPanel === "assign" ? "none" : "assign")}
-                  >
-                    Assign
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-[10px] border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy hover:bg-ds-interactive-hover dark:border-ds-border dark:bg-ds-elevated dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
                     onClick={() => setDetailPanel(detailPanel === "move" ? "none" : "move")}
                   >
                     Move
@@ -1537,26 +1515,6 @@ export function InventoryApp() {
           <p className="text-sm text-pulse-muted">This item is unavailable — it may have been removed or you may not have access.</p>
         ) : (
           <div className="space-y-5">
-            {detailPanel === "assign" && canMutateInventory ? (
-              <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
-                <p className={LABEL}>Assign to worker</p>
-                <select
-                  className={FIELD}
-                  value={assignUserId}
-                  onChange={(e) => setAssignUserId(e.target.value)}
-                >
-                  <option value="">Unassigned / return</option>
-                  {workers.map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {w.full_name || w.email}
-                    </option>
-                  ))}
-                </select>
-                <button type="button" className={`${PRIMARY_BTN} mt-3 w-full`} disabled={actionBusy} onClick={runAssignFromDetail}>
-                  Save assignment
-                </button>
-              </div>
-            ) : null}
             {detailPanel === "move" && canMutateInventory ? (
               <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
                 <p className={LABEL}>Location (zone)</p>
@@ -1568,9 +1526,14 @@ export function InventoryApp() {
                     </option>
                   ))}
                 </select>
-                <button type="button" className={`${PRIMARY_BTN} mt-3 w-full`} disabled={actionBusy} onClick={runMoveFromDetail}>
-                  Save move
-                </button>
+                <AsyncSubmitButton
+                  className={cn(PRIMARY_BTN, "mt-3 w-full")}
+                  phase={submitPhase}
+                  idleLabel="Save move"
+                  loadingLabel="Saving"
+                  disabled={submitPending}
+                  onClick={() => void runMoveFromDetail()}
+                />
               </div>
             ) : null}
             {detailPanel === "use" && canMutateInventory ? (
@@ -1594,9 +1557,15 @@ export function InventoryApp() {
                 <p className="mt-2 text-xs text-pulse-muted">
                   Parts and consumables deduct stock. Tools log usage without quantity deduction.
                 </p>
-                <button type="button" className={`${PRIMARY_BTN} mt-3 w-full`} disabled={actionBusy} onClick={runUseFromDetail}>
-                  Record usage
-                </button>
+                <AsyncSubmitButton
+                  className={cn(PRIMARY_BTN, "mt-3 w-full")}
+                  phase={submitPhase}
+                  idleLabel="Record usage"
+                  loadingLabel="Saving"
+                  successSrLabel="Usage recorded"
+                  disabled={submitPending}
+                  onClick={() => void runUseFromDetail()}
+                />
               </div>
             ) : null}
 
@@ -1649,19 +1618,14 @@ export function InventoryApp() {
                         <select
                           className={FIELD}
                           value={detail.zone_id ?? ""}
-                          disabled={actionBusy}
+                          disabled={submitPending}
                           onChange={(e) => {
                             const zone_id = e.target.value || null;
-                            void (async () => {
-                              setActionBusy(true);
-                              try {
-                                await postInventoryMove(apiCompany, detail.id, zone_id);
-                                await loadDetail();
-                                await loadList();
-                              } finally {
-                                setActionBusy(false);
-                              }
-                            })();
+                            void runSubmit(async () => {
+                              await postInventoryMove(apiCompany, detail.id, zone_id);
+                              await loadDetail();
+                              await loadList();
+                            });
                           }}
                         >
                           <option value="">Unspecified</option>
@@ -1698,6 +1662,17 @@ export function InventoryApp() {
               fields={detailExtraFields}
               departmentNamesBySlug={departmentNamesBySlug}
             />
+
+            <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
+              <p className="text-xs font-bold uppercase text-pulse-muted">Lifecycle & forecast</p>
+              <div className="mt-2">
+                <InventoryEnterprisePanel
+                  itemId={detail.id}
+                  apiCompany={apiCompany}
+                  canEdit={canMutateInventory}
+                />
+              </div>
+            </div>
 
             <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
               <p className="text-xs font-bold uppercase text-pulse-muted">Work requests</p>
@@ -1781,7 +1756,11 @@ export function InventoryApp() {
       <PulseDrawer
         open={editOpen}
         title={editMode === "create" ? "Register item" : "Edit item"}
-        subtitle={mergedSettings.register_form.subtitle}
+        subtitle={
+          editMode === "create"
+            ? mergedSettings.register_form.subtitle
+            : [form.sku.trim(), form.item_type].filter(Boolean).join(" · ") || undefined
+        }
         wide
         placement="center"
         onClose={() => {
@@ -1798,9 +1777,13 @@ export function InventoryApp() {
             >
               Cancel
             </button>
-            <button type="button" className={PRIMARY_BTN} disabled={actionBusy} onClick={() => void submitForm()}>
-              Save
-            </button>
+            <AsyncSubmitButton
+              className={PRIMARY_BTN}
+              phase={submitPhase}
+              idleLabel="Save"
+              disabled={submitPending}
+              onClick={() => void submitForm()}
+            />
           </div>
         }
       >
@@ -1855,9 +1838,13 @@ export function InventoryApp() {
             >
               Cancel
             </button>
-            <button type="button" className={PRIMARY_BTN} disabled={actionBusy || settingsLoading} onClick={() => void saveSettings()}>
-              Save
-            </button>
+            <AsyncSubmitButton
+              className={PRIMARY_BTN}
+              phase={submitPhase}
+              idleLabel="Save"
+              disabled={submitPending || settingsLoading}
+              onClick={() => void saveSettings()}
+            />
           </div>
         }
       >
@@ -1914,8 +1901,11 @@ export function InventoryApp() {
                     departments={tenantDepartments}
                     onDepartmentsChange={setTenantDepartments}
                     canManage={canMutateInventory || canConfigureOrg}
-                    busy={actionBusy}
-                    onBusyChange={setActionBusy}
+                    busy={submitPending}
+                    onBusyChange={(busy) => {
+                      if (busy) setSubmitPhase("loading");
+                      else if (submitPhase === "loading") setSubmitPhase("idle");
+                    }}
                     onError={setSettingsDepartmentError}
                   />
                 </div>
@@ -1932,8 +1922,11 @@ export function InventoryApp() {
                       setZones(filterInventoryStorageZones(next, { inventoryPrimary: inventoryPrimaryTenant, session }))
                     }
                     canManage={canMutateInventory || canConfigureOrg}
-                    busy={actionBusy}
-                    onBusyChange={setActionBusy}
+                    busy={submitPending}
+                    onBusyChange={(busy) => {
+                      if (busy) setSubmitPhase("loading");
+                      else if (submitPhase === "loading") setSubmitPhase("idle");
+                    }}
                     onError={setSettingsLocationError}
                     inventoryPrimary={inventoryPrimaryTenant}
                   />
@@ -1952,7 +1945,7 @@ export function InventoryApp() {
                       },
                     }))
                   }
-                  disabled={actionBusy}
+                  disabled={submitPending}
                 />
               ) : null}
               {settingsTab === "Status rules" ? (
@@ -2049,7 +2042,8 @@ export function InventoryApp() {
       {setupWizardDraft ? (
         <InventorySetupWizard
           open={setupWizardOpen}
-          busy={actionBusy}
+          busy={submitPending}
+          submitPhase={submitPhase}
           draft={setupWizardDraft}
           onDraftChange={setSetupWizardDraft}
           onComplete={(next) => completeSetupWizard(next)}

@@ -763,6 +763,7 @@ async def create_inventory_vendor(
         country=(body.country or "").strip() or None,
         is_active=bool(body.is_active),
         preferred_vendor=bool(body.preferred_vendor),
+        lead_time_days=body.lead_time_days,
         created_at=now,
         updated_at=now,
     )
@@ -820,6 +821,8 @@ async def patch_inventory_vendor(
         row.is_active = bool(data["is_active"])
     if "preferred_vendor" in data and data["preferred_vendor"] is not None:
         row.preferred_vendor = bool(data["preferred_vendor"])
+    if "lead_time_days" in data:
+        row.lead_time_days = data["lead_time_days"]
     row.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(row)
@@ -1593,7 +1596,9 @@ async def patch_inventory_item(
         item.vendor = None if vraw is None else (str(vraw).strip() or None)
     custom_attrs_patch = data.pop("custom_attributes", None)
     if custom_attrs_patch is not None:
-        item.custom_attributes = dict(custom_attrs_patch)
+        merged_attrs = dict(item.custom_attributes or {})
+        merged_attrs.update(custom_attrs_patch)
+        item.custom_attributes = merged_attrs
     if location_lines_raw is not None:
         location_lines = await _normalize_location_lines(
             db,
@@ -1806,3 +1811,8 @@ async def use_inventory(
     await db.commit()
     await db.refresh(item)
     return await _inventory_detail_payload(db, cid, item)
+
+
+from app.api.inventory_enterprise_routes import router as inventory_enterprise_router
+
+router.include_router(inventory_enterprise_router)

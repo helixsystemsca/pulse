@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { PulseDrawer } from "@/components/schedule/PulseDrawer";
+import { AsyncSubmitButton } from "@/components/ui/AsyncSubmitButton";
+import { useAsyncSubmitPhase } from "@/hooks/useAsyncSubmitPhase";
 import {
   PLANNING_IDEA_PRIORITIES,
   PLANNING_IDEA_STATUSES,
@@ -36,7 +38,8 @@ export function PlanningIdeaFormModal({ open, idea, onClose, onSave }: Props) {
   const [cost, setCost] = useState("");
   const [priority, setPriority] = useState("medium");
   const [status, setStatus] = useState<PlanningIdeaStatus>("idea");
-  const [busy, setBusy] = useState(false);
+  const { phase: submitPhase, run: runSubmit } = useAsyncSubmitPhase();
+  const submitPending = submitPhase === "loading" || submitPhase === "success";
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
@@ -58,25 +61,24 @@ export function PlanningIdeaFormModal({ open, idea, onClose, onSave }: Props) {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!title.trim() || busy) return;
-    setBusy(true);
+    if (!title.trim() || submitPending) return;
     setErr(null);
     try {
-      const parsed = cost.trim() ? Number.parseFloat(cost.replace(/,/g, "")) : null;
-      await onSave({
-        title: title.trim(),
-        description: description.trim(),
-        location: location.trim(),
-        category: category.trim(),
-        estimated_cost: parsed != null && Number.isFinite(parsed) ? parsed : null,
-        priority,
-        status: idea?.status === "converted" ? "converted" : status,
+      await runSubmit(async () => {
+        const parsed = cost.trim() ? Number.parseFloat(cost.replace(/,/g, "")) : null;
+        await onSave({
+          title: title.trim(),
+          description: description.trim(),
+          location: location.trim(),
+          category: category.trim(),
+          estimated_cost: parsed != null && Number.isFinite(parsed) ? parsed : null,
+          priority,
+          status: idea?.status === "converted" ? "converted" : status,
+        });
       });
       onClose();
     } catch (ex) {
       setErr(ex instanceof Error ? ex.message : "Could not save.");
-    } finally {
-      setBusy(false);
     }
   }
 
@@ -92,14 +94,15 @@ export function PlanningIdeaFormModal({ open, idea, onClose, onSave }: Props) {
           <button type="button" className="rounded-lg px-4 py-2 text-sm font-semibold text-ds-muted" onClick={onClose}>
             Cancel
           </button>
-          <button
+          <AsyncSubmitButton
             type="submit"
             form="planning-idea-form"
-            disabled={busy || !title.trim() || idea?.status === "converted"}
-            className="rounded-lg bg-ds-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-          >
-            {busy ? "Saving…" : "Save"}
-          </button>
+            phase={submitPhase}
+            idleLabel="Save"
+            loadingLabel="Saving"
+            disabled={submitPending || !title.trim() || idea?.status === "converted"}
+            className="rounded-lg px-4 py-2 text-sm font-semibold"
+          />
         </div>
       }
     >

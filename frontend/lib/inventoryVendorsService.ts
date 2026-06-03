@@ -24,6 +24,7 @@ export type InventoryVendorRow = {
   postal_code: string | null;
   country: string | null;
   is_active: boolean;
+  lead_time_days: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -46,6 +47,7 @@ export type InventoryVendorCreateBody = {
   postal_code?: string | null;
   country?: string | null;
   is_active?: boolean;
+  lead_time_days?: number | null;
 };
 
 export type InventoryVendorPatchBody = Partial<InventoryVendorCreateBody>;

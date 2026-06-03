@@ -21,6 +21,10 @@ export type MaterialRequestQueueRow = {
   minimum_qty: number;
   maximum_qty: number | null;
   reorder_qty: number;
+  priority_score?: number;
+  days_until_stockout?: number | null;
+  urgency_tier?: string;
+  anomaly_flag?: boolean;
   estimated_unit_cost: number | null;
   status: string;
   exported_at: string | null;

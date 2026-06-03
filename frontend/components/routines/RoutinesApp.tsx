@@ -2,8 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, Loader2, Plus, Save, X } from "lucide-react";
+import { ChevronRight, Loader2, Plus, X } from "lucide-react";
 import { Card } from "@/components/pulse/Card";
+import { AsyncSubmitButton } from "@/components/ui/AsyncSubmitButton";
+import { useAsyncSubmitPhase } from "@/hooks/useAsyncSubmitPhase";
 import { cn } from "@/lib/cn";
 import { fetchProcedures, type ProcedureRow } from "@/lib/cmmsApi";
 import { buttonVariants } from "@/styles/button-variants";
@@ -80,7 +82,8 @@ export function RoutinesApp() {
   const [rows, setRows] = useState<RoutineRow[] | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selected, setSelected] = useState<RoutineDetail | null>(null);
-  const [busy, setBusy] = useState(false);
+  const { phase: submitPhase, run: runSubmit } = useAsyncSubmitPhase();
+  const submitPending = submitPhase === "loading" || submitPhase === "success";
   const [toast, setToast] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [procedures, setProcedures] = useState<ProcedureRow[]>([]);
@@ -247,25 +250,24 @@ export function RoutinesApp() {
   }, [selectedId]);
 
   async function submitCreate() {
-    if (!canCompleteCreate || busy) return;
-    setBusy(true);
+    if (!canCompleteCreate || submitPending) return;
     setErr(null);
     try {
-      const items = flattenBandsToPayload(createBands, createByBand);
-      const out = await createRoutine({
-        name: createName.trim(),
-        items,
+      await runSubmit(async () => {
+        const items = flattenBandsToPayload(createBands, createByBand);
+        const out = await createRoutine({
+          name: createName.trim(),
+          items,
+        });
+        setToast("Routine created.");
+        await reload();
+        setSelectedId(out.id);
       });
-      setToast("Routine created.");
       setCreateOpen(false);
       resetCreateWizard();
-      await reload();
-      setSelectedId(out.id);
     } catch (e) {
       const { message } = parseClientApiError(e);
       setErr(message || "Could not create routine.");
-    } finally {
-      setBusy(false);
     }
   }
 
@@ -284,23 +286,22 @@ export function RoutinesApp() {
   }
 
   async function submitEdit() {
-    if (!selectedId || !canSaveEdit || busy) return;
-    setBusy(true);
+    if (!selectedId || !canSaveEdit || submitPending) return;
     setErr(null);
     try {
-      await patchRoutine(selectedId, {
-        name: editName.trim(),
-        items: buildEditPayload(),
+      await runSubmit(async () => {
+        await patchRoutine(selectedId, {
+          name: editName.trim(),
+          items: buildEditPayload(),
+        });
+        setToast("Routine saved.");
+        await reload();
+        const d = await getRoutine(selectedId);
+        setSelected(d);
       });
-      setToast("Routine saved.");
-      await reload();
-      const d = await getRoutine(selectedId);
-      setSelected(d);
     } catch (e) {
       const { message } = parseClientApiError(e);
       setErr(message || "Could not save routine.");
-    } finally {
-      setBusy(false);
     }
   }
 
@@ -367,7 +368,7 @@ export function RoutinesApp() {
         <Card padding="md" className="space-y-3">
           <div className="flex items-center justify-between gap-3">
             <p className="text-sm font-bold text-ds-foreground">Routines</p>
-            <button type="button" className={PRIMARY_BTN} onClick={() => openCreate()} disabled={busy}>
+            <button type="button" className={PRIMARY_BTN} onClick={() => openCreate()} disabled={submitPending}>
               <span className="inline-flex items-center gap-2">
                 <Plus className="h-4 w-4" aria-hidden />
                 Create
@@ -419,7 +420,7 @@ export function RoutinesApp() {
                   setCreateOpen(false);
                   resetCreateWizard();
                 }}
-                disabled={busy}
+                disabled={submitPending}
               >
                 <span className="inline-flex items-center gap-2">
                   <X className="h-4 w-4" aria-hidden />
@@ -451,7 +452,7 @@ export function RoutinesApp() {
                     type="button"
                     className={PRIMARY_BTN}
                     onClick={() => setCreateStep("shifts")}
-                    disabled={busy || !canSaveCreateName}
+                    disabled={submitPending || !canSaveCreateName}
                   >
                     <span className="inline-flex items-center gap-2">
                       Continue
@@ -526,7 +527,7 @@ export function RoutinesApp() {
                               }),
                             );
                           }}
-                          disabled={busy || procedures.length === 0}
+                          disabled={submitPending || procedures.length === 0}
                         >
                           <option value="">{procedures.length ? "Select procedure…" : "No procedures yet"}</option>
                           {proceduresSorted.map((p) => (
@@ -565,7 +566,7 @@ export function RoutinesApp() {
                               prev.length <= 1 ? prev : prev.filter((x) => x.key !== it.key),
                             )
                           }
-                          disabled={busy || currentCreateDrafts.length <= 1}
+                          disabled={submitPending || currentCreateDrafts.length <= 1}
                         >
                           Remove
                         </button>
@@ -576,7 +577,7 @@ export function RoutinesApp() {
                     type="button"
                     className={SECONDARY_BTN + " mt-3"}
                     onClick={() => setDraftsForActiveCreate((prev) => [...prev, oneEmptyDraft()])}
-                    disabled={busy}
+                    disabled={submitPending}
                   >
                     Add item
                   </button>
@@ -593,7 +594,7 @@ export function RoutinesApp() {
                         type="button"
                         className={SECONDARY_BTN}
                         onClick={() => addCreateShiftBand(b)}
-                        disabled={busy}
+                        disabled={submitPending}
                       >
                         + {ROUTINE_SHIFT_TABS.find((t) => t.id === b)?.label}
                       </button>
@@ -602,15 +603,17 @@ export function RoutinesApp() {
                 </div>
 
                 <div className="flex flex-wrap justify-between gap-2 pt-2">
-                  <button type="button" className={SECONDARY_BTN} onClick={() => setCreateStep("name")} disabled={busy}>
+                  <button type="button" className={SECONDARY_BTN} onClick={() => setCreateStep("name")} disabled={submitPending}>
                     Back
                   </button>
-                  <button type="button" className={PRIMARY_BTN} onClick={() => void submitCreate()} disabled={busy || !canCompleteCreate}>
-                    <span className="inline-flex items-center gap-2">
-                      {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Save className="h-4 w-4" aria-hidden />}
-                      {busy ? "Saving…" : "Complete routine"}
-                    </span>
-                  </button>
+                  <AsyncSubmitButton
+                    phase={submitPhase}
+                    idleLabel="Complete routine"
+                    loadingLabel="Saving"
+                    disabled={submitPending || !canCompleteCreate}
+                    onClick={() => void submitCreate()}
+                    className={PRIMARY_BTN}
+                  />
                 </div>
               </>
             )}
@@ -687,7 +690,7 @@ export function RoutinesApp() {
                           }),
                         );
                       }}
-                      disabled={busy || procedures.length === 0}
+                      disabled={submitPending || procedures.length === 0}
                     >
                       <option value="">{procedures.length ? "Select procedure…" : "No procedures yet"}</option>
                       {proceduresSorted.map((p) => (
@@ -725,7 +728,7 @@ export function RoutinesApp() {
                       onClick={() =>
                         setEditDraftList((prev) => (prev.length <= 1 ? prev : prev.filter((x) => x.key !== it.key)))
                       }
-                      disabled={busy || editDraftList.length <= 1}
+                      disabled={submitPending || editDraftList.length <= 1}
                     >
                       Remove
                     </button>
@@ -736,18 +739,20 @@ export function RoutinesApp() {
                 type="button"
                 className={SECONDARY_BTN + " mt-3"}
                 onClick={() => setEditDraftList((prev) => [...prev, oneEmptyDraft()])}
-                disabled={busy}
+                disabled={submitPending}
               >
                 Add item
               </button>
             </div>
             <div className="flex justify-end gap-2">
-              <button type="button" className={PRIMARY_BTN} onClick={() => void submitEdit()} disabled={busy || !canSaveEdit}>
-                <span className="inline-flex items-center gap-2">
-                  {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Save className="h-4 w-4" aria-hidden />}
-                  {busy ? "Saving…" : "Save changes"}
-                </span>
-              </button>
+              <AsyncSubmitButton
+                phase={submitPhase}
+                idleLabel="Save changes"
+                loadingLabel="Saving"
+                disabled={submitPending || !canSaveEdit}
+                onClick={() => void submitEdit()}
+                className={PRIMARY_BTN}
+              />
             </div>
           </Card>
         ) : (

@@ -586,6 +586,19 @@ class InventoryItem(Base):
     reorder_flag: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     unit_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     vendor: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    vendor_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("inventory_vendors.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    acquired_on: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    acquisition_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    useful_life_months: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    salvage_value: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    expected_retirement_on: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    disposed_on: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    disposal_method: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    disposal_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    #: straight_line | none
+    depreciation_method: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     image_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
     image_storage_key: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     custom_attributes: Mapped[dict[str, Any]] = mapped_column(
@@ -614,6 +627,10 @@ class MaterialRequestQueue(Base):
     minimum_qty: Mapped[float] = mapped_column(Float, nullable=False, default=0)
     maximum_qty: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     reorder_qty: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+    priority_score: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+    days_until_stockout: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    urgency_tier: Mapped[str] = mapped_column(String(16), nullable=False, default="normal")
+    anomaly_flag: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     estimated_unit_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     vendor_part_number: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     unit: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
@@ -858,10 +875,98 @@ class InventoryVendor(Base):
     country: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     preferred_vendor: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    lead_time_days: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     department_slug: Mapped[str] = mapped_column(String(64), nullable=False, default="maintenance", index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
     )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
+class InventoryCheckout(Base):
+    """Check-out / check-in audit for shared tools and equipment."""
+
+    __tablename__ = "inventory_checkouts"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    item_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("inventory_items.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    checked_out_by: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=False, index=True
+    )
+    checked_out_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    expected_return_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    checked_in_by: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    checked_in_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    condition_out: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    condition_in: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    zone_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("zones.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    movement_out_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("inventory_movements.id", ondelete="SET NULL"), nullable=True
+    )
+    movement_in_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("inventory_movements.id", ondelete="SET NULL"), nullable=True
+    )
+    photo_out_storage_key: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    photo_in_storage_key: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+
+
+class InventoryReorderPolicy(Base):
+    """Contextual reorder rules per SKU (seasonal / event boosts)."""
+
+    __tablename__ = "inventory_reorder_policies"
+    __table_args__ = (UniqueConstraint("item_id", name="uq_inventory_reorder_policies_item"),)
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    item_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("inventory_items.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    base_low_stock_threshold: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    consumption_lookback_days: Mapped[int] = mapped_column(Integer, nullable=False, default=90)
+    seasonal_multipliers: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
+    event_boosts: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
+class InventoryLocationBalance(Base):
+    """Per-zone stock counts (stock rooms, cages, vehicles)."""
+
+    __tablename__ = "inventory_location_balances"
+    __table_args__ = (UniqueConstraint("item_id", "zone_id", name="uq_inventory_location_balance"),)
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    item_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("inventory_items.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    zone_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("zones.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    quantity: Mapped[float] = mapped_column(Float, nullable=False, default=0)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

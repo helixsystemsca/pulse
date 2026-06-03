@@ -1,7 +1,9 @@
 "use client";
 
-import { Loader2, SlidersHorizontal } from "lucide-react";
+import { SlidersHorizontal } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
+import { AsyncSubmitButton } from "@/components/ui/AsyncSubmitButton";
+import { useAsyncSubmitPhase } from "@/hooks/useAsyncSubmitPhase";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
 
@@ -36,16 +38,19 @@ function FieldBlock({
 export function ConfigPanel({
   proximity,
   sopAlerts,
-  saving,
   onSaveProximity,
   onSaveSop,
 }: {
   proximity: Record<string, unknown> | undefined;
   sopAlerts: Record<string, unknown> | undefined;
-  saving: boolean;
   onSaveProximity: (body: { enabled: boolean; config: Record<string, unknown> }) => Promise<void>;
   onSaveSop: (body: { enabled: boolean; config: Record<string, unknown> }) => Promise<void>;
 }) {
+  const { phase: proxPhase, run: runProxSubmit } = useAsyncSubmitPhase();
+  const proxPending = proxPhase === "loading" || proxPhase === "success";
+  const { phase: sopPhase, run: runSopSubmit } = useAsyncSubmitPhase();
+  const sopPending = sopPhase === "loading" || sopPhase === "success";
+
   const [proxEnabled, setProxEnabled] = useState(true);
   const [minDur, setMinDur] = useState("10");
   const [cooldown, setCooldown] = useState("60");
@@ -136,24 +141,31 @@ export function ConfigPanel({
             />
           </FieldBlock>
         </div>
-        <button
-          type="button"
-          disabled={saving}
-          className={`mt-6 ${saveBtn}`}
+        <AsyncSubmitButton
+          phase={proxPhase}
+          idleLabel="Save proximity settings"
+          loadingLabel="Saving"
+          disabled={proxPending}
           onClick={() =>
-            onSaveProximity({
-              enabled: proxEnabled,
-              config: {
-                min_duration_seconds: Number(minDur) || 0,
-                cooldown_seconds: Number(cooldown) || 0,
-                movement_required: movement,
-              },
-            })
+            void (async () => {
+              try {
+                await runProxSubmit(async () => {
+                  await onSaveProximity({
+                    enabled: proxEnabled,
+                    config: {
+                      min_duration_seconds: Number(minDur) || 0,
+                      cooldown_seconds: Number(cooldown) || 0,
+                      movement_required: movement,
+                    },
+                  });
+                });
+              } catch {
+                /* error animation */
+              }
+            })()
           }
-        >
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          Save proximity settings
-        </button>
+          className={`mt-6 ${saveBtn}`}
+        />
       </section>
 
       <section className="rounded-md bg-slate-50/80 p-5 ring-1 ring-slate-200/60">
@@ -186,22 +198,29 @@ export function ConfigPanel({
             onChange={(e) => setEscalation(e.target.value)}
           />
         </FieldBlock>
-        <button
-          type="button"
-          disabled={saving}
-          className={`mt-6 ${saveBtn}`}
+        <AsyncSubmitButton
+          phase={sopPhase}
+          idleLabel="Save SOP settings"
+          loadingLabel="Saving"
+          disabled={sopPending}
           onClick={() =>
-            onSaveSop({
-              enabled: sopEnabled,
-              config: {
-                escalation_delay_seconds: Number(escalation) || 0,
-              },
-            })
+            void (async () => {
+              try {
+                await runSopSubmit(async () => {
+                  await onSaveSop({
+                    enabled: sopEnabled,
+                    config: {
+                      escalation_delay_seconds: Number(escalation) || 0,
+                    },
+                  });
+                });
+              } catch {
+                /* error animation */
+              }
+            })()
           }
-        >
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          Save SOP settings
-        </button>
+          className={`mt-6 ${saveBtn}`}
+        />
       </section>
     </div>
   );

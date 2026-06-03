@@ -7,6 +7,8 @@ import { APP_MODAL_PORTAL_Z_BASE } from "@/components/ui/app-modal-layer";
 import type { ModuleId } from "@/lib/moduleSettings/defaults";
 import { MODULE_SETTINGS_UI } from "@/lib/moduleSettings/uiMeta";
 import { useModuleSettings } from "@/providers/ModuleSettingsProvider";
+import { AsyncSubmitButton } from "@/components/ui/AsyncSubmitButton";
+import { useAsyncSubmitPhase } from "@/hooks/useAsyncSubmitPhase";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
 
@@ -36,7 +38,8 @@ export function ModuleSettingsForm({ moduleId, closeOnSave = false, onClose, onC
   const meta = MODULE_SETTINGS_UI[moduleId];
   const { settings, defaults, canConfigure, update, reset, loading } = useModuleSettings(moduleId);
   const [draft, setDraft] = useState(settings);
-  const [saving, setSaving] = useState(false);
+  const { phase: savePhase, run: runSave } = useAsyncSubmitPhase();
+  const savePending = savePhase === "loading" || savePhase === "success";
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -46,31 +49,34 @@ export function ModuleSettingsForm({ moduleId, closeOnSave = false, onClose, onC
 
   const onSave = useCallback(async () => {
     if (!canConfigure) return;
-    setSaving(true);
     setMessage(null);
     try {
-      const ok = await update(draft as typeof settings);
-      setMessage(ok ? "Saved." : "Could not save — reverted to server values.");
-      if (ok && closeOnSave) onClose?.();
-    } finally {
-      setSaving(false);
+      await runSave(async () => {
+        const ok = await update(draft as typeof settings);
+        setMessage(ok ? "Saved." : "Could not save — reverted to server values.");
+        if (!ok) throw new Error("save failed");
+      });
+      if (closeOnSave) onClose?.();
+    } catch {
+      /* error animation */
     }
-  }, [canConfigure, closeOnSave, draft, onClose, update]);
+  }, [canConfigure, closeOnSave, draft, onClose, runSave, update]);
 
   const onReset = useCallback(async () => {
     if (!canConfigure) return;
-    setSaving(true);
     setMessage(null);
     try {
-      const ok = await reset();
-      if (ok) {
-        setDraft(defaults);
-        setMessage("Reset to defaults.");
-      } else setMessage("Reset failed.");
-    } finally {
-      setSaving(false);
+      await runSave(async () => {
+        const ok = await reset();
+        if (ok) {
+          setDraft(defaults);
+          setMessage("Reset to defaults.");
+        } else throw new Error("reset failed");
+      });
+    } catch {
+      setMessage("Reset failed.");
     }
-  }, [canConfigure, defaults, reset]);
+  }, [canConfigure, defaults, reset, runSave]);
 
   function jsonStringFor(key: string): string {
     const v = (draft as Record<string, unknown>)[key];
@@ -201,7 +207,7 @@ export function ModuleSettingsForm({ moduleId, closeOnSave = false, onClose, onC
           type="button"
           className="rounded-lg px-3 py-2 text-sm font-semibold text-pulse-muted hover:text-pulse-navy dark:hover:text-slate-100"
           onClick={() => void onReset()}
-          disabled={!canConfigure || saving}
+          disabled={!canConfigure || savePending}
         >
           Reset to defaults
         </button>
@@ -212,14 +218,13 @@ export function ModuleSettingsForm({ moduleId, closeOnSave = false, onClose, onC
         >
           Cancel
         </button>
-        <button
-          type="button"
-          className={cn(buttonVariants({ surface: "light", intent: "accent" }), "px-4 py-2 disabled:opacity-50")}
-          disabled={!canConfigure || saving}
+        <AsyncSubmitButton
+          className={cn(buttonVariants({ surface: "light", intent: "accent" }), "px-4 py-2")}
+          phase={savePhase}
+          idleLabel="Save"
+          disabled={!canConfigure || savePending}
           onClick={() => void onSave()}
-        >
-          {saving ? "Saving…" : "Save"}
-        </button>
+        />
       </div>
     </div>
   );
