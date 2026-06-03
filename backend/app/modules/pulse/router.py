@@ -1285,10 +1285,30 @@ async def get_shift_work_queue(
 
 
 @router.get("/zones", response_model=list[ZoneOut])
-async def list_zones(db: Db, cid: CompanyId) -> list[ZoneOut]:
+async def list_zones(
+    db: Db,
+    cid: CompanyId,
+    inventory_only: bool = Query(
+        False,
+        description="When true, return only inventory storage zones (meta.inventory_location), excluding schedule facilities",
+    ),
+) -> list[ZoneOut]:
     zq = await db.execute(select(Zone).where(Zone.company_id == cid).order_by(Zone.name))
     zones = zq.scalars().all()
-    return [ZoneOut(id=z.id, name=z.name, meta=dict(z.meta or {})) for z in zones]
+    out: list[ZoneOut] = []
+    for z in zones:
+        meta = dict(z.meta or {})
+        if inventory_only:
+            if meta.get("schedule_facility") is True:
+                continue
+            if meta.get("inventory_location") is True:
+                out.append(ZoneOut(id=z.id, name=z.name, meta=meta))
+                continue
+            if not meta:
+                out.append(ZoneOut(id=z.id, name=z.name, meta=meta))
+            continue
+        out.append(ZoneOut(id=z.id, name=z.name, meta=meta))
+    return out
 
 
 def _device_hub_svc(db: AsyncSession) -> DeviceService:

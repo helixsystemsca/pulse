@@ -4,7 +4,7 @@ import { useState } from "react";
 import { createZone, deleteZone, patchZone } from "@/lib/setup-api";
 import { filterInventoryStorageZones, isScheduleFacilityZone } from "@/lib/inventory/inventory-zones";
 import { invalidateReferenceCache } from "@/lib/api-reference-cache";
-import { fetchPulseZonesCached, type PulseZoneOpt } from "@/lib/pulse/pulse-reference-data";
+import { fetchPulseZonesCached, fetchInventoryStorageZonesCached, type PulseZoneOpt } from "@/lib/pulse/pulse-reference-data";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
 
@@ -25,11 +25,18 @@ type Props = {
   busy?: boolean;
   onBusyChange?: (busy: boolean) => void;
   onError?: (message: string | null) => void;
+  inventoryPrimary?: boolean;
 };
 
-async function reloadZones(onZonesChange: (zones: PulseZoneOpt[]) => void) {
+async function reloadZones(
+  onZonesChange: (zones: PulseZoneOpt[]) => void,
+  inventoryPrimary: boolean,
+) {
   invalidateReferenceCache("pulse:zones");
-  const next = await fetchPulseZonesCached();
+  invalidateReferenceCache("pulse:zones:inventory");
+  const next = inventoryPrimary
+    ? await fetchInventoryStorageZonesCached()
+    : await fetchPulseZonesCached();
   onZonesChange(next);
 }
 
@@ -41,6 +48,7 @@ export function InventoryLocationsPanel({
   busy,
   onBusyChange,
   onError,
+  inventoryPrimary = false,
 }: Props) {
   const [newName, setNewName] = useState("");
   const [nameDrafts, setNameDrafts] = useState<Record<string, string>>({});
@@ -51,7 +59,7 @@ export function InventoryLocationsPanel({
     try {
       return await fn();
     } catch (e) {
-      onError?.(e instanceof Error ? e.message : "Could not update locations");
+      onError?.(parseClientApiError(e).message || "Could not update locations");
       return undefined;
     } finally {
       onBusyChange?.(false);
@@ -64,7 +72,7 @@ export function InventoryLocationsPanel({
     await run(async () => {
       await createZone(companyId, { name });
       setNewName("");
-      await reloadZones(onZonesChange);
+      await reloadZones(onZonesChange, inventoryPrimary);
     });
   }
 
@@ -78,7 +86,7 @@ export function InventoryLocationsPanel({
         delete next[zoneId];
         return next;
       });
-      await reloadZones(onZonesChange);
+      await reloadZones(onZonesChange, inventoryPrimary);
     });
   }
 
@@ -95,15 +103,16 @@ export function InventoryLocationsPanel({
     if (!window.confirm(`Remove location “${z.name}”? Items at this location will be cleared.`)) return;
     await run(async () => {
       await deleteZone(companyId, zoneId);
-      await reloadZones(onZonesChange);
+      await reloadZones(onZonesChange, inventoryPrimary);
     });
   }
 
   return (
     <div className="space-y-4">
       <p className="text-sm text-pulse-muted">
-        Storage locations appear when registering items, filtering the list, and on item details. Schedule facilities
-        (e.g. Facility 1 for workforce planning) are managed separately and are not listed here.
+        {inventoryPrimary
+          ? "Storage locations are defined here and in the setup wizard. They appear when registering items, filtering the list, and on item details."
+          : "Storage locations appear when registering items, filtering the list, and on item details. Schedule facilities (e.g. Facility 1 for workforce planning) are managed separately and are not listed here."}
       </p>
       {!canManage ? (
         <p className="rounded-lg border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-sm text-amber-950 dark:border-amber-500/30 dark:bg-amber-950/40 dark:text-amber-100">

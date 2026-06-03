@@ -8,6 +8,7 @@ import {
   patchTenantDepartment,
   type TenantDepartmentRow,
 } from "@/lib/tenantDepartmentsService";
+import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
 
@@ -54,7 +55,7 @@ export function InventoryDepartmentsPanel({
     try {
       return await fn();
     } catch (e) {
-      onError?.(e instanceof Error ? e.message : "Could not update departments");
+      onError?.(parseClientApiError(e).message || "Could not update departments");
       return undefined;
     } finally {
       onBusyChange?.(false);

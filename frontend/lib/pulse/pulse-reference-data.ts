@@ -29,8 +29,15 @@ export function fetchPulseScheduleFacilitiesCached(): Promise<PulseZoneApi[]> {
   );
 }
 
-export function fetchPulseZonesCached(): Promise<PulseZoneOpt[]> {
-  return fetchReferenceCached("pulse:zones", () => apiFetch<PulseZoneOpt[]>("/api/v1/pulse/zones"));
+export function fetchPulseZonesCached(inventoryOnly = false): Promise<PulseZoneOpt[]> {
+  const suffix = inventoryOnly ? "?inventory_only=true" : "";
+  const key = inventoryOnly ? "pulse:zones:inventory" : "pulse:zones";
+  return fetchReferenceCached(key, () => apiFetch<PulseZoneOpt[]>(`/api/v1/pulse/zones${suffix}`));
+}
+
+/** Zones safe for inventory storage (excludes schedule facilities server-side when possible). */
+export function fetchInventoryStorageZonesCached(): Promise<PulseZoneOpt[]> {
+  return fetchPulseZonesCached(true);
 }
 
 export function fetchPulseAssetsCached(): Promise<PulseAssetOpt[]> {

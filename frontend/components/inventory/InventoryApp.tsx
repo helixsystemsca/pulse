@@ -29,6 +29,7 @@ import { pulseAppHref } from "@/lib/pulse-app";
 import { inventoryScannerHref } from "@/lib/inventory-scanner/scanner-kiosk";
 import {
   fetchPulseAssetsCached,
+  fetchInventoryStorageZonesCached,
   fetchPulseWorkersOptsCached,
   fetchPulseZonesCached,
 } from "@/lib/pulse/pulse-reference-data";
@@ -94,6 +95,7 @@ import {
   type MergedInventorySettings,
 } from "@/lib/inventory/register-form-config";
 import { filterInventoryStorageZones } from "@/lib/inventory/inventory-zones";
+import { isInventoryPrimaryTenant } from "@/lib/inventory/inventory-tenant-scope";
 import { defaultInventoryDepartmentFromSession } from "@/lib/inventory-department";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import {
@@ -241,6 +243,12 @@ export function InventoryApp() {
   const [total, setTotal] = useState(0);
   const [summary, setSummary] = useState<InventorySummary | null>(null);
 
+  const inventoryPrimaryTenant = useMemo(() => isInventoryPrimaryTenant(session), [session]);
+  const storageZones = useMemo(
+    () => filterInventoryStorageZones(zones, { inventoryPrimary: inventoryPrimaryTenant, session }),
+    [zones, inventoryPrimaryTenant, session],
+  );
+
   const mergedSettings = useMemo(() => mergeInventoryModuleSettings(settingsBaseline), [settingsBaseline]);
   const tableColumns = useMemo(
     () => tableColumnsFromRegisterForm(mergedSettings.register_form),
@@ -355,13 +363,16 @@ export function InventoryApp() {
     }
     void (async () => {
       try {
+        const loadZones = inventoryPrimaryTenant
+          ? fetchInventoryStorageZonesCached
+          : () => fetchPulseZonesCached().then((z) => filterInventoryStorageZones(z, { session }));
         const [z, a, w, depts] = await Promise.all([
-          fetchPulseZonesCached(),
+          loadZones(),
           fetchPulseAssetsCached(),
           fetchPulseWorkersOptsCached(),
           fetchTenantDepartments(apiCompany),
         ]);
-        setZones(filterInventoryStorageZones(z));
+        setZones(z);
         setAssets(a);
         setWorkers(w);
         setTenantDepartments(depts);
@@ -372,7 +383,7 @@ export function InventoryApp() {
         setWorkers([]);
       }
     })();
-  }, [dataEnabled, session?.access_token, apiCompany]);
+  }, [dataEnabled, session?.access_token, apiCompany, inventoryPrimaryTenant]);
 
   const loadSettings = useCallback(async () => {
     if (!effectiveCompanyId) {
@@ -1214,7 +1225,7 @@ export function InventoryApp() {
                 }}
               >
                 <option value="">Location</option>
-                {zones.map((z) => (
+                {storageZones.map((z) => (
                   <option key={z.id} value={z.id}>
                     {z.name}
                   </option>
@@ -1551,7 +1562,7 @@ export function InventoryApp() {
                 <p className={LABEL}>Location (zone)</p>
                 <select className={FIELD} value={moveZoneId} onChange={(e) => setMoveZoneId(e.target.value)}>
                   <option value="">Unspecified</option>
-                  {zones.map((z) => (
+                  {storageZones.map((z) => (
                     <option key={z.id} value={z.id}>
                       {z.name}
                     </option>
@@ -1618,14 +1629,14 @@ export function InventoryApp() {
                 {(() => {
                   const stock = parseLocationStock(detail.custom_attributes);
                   const stockLabel = formatLocationStockLabel(stock, (id) =>
-                    zones.find((z) => z.id === id)?.name,
+                    storageZones.find((z) => z.id === id)?.name,
                   );
                   if (stock.length > 1) {
                     return (
                       <ul className="mt-1 space-y-1 text-sm text-pulse-navy">
                         {stock.map((line) => (
                           <li key={line.zone_id}>
-                            {zones.find((z) => z.id === line.zone_id)?.name ?? "Location"}:{" "}
+                            {storageZones.find((z) => z.id === line.zone_id)?.name ?? "Location"}:{" "}
                             <span className="font-semibold">{line.quantity}</span> {detail.unit}
                           </li>
                         ))}
@@ -1654,13 +1665,13 @@ export function InventoryApp() {
                           }}
                         >
                           <option value="">Unspecified</option>
-                          {zones.map((z) => (
+                          {storageZones.map((z) => (
                             <option key={z.id} value={z.id}>
                               {z.name}
                             </option>
                           ))}
                         </select>
-                        {zones.length === 0 ? (
+                        {storageZones.length === 0 ? (
                           <p className="mt-2 text-xs text-pulse-muted">
                             Add locations under Inventory settings → Locations.
                           </p>
@@ -1803,7 +1814,7 @@ export function InventoryApp() {
           registerForm={mergedSettings.register_form}
           form={form}
           onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
-          zones={zones}
+          zones={storageZones}
           assets={assets}
           workers={workers}
           departments={tenantDepartments}
@@ -1916,12 +1927,15 @@ export function InventoryApp() {
                   ) : null}
                   <InventoryLocationsPanel
                     companyId={apiCompany}
-                    zones={zones}
-                    onZonesChange={(next) => setZones(filterInventoryStorageZones(next))}
+                    zones={storageZones}
+                    onZonesChange={(next) =>
+                      setZones(filterInventoryStorageZones(next, { inventoryPrimary: inventoryPrimaryTenant, session }))
+                    }
                     canManage={canMutateInventory || canConfigureOrg}
                     busy={actionBusy}
                     onBusyChange={setActionBusy}
                     onError={setSettingsLocationError}
+                    inventoryPrimary={inventoryPrimaryTenant}
                   />
                 </div>
               ) : null}
@@ -2049,8 +2063,10 @@ export function InventoryApp() {
             }
           }}
           companyId={apiCompany}
-          zones={zones}
-          onZonesChange={(next) => setZones(filterInventoryStorageZones(next))}
+          zones={storageZones}
+          onZonesChange={(next) =>
+                      setZones(filterInventoryStorageZones(next, { inventoryPrimary: inventoryPrimaryTenant, session }))
+                    }
           departments={tenantDepartments}
           onDepartmentsChange={setTenantDepartments}
           canManageOrgData={canMutateInventory || canConfigureOrg}
@@ -2058,6 +2074,7 @@ export function InventoryApp() {
           onOrgDataBusyChange={setOrgSetupBusy}
           orgDataError={orgSetupError}
           onOrgDataError={setOrgSetupError}
+          inventoryPrimary={inventoryPrimaryTenant}
         />
       ) : null}
     </div>

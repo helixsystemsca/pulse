@@ -86,6 +86,8 @@ type Props = {
   onOrgDataBusyChange?: (busy: boolean) => void;
   orgDataError?: string | null;
   onOrgDataError?: (message: string | null) => void;
+  /** Inventory-only contract: locations come from this wizard, not schedule facilities. */
+  inventoryPrimary?: boolean;
 };
 
 export function InventorySetupWizard({
@@ -105,6 +107,7 @@ export function InventorySetupWizard({
   onOrgDataBusyChange,
   orgDataError,
   onOrgDataError,
+  inventoryPrimary = false,
 }: Props) {
   const [step, setStep] = useState<SetupStepId>("Welcome");
   const [stepError, setStepError] = useState<string | null>(null);
@@ -310,7 +313,11 @@ export function InventorySetupWizard({
         <div className="space-y-3">
           <WizardStepIntro
             title="Storage location names"
-            description="Add the rooms, buildings, or bins where stock is kept. Schedule facilities (Facility 1, etc.) are managed separately."
+            description={
+              inventoryPrimary
+                ? "Add the rooms, buildings, or bins where stock is kept. These names are your organization's inventory locations."
+                : "Add storage location names for inventory. Schedule facilities (Facility 1, etc.) are managed under Organization → Schedule."
+            }
           />
           {orgDataError ? (
             <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200">
@@ -325,6 +332,7 @@ export function InventorySetupWizard({
             busy={orgDataBusy}
             onBusyChange={onOrgDataBusyChange}
             onError={onOrgDataError}
+            inventoryPrimary={inventoryPrimary}
           />
         </div>
       ) : null}

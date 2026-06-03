@@ -357,6 +357,19 @@ def _location_name_for_item(item: InventoryItem, zones: dict[str, Zone]) -> Opti
     return z.name if z else None
 
 
+async def _assert_inventory_storage_zone(db: AsyncSession, cid: str, zone_id: str) -> None:
+    """Reject schedule facilities and unknown zones for inventory stock location."""
+    z = await db.get(Zone, zone_id)
+    if not z or str(z.company_id) != cid:
+        raise HTTPException(status_code=400, detail="Unknown location")
+    meta = z.meta if isinstance(z.meta, dict) else {}
+    if meta.get("schedule_facility") is True:
+        raise HTTPException(
+            status_code=400,
+            detail="That location is used for workforce scheduling, not inventory storage. Add storage locations in Inventory setup.",
+        )
+
+
 async def _normalize_location_lines(
     db: AsyncSession,
     cid: str,
@@ -367,8 +380,7 @@ async def _normalize_location_lines(
         z = str(zid).strip()
         if not z or qty <= 0:
             continue
-        if not await pulse_svc.zone_in_company(db, cid, z):
-            raise HTTPException(status_code=400, detail="Unknown zone")
+        await _assert_inventory_storage_zone(db, cid, z)
         merged[z] = merged.get(z, 0.0) + float(qty)
     return [(z, q) for z, q in merged.items()]
 
@@ -611,15 +623,10 @@ async def _resolve_directory_department_slug(
             return matrix_slug
         raise HTTPException(status_code=403, detail="Department access denied")
 
-    if policy.is_company_admin:
-        return "maintenance"
-    allowed = await inventory_department_slugs_for_user(db, user, cid)
-    if len(allowed) == 1:
-        return next(iter(allowed))
-    hr_row = await db.execute(select(PulseWorkerHR).where(PulseWorkerHR.user_id == user.id))
-    hr = hr_row.scalar_one_or_none()
-    matrix_slug = permission_matrix_department_for_user(user, hr)
-    return matrix_slug or "maintenance"
+    raise HTTPException(
+        status_code=400,
+        detail="Add at least one department in Inventory setup (wizard or Settings → Departments) before assigning items.",
+    )
 
 
 async def _apply_directory_department_filter(
@@ -1434,8 +1441,7 @@ async def create_inventory_item(
             [(ln.zone_id, ln.quantity) for ln in body.location_lines],
         )
     elif body.zone_id:
-        if not await pulse_svc.zone_in_company(db, cid, body.zone_id):
-            raise HTTPException(status_code=400, detail="Unknown zone")
+        await _assert_inventory_storage_zone(db, cid, body.zone_id)
         if float(body.quantity) > 0:
             location_lines = [(body.zone_id, float(body.quantity))]
     if body.assigned_user_id and not await pulse_svc._user_in_company(db, cid, body.assigned_user_id):
@@ -1448,7 +1454,7 @@ async def create_inventory_item(
         if scope_row is None:
             raise HTTPException(status_code=400, detail="Unknown inventory scope")
     else:
-        dept_slug = await _normalize_department_slug(db, cid, body.department_slug)
+        dept_slug = await _resolve_directory_department_slug(db, user, policy, cid, body.department_slug)
         scope_row = await inv_scope_repo.ensure_scope_for_company_slug(db, cid, dept_slug)
 
     if not policy.is_company_admin and scope_row.id not in policy.writable_scope_ids:
@@ -1530,8 +1536,8 @@ async def patch_inventory_item(
 
     data = body.model_dump(exclude_unset=True)
     location_lines_raw = data.pop("location_lines", None)
-    if "zone_id" in data and data["zone_id"] and not await pulse_svc.zone_in_company(db, cid, data["zone_id"]):
-        raise HTTPException(status_code=400, detail="Unknown zone")
+    if "zone_id" in data and data["zone_id"]:
+        await _assert_inventory_storage_zone(db, cid, str(data["zone_id"]))
     if "assigned_user_id" in data and data["assigned_user_id"]:
         if not await pulse_svc._user_in_company(db, cid, data["assigned_user_id"]):
             raise HTTPException(status_code=400, detail="Unknown assignee")
@@ -1726,8 +1732,11 @@ async def move_inventory(
     if not inv_scope_repo.can_write_inventory_item(policy, item):
         raise HTTPException(status_code=403, detail="Inventory write denied")
     zid = body.zone_id
-    if zid and not await pulse_svc.zone_in_company(db, cid, zid):
-        raise HTTPException(status_code=400, detail="Unknown zone")
+    if zid:
+        await _assert_inventory_storage_zone(db, cid, zid)
+    attrs = dict(item.custom_attributes or {})
+    attrs.pop(LOCATION_STOCK_KEY, None)
+    item.custom_attributes = attrs
     item.zone_id = zid
     item.last_movement_at = datetime.now(timezone.utc)
     await _log_movement(
