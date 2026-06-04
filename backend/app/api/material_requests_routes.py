@@ -13,6 +13,7 @@ from app.api.inventory_portal_routes import CompanyId
 from app.models.domain import User
 from app.schemas.material_requests import (
     MaterialRequestCreateDraftIn,
+    MaterialRequestQueueIdsIn,
     MaterialRequestDraftCreatedOut,
     MaterialRequestDraftItemOut,
     MaterialRequestDraftOut,
@@ -133,6 +134,24 @@ async def patch_material_request_queue_item(
     return _queue_out(row)
 
 
+@router.post("/queue/{queue_id}/clear-on-order", response_model=MaterialRequestQueueOut)
+async def clear_material_request_queue_on_order_flag(
+    db: Db,
+    _: InvManageUser,
+    cid: CompanyId,
+    queue_id: str,
+) -> MaterialRequestQueueOut:
+    row = await queue_svc.get_queue_row(db, cid, queue_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Not found")
+    if not queue_svc.queue_row_mr_requested(row):
+        raise HTTPException(status_code=400, detail="This item is not marked on order")
+    await queue_svc.clear_mr_requested_flag(db, row)
+    await db.commit()
+    await db.refresh(row)
+    return _queue_out(row)
+
+
 @router.post("/queue/{queue_id}/remove", status_code=204)
 async def remove_material_request_queue_item(
     db: Db,
@@ -145,6 +164,28 @@ async def remove_material_request_queue_item(
         raise HTTPException(status_code=404, detail="Not found")
     await queue_svc.remove_from_queue(db, row)
     await db.commit()
+
+
+@router.post("/queue/clear-on-order-flags", response_model=MaterialRequestQueueListOut)
+async def clear_material_request_queue_on_order_flags(
+    db: Db,
+    _: InvManageUser,
+    cid: CompanyId,
+    body: MaterialRequestQueueIdsIn,
+) -> MaterialRequestQueueListOut:
+    unique_ids = list(dict.fromkeys(body.queue_item_ids))
+    updated = []
+    for qid in unique_ids:
+        row = await queue_svc.get_queue_row(db, cid, qid)
+        if row is None or not queue_svc.queue_row_mr_requested(row):
+            continue
+        updated.append(await queue_svc.clear_mr_requested_flag(db, row))
+    if not updated:
+        raise HTTPException(status_code=400, detail="No on-order items in selection")
+    await db.commit()
+    for row in updated:
+        await db.refresh(row)
+    return MaterialRequestQueueListOut(items=[_queue_out(r) for r in updated])
 
 
 @router.post("/queue/clear", status_code=204)

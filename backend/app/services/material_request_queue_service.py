@@ -16,15 +16,31 @@ QUEUE_STATUS_DRAFTED = "drafted"
 QUEUE_STATUS_SUBMITTED = "submitted"
 QUEUE_STATUS_ORDERED = "ordered"
 QUEUE_STATUS_RECEIVED = "received"
-QUEUE_STATUS_EXPORTED = "exported"
+QUEUE_STATUS_EXPORTED = "exported"  # legacy — same semantics as on_order
+QUEUE_STATUS_ON_ORDER = "on_order"
 
-# Rows shown in the replenishment queue UI (exported stay until explicit clear).
-QUEUE_VISIBLE_STATUSES = (QUEUE_STATUS_PENDING, QUEUE_STATUS_DRAFTED, QUEUE_STATUS_EXPORTED)
+# Rows shown in the replenishment queue UI (on-order stay until explicit clear).
+QUEUE_VISIBLE_STATUSES = (
+    QUEUE_STATUS_PENDING,
+    QUEUE_STATUS_DRAFTED,
+    QUEUE_STATUS_ON_ORDER,
+    QUEUE_STATUS_EXPORTED,
+)
 
-# Legacy alias — draft creation and reorder edits apply to not-yet-exported rows only.
-QUEUE_ACTIVE_STATUSES = (QUEUE_STATUS_PENDING, QUEUE_STATUS_DRAFTED)
+# Legacy alias — draft creation from queue.
+QUEUE_ACTIVE_STATUSES = QUEUE_VISIBLE_STATUSES
 
-QUEUE_EXPORTABLE_STATUSES = (QUEUE_STATUS_PENDING, QUEUE_STATUS_DRAFTED)
+# All visible rows may be included in MR export / draft selection.
+QUEUE_EXPORTABLE_STATUSES = QUEUE_VISIBLE_STATUSES
+
+QUEUE_MR_REQUESTED_STATUSES = (QUEUE_STATUS_ON_ORDER, QUEUE_STATUS_EXPORTED)
+
+
+def queue_row_mr_requested(row: MaterialRequestQueue) -> bool:
+    """True after MR export — tracking tag only; does not block new exports."""
+    if row.exported_at is not None:
+        return True
+    return row.status in QUEUE_MR_REQUESTED_STATUSES
 
 
 def compute_reorder_qty(item: InventoryItem) -> float:
@@ -104,7 +120,7 @@ async def sync_queue_for_inventory_item(db: AsyncSession, item: InventoryItem) -
     else:
         for k, v in snap.items():
             setattr(row, k, v)
-        if row.status != QUEUE_STATUS_EXPORTED:
+        if row.status not in QUEUE_MR_REQUESTED_STATUSES:
             row.status = QUEUE_STATUS_PENDING
         row.updated_at = now
     await db.flush()
@@ -144,6 +160,17 @@ async def list_pending_queue(db: AsyncSession, company_id: str) -> list[Material
     return await list_visible_queue(db, company_id)
 
 
+async def clear_mr_requested_flag(db: AsyncSession, row: MaterialRequestQueue) -> MaterialRequestQueue:
+    """Revert on-order / MR-created tracking; item stays in queue as low stock only."""
+    if not queue_row_mr_requested(row):
+        return row
+    row.status = QUEUE_STATUS_PENDING
+    row.exported_at = None
+    row.export_batch_id = None
+    row.updated_at = datetime.now(timezone.utc)
+    return row
+
+
 async def mark_queue_rows_exported(
     db: AsyncSession,
     rows: list[MaterialRequestQueue],
@@ -153,18 +180,18 @@ async def mark_queue_rows_exported(
 ) -> None:
     when = exported_at or datetime.now(timezone.utc)
     for row in rows:
-        row.status = QUEUE_STATUS_EXPORTED
+        row.status = QUEUE_STATUS_ON_ORDER
         row.exported_at = when
         row.export_batch_id = export_batch_id
         row.updated_at = when
 
 
 async def clear_exported_queue(db: AsyncSession, company_id: str) -> int:
-    """Remove exported (MR created) rows after supervisor clears the queue. Returns count deleted."""
+    """Remove on-order (MR created) rows after supervisor clears the queue. Returns count deleted."""
     q = await db.execute(
         select(MaterialRequestQueue).where(
             MaterialRequestQueue.company_id == company_id,
-            MaterialRequestQueue.status == QUEUE_STATUS_EXPORTED,
+            MaterialRequestQueue.status.in_(QUEUE_MR_REQUESTED_STATUSES),
         )
     )
     rows = list(q.scalars().all())

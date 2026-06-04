@@ -72,6 +72,10 @@ class MaterialRequestExportListOut(BaseModel):
     items: list[MaterialRequestExportOut]
 
 
+class MaterialRequestQueueIdsIn(BaseModel):
+    queue_item_ids: list[str] = Field(..., min_length=1)
+
+
 class MaterialRequestCreateDraftIn(BaseModel):
     queue_item_ids: list[str] = Field(..., min_length=1)
 

@@ -104,6 +104,28 @@ export async function removeMaterialRequestQueueItem(companyId: string | null, q
   );
 }
 
+/** Remove on-order / MR-created flag; item stays in queue as low stock only. */
+export async function clearMaterialRequestOnOrderFlag(
+  companyId: string | null,
+  queueId: string,
+): Promise<MaterialRequestQueueRow> {
+  return apiFetch<MaterialRequestQueueRow>(
+    withCompany(`/api/material-requests/queue/${encodeURIComponent(queueId)}/clear-on-order`, companyId),
+    { method: "POST" },
+  );
+}
+
+export async function clearMaterialRequestOnOrderFlags(
+  companyId: string | null,
+  queueItemIds: string[],
+): Promise<MaterialRequestQueueRow[]> {
+  const res = await apiFetch<{ items: MaterialRequestQueueRow[] }>(
+    withCompany("/api/material-requests/queue/clear-on-order-flags", companyId),
+    { method: "POST", json: { queue_item_ids: queueItemIds } },
+  );
+  return res.items;
+}
+
 export async function clearMaterialRequestQueue(companyId: string | null): Promise<void> {
   await apiFetch<void>(withCompany("/api/material-requests/queue/clear", companyId), { method: "POST" });
 }
@@ -207,14 +229,16 @@ export async function exportMaterialRequestDraft(companyId: string | null, draft
   URL.revokeObjectURL(href);
 }
 
-export function formatQueueStatus(status: string): string {
-  const s = status.trim().toLowerCase();
-  if (s === "pending" || s === "drafted") return "Low Stock";
-  if (s === "exported") return "MR Created";
-  return status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+/** MR spreadsheet exported — on-order tracking; does not block new exports. */
+export function queueRowHasMrRequested(
+  row: Pick<MaterialRequestQueueRow, "status" | "exported_at">,
+): boolean {
+  if (row.exported_at) return true;
+  const s = row.status.trim().toLowerCase();
+  return s === "exported" || s === "on_order";
 }
 
-export function isQueueRowExportable(row: Pick<MaterialRequestQueueRow, "status">): boolean {
-  const s = row.status.trim().toLowerCase();
-  return s === "pending" || s === "drafted";
+/** All replenishment queue rows can be selected for export / draft. */
+export function isQueueRowSelectable(_row: Pick<MaterialRequestQueueRow, "status">): boolean {
+  return true;
 }

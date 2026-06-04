@@ -1,20 +1,21 @@
 "use client";
 
-import { ClipboardList, Download, History, Loader2, Trash2 } from "lucide-react";
+import { ClipboardList, Download, History, Loader2, RotateCcw, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { buttonVariants } from "@/styles/button-variants";
 import { cn } from "@/lib/cn";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { MaterialRequestExportModal, type MaterialRequestExportForm } from "@/components/inventory/MaterialRequestExportModal";
 import {
+  clearMaterialRequestOnOrderFlag,
+  clearMaterialRequestOnOrderFlags,
   clearMaterialRequestQueue,
   createMaterialRequestDraft,
   exportMaterialRequestDraft,
   exportMaterialRequestQueue,
   fetchMaterialRequestExports,
   fetchMaterialRequestQueue,
-  formatQueueStatus,
-  isQueueRowExportable,
+  queueRowHasMrRequested,
   patchMaterialRequestQueueItem,
   removeMaterialRequestQueueItem,
   submitMaterialRequestDraft,
@@ -96,15 +97,17 @@ export function InventoryMaterialRequestsPanel({
     void loadQueue();
   }, [loadQueue]);
 
-  const exportableQueue = useMemo(() => queue.filter(isQueueRowExportable), [queue]);
-  const hasExportedRows = queue.some((r) => r.status === "exported");
+  const hasOnOrderRows = queue.some((r) => queueRowHasMrRequested(r));
+  const selectedOnOrderCount = useMemo(
+    () => queue.filter((r) => selected.has(r.id) && queueRowHasMrRequested(r)).length,
+    [queue, selected],
+  );
 
-  const allExportableSelected =
-    exportableQueue.length > 0 && exportableQueue.every((r) => selected.has(r.id));
+  const allSelected = queue.length > 0 && queue.every((r) => selected.has(r.id));
 
   function toggleAll() {
-    if (allExportableSelected) setSelected(new Set());
-    else setSelected(new Set(exportableQueue.map((r) => r.id)));
+    if (allSelected) setSelected(new Set());
+    else setSelected(new Set(queue.map((r) => r.id)));
   }
 
   function toggleOne(id: string) {
@@ -125,6 +128,35 @@ export function InventoryMaterialRequestsPanel({
     try {
       const updated = await patchMaterialRequestQueueItem(apiCompany, row.id, { reorder_qty });
       setQueue((prev) => prev.map((r) => (r.id === row.id ? updated : r)));
+    } catch (e) {
+      setError(parseClientApiError(e).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function clearOnOrderFlag(id: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      const updated = await clearMaterialRequestOnOrderFlag(apiCompany, id);
+      setQueue((prev) => prev.map((r) => (r.id === id ? updated : r)));
+    } catch (e) {
+      setError(parseClientApiError(e).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function clearOnOrderFlagsBulk() {
+    const ids = queue.filter((r) => selected.has(r.id) && queueRowHasMrRequested(r)).map((r) => r.id);
+    if (!ids.length) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const updated = await clearMaterialRequestOnOrderFlags(apiCompany, ids);
+      const byId = new Map(updated.map((r) => [r.id, r]));
+      setQueue((prev) => prev.map((r) => byId.get(r.id) ?? r));
     } catch (e) {
       setError(parseClientApiError(e).message);
     } finally {
@@ -153,7 +185,7 @@ export function InventoryMaterialRequestsPanel({
   async function clearQueue() {
     if (
       !window.confirm(
-        "Clear MR Created items from the queue? Export history keeps the archive. Items still below minimum will show again as Low Stock.",
+        "Clear on-order items from the queue? Export history keeps the archive. Items still below minimum will show again as Low Stock only.",
       )
     ) {
       return;
@@ -261,8 +293,9 @@ export function InventoryMaterialRequestsPanel({
               Items at or below minimum appear here as{" "}
               <span className="font-medium text-pulse-navy dark:text-gray-200">Low Stock</span>. After{" "}
               {procurementActionLabel.trim() || "Export Request"}, they show as{" "}
-              <span className="font-medium text-pulse-navy dark:text-gray-200">MR Created</span> until you clear those
-              rows (export history keeps the archive). Still-low items return as Low Stock after clear.
+              <span className="font-medium text-pulse-navy dark:text-gray-200">On order</span> after export (you can
+              still select any row to export again). Clear on-order rows when the order is placed; still-low items
+              return as Low Stock only.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -280,14 +313,25 @@ export function InventoryMaterialRequestsPanel({
             </button>
             {canMutate ? (
               <>
-                {hasExportedRows ? (
+                {selectedOnOrderCount > 0 ? (
+                  <button
+                    type="button"
+                    className={SECONDARY_BTN}
+                    disabled={busy}
+                    onClick={() => void clearOnOrderFlagsBulk()}
+                  >
+                    <RotateCcw className="mr-2 inline h-4 w-4" aria-hidden />
+                    Remove on-order flag ({selectedOnOrderCount})
+                  </button>
+                ) : null}
+                {hasOnOrderRows ? (
                   <button
                     type="button"
                     className={SECONDARY_BTN}
                     disabled={busy}
                     onClick={() => void clearQueue()}
                   >
-                    Clear queue
+                    Clear on-order
                   </button>
                 ) : null}
                 <button
@@ -332,8 +376,8 @@ export function InventoryMaterialRequestsPanel({
                     <th className="w-10 px-3 py-3">
                       <input
                         type="checkbox"
-                        checked={allExportableSelected}
-                        disabled={exportableQueue.length === 0}
+                        checked={allSelected}
+                        disabled={queue.length === 0}
                         aria-label="Select all"
                         onChange={toggleAll}
                       />
@@ -353,8 +397,7 @@ export function InventoryMaterialRequestsPanel({
               </thead>
               <tbody>
                 {queue.map((row) => {
-                  const exportable = isQueueRowExportable(row);
-                  const exported = row.status === "exported";
+                  const onOrder = queueRowHasMrRequested(row);
                   return (
                   <tr key={row.id} className="border-b border-slate-100 last:border-0 dark:border-ds-border">
                     {canMutate ? (
@@ -362,7 +405,7 @@ export function InventoryMaterialRequestsPanel({
                         <input
                           type="checkbox"
                           checked={selected.has(row.id)}
-                          disabled={!exportable || busy}
+                          disabled={busy}
                           aria-label={`Select ${row.item_name}`}
                           onChange={() => toggleOne(row.id)}
                         />
@@ -396,7 +439,7 @@ export function InventoryMaterialRequestsPanel({
                     <td className="px-4 py-3 tabular-nums">{row.current_qty}</td>
                     <td className="px-4 py-3 tabular-nums">{row.minimum_qty}</td>
                     <td className="px-4 py-3">
-                      {canMutate && exportable ? (
+                      {canMutate ? (
                         <input
                           type="number"
                           min={0}
@@ -417,28 +460,42 @@ export function InventoryMaterialRequestsPanel({
                       {row.vendor?.trim() || "—"}
                     </td>
                     <td className="px-4 py-3">
-                      <span
-                        className={cn(
-                          "rounded-full px-2 py-0.5 text-xs font-semibold",
-                          exported
-                            ? "bg-sky-100 text-sky-900 dark:bg-sky-900/50 dark:text-sky-100"
-                            : "bg-amber-50 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100",
-                        )}
-                      >
-                        {formatQueueStatus(row.status)}
-                      </span>
+                      <div className="flex flex-col items-start gap-1">
+                        <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-900 dark:bg-amber-900/40 dark:text-amber-100">
+                          Low stock
+                        </span>
+                        {onOrder ? (
+                          <span className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-900 dark:bg-sky-900/50 dark:text-sky-100">
+                            On order
+                          </span>
+                        ) : null}
+                      </div>
                     </td>
                     {canMutate ? (
                       <td className="px-4 py-3 text-right">
-                        <button
-                          type="button"
-                          className="rounded p-2 text-pulse-muted hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/40"
-                          aria-label={`Remove ${row.item_name} from queue`}
-                          disabled={busy}
-                          onClick={() => void removeRow(row.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        <div className="flex items-center justify-end gap-1">
+                          {onOrder ? (
+                            <button
+                              type="button"
+                              className="rounded p-2 text-pulse-muted hover:bg-sky-50 hover:text-sky-800 dark:hover:bg-sky-950/40"
+                              aria-label={`Remove on-order flag for ${row.item_name}`}
+                              title="Remove on-order flag (undo MR created)"
+                              disabled={busy}
+                              onClick={() => void clearOnOrderFlag(row.id)}
+                            >
+                              <RotateCcw className="h-4 w-4" />
+                            </button>
+                          ) : null}
+                          <button
+                            type="button"
+                            className="rounded p-2 text-pulse-muted hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/40"
+                            aria-label={`Remove ${row.item_name} from queue`}
+                            disabled={busy}
+                            onClick={() => void removeRow(row.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
                       </td>
                     ) : null}
                   </tr>
@@ -451,12 +508,12 @@ export function InventoryMaterialRequestsPanel({
       </section>
     ),
     [
-      allExportableSelected,
+      allSelected,
       busy,
       canMutate,
-      exportableQueue.length,
-      hasExportedRows,
+      hasOnOrderRows,
       loading,
+      selectedOnOrderCount,
       procurementActionLabel,
       queue,
       replenishmentLabel,
