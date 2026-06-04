@@ -547,6 +547,7 @@ export function WorkersApp() {
   const [slotAccessAudit, setSlotAccessAudit] = useState<WorkerSlotAccessAudit | null>(null);
 
   const [fullSettings, setFullSettings] = useState<WorkersSettings>({});
+  const [workersSettingsHydrated, setWorkersSettingsHydrated] = useState(false);
 
   const delegatedRoleTargetsForMe = useMemo(() => {
     const pd = fullSettings.permission_delegation ?? {};
@@ -746,14 +747,24 @@ export function WorkersApp() {
   }, [permissionsDepartment]);
 
   useEffect(() => {
-    if (!dataEnabled || !isTenantFullAdmin) return;
+    setWorkersSettingsHydrated(false);
+  }, [effectiveCompanyId, dataEnabled]);
+
+  useEffect(() => {
+    if (!dataEnabled || !isTenantFullAdmin || !workersSettingsHydrated) return;
     if (fullSettings.permissions_setup_completed) {
       setPermissionsSetupOpen(false);
       return;
     }
     if (permissionsSetupDismissed) return;
     setPermissionsSetupOpen(true);
-  }, [dataEnabled, isTenantFullAdmin, fullSettings.permissions_setup_completed, permissionsSetupDismissed]);
+  }, [
+    dataEnabled,
+    isTenantFullAdmin,
+    workersSettingsHydrated,
+    fullSettings.permissions_setup_completed,
+    permissionsSetupDismissed,
+  ]);
 
   const loadList = useCallback(async () => {
     if (!dataEnabled || !effectiveCompanyId) return;
@@ -821,6 +832,7 @@ export function WorkersApp() {
       setList([]);
     } finally {
       setListLoading(false);
+      setWorkersSettingsHydrated(true);
     }
   }, [dataEnabled, effectiveCompanyId, apiCompany, q, session?.contract_enabled_features, tenantDepartments]);
 
