@@ -2,7 +2,7 @@
 
 import { ArrowRightLeft, MapPin } from "lucide-react";
 import type { InventoryRow } from "@/lib/inventoryService";
-import { resolveItemLocationDisplay } from "@/lib/inventory/inventory-location-stock";
+import { getItemLocationDisplayLines } from "@/lib/inventory/inventory-location-stock";
 import {
   formatRegisterFieldValue,
   type InventoryTableColumn,
@@ -122,15 +122,26 @@ export function InventoryTableFieldCell({ column, row, departmentNamesBySlug, zo
   }
 
   if (field.id === "zone_id") {
-    const label = zoneNameById
-      ? resolveItemLocationDisplay(row, zoneNameById)
-      : row.location_name ?? "—";
+    const lines = zoneNameById
+      ? getItemLocationDisplayLines(row, zoneNameById)
+      : row.location_name?.trim()
+        ? row.location_name.includes(", ")
+          ? row.location_name.split(", ").map((s) => s.trim()).filter(Boolean)
+          : [row.location_name.trim()]
+        : ["—"];
+    const title = lines.join(", ");
     return (
-      <td className="px-4 py-3 align-top">
-        <span className="inline-flex items-center gap-1 text-pulse-navy" title={label !== "—" ? label : undefined}>
-          <MapPin className="h-3.5 w-3.5 shrink-0 text-[#3182ce]" aria-hidden />
-          <span className="line-clamp-2">{label}</span>
-        </span>
+      <td className="max-w-[11rem] px-4 py-3 align-top">
+        <div className="flex items-start gap-1 text-pulse-navy" title={title !== "—" ? title : undefined}>
+          <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#3182ce]" aria-hidden />
+          <ul className="min-w-0 list-none space-y-0.5 text-xs leading-snug">
+            {lines.map((line, i) => (
+              <li key={`${i}-${line}`} className="break-words">
+                {line}
+              </li>
+            ))}
+          </ul>
+        </div>
       </td>
     );
   }

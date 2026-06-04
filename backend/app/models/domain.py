@@ -654,6 +654,36 @@ class MaterialRequestQueue(Base):
     )
 
 
+class InventoryReplenishmentCycle(Base):
+    """Closed low-stock → queue → replenish episodes for inventory analytics."""
+
+    __tablename__ = "inventory_replenishment_cycles"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    inventory_item_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("inventory_items.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    item_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    sku: Mapped[str] = mapped_column(String(128), nullable=False)
+    low_stock_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    exported_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    cleared_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    replenished_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    time_in_queue_hours: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    time_to_replenish_hours: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    export_batch_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("material_request_exports.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
+    )
+
+
 class MaterialRequestExport(Base):
     """Audit log for template-based material request Excel exports."""
 

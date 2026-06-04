@@ -4,11 +4,13 @@ import {
   AlertTriangle,
   Box,
   ClipboardList,
+  Clock,
   Loader2,
   Package,
   TrendingUp,
 } from "lucide-react";
 import type { InventorySummary } from "@/lib/inventoryService";
+import { formatDurationHours, formatYoyReplenishChange } from "@/lib/inventory/format-duration-hours";
 import { cn } from "@/lib/cn";
 
 type MetricCard = {
@@ -25,12 +27,69 @@ function inventoryMetricShortLabel(label: string): string {
   if (label === "In stock") return "Stock";
   if (label === "Low stock") return "Low";
   if (label === "Inventory value") return "Value";
+  if (label.startsWith("Avg time in queue")) return "Queue";
+  if (label.startsWith("Avg low")) return "Restock";
+  if (label.startsWith("Replenish")) return "YoY";
   const top = /^Top (\d) by uses$/.exec(label);
   if (top) return `Top ${top[1]}`;
   return label;
 }
 
 function buildMetricCards(summary: InventorySummary): MetricCard[] {
+  const rm = summary.replenishment_metrics;
+  const replenishCards: MetricCard[] = rm
+    ? [
+        {
+          label: "Avg time in queue (now)",
+          value: formatDurationHours(rm.current_avg_time_in_queue_hours),
+          icon: Clock,
+          sub:
+            rm.active_queue_count > 0
+              ? `${rm.active_queue_count} active · oldest ${formatDurationHours(rm.current_max_time_in_queue_hours)}`
+              : "No items in replenishment queue",
+          tone: "text-violet-800 dark:text-violet-300",
+        },
+        {
+          label: "Avg time in queue (all)",
+          value: formatDurationHours(rm.avg_time_in_queue_hours),
+          icon: Clock,
+          sub:
+            rm.completed_cycles_count > 0
+              ? `${rm.completed_cycles_count} completed cycles`
+              : "Recorded when queue is cleared or stock recovers",
+          tone: "text-violet-800 dark:text-violet-300",
+        },
+        {
+          label: "Avg low → replenish",
+          value: formatDurationHours(rm.avg_time_to_replenish_hours),
+          icon: TrendingUp,
+          sub: "Low stock until quantity above minimum",
+          tone: "text-indigo-800 dark:text-indigo-300",
+        },
+        {
+          label: `Replenish (${rm.yoy.current_year})`,
+          value: formatDurationHours(rm.yoy.avg_time_to_replenish_hours_current),
+          icon: TrendingUp,
+          sub:
+            formatYoyReplenishChange(rm.yoy.change_pct) ??
+            (rm.yoy.completed_cycles_current_year > 0
+              ? `${rm.yoy.completed_cycles_current_year} cycles this year`
+              : `No completed cycles in ${rm.yoy.current_year} yet`),
+          tone: "text-indigo-800 dark:text-indigo-300",
+        },
+        {
+          label: `Replenish (${rm.yoy.prior_year})`,
+          value: formatDurationHours(rm.yoy.avg_time_to_replenish_hours_prior),
+          icon: TrendingUp,
+          sub:
+            rm.yoy.completed_cycles_prior_year > 0
+              ? `${rm.yoy.completed_cycles_prior_year} cycles · YoY baseline`
+              : "Prior-year baseline for comparison",
+          tone: "text-slate-700 dark:text-slate-300",
+        },
+      ]
+    : [];
+
   return [
     {
       label: "Total items",
@@ -71,6 +130,7 @@ function buildMetricCards(summary: InventorySummary): MetricCard[] {
       sub: "Qty × unit cost",
       tone: "text-slate-800",
     },
+    ...replenishCards,
   ];
 }
 
@@ -100,7 +160,7 @@ export function InventoryAnalyticsPanel({ summary, loading }: Props) {
       <div>
         <h2 className="text-lg font-bold text-pulse-navy dark:text-gray-100">Inventory analytics</h2>
         <p className="mt-1 text-sm text-pulse-muted">
-          Stock levels, usage leaders, and estimated value across your catalog.
+          Stock levels, usage leaders, estimated value, and replenishment queue timing across your catalog.
         </p>
       </div>
 
@@ -145,6 +205,14 @@ export function InventoryAnalyticsPanel({ summary, loading }: Props) {
           <li>Status counts reflect current item records, not filtered list views.</li>
           <li>Top items rank by logged usage from work requests and transactions.</li>
           <li>Inventory value sums quantity × unit cost where unit cost is set.</li>
+          <li>
+            Queue timing tracks active replenishment rows now, and averages from completed cycles when you clear
+            the queue or stock is received back above minimum.
+          </li>
+          <li>
+            Year-over-year replenish compares average low-stock-to-restock duration for the current calendar year
+            vs the prior year.
+          </li>
         </ul>
       </div>
     </div>

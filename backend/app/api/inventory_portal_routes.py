@@ -72,6 +72,7 @@ from app.services.inventory_transaction_service import (
     transaction_settings_to_out,
 )
 from app.services.inventory_low_stock import is_item_low_stock
+from app.services.inventory_replenishment_metrics_service import compute_replenishment_analytics
 from app.services.material_request_queue_service import sync_queue_for_inventory_item
 from app.models.pulse_models import PulseWorkRequest
 from app.modules.pulse import service as pulse_svc
@@ -88,6 +89,8 @@ from app.schemas.inventory_portal import (
     InventoryScopeRowOut,
     InventorySettingsOut,
     InventorySettingsPatchIn,
+    InventoryReplenishmentMetricsOut,
+    InventoryReplenishmentYoyOut,
     InventorySummaryOut,
     InventoryTopUsedOut,
     InventoryUseIn,
@@ -1078,6 +1081,8 @@ async def _summary(
         )
         for r in top_used_rows
     ]
+    replenishment = await compute_replenishment_analytics(db, cid)
+    yoy = replenishment.yoy
     return InventorySummaryOut(
         total_items=total,
         in_stock=in_stock,
@@ -1087,6 +1092,23 @@ async def _summary(
         maintenance=maint,
         estimated_value=round(ev, 2) if ev else None,
         most_used=most_used,
+        replenishment_metrics=InventoryReplenishmentMetricsOut(
+            active_queue_count=replenishment.active_queue_count,
+            current_avg_time_in_queue_hours=replenishment.current_avg_time_in_queue_hours,
+            current_max_time_in_queue_hours=replenishment.current_max_time_in_queue_hours,
+            avg_time_in_queue_hours=replenishment.avg_time_in_queue_hours,
+            avg_time_to_replenish_hours=replenishment.avg_time_to_replenish_hours,
+            completed_cycles_count=replenishment.completed_cycles_count,
+            yoy=InventoryReplenishmentYoyOut(
+                current_year=yoy.current_year,
+                prior_year=yoy.prior_year,
+                avg_time_to_replenish_hours_current=yoy.avg_time_to_replenish_hours_current,
+                avg_time_to_replenish_hours_prior=yoy.avg_time_to_replenish_hours_prior,
+                completed_cycles_current_year=yoy.completed_cycles_current_year,
+                completed_cycles_prior_year=yoy.completed_cycles_prior_year,
+                change_pct=yoy.change_pct,
+            ),
+        ),
     )
 
 

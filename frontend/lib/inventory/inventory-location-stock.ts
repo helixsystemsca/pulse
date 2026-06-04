@@ -54,16 +54,60 @@ export function normalizeLocationLinesForSave(
   return normalized.filter((l) => l.quantity > 0);
 }
 
+function formatOneLocationLine(
+  name: string,
+  quantity: number | null,
+  *,
+  showQuantity: boolean,
+): string {
+  if (!showQuantity || quantity == null) return name;
+  return `${name} (${quantity})`;
+}
+
+/** One display line per storage location (for stacked list UI). */
+export function getItemLocationDisplayLines(
+  row: {
+    location_name?: string | null;
+    zone_id?: string | null;
+    custom_attributes?: Record<string, string | number | boolean | null> | undefined;
+  },
+  zoneName: (zoneId: string) => string | null | undefined,
+): string[] {
+  const stock = parseLocationStock(row.custom_attributes);
+  if (stock.length > 0) {
+    const showQty = stock.length > 1;
+    return stock.map((l) => {
+      const name = zoneName(l.zone_id) ?? "Location";
+      return formatOneLocationLine(name, l.quantity, showQuantity: showQty);
+    });
+  }
+  const fromApi = row.location_name?.trim();
+  if (fromApi) {
+    if (fromApi.includes(", ")) {
+      return fromApi
+        .split(", ")
+        .map((s) => s.trim())
+        .filter(Boolean);
+    }
+    return [fromApi];
+  }
+  if (row.zone_id) {
+    const name = zoneName(row.zone_id);
+    return [name?.trim() || "—"];
+  }
+  return ["—"];
+}
+
 export function formatLocationStockLabel(
   lines: LocationStockLine[],
   zoneName: (zoneId: string) => string | null | undefined,
 ): string {
   if (!lines.length) return "";
-  if (lines.length === 1) return zoneName(lines[0].zone_id) ?? "—";
+  const showQty = lines.length > 1;
   return lines
     .map((l) => {
       const name = zoneName(l.zone_id) ?? "Location";
-      return `${name} (${l.quantity})`;
+      return formatOneLocationLine(name, l.quantity, showQuantity: showQty);
     })
     .join(", ");
 }
@@ -77,11 +121,7 @@ export function resolveItemLocationDisplay(
   },
   zoneName: (zoneId: string) => string | null | undefined,
 ): string {
-  const fromApi = row.location_name?.trim();
-  if (fromApi) return fromApi;
-  const stock = parseLocationStock(row.custom_attributes);
-  const fromStock = formatLocationStockLabel(stock, zoneName);
-  if (fromStock) return fromStock;
-  if (row.zone_id) return zoneName(row.zone_id) ?? "—";
-  return "—";
+  const lines = getItemLocationDisplayLines(row, zoneName);
+  if (lines.length === 1 && lines[0] === "—") return "—";
+  return lines.join(", ");
 }

@@ -15,6 +15,29 @@ class InventoryTopUsedOut(BaseModel):
     usage_count: int
 
 
+class InventoryReplenishmentYoyOut(BaseModel):
+    current_year: int
+    prior_year: int
+    avg_time_to_replenish_hours_current: Optional[float] = None
+    avg_time_to_replenish_hours_prior: Optional[float] = None
+    completed_cycles_current_year: int = 0
+    completed_cycles_prior_year: int = 0
+    change_pct: Optional[float] = Field(
+        None,
+        description="Percent change in avg replenish time vs prior year (negative = faster).",
+    )
+
+
+class InventoryReplenishmentMetricsOut(BaseModel):
+    active_queue_count: int = 0
+    current_avg_time_in_queue_hours: Optional[float] = None
+    current_max_time_in_queue_hours: Optional[float] = None
+    avg_time_in_queue_hours: Optional[float] = None
+    avg_time_to_replenish_hours: Optional[float] = None
+    completed_cycles_count: int = 0
+    yoy: InventoryReplenishmentYoyOut
+
+
 class InventorySummaryOut(BaseModel):
     total_items: int
     in_stock: int
@@ -24,6 +47,7 @@ class InventorySummaryOut(BaseModel):
     maintenance: int
     estimated_value: Optional[float] = None
     most_used: list[InventoryTopUsedOut] = Field(default_factory=list)
+    replenishment_metrics: Optional[InventoryReplenishmentMetricsOut] = None
 
 
 class InventoryMovementOut(BaseModel):

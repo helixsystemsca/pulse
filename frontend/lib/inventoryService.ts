@@ -12,6 +12,26 @@ export type InventoryTopUsedItem = {
   usage_count: number;
 };
 
+export type InventoryReplenishmentYoy = {
+  current_year: number;
+  prior_year: number;
+  avg_time_to_replenish_hours_current: number | null;
+  avg_time_to_replenish_hours_prior: number | null;
+  completed_cycles_current_year: number;
+  completed_cycles_prior_year: number;
+  change_pct: number | null;
+};
+
+export type InventoryReplenishmentMetrics = {
+  active_queue_count: number;
+  current_avg_time_in_queue_hours: number | null;
+  current_max_time_in_queue_hours: number | null;
+  avg_time_in_queue_hours: number | null;
+  avg_time_to_replenish_hours: number | null;
+  completed_cycles_count: number;
+  yoy: InventoryReplenishmentYoy;
+};
+
 export type InventorySummary = {
   total_items: number;
   in_stock: number;
@@ -21,6 +41,7 @@ export type InventorySummary = {
   maintenance: number;
   estimated_value: number | null;
   most_used: InventoryTopUsedItem[];
+  replenishment_metrics?: InventoryReplenishmentMetrics | null;
 };
 
 export type InventoryMovement = {

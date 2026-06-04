@@ -81,16 +81,9 @@ async def sync_queue_for_inventory_item(db: AsyncSession, item: InventoryItem) -
     Returns True when a new pending queue row was created (first entry this low stint).
     """
     if not is_item_low_stock(item):
-        q = await db.execute(
-            select(MaterialRequestQueue).where(
-                MaterialRequestQueue.company_id == item.company_id,
-                MaterialRequestQueue.inventory_item_id == item.id,
-                MaterialRequestQueue.status == QUEUE_STATUS_PENDING,
-            )
-        )
-        pending = q.scalar_one_or_none()
-        if pending is not None:
-            await db.delete(pending)
+        from app.services.inventory_replenishment_metrics_service import archive_visible_queue_rows_for_item
+
+        await archive_visible_queue_rows_for_item(db, item)
         return False
 
     snap = _snapshot_from_item(item)
@@ -175,7 +168,11 @@ async def clear_exported_queue(db: AsyncSession, company_id: str) -> int:
         )
     )
     rows = list(q.scalars().all())
+    now = datetime.now(timezone.utc)
+    from app.services.inventory_replenishment_metrics_service import archive_cycle_from_queue_row
+
     for row in rows:
+        await archive_cycle_from_queue_row(db, row, cleared_at=now)
         await db.delete(row)
     return len(rows)
 
@@ -193,6 +190,9 @@ async def get_queue_row(db: AsyncSession, company_id: str, queue_id: str) -> Mat
 
 
 async def remove_from_queue(db: AsyncSession, row: MaterialRequestQueue) -> None:
+    from app.services.inventory_replenishment_metrics_service import archive_cycle_from_queue_row
+
+    await archive_cycle_from_queue_row(db, row, cleared_at=datetime.now(timezone.utc))
     await db.delete(row)
 
 
