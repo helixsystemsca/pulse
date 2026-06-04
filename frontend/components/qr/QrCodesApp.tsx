@@ -94,7 +94,7 @@ export function QrCodesApp() {
       <PageHeader
         title="QR Codes"
         icon={QrCode}
-        subtitle="Generate, assign, and print QR codes for platform resources."
+        description="Generate, assign, and print QR codes for platform resources."
         actions={
           canManage ? (
             <button

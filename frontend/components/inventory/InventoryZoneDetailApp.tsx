@@ -53,7 +53,9 @@ export function InventoryZoneDetailApp({ zoneId }: Props) {
         return;
       }
       setZoneName(zone.name);
-      setZoneDescription(zone.description ?? null);
+      const metaDesc =
+        typeof zone.meta?.description === "string" ? zone.meta.description.trim() || null : null;
+      setZoneDescription(metaDesc);
       const list = await fetchInventoryList({ companyId: apiCompany, zone_id: zoneId, limit: 200 });
       setItems(
         list.items.map((row) => ({
@@ -100,7 +102,7 @@ export function InventoryZoneDetailApp({ zoneId }: Props) {
         Inventory
       </Link>
 
-      <PageHeader title={zoneName} subtitle={subtitle} icon={Package} />
+      <PageHeader title={zoneName} description={subtitle} icon={Package} />
 
       {!guestMode ? (
         <QrResourceActions resourceType="inventory_zone" resourceId={zoneId} defaultName={zoneName} />
