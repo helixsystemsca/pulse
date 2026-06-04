@@ -90,7 +90,7 @@ export function InventoryItemPhotoUpload({
         >
           {displaySrc ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={displaySrc} alt="" className="h-full w-full object-cover" />
+            <img src={displaySrc} alt="" className="h-full w-full object-contain p-1" />
           ) : resolved.loading ? (
             <span className="text-xs text-pulse-muted">Loading…</span>
           ) : (
@@ -195,7 +195,7 @@ export function InventoryItemListThumb({
     >
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        <img src={src} alt="" className="absolute inset-0 h-full w-full object-contain p-0.5" />
       ) : loading && imageUrl?.trim() ? (
         <div className="absolute inset-0 animate-pulse bg-slate-100 dark:bg-ds-interactive-hover" />
       ) : (
@@ -269,8 +269,14 @@ export function InventoryItemProfilePhoto({
       )}
     >
       {displaySrc ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={displaySrc} alt={name} className="aspect-[4/3] w-full object-cover" />
+        <div className="flex aspect-[4/3] w-full items-center justify-center bg-slate-100/90 p-3 dark:bg-ds-secondary/80">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={displaySrc}
+            alt={name}
+            className="max-h-full max-w-full object-contain"
+          />
+        </div>
       ) : photo.loading && imageUrl?.trim() ? (
         <div className="flex aspect-[4/3] items-center justify-center text-sm text-pulse-muted">Loading photo…</div>
       ) : canUpload ? (
