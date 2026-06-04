@@ -293,9 +293,15 @@ def _recompute_status(item: InventoryItem) -> None:
         item.inv_status = "in_stock"
 
 
-async def _sync_stock_queue_and_alerts(db: AsyncSession, item: InventoryItem) -> None:
+async def _sync_stock_queue_and_alerts(
+    db: AsyncSession,
+    item: InventoryItem,
+    *,
+    send_low_stock_alert: bool = True,
+) -> None:
     await sync_queue_for_inventory_item(db, item)
-    await maybe_send_low_stock_alert(db, item, is_low=is_item_low_stock(item))
+    if send_low_stock_alert:
+        await maybe_send_low_stock_alert(db, item, is_low=is_item_low_stock(item))
 
 
 async def _log_movement(
@@ -1553,7 +1559,7 @@ async def create_inventory_item(
         zone_id=item.zone_id,
         meta={"name": item.name},
     )
-    await _sync_stock_queue_and_alerts(db, item)
+    await _sync_stock_queue_and_alerts(db, item, send_low_stock_alert=False)
     await db.commit()
     await db.refresh(item)
     return await _inventory_detail_payload(db, cid, item)
