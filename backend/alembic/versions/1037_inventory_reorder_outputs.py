@@ -100,5 +100,4 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     conn = op.get_bind()
-    if ah.table_exists(conn, "reorder_package_exports"):
-        op.drop_table("reorder_package_exports")
+    ah.safe_drop_table(op, conn, "reorder_package_exports")

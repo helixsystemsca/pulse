@@ -24,6 +24,7 @@ import { PLATFORM_DEPARTMENT_SLUGS } from "@/config/platform/departments";
 
 export const PRODUCT_PATH_PREFIXES = [
   "/login",
+  "/qr",
   "/auth",
   "/invite",
   "/planning-approval",
@@ -42,6 +43,7 @@ export const PRODUCT_PATH_PREFIXES = [
   "/devices",
   "/zones",
   "/dashboard",
+  "/inventory",
   "/team-management",
   "/system",
   "/standards",

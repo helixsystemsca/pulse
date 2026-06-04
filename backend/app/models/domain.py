@@ -707,6 +707,35 @@ class MaterialRequestExport(Base):
     file_name: Mapped[str] = mapped_column(String(255), nullable=False)
 
 
+class QrResource(Base):
+    """Tenant-scoped QR codes linking to platform resources."""
+
+    __tablename__ = "qr_resources"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    resource_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    resource_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    qr_token: Mapped[str] = mapped_column(String(32), nullable=False, unique=True, index=True)
+    guest_access_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    guest_access_level: Mapped[str] = mapped_column(String(32), nullable=False, default="none")
+    created_by_user_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
 class ReorderPackageExport(Base):
     """Audit log for multi-output inventory reorder packages."""
 

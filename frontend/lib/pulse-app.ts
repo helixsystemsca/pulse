@@ -8,6 +8,11 @@
  */
 import { NAV_VISIBLE_MASTER_FEATURES } from "@/config/platform/master-feature-registry";
 import { resolvePostLoginLandingPath } from "@/lib/dashboards/homepage";
+import {
+  consumeLoginReturnTo,
+  loginHrefWithReturnTo,
+  returnToFromLoginUrl,
+} from "@/lib/qr/qr-return-path";
 import { isPulseAppHost } from "@/lib/pulse-host";
 import { logRedirectAfterLogin, logRedirectLogin } from "@/lib/pulse-auth-lifecycle";
 import { readSession } from "@/lib/pulse-session";
@@ -117,10 +122,15 @@ export function pulseLoginHref(): string {
  * Send the browser to sign-in. Logout and session expiry use this — stay on `/login` when already
  * inside the product app; only cross-origin when browsing the marketing site on a separate host.
  */
-export function navigateToPulseLogin(): void {
+export function navigateToPulseLogin(returnTo?: string): void {
   if (typeof window === "undefined") return;
   logRedirectLogin(typeof window !== "undefined" ? window.location.pathname : "ssr");
-  window.location.replace(pulseLoginHref());
+  const path =
+    returnTo ??
+    (typeof window !== "undefined"
+      ? `${window.location.pathname}${window.location.search}`
+      : undefined);
+  window.location.replace(path ? loginHrefWithReturnTo(path) : pulseLoginHref());
 }
 
 /** Open Pulse app overview on the configured app host (after sign-in). */
@@ -186,8 +196,12 @@ export function pulsePostLoginPath(user: PulsePostLoginIdentity): "/system" | "/
 /** Same-origin navigation after successful login / invite / password reset. */
 export function navigateAfterPulseLogin(user: PulsePostLoginIdentity): void {
   if (typeof window === "undefined") return;
-  const session = readSession();
-  const path = session ? resolvePostLoginLandingPath(session) : pulsePostLoginPath(user);
+  const storedReturn = consumeLoginReturnTo();
+  const urlReturn = returnToFromLoginUrl();
+  const path =
+    storedReturn ??
+    urlReturn ??
+    (readSession() ? resolvePostLoginLandingPath(readSession()!) : pulsePostLoginPath(user));
   logRedirectAfterLogin(path);
   window.location.assign(pulseAppHref(path));
 }

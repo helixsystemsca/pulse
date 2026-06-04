@@ -26,6 +26,7 @@ GLOBAL_SYSTEM_FEATURES: tuple[str, ...] = (
     "inventory",
     "inventory_scanner",
     "equipment",
+    "qr_codes",
     "drawings",
     "zones_devices",
     "live_map",

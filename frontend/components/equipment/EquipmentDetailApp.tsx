@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { EquipmentPartsPanel } from "@/components/equipment/EquipmentPartsPanel";
 import { EquipmentPmTasksSection } from "@/components/equipment/EquipmentPmTasksSection";
 import { Card } from "@/components/pulse/Card";
+import { QrResourceActions } from "@/components/qr/QrResourceActions";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
@@ -273,6 +274,8 @@ export function EquipmentDetailApp({ equipmentId }: Props) {
           All equipment
         </Link>
       </div>
+
+      <QrResourceActions resourceType="equipment" resourceId={equipmentId} defaultName={data.name} />
 
       {showPartsBanner && partsOverdue ? (
         <div
