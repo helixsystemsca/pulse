@@ -57,7 +57,6 @@ export function normalizeLocationLinesForSave(
 function formatOneLocationLine(
   name: string,
   quantity: number | null,
-  *,
   showQuantity: boolean,
 ): string {
   if (!showQuantity || quantity == null) return name;
@@ -78,7 +77,7 @@ export function getItemLocationDisplayLines(
     const showQty = stock.length > 1;
     return stock.map((l) => {
       const name = zoneName(l.zone_id) ?? "Location";
-      return formatOneLocationLine(name, l.quantity, showQuantity: showQty);
+      return formatOneLocationLine(name, l.quantity, showQty);
     });
   }
   const fromApi = row.location_name?.trim();
@@ -107,7 +106,7 @@ export function formatLocationStockLabel(
   return lines
     .map((l) => {
       const name = zoneName(l.zone_id) ?? "Location";
-      return formatOneLocationLine(name, l.quantity, showQuantity: showQty);
+      return formatOneLocationLine(name, l.quantity, showQty);
     })
     .join(", ");
 }
