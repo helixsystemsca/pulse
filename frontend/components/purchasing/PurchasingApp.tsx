@@ -60,6 +60,9 @@ export function PurchasingApp({ apiCompany }: Props) {
       const pc = merged.purchasing;
       setPurchasingConfig(pc);
       setProcurementLabel(merged.inventory.procurement_action_label);
+      setNotificationEmailDirectory(merged.notifications.email_directory);
+      setDefaultMrExportEmails(merged.notifications.mr_export_emails);
+      setReorderOutputs(merged.inventory.reorder_outputs);
       const items = purchasingNavItems(pc);
       setTab((t) => (t && items.some((i) => i.id === t) ? t : items[0]?.id ?? ""));
       if (pc.enable_purchase_history || pc.enable_receipt_uploads) {
@@ -81,6 +84,11 @@ export function PurchasingApp({ apiCompany }: Props) {
   }, [load]);
 
   const [procurementLabel, setProcurementLabel] = useState("Export Request");
+  const [notificationEmailDirectory, setNotificationEmailDirectory] = useState<string[]>([]);
+  const [defaultMrExportEmails, setDefaultMrExportEmails] = useState<string[]>([]);
+  const [reorderOutputs, setReorderOutputs] = useState<import("@/lib/inventory/reorder-outputs-config").ReorderOutputType[]>([
+    "material_requisition",
+  ]);
 
   if (!session) return null;
 
@@ -164,6 +172,9 @@ export function PurchasingApp({ apiCompany }: Props) {
               canMutate={canMutate}
               procurementActionLabel={procurementLabel}
               replenishmentLabel={purchasingConfig.replenishment_label}
+              notificationEmailDirectory={notificationEmailDirectory}
+              defaultMrExportEmails={defaultMrExportEmails}
+              reorderOutputs={reorderOutputs}
             />
           ) : null}
 

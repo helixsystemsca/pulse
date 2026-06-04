@@ -103,3 +103,37 @@ class MaterialRequestDraftOut(BaseModel):
 
 class MaterialRequestDraftCreatedOut(BaseModel):
     draft: MaterialRequestDraftOut
+
+
+class ReorderPackageGenerateIn(BaseModel):
+    queue_item_ids: list[str] = Field(..., min_length=1)
+    project: str = Field(..., min_length=1, max_length=255)
+    location: str = Field(..., min_length=1, max_length=512)
+    cost_object: Optional[str] = Field(None, max_length=255)
+    comments: Optional[str] = Field(None, max_length=4000)
+    notify_emails: Optional[list[str]] = Field(
+        None,
+        description="Optional recipients for material requisition spreadsheet email (SMTP).",
+    )
+    outputs: Optional[list[str]] = Field(
+        None,
+        description="Override enabled reorder outputs; defaults to organization inventory settings.",
+    )
+
+
+class ReorderOutputResultOut(BaseModel):
+    output_type: str
+    success: bool
+    label: str
+    detail: Optional[str] = None
+    data: dict = Field(default_factory=dict)
+
+
+class ReorderPackageOut(BaseModel):
+    package_id: str
+    project: str
+    location: str
+    cost_object: Optional[str] = None
+    item_count: int
+    created_at: datetime
+    outputs: list[ReorderOutputResultOut]

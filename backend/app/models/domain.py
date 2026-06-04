@@ -707,6 +707,29 @@ class MaterialRequestExport(Base):
     file_name: Mapped[str] = mapped_column(String(255), nullable=False)
 
 
+class ReorderPackageExport(Base):
+    """Audit log for multi-output inventory reorder packages."""
+
+    __tablename__ = "reorder_package_exports"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    created_by_user_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
+    )
+    project: Mapped[str] = mapped_column(String(255), nullable=False)
+    location: Mapped[str] = mapped_column(String(512), nullable=False)
+    cost_object: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    comments: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    item_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    outputs: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+
+
 class MaterialRequestDraft(Base):
     __tablename__ = "material_request_drafts"
 

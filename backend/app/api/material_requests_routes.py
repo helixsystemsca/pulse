@@ -23,11 +23,15 @@ from app.schemas.material_requests import (
     MaterialRequestQueueListOut,
     MaterialRequestQueueOut,
     MaterialRequestQueuePatchIn,
+    ReorderOutputResultOut,
+    ReorderPackageGenerateIn,
+    ReorderPackageOut,
 )
 from app.services import material_request_export_service as export_svc
 from app.services import material_request_queue_service as queue_svc
 from app.services import material_request_service as draft_svc
 from app.services import material_request_template_export_service as template_export_svc
+from app.services import reorder_package_service as package_svc
 
 router = APIRouter(prefix="/material-requests", tags=["material-requests"])
 
@@ -197,6 +201,46 @@ async def clear_material_request_queue(
     await queue_svc.clear_exported_queue(db, cid)
     await queue_svc.sync_company_material_request_queue(db, cid)
     await db.commit()
+
+
+@router.post("/queue/generate-package", response_model=ReorderPackageOut)
+async def generate_reorder_package(
+    db: Db,
+    user: InvUser,
+    cid: CompanyId,
+    body: ReorderPackageGenerateIn,
+) -> ReorderPackageOut:
+    record, results = await package_svc.generate_reorder_package(
+        db,
+        cid,
+        user,
+        queue_item_ids=body.queue_item_ids,
+        project=body.project,
+        location=body.location,
+        cost_object=body.cost_object or "",
+        comments=body.comments or "",
+        notify_emails=body.notify_emails,
+        outputs=body.outputs,
+    )
+    await db.commit()
+    return ReorderPackageOut(
+        package_id=record.id,
+        project=record.project,
+        location=record.location,
+        cost_object=record.cost_object,
+        item_count=record.item_count,
+        created_at=record.created_at,
+        outputs=[
+            ReorderOutputResultOut(
+                output_type=r.output_type,
+                success=r.success,
+                label=r.label,
+                detail=r.detail,
+                data=r.data,
+            )
+            for r in results
+        ],
+    )
 
 
 @router.post("/queue/export")

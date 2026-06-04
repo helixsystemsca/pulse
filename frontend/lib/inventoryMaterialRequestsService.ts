@@ -1,4 +1,5 @@
 import { apiFetch, getApiBaseUrl } from "@/lib/api";
+import type { ReorderOutputType } from "@/lib/inventory/reorder-outputs-config";
 import { readSession } from "@/lib/pulse-session";
 
 function withCompany(path: string, companyId: string | null): string {
@@ -51,6 +52,28 @@ export type MaterialRequestQueueExportBody = {
   cost_object?: string;
   comments?: string;
   notify_emails?: string[];
+};
+
+export type ReorderPackageGenerateBody = MaterialRequestQueueExportBody & {
+  outputs?: ReorderOutputType[];
+};
+
+export type ReorderOutputResult = {
+  output_type: ReorderOutputType;
+  success: boolean;
+  label: string;
+  detail: string | null;
+  data: Record<string, unknown>;
+};
+
+export type ReorderPackageResult = {
+  package_id: string;
+  project: string;
+  location: string;
+  cost_object: string | null;
+  item_count: number;
+  created_at: string;
+  outputs: ReorderOutputResult[];
 };
 
 export type MaterialRequestDraftItemRow = {
@@ -157,6 +180,16 @@ export async function submitMaterialRequestDraft(
   return apiFetch<MaterialRequestDraft>(
     withCompany(`/api/material-requests/drafts/${encodeURIComponent(draftId)}/submit`, companyId),
     { method: "POST" },
+  );
+}
+
+export async function generateReorderPackage(
+  companyId: string | null,
+  body: ReorderPackageGenerateBody,
+): Promise<ReorderPackageResult> {
+  return apiFetch<ReorderPackageResult>(
+    withCompany("/api/material-requests/queue/generate-package", companyId),
+    { method: "POST", json: body },
   );
 }
 

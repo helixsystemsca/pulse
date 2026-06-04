@@ -13,6 +13,7 @@ import {
   InventoryStructureStep,
   ProcurementTerminologyStep,
   ProcurementWorkflowStep,
+  ReorderOutputsStep,
   StorageLocationsStep,
   TransactionReferencesStep,
 } from "@/components/inventory/setup-wizard/InventoryWizardStepFields";
@@ -31,6 +32,7 @@ import {
   validateInventoryWizardStep,
   type InventoryWizardStepId,
 } from "@/lib/inventory/inventory-module-config";
+import { reorderOutputsLabel } from "@/lib/inventory/reorder-outputs-config";
 import {
   validatePurchasingWizardStep,
   type PurchasingWizardStepId,
@@ -52,6 +54,7 @@ const STEPS: SetupStepId[] = [
   "Departments",
   "Location names",
   "Procurement Workflow",
+  "Reorder Outputs",
   "Procurement Terminology",
   "Notification contacts",
   "Transaction References",
@@ -170,6 +173,7 @@ export function InventorySetupWizard({
       value: storageZoneCount ? `${storageZoneCount} location${storageZoneCount === 1 ? "" : "s"}` : "None yet",
     },
     { label: "Procurement Workflow", value: inventoryConfigLabel("procurement_mode", draft.inventory.procurement_mode) },
+    { label: "Reorder outputs", value: reorderOutputsLabel(draft.inventory.reorder_outputs) },
     {
       label: "Procurement Label",
       value: inventoryConfigLabel("procurement_action_label", draft.inventory.procurement_action_label),
@@ -359,6 +363,10 @@ export function InventorySetupWizard({
 
       {step === "Procurement Workflow" ? (
         <ProcurementWorkflowStep value={draft.inventory} onChange={(inventory) => onDraftChange(applyInventoryConfig({ ...draft, inventory }))} />
+      ) : null}
+
+      {step === "Reorder Outputs" ? (
+        <ReorderOutputsStep value={draft.inventory} onChange={(inventory) => onDraftChange(applyInventoryConfig({ ...draft, inventory }))} />
       ) : null}
 
       {step === "Procurement Terminology" ? (

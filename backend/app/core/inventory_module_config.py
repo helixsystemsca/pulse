@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Literal, Optional
 
+from app.core.reorder_outputs import DEFAULT_REORDER_OUTPUTS, normalize_reorder_outputs
+
 InventoryReferenceMode = Literal["none", "optional", "required"]
 InventoryLocationMode = Literal["single", "rooms", "buildings", "seacans", "custom"]
 
@@ -15,6 +17,7 @@ DEFAULT_INVENTORY_BLOCK: dict[str, Any] = {
     "procurement_action_label": "Export Request",
     "reference_mode": "none",
     "approval_mode": "none",
+    "reorder_outputs": list(DEFAULT_REORDER_OUTPUTS),
 }
 
 
@@ -29,6 +32,13 @@ def merge_inventory_block(raw: Optional[dict[str, Any]]) -> dict[str, Any]:
             out[key] = raw[key]
     if isinstance(raw.get("enable_shelf"), bool):
         out["enable_shelf"] = raw["enable_shelf"]
+    if "reorder_outputs" in raw or out.get("procurement_mode"):
+        out["reorder_outputs"] = normalize_reorder_outputs(
+            raw.get("reorder_outputs"),
+            procurement_mode=str(out.get("procurement_mode") or ""),
+        )
+    else:
+        out["reorder_outputs"] = list(DEFAULT_REORDER_OUTPUTS)
     label = str(out.get("procurement_action_label") or "").strip()
     out["procurement_action_label"] = label or DEFAULT_INVENTORY_BLOCK["procurement_action_label"]
     return out

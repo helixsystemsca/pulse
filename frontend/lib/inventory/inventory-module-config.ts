@@ -5,6 +5,11 @@
 
 import type { InventoryModuleSettings } from "@/lib/inventoryService";
 import type { InventoryTransactionSettingsConfig } from "@/lib/inventory/register-form-config";
+import {
+  DEFAULT_REORDER_OUTPUTS,
+  normalizeReorderOutputs,
+  type ReorderOutputType,
+} from "@/lib/inventory/reorder-outputs-config";
 
 export type InventoryAssetType = "consumables" | "tools" | "equipment" | "materials" | "other";
 
@@ -30,6 +35,7 @@ export type InventoryModuleConfig = {
   procurement_action_label: string;
   reference_mode: InventoryReferenceMode;
   approval_mode: InventoryApprovalMode;
+  reorder_outputs: ReorderOutputType[];
 };
 
 export const DEFAULT_INVENTORY_MODULE_CONFIG: InventoryModuleConfig = {
@@ -40,6 +46,7 @@ export const DEFAULT_INVENTORY_MODULE_CONFIG: InventoryModuleConfig = {
   procurement_action_label: "Export Request",
   reference_mode: "none",
   approval_mode: "none",
+  reorder_outputs: [...DEFAULT_REORDER_OUTPUTS],
 };
 
 export const ASSET_TYPE_OPTIONS: { value: InventoryAssetType; label: string }[] = [
@@ -149,6 +156,7 @@ export function mergeInventoryModuleConfig(
   if (raw?.approval_mode && APPROVAL_SET.has(raw.approval_mode)) {
     base.approval_mode = raw.approval_mode;
   }
+  base.reorder_outputs = normalizeReorderOutputs(raw?.reorder_outputs, base.procurement_mode);
   if (!base.asset_types.length) {
     base.asset_types = [...DEFAULT_INVENTORY_MODULE_CONFIG.asset_types];
   }
@@ -192,6 +200,7 @@ export type InventoryWizardStepId =
   | "Departments"
   | "Location names"
   | "Procurement Workflow"
+  | "Reorder Outputs"
   | "Procurement Terminology"
   | "Notification contacts"
   | "Transaction References"
@@ -212,6 +221,9 @@ export function validateInventoryWizardStep(
       return null;
     case "Procurement Workflow":
       if (!PROCUREMENT_SET.has(inventory.procurement_mode)) return "Choose a procurement workflow.";
+      return null;
+    case "Reorder Outputs":
+      if (!inventory.reorder_outputs.length) return "Select at least one reorder output.";
       return null;
     case "Procurement Terminology":
       if (!inventory.procurement_action_label.trim()) return "Enter a label for the procurement action.";

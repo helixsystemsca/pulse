@@ -75,6 +75,8 @@ import { InventoryRegisterFieldsEditor } from "@/components/inventory/InventoryR
 import { InventoryDepartmentsPanel } from "@/components/inventory/InventoryDepartmentsPanel";
 import { InventoryLocationsPanel } from "@/components/inventory/InventoryLocationsPanel";
 import { InventoryTransactionSettingsPanel } from "@/components/inventory/InventoryTransactionSettingsPanel";
+import { ReorderOutputsStep } from "@/components/inventory/setup-wizard/InventoryWizardStepFields";
+import { procurementModeFromReorderOutputs } from "@/lib/inventory/reorder-outputs-config";
 import { InventoryMaterialRequestsPanel } from "@/components/inventory/InventoryMaterialRequestsPanel";
 import { InventoryAnalyticsPanel } from "@/components/inventory/InventoryAnalyticsPanel";
 import { InventoryEnterprisePanel } from "@/components/inventory/InventoryEnterprisePanel";
@@ -140,6 +142,7 @@ const SETTINGS_TABS = [
   "Departments",
   "Locations",
   "Transactions",
+  "Reorder outputs",
   "Status rules",
   "Thresholds",
   "Alerts",
@@ -1030,6 +1033,7 @@ export function InventoryApp() {
               replenishmentLabel={mergedSettings.purchasing.replenishment_label}
               notificationEmailDirectory={mergedSettings.notifications.email_directory}
               defaultMrExportEmails={mergedSettings.notifications.mr_export_emails}
+              reorderOutputs={mergedSettings.inventory.reorder_outputs}
             />
           ) : null}
 
@@ -1888,6 +1892,20 @@ export function InventoryApp() {
                     }))
                   }
                   disabled={submitPending}
+                />
+              ) : null}
+              {settingsTab === "Reorder outputs" ? (
+                <ReorderOutputsStep
+                  value={settingsDraft.inventory}
+                  onChange={(inventory) =>
+                    setSettingsDraft((d) => ({
+                      ...d,
+                      inventory: {
+                        ...inventory,
+                        procurement_mode: procurementModeFromReorderOutputs(inventory.reorder_outputs),
+                      },
+                    }))
+                  }
                 />
               ) : null}
               {settingsTab === "Status rules" ? (

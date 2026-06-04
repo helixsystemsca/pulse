@@ -10,6 +10,12 @@ import {
   PROCUREMENT_MODE_OPTIONS,
   REFERENCE_MODE_OPTIONS,
 } from "@/lib/inventory/inventory-module-config";
+import {
+  procurementModeFromReorderOutputs,
+  REORDER_OUTPUT_OPTIONS,
+  toggleReorderOutput,
+  type ReorderOutputType,
+} from "@/lib/inventory/reorder-outputs-config";
 
 const optionCardClass = (selected: boolean) =>
   cn(
@@ -137,6 +143,52 @@ export function ProcurementWorkflowStep({
             <span className="text-sm font-semibold text-ds-foreground">{opt.label}</span>
           </label>
         ))}
+      </div>
+    </div>
+  );
+}
+
+export function ReorderOutputsStep({
+  value,
+  onChange,
+}: {
+  value: InventoryModuleConfig;
+  onChange: (next: InventoryModuleConfig) => void;
+}) {
+  function setOutputs(nextOutputs: ReorderOutputType[]) {
+    onChange({
+      ...value,
+      reorder_outputs: nextOutputs,
+      procurement_mode: procurementModeFromReorderOutputs(nextOutputs),
+    });
+  }
+
+  return (
+    <div className="space-y-4">
+      <WizardStepIntro
+        title="How does your organization handle inventory reordering?"
+        description="Select one or more methods used when inventory reaches reorder levels."
+      />
+      <div className="space-y-2">
+        {REORDER_OUTPUT_OPTIONS.map((opt) => {
+          const checked = value.reorder_outputs.includes(opt.value);
+          return (
+            <label key={opt.value} className={optionCardClass(checked)}>
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={checked}
+                onChange={(e) =>
+                  setOutputs(toggleReorderOutput(value.reorder_outputs, opt.value, e.target.checked))
+                }
+              />
+              <span>
+                <span className="block text-sm font-semibold text-ds-foreground">{opt.label}</span>
+                <span className="mt-0.5 block text-xs text-ds-muted">{opt.description}</span>
+              </span>
+            </label>
+          );
+        })}
       </div>
     </div>
   );

@@ -5,15 +5,17 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { buttonVariants } from "@/styles/button-variants";
 import { cn } from "@/lib/cn";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
-import { MaterialRequestExportModal, type MaterialRequestExportForm } from "@/components/inventory/MaterialRequestExportModal";
+import { ReorderPackageModal, type ReorderPackageForm } from "@/components/inventory/ReorderPackageModal";
+import { ReorderPackageResultsModal } from "@/components/inventory/ReorderPackageResultsModal";
+import type { ReorderOutputType } from "@/lib/inventory/reorder-outputs-config";
 import {
   clearMaterialRequestOnOrderFlag,
   clearMaterialRequestOnOrderFlags,
   clearMaterialRequestQueue,
   createMaterialRequestDraft,
   exportMaterialRequestDraft,
-  exportMaterialRequestQueue,
   fetchMaterialRequestExports,
+  generateReorderPackage,
   fetchMaterialRequestQueue,
   queueRowHasMrRequested,
   patchMaterialRequestQueueItem,
@@ -22,6 +24,7 @@ import {
   type MaterialRequestDraft,
   type MaterialRequestExportRecord,
   type MaterialRequestQueueRow,
+  type ReorderPackageResult,
 } from "@/lib/inventoryMaterialRequestsService";
 
 const PRIMARY_BTN = cn(buttonVariants({ surface: "light", intent: "accent" }), "px-5 py-2.5");
@@ -39,6 +42,7 @@ type Props = {
   replenishmentLabel?: string;
   notificationEmailDirectory?: string[];
   defaultMrExportEmails?: string[];
+  reorderOutputs?: ReorderOutputType[];
 };
 
 function formatMoney(n: number | null | undefined): string {
@@ -53,6 +57,7 @@ export function InventoryMaterialRequestsPanel({
   replenishmentLabel = "Replenishment Queue",
   notificationEmailDirectory = [],
   defaultMrExportEmails = [],
+  reorderOutputs = ["material_requisition"],
 }: Props) {
   const [queue, setQueue] = useState<MaterialRequestQueueRow[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -61,7 +66,9 @@ export function InventoryMaterialRequestsPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reorderDrafts, setReorderDrafts] = useState<Record<string, string>>({});
-  const [exportOpen, setExportOpen] = useState(false);
+  const [packageOpen, setPackageOpen] = useState(false);
+  const [packageResult, setPackageResult] = useState<ReorderPackageResult | null>(null);
+  const [resultsOpen, setResultsOpen] = useState(false);
   const [exportHistory, setExportHistory] = useState<MaterialRequestExportRecord[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
 
@@ -244,21 +251,24 @@ export function InventoryMaterialRequestsPanel({
     }
   }
 
-  async function handleQueueExport(form: MaterialRequestExportForm) {
+  async function handleGeneratePackage(form: ReorderPackageForm) {
     const ids = [...selected];
     if (!ids.length) return;
     setBusy(true);
     setError(null);
     try {
-      await exportMaterialRequestQueue(apiCompany, {
+      const result = await generateReorderPackage(apiCompany, {
         queue_item_ids: ids,
         project: form.project,
         location: form.location,
         cost_object: form.cost_object || undefined,
         comments: form.comments || undefined,
         notify_emails: form.notify_emails.length ? form.notify_emails : undefined,
+        outputs: form.outputs,
       });
-      setExportOpen(false);
+      setPackageOpen(false);
+      setPackageResult(result);
+      setResultsOpen(true);
       await loadQueue();
       void loadExportHistory();
     } catch (e) {
@@ -292,7 +302,7 @@ export function InventoryMaterialRequestsPanel({
             <p className="text-sm text-pulse-muted">
               Items at or below minimum appear here as{" "}
               <span className="font-medium text-pulse-navy dark:text-gray-200">Low Stock</span>. After{" "}
-              {procurementActionLabel.trim() || "Export Request"}, they show as{" "}
+              Generate Reorder Package, they show as{" "}
               <span className="font-medium text-pulse-navy dark:text-gray-200">On order</span> after export (you can
               still select any row to export again). Clear on-order rows when the order is placed; still-low items
               return as Low Stock only.
@@ -336,17 +346,17 @@ export function InventoryMaterialRequestsPanel({
                 ) : null}
                 <button
                   type="button"
-                  className={SECONDARY_BTN}
+                  className={PRIMARY_BTN}
                   disabled={busy || selectedCount === 0}
-                  onClick={() => setExportOpen(true)}
+                  onClick={() => setPackageOpen(true)}
                 >
                   <Download className="mr-2 inline h-4 w-4" aria-hidden />
-                  {procurementActionLabel.trim() || "Export Request"}
+                  Generate Reorder Package
                   {selectedCount > 0 ? ` (${selectedCount})` : ""}
                 </button>
                 <button
                   type="button"
-                  className={PRIMARY_BTN}
+                  className={SECONDARY_BTN}
                   disabled={busy || selectedCount === 0}
                   onClick={() => void createDraft()}
                 >
@@ -527,14 +537,20 @@ export function InventoryMaterialRequestsPanel({
     <div className="space-y-8">
       {error ? <p className="text-sm text-rose-600">{error}</p> : null}
 
-      <MaterialRequestExportModal
-        open={exportOpen}
-        onClose={() => setExportOpen(false)}
+      <ReorderPackageModal
+        open={packageOpen}
+        onClose={() => setPackageOpen(false)}
         itemCount={selectedCount}
         busy={busy}
         emailDirectory={notificationEmailDirectory}
         defaultNotifyEmails={defaultMrExportEmails}
-        onExport={handleQueueExport}
+        enabledOutputs={reorderOutputs}
+        onGenerate={handleGeneratePackage}
+      />
+      <ReorderPackageResultsModal
+        open={resultsOpen}
+        onClose={() => setResultsOpen(false)}
+        packageResult={packageResult}
       />
 
       {historyOpen ? (

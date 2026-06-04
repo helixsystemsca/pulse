@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 
 from app.api.deps import get_current_user, get_db, require_any_rbac
+from app.core.inventory_module_config import merge_inventory_block
 from app.core.inventory.policy import (
     EffectiveInventoryPolicy,
     inventory_department_slugs_for_user,
@@ -192,6 +193,7 @@ DEFAULT_INVENTORY_SETTINGS: dict[str, Any] = {
         "procurement_action_label": "Export Request",
         "reference_mode": "none",
         "approval_mode": "none",
+        "reorder_outputs": ["material_requisition"],
     },
     "notifications": {
         "email_directory": [],
@@ -231,6 +233,7 @@ def merge_inventory_settings(raw: Optional[dict[str, Any]]) -> dict[str, Any]:
         out["setup_completed"] = True
     elif raw.get("categories") and raw.get("setup_completed") is None:
         out["setup_completed"] = True
+    out["inventory"] = merge_inventory_block(out.get("inventory") if isinstance(out.get("inventory"), dict) else None)
     return out
 
 
