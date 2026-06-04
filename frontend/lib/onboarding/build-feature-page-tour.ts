@@ -2,6 +2,7 @@ import type { NavigationTreeDomain, NavigationTreeItem } from "@/lib/navigation/
 import { isPulseNavActive } from "@/lib/pulse-nav-active";
 import { featurePageTourCopy } from "@/lib/onboarding/feature-page-tour-copy";
 import type { ProductTourDef } from "@/lib/onboarding/tour-registry";
+import { INVENTORY_TOUR_STEPS } from "@/lib/onboarding/tour-steps/inventory";
 import { standardFeatureTourSteps } from "@/lib/onboarding/tour-steps/shared";
 
 /** Tour ids for per-page feature walkthroughs (not domain flyout recaps). */
@@ -17,12 +18,15 @@ export function isFeaturePageTourCandidate(item: NavigationTreeItem): boolean {
 
 export function buildFeaturePageTour(item: NavigationTreeItem): ProductTourDef {
   const copy = featurePageTourCopy(item.key, item.label);
-  const steps = standardFeatureTourSteps(item.label, {
-    headerDescription: copy.headerDescription,
-    workspaceDescription: copy.workspaceDescription,
-    toolbarDescription: copy.toolbarDescription,
-    includeToolbar: copy.includeToolbar,
-  });
+  const steps =
+    item.key === "inventory"
+      ? INVENTORY_TOUR_STEPS
+      : standardFeatureTourSteps(item.label, {
+          headerDescription: copy.headerDescription,
+          workspaceDescription: copy.workspaceDescription,
+          toolbarDescription: copy.toolbarDescription,
+          includeToolbar: copy.includeToolbar,
+        });
 
   return {
     id: featurePageTourId(item.key),

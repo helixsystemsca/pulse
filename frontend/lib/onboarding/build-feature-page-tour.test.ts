@@ -46,4 +46,23 @@ describe("buildFeaturePageTour", () => {
     const item = findNavItemForPathname(TREE, "/projects/abc-123");
     expect(item?.key).toBe("projects");
   });
+
+  it("builds inventory-specific in-page steps", () => {
+    const tour = buildFeaturePageTour({
+      key: "inventory",
+      href: "/dashboard/inventory",
+      label: "Inventory",
+      icon: "package",
+      navDomain: "Operations",
+      navGroup: "Inventory",
+      navOrder: 10,
+    });
+    expect(tour.id).toBe(featurePageTourId("inventory"));
+    expect(tour.steps.map((s) => s.target)).toEqual([
+      '[data-tour="inventory-tour-tabs"]',
+      '[data-tour="inventory-tour-filters"]',
+      '[data-tour="inventory-tour-list"]',
+      '[data-tour="inventory-tour-create"]',
+    ]);
+  });
 });

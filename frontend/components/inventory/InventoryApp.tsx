@@ -462,6 +462,23 @@ export function InventoryApp() {
     }
   }, [workspaceNav, inventoryTab]);
 
+  /** Keep list-tab tour anchors in the DOM while the onboarding overlay is active. */
+  useEffect(() => {
+    if (!dataEnabled) return;
+    const syncListTabForTour = () => {
+      if (!document.querySelector(".tour-overlay.active")) return;
+      setInventoryTab((tab) => (tab === "list" ? tab : "list"));
+    };
+    syncListTabForTour();
+    const observer = new MutationObserver(syncListTabForTour);
+    observer.observe(document.body, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+    return () => observer.disconnect();
+  }, [dataEnabled]);
+
   useEffect(() => {
     if (!inventorySetupDismissKey || typeof window === "undefined") return;
     setSetupWizardDismissed(sessionStorage.getItem(inventorySetupDismissKey) === "1");
@@ -935,7 +952,10 @@ export function InventoryApp() {
       />
 
       {dataEnabled ? (
-        <div className="-mt-2 flex flex-wrap gap-1 rounded-lg border border-pulse-border bg-white p-1 shadow-sm dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
+        <div
+          data-tour="inventory-tour-tabs"
+          className="-mt-2 flex flex-wrap gap-1 rounded-lg border border-pulse-border bg-white p-1 shadow-sm dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]"
+        >
           {workspaceNav.map((item) => {
             const Icon = item.icon;
             if (item.kind === "link") {
@@ -1056,6 +1076,7 @@ export function InventoryApp() {
 
           {inventoryTab === "list" ? (
           <>
+          <div data-tour="inventory-tour-filters" className="space-y-6">
           <div className="flex flex-wrap gap-2">
             {[
               { id: "", label: "All" },
@@ -1195,6 +1216,7 @@ export function InventoryApp() {
               {canMutateInventory ? (
                 <button
                   type="button"
+                  data-tour="inventory-tour-create"
                   className={ICON_BTN}
                   title="Register item"
                   aria-label="Register item"
@@ -1206,8 +1228,9 @@ export function InventoryApp() {
               ) : null}
             </div>
           </div>
+          </div>
 
-          <div className="app-data-shell mt-4">
+          <div data-tour="inventory-tour-list" className="app-data-shell mt-4">
             {listLoading ? (
               <div className="flex items-center justify-center gap-2 py-16 text-pulse-muted">
                 <Loader2 className="h-5 w-5 animate-spin" aria-hidden />

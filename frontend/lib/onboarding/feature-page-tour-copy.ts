@@ -66,8 +66,8 @@ const FEATURE_PAGE_TOUR_COPY: Partial<Record<string, FeaturePageTourCopy>> = {
     workspaceDescription: "Start inspections, record results, and review historical entries from the workspace.",
   },
   inventory: {
-    welcomeSubtitle: "Stock levels, locations, and reorder signals in the inventory workspace.",
-    workspaceDescription: "Browse items, adjust quantities, and act on low-stock alerts in the main table or cards.",
+    welcomeSubtitle:
+      "A quick walkthrough of Inventory—sections, filters, the item list, and registering new stock.",
   },
   equipment: {
     welcomeSubtitle: "Asset registry, maintenance history, and assignments.",
