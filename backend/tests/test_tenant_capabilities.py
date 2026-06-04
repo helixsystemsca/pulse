@@ -124,6 +124,31 @@ async def test_explicit_team_member_role_not_fallback(db_session: AsyncSession) 
 
 
 @pytest.mark.asyncio
+async def test_assign_custom_tenant_department_slug(db_session: AsyncSession) -> None:
+    """Tenant-configured departments (e.g. plant) must not fail legacy matrix validation."""
+    from app.core.tenant_departments import create_tenant_department
+    from app.core.tenant_role_assignments import assign_user_department_role, get_active_assignment
+
+    user = await _seed_user(db_session)
+    cid = str(user.company_id)
+    await create_tenant_department(db_session, cid, name="Plant", slug="plant")
+    await assign_user_department_role(
+        db_session,
+        company_id=cid,
+        user_id=str(user.id),
+        department_slug="plant",
+        role_key="supervisor",
+        assigned_by=None,
+    )
+    await db_session.commit()
+
+    asn = await get_active_assignment(db_session, company_id=cid, user_id=str(user.id))
+    assert asn is not None
+    assert asn.department_slug == "plant"
+    assert asn.role_key == "supervisor"
+
+
+@pytest.mark.asyncio
 async def test_feature_allow_extra_unions_with_matrix(db_session: AsyncSession) -> None:
     user = await _seed_user(db_session, feature_allow_extra=["monitoring"])
     cid = str(user.company_id)

@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.department_matrix_baselines import PERMISSION_MATRIX_DEPARTMENTS
 from app.core.permission_feature_matrix import PERMISSION_MATRIX_SLOTS, normalize_matrix_slot
+from app.core.tenant_departments import normalize_department_slug_format, validate_tenant_department_slug
 from app.core.workspace_departments import normalize_workspace_department_slug
 from app.models.rbac_models import TenantRoleAssignment
 
@@ -50,12 +51,13 @@ class TenantAssignmentResolution:
 
 
 def normalize_department_slug(raw: str | None) -> str | None:
+    """Legacy Panorama matrix slug, or any syntactically valid tenant slug."""
     if not raw:
         return None
     slug = normalize_workspace_department_slug(str(raw).strip())
     if slug and slug in PERMISSION_MATRIX_DEPARTMENTS:
         return slug
-    return None
+    return normalize_department_slug_format(raw)
 
 
 def normalize_role_key(raw: str | None) -> str | None:
@@ -130,10 +132,12 @@ async def assign_user_department_role(
     assigned_by: str | None,
     department_id: str | None = None,
 ) -> ActiveTenantAssignment:
-    slug = normalize_department_slug(department_slug)
+    slug: str
+    try:
+        slug = await validate_tenant_department_slug(db, company_id, department_slug)
+    except ValueError:
+        raise ValueError("Invalid department") from None
     role = normalize_role_key(role_key)
-    if not slug:
-        raise ValueError("Invalid department")
     if not role or role not in ASSIGNABLE_ROLE_KEYS:
         raise ValueError("Invalid role_key")
 

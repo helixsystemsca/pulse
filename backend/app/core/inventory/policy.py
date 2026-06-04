@@ -170,4 +170,4 @@ async def inventory_department_slugs_for_user(
     slugs = _department_slugs_from_hr_and_matrix(user, hr)
     if slugs:
         return slugs
-    return {permission_matrix_department_for_user(user, hr)}
+    return set()

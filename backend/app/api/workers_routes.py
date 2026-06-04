@@ -216,6 +216,30 @@ async def _tenant_validated_hr_department_slugs(
     return out
 
 
+async def _assign_user_department_role_or_400(
+    db: AsyncSession,
+    *,
+    company_id: str,
+    user_id: str,
+    department_slug: str,
+    role_key: str,
+    assigned_by: str | None,
+    department_id: str | None = None,
+) -> None:
+    try:
+        await assign_user_department_role(
+            db,
+            company_id=company_id,
+            user_id=user_id,
+            department_slug=department_slug,
+            role_key=role_key,
+            assigned_by=assigned_by,
+            department_id=department_id,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+
+
 async def resolve_workers_company_id(
     user: Annotated[User, Depends(get_current_user)],
     company_id: Optional[str] = Query(None, description="Required for system administrators"),
@@ -920,7 +944,7 @@ async def apply_department_baselines(
         baseline = department_baseline_slot(dept)
         if not baseline:
             continue
-        await assign_user_department_role(
+        await _assign_user_department_role_or_400(
             db,
             company_id=cid,
             user_id=str(u.id),
@@ -1183,7 +1207,7 @@ async def _apply_worker_hr_and_extras(
                 start_date=body.start_date,
             )
         )
-    await assign_user_department_role(
+    await _assign_user_department_role_or_400(
         db,
         company_id=cid,
         user_id=str(user.id),
@@ -1597,7 +1621,7 @@ async def patch_worker(
             else:
                 role = department_baseline_slot(dept_slug)
             if role:
-                await assign_user_department_role(
+                await _assign_user_department_role_or_400(
                     db,
                     company_id=cid,
                     user_id=user_id,

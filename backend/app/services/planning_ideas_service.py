@@ -9,11 +9,7 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.schedule_department import (
-    DEFAULT_SCHEDULE_DEPARTMENT_SLUG,
-    normalize_schedule_department_slug,
-    primary_department_slug_from_hr,
-)
+from app.core.schedule_department import resolve_schedule_department_slug
 from app.models.domain import User
 from app.models.pulse_models import (
     PlanningIdea,
@@ -220,10 +216,11 @@ async def convert_idea_to_project(
         )
         template_tasks = list(tq.scalars().all())
     actor_hr = await db.get(PulseWorkerHR, str(actor.id))
-    project_dept = (
-        normalize_schedule_department_slug(department_slug)
-        or primary_department_slug_from_hr(actor_hr)
-        or DEFAULT_SCHEDULE_DEPARTMENT_SLUG
+    project_dept = await resolve_schedule_department_slug(
+        db,
+        company_id,
+        explicit=department_slug,
+        hr=actor_hr,
     )
     staffing = "high" if idea.priority in ("high", "critical") else "normal"
     impact = "high" if idea.priority == "critical" else "medium"

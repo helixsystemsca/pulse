@@ -25,8 +25,7 @@ from app.core.inventory.policy import resolve_effective_inventory_policy
 from app.core.schedule_department import (
     apply_shift_department_filter,
     load_hr_by_user_ids,
-    normalize_schedule_department_slug,
-    primary_department_slug_from_hr,
+    primary_department_slug_from_hr_for_company,
     resolve_department_slug_for_user,
 )
 from app.repositories import inventory_scope_repository as inv_scope_repo

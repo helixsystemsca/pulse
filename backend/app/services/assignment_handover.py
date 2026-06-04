@@ -8,7 +8,7 @@ from typing import Optional
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.schedule_department import primary_department_slug_from_hr
+from app.core.schedule_department import primary_department_slug_from_hr_for_company
 from app.models.domain import User, Zone
 from app.models.pulse_models import (
     PulseRoutine,
@@ -108,7 +108,7 @@ async def resolve_handover_metadata(
     department_slug: Optional[str] = None
     hr = await db.get(PulseWorkerHR, employee_user_id)
     if hr and str(hr.company_id) == cid:
-        department_slug = primary_department_slug_from_hr(hr)
+        department_slug = await primary_department_slug_from_hr_for_company(db, cid, hr)
         if not employee_name:
             employee_name = (hr.job_title or "").strip() or None
     if not employee_name:

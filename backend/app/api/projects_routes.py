@@ -12,9 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_tenant_user
 from app.core.schedule_department import (
-    DEFAULT_SCHEDULE_DEPARTMENT_SLUG,
     normalize_schedule_department_slug,
-    primary_department_slug_from_hr,
+    resolve_schedule_department_slug,
 )
 from app.core.user_roles import user_has_tenant_full_admin
 from app.services.notifications import seed_default_notification_rules
@@ -606,7 +605,7 @@ async def list_projects(
         )
         await db.commit()
     rows = (await db.execute(select(PulseProject).where(PulseProject.company_id == cid))).scalars().all()
-    dept_filter = normalize_schedule_department_slug(department_slug)
+    dept_filter = await normalize_schedule_department_slug(db, cid, department_slug)
     cat_ids = {str(p.category_id) for p in rows if getattr(p, "category_id", None)}
     cats: dict[str, PulseCategory] = {}
     if cat_ids:
@@ -623,8 +622,8 @@ async def list_projects(
     today = datetime.now(timezone.utc).date()
     for p in rows:
         if dept_filter:
-            proj_dept = normalize_schedule_department_slug(getattr(p, "department_slug", None))
-            if (proj_dept or DEFAULT_SCHEDULE_DEPARTMENT_SLUG) != dept_filter:
+            proj_dept = await normalize_schedule_department_slug(db, cid, getattr(p, "department_slug", None))
+            if proj_dept != dept_filter:
                 continue
         tot_q = await db.scalar(
             select(func.count()).select_from(PulseProjectTask).where(PulseProjectTask.project_id == p.id)
@@ -725,10 +724,11 @@ async def create_project(
         )
         template_tasks = list(rq.scalars().all())
     actor_hr = await db.get(PulseWorkerHR, str(actor.id))
-    project_dept = (
-        normalize_schedule_department_slug(getattr(body, "department_slug", None))
-        or primary_department_slug_from_hr(actor_hr)
-        or DEFAULT_SCHEDULE_DEPARTMENT_SLUG
+    project_dept = await resolve_schedule_department_slug(
+        db,
+        cid,
+        explicit=getattr(body, "department_slug", None),
+        hr=actor_hr,
     )
     p = PulseProject(
         company_id=cid,
@@ -1123,10 +1123,10 @@ async def patch_project(
         p.staffing_priority = v
     if "department_slug" in data:
         raw = data.pop("department_slug")
-        norm = normalize_schedule_department_slug(str(raw) if raw is not None else None)
+        norm = await normalize_schedule_department_slug(db, cid, str(raw) if raw is not None else None)
         if raw is not None and str(raw).strip() and not norm:
             raise HTTPException(status_code=400, detail="invalid department_slug")
-        p.department_slug = norm or DEFAULT_SCHEDULE_DEPARTMENT_SLUG
+        p.department_slug = norm
     for k, v in data.items():
         if v is not None:
             setattr(p, k, v)

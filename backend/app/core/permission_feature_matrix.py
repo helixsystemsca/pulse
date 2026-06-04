@@ -65,13 +65,18 @@ def sanitize_department_role_feature_access(
     *,
     allowed_departments: frozenset[str] | None = None,
 ) -> dict[str, dict[str, list[str]]]:
-    dept_allow = allowed_departments if allowed_departments else PERMISSION_MATRIX_DEPARTMENTS
+    from app.core.tenant_departments import normalize_department_slug_format
+
+    dept_allow = allowed_departments
     if not isinstance(raw, dict):
         return {}
     out: dict[str, dict[str, list[str]]] = {}
     for dk, dv in raw.items():
         ds = str(dk)
-        if ds not in dept_allow:
+        if dept_allow is not None:
+            if ds not in dept_allow:
+                continue
+        elif normalize_department_slug_format(ds) is None:
             continue
         if not isinstance(dv, dict):
             continue
@@ -89,7 +94,8 @@ def sanitize_department_role_feature_access(
     return out
 
 
-def permission_matrix_department_for_user(user: User, hr: PulseWorkerHR | None) -> str:
+def permission_matrix_department_for_user(user: User, hr: PulseWorkerHR | None) -> str | None:
+    """HR department slug for matrix lookup — no Panorama default when unset."""
     raw = getattr(hr, "department_slugs", None) if hr else None
     if isinstance(raw, list):
         for x in raw:
@@ -100,7 +106,7 @@ def permission_matrix_department_for_user(user: User, hr: PulseWorkerHR | None) 
         n = normalize_workspace_department_slug(hr.department.strip())
         if n:
             return n
-    return "maintenance"
+    return None
 
 
 def matrix_cell_features(
@@ -212,10 +218,15 @@ def expand_department_role_matrix_baselines(
     allowed_departments: frozenset[str] | None = None,
 ) -> dict[str, dict[str, list[str]]]:
     """Copy legacy ``team_member`` permissions into each department's baseline slot when empty."""
-    dept_allow = allowed_departments if allowed_departments else PERMISSION_MATRIX_DEPARTMENTS
+    from app.core.tenant_departments import normalize_department_slug_format
+
+    dept_allow = allowed_departments
     out: dict[str, dict[str, list[str]]] = {}
     for dept, row in matrix.items():
-        if dept not in dept_allow:
+        if dept_allow is not None:
+            if dept not in dept_allow:
+                continue
+        elif normalize_department_slug_format(dept) is None:
             continue
         new_row = dict(row)
         baseline = department_baseline_slot(dept)

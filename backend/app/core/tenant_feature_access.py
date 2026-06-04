@@ -82,6 +82,8 @@ def _features_from_department_role_matrix(
     from app.core.permission_feature_matrix import matrix_cell_features
 
     dept = permission_matrix_department_for_user(user, hr)
+    if not dept:
+        return []
     slot = permission_matrix_slot_for_user(user, hr)
     feats = matrix_cell_features(matrix, department=dept, slot=slot)
     allowed_contract = set(canonical_keys_from_contract(contract_names))

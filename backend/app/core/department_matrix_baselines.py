@@ -45,8 +45,10 @@ OPERATIONAL_MATRIX_SLOT_LABELS: dict[str, str] = {
 }
 
 
-def department_baseline_slot(department: str) -> str | None:
+def department_baseline_slot(department: str | None) -> str | None:
     """Baseline matrix row for a normalized permission-matrix department."""
+    if not department:
+        return None
     known = DEPARTMENT_BASELINE_SLOTS.get(department)
     if known:
         return known

@@ -16,6 +16,7 @@ from app.core.schedule_department import (
     load_hr_by_user_ids,
     normalize_schedule_department_slug,
     primary_department_slug_from_hr,
+    schedule_allowed_department_slugs,
 )
 from app.core.user_avatar_upload import co_worker_avatar_url
 from app.core.user_roles import primary_jwt_role
@@ -135,7 +136,10 @@ async def fetch_workers_roster(
     users = list(uq.scalars().all())
     uids = [str(u.id) for u in users]
     hr_map = await load_hr_by_user_ids(db, cid, uids)
-    dept_filter = normalize_schedule_department_slug(department_slug)
+    allowed = await schedule_allowed_department_slugs(db, cid)
+    dept_filter = (
+        await normalize_schedule_department_slug(db, cid, department_slug) if department_slug else None
+    )
 
     prof_map: dict[str, PulseWorkerProfile] = {}
     if uids:
@@ -168,7 +172,7 @@ async def fetch_workers_roster(
         avail = dict(prof.availability or {}) if prof else {}
         emp, rec = _worker_scheduling_fields(prof)
         uid_s = str(u.id)
-        worker_dept = primary_department_slug_from_hr(hr_map.get(uid_s))
+        worker_dept = primary_department_slug_from_hr(hr_map.get(uid_s), allowed=allowed)
         if dept_filter and worker_dept != dept_filter:
             continue
         out.append(
