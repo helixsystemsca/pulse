@@ -269,7 +269,7 @@ export const MASTER_PERMISSION_FEATURE_GROUPS: PermissionFeatureGroup[] = [
 ];
 
 /** Feature toggles shown for the selected department (subset of contract). */
-export function permissionFeatureGroupsForDepartment(dept: PermissionMatrixDepartment): PermissionFeatureGroup[] {
+export function permissionFeatureGroupsForDepartment(dept: string): PermissionFeatureGroup[] {
   const maintenanceOps = MAINTENANCE_OPS_KEYS;
   const commsTools = COMMS_TOOLS_KEYS;
   const leadership = LEADERSHIP_KEYS;
@@ -444,7 +444,36 @@ export function permissionFeatureGroupsForDepartment(dept: PermissionMatrixDepar
       { id: "maps", label: "Maps, drawings & devices", keys: [...maps] },
     ];
   }
-  return [];
+  // Tenant-defined departments (e.g. plant): same module catalog as operations, generic labels.
+  return [
+    {
+      id: "dashboard",
+      label: "Leadership dashboard",
+      description: "Main operations / leadership overview (/overview).",
+      keys: [...leadership],
+    },
+    {
+      id: "dashboard_access",
+      label: "Dashboard surfaces",
+      description: "Operations, leadership, project, and department dashboards.",
+      keys: [...DASHBOARD_ACCESS_KEYS],
+    },
+    {
+      id: "ops",
+      label: "Operations modules",
+      description: "Contract modules for this department.",
+      keys: [...maintenanceOps],
+    },
+    {
+      id: "planning_schedule",
+      label: "Planning · Scheduling",
+      keys: [...PLANNING_SCHEDULE_KEYS],
+    },
+    { id: "planning_projects", label: "Planning · Projects", keys: [...PLANNING_PROJECT_KEYS] },
+    { id: "standards", label: "Training (sidebar)", keys: [...STANDARDS_PROGRAM_KEYS] },
+    { id: "shared", label: "People & messaging", keys: [...SHARED_PROGRAM_KEYS] },
+    { id: "maps", label: "Maps, drawings & devices", keys: [...maps] },
+  ];
 }
 
 /** Build legacy `role_feature_access` rows as unions across departments (delegation + fallback). */

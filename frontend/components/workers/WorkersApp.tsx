@@ -367,7 +367,7 @@ function workerRosterDepartmentLabel(
 ): string {
   const raw = (row.department ?? "").trim();
   if (raw) return matrixDepartmentLabel(raw, tenantDepartments);
-  return rosterDepartmentTitle(rosterDepartmentSlug(row));
+  return rosterDepartmentTitle(rosterDepartmentSlug(row), tenantDepartments);
 }
 
 function shiftRosterLabel(
@@ -1168,7 +1168,9 @@ export function WorkersApp() {
       roleMap.get(bucket)!.push(w);
     }
 
-    return rosterDepartmentIterateOrder()
+    const activeDeptSlugs = new Set(byDept.keys());
+
+    return rosterDepartmentIterateOrder(tenantDepartments, activeDeptSlugs)
       .map((deptSlug) => {
         const roleMap = byDept.get(deptSlug);
         if (!roleMap) return null;
@@ -1177,10 +1179,14 @@ export function WorkersApp() {
           .map((role) => ({ role, items: roleMap.get(role) ?? [] }))
           .filter((g) => g.items.length > 0);
         if (!roleGroups.length) return null;
-        return { deptSlug, deptLabel: rosterDepartmentTitle(deptSlug), roleGroups };
+        return {
+          deptSlug,
+          deptLabel: rosterDepartmentTitle(deptSlug, tenantDepartments),
+          roleGroups,
+        };
       })
       .filter((x): x is NonNullable<typeof x> => Boolean(x));
-  }, [filteredList]);
+  }, [filteredList, tenantDepartments]);
 
   const canDeleteInvitedFromList = isTenantFullAdmin || isSystemAdmin;
 

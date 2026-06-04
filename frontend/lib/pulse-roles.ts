@@ -155,7 +155,7 @@ export function isCreateRoleLimitedSession(
 export function humanizeRole(role: string): string {
   const key = role.trim().toLowerCase();
   if (key === "worker") return "Staff";
-  if (key === "company_admin") return "Operations / Admin";
+  if (key === "company_admin") return "Company admin";
   return role.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
@@ -197,7 +197,6 @@ export function rosterDepartmentSlug(
   }
   const raw = (worker.department ?? "").trim().toLowerCase();
   if (!raw) {
-    // Off-site / IT-style company admins: no facility department slug — not part of Maintenance roster.
     const rawRoles = roleListFromPrincipal(worker);
     const hasFacilityOrgRole = rawRoles.some((r) =>
       ["manager", "supervisor", "lead", "worker"].includes(r),
@@ -205,18 +204,25 @@ export function rosterDepartmentSlug(
     if (!hasFacilityOrgRole && sessionHasAnyRole(worker, "company_admin")) {
       return "unset";
     }
-    return "maintenance";
+    return "unset";
   }
   for (const k of ROSTER_DEPT_ORDER) {
-    if (k === "__other__") continue;
+    if (k === "__other__" || k === "unset") continue;
     if (raw === k) return k;
   }
-  return "__other__";
+  return raw;
 }
 
-export function rosterDepartmentTitle(slug: string): string {
-  const k = slug.trim().toLowerCase() as (typeof ROSTER_DEPT_ORDER)[number];
-  return ROSTER_DEPT_TITLE[k] ?? slug;
+export function rosterDepartmentTitle(
+  slug: string,
+  tenantDepartments: readonly { slug: string; name: string }[] = [],
+): string {
+  const normalized = slug.trim().toLowerCase();
+  const tenantHit = tenantDepartments.find((d) => d.slug === normalized);
+  if (tenantHit) return tenantHit.name;
+  const k = normalized as (typeof ROSTER_DEPT_ORDER)[number];
+  if (k in ROSTER_DEPT_TITLE) return ROSTER_DEPT_TITLE[k];
+  return normalized.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 /** Plural section title for the `worker` API tier under a department (Maintenance → Operations, Communications → Coordinators). */
@@ -253,8 +259,33 @@ export function rosterRoleSectionTitle(role: string, departmentSlug: string): st
   return humanizeRole(role);
 }
 
-export function rosterDepartmentIterateOrder(): readonly string[] {
-  return ROSTER_DEPT_ORDER;
+export function rosterDepartmentIterateOrder(
+  tenantDepartments: readonly { slug: string; name: string }[] = [],
+  activeSlugs?: ReadonlySet<string>,
+): string[] {
+  const ordered: string[] = [];
+  const seen = new Set<string>();
+
+  const push = (slug: string) => {
+    if (seen.has(slug)) return;
+    if (activeSlugs && !activeSlugs.has(slug)) return;
+    seen.add(slug);
+    ordered.push(slug);
+  };
+
+  for (const d of [...tenantDepartments].sort((a, b) => a.name.localeCompare(b.name))) {
+    push(d.slug);
+  }
+  push("unset");
+  push("equipment");
+
+  if (activeSlugs) {
+    for (const slug of activeSlugs) {
+      push(slug);
+    }
+  }
+
+  return ordered;
 }
 
 /** Chrome subtitle: HR team (from `/auth/me` `hr_department`) + role; no maintenance default for `worker`. */
@@ -327,11 +358,8 @@ export function primaryWorkerGroupKey(
   }
 
   // Only admin / system tier — no explicit manager/supervisor/lead/worker role on the account.
-  // Standalone "Company Admin" roster: Administration HR dept, or corporate accounts with no facility department.
   if (sessionHasAnyRole(p, "company_admin")) {
-    const dept = rosterDepartmentSlug(p);
-    if (dept === "admin" || dept === "unset") return "company_admin";
-    return "worker";
+    return "company_admin";
   }
 
   const prim = sessionPrimaryRole({ roles: raw });
