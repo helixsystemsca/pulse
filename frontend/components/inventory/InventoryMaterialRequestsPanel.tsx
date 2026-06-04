@@ -14,6 +14,7 @@ import {
   fetchMaterialRequestExports,
   fetchMaterialRequestQueue,
   formatQueueStatus,
+  isQueueRowExportable,
   patchMaterialRequestQueueItem,
   removeMaterialRequestQueueItem,
   submitMaterialRequestDraft,
@@ -95,11 +96,15 @@ export function InventoryMaterialRequestsPanel({
     void loadQueue();
   }, [loadQueue]);
 
-  const allSelected = queue.length > 0 && selected.size === queue.length;
+  const exportableQueue = useMemo(() => queue.filter(isQueueRowExportable), [queue]);
+  const hasExportedRows = queue.some((r) => r.status === "exported");
+
+  const allExportableSelected =
+    exportableQueue.length > 0 && exportableQueue.every((r) => selected.has(r.id));
 
   function toggleAll() {
-    if (allSelected) setSelected(new Set());
-    else setSelected(new Set(queue.map((r) => r.id)));
+    if (allExportableSelected) setSelected(new Set());
+    else setSelected(new Set(exportableQueue.map((r) => r.id)));
   }
 
   function toggleOne(id: string) {
@@ -148,7 +153,7 @@ export function InventoryMaterialRequestsPanel({
   async function clearQueue() {
     if (
       !window.confirm(
-        "Clear the entire replenishment list? Items still below minimum stock will reappear when inventory is updated.",
+        "Clear MR Created items from the queue? Export history keeps the archive. Items still below minimum will show again as Low Stock.",
       )
     ) {
       return;
@@ -253,9 +258,11 @@ export function InventoryMaterialRequestsPanel({
           <div>
             <h2 className="text-lg font-bold text-pulse-navy dark:text-gray-100">{replenishmentLabel}</h2>
             <p className="text-sm text-pulse-muted">
-              Items at or below minimum quantity appear here automatically. The list stays until you use{" "}
-              <span className="font-medium text-pulse-navy dark:text-gray-200">Clear list</span> — exporting does not
-              remove items, so you can add more before clearing.
+              Items at or below minimum appear here as{" "}
+              <span className="font-medium text-pulse-navy dark:text-gray-200">Low Stock</span>. After{" "}
+              {procurementActionLabel.trim() || "Export Request"}, they show as{" "}
+              <span className="font-medium text-pulse-navy dark:text-gray-200">MR Created</span> until you clear those
+              rows (export history keeps the archive). Still-low items return as Low Stock after clear.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -273,14 +280,16 @@ export function InventoryMaterialRequestsPanel({
             </button>
             {canMutate ? (
               <>
-                <button
-                  type="button"
-                  className={SECONDARY_BTN}
-                  disabled={busy || queue.length === 0}
-                  onClick={() => void clearQueue()}
-                >
-                  Clear list
-                </button>
+                {hasExportedRows ? (
+                  <button
+                    type="button"
+                    className={SECONDARY_BTN}
+                    disabled={busy}
+                    onClick={() => void clearQueue()}
+                  >
+                    Clear queue
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   className={SECONDARY_BTN}
@@ -323,7 +332,8 @@ export function InventoryMaterialRequestsPanel({
                     <th className="w-10 px-3 py-3">
                       <input
                         type="checkbox"
-                        checked={allSelected}
+                        checked={allExportableSelected}
+                        disabled={exportableQueue.length === 0}
                         aria-label="Select all"
                         onChange={toggleAll}
                       />
@@ -342,13 +352,17 @@ export function InventoryMaterialRequestsPanel({
                 </tr>
               </thead>
               <tbody>
-                {queue.map((row) => (
+                {queue.map((row) => {
+                  const exportable = isQueueRowExportable(row);
+                  const exported = row.status === "exported";
+                  return (
                   <tr key={row.id} className="border-b border-slate-100 last:border-0 dark:border-ds-border">
                     {canMutate ? (
                       <td className="px-3 py-3 align-middle">
                         <input
                           type="checkbox"
                           checked={selected.has(row.id)}
+                          disabled={!exportable || busy}
                           aria-label={`Select ${row.item_name}`}
                           onChange={() => toggleOne(row.id)}
                         />
@@ -382,7 +396,7 @@ export function InventoryMaterialRequestsPanel({
                     <td className="px-4 py-3 tabular-nums">{row.current_qty}</td>
                     <td className="px-4 py-3 tabular-nums">{row.minimum_qty}</td>
                     <td className="px-4 py-3">
-                      {canMutate ? (
+                      {canMutate && exportable ? (
                         <input
                           type="number"
                           min={0}
@@ -403,7 +417,14 @@ export function InventoryMaterialRequestsPanel({
                       {row.vendor?.trim() || "—"}
                     </td>
                     <td className="px-4 py-3">
-                      <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-900 dark:bg-amber-900/40 dark:text-amber-100">
+                      <span
+                        className={cn(
+                          "rounded-full px-2 py-0.5 text-xs font-semibold",
+                          exported
+                            ? "bg-sky-100 text-sky-900 dark:bg-sky-900/50 dark:text-sky-100"
+                            : "bg-amber-50 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100",
+                        )}
+                      >
                         {formatQueueStatus(row.status)}
                       </span>
                     </td>
@@ -421,7 +442,8 @@ export function InventoryMaterialRequestsPanel({
                       </td>
                     ) : null}
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -429,11 +451,15 @@ export function InventoryMaterialRequestsPanel({
       </section>
     ),
     [
-      allSelected,
+      allExportableSelected,
       busy,
       canMutate,
+      exportableQueue.length,
+      hasExportedRows,
       loading,
+      procurementActionLabel,
       queue,
+      replenishmentLabel,
       reorderDrafts,
       selected,
       selectedCount,

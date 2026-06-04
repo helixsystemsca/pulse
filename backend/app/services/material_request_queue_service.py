@@ -18,8 +18,13 @@ QUEUE_STATUS_ORDERED = "ordered"
 QUEUE_STATUS_RECEIVED = "received"
 QUEUE_STATUS_EXPORTED = "exported"
 
-# Rows visible in the replenishment queue (exported items are kept for history only).
+# Rows shown in the replenishment queue UI (exported stay until explicit clear).
+QUEUE_VISIBLE_STATUSES = (QUEUE_STATUS_PENDING, QUEUE_STATUS_DRAFTED, QUEUE_STATUS_EXPORTED)
+
+# Legacy alias — draft creation and reorder edits apply to not-yet-exported rows only.
 QUEUE_ACTIVE_STATUSES = (QUEUE_STATUS_PENDING, QUEUE_STATUS_DRAFTED)
+
+QUEUE_EXPORTABLE_STATUSES = (QUEUE_STATUS_PENDING, QUEUE_STATUS_DRAFTED)
 
 
 def compute_reorder_qty(item: InventoryItem) -> float:
@@ -53,9 +58,26 @@ def _snapshot_from_item(item: InventoryItem) -> dict:
     }
 
 
+async def _visible_queue_row_for_item(
+    db: AsyncSession, company_id: str, inventory_item_id: str
+) -> MaterialRequestQueue | None:
+    q = await db.execute(
+        select(MaterialRequestQueue)
+        .where(
+            MaterialRequestQueue.company_id == company_id,
+            MaterialRequestQueue.inventory_item_id == inventory_item_id,
+            MaterialRequestQueue.status.in_(QUEUE_VISIBLE_STATUSES),
+        )
+        .order_by(MaterialRequestQueue.created_at.desc())
+        .limit(1)
+    )
+    return q.scalar_one_or_none()
+
+
 async def sync_queue_for_inventory_item(db: AsyncSession, item: InventoryItem) -> bool:
     """
-    Enqueue or refresh a pending row when stock is at/below minimum; drop pending when above.
+    Enqueue or refresh a row when stock is at/below minimum; drop pending when above.
+    Exported rows stay until clear_exported_queue; still-low items get a new pending row after clear.
     Returns True when a new pending queue row was created (first entry this low stint).
     """
     if not is_item_low_stock(item):
@@ -72,44 +94,48 @@ async def sync_queue_for_inventory_item(db: AsyncSession, item: InventoryItem) -
         return False
 
     snap = _snapshot_from_item(item)
-    q = await db.execute(
-        select(MaterialRequestQueue).where(
-            MaterialRequestQueue.company_id == item.company_id,
-            MaterialRequestQueue.inventory_item_id == item.id,
-            MaterialRequestQueue.status == QUEUE_STATUS_PENDING,
-        )
-    )
-    row = q.scalar_one_or_none()
+    row = await _visible_queue_row_for_item(db, item.company_id, item.id)
     now = datetime.now(timezone.utc)
     created = False
     if row is None:
-        db.add(
-            MaterialRequestQueue(
-                company_id=item.company_id,
-                inventory_item_id=item.id,
-                status=QUEUE_STATUS_PENDING,
-                created_at=now,
-                updated_at=now,
-                **snap,
-            )
+        row = MaterialRequestQueue(
+            company_id=item.company_id,
+            inventory_item_id=item.id,
+            status=QUEUE_STATUS_PENDING,
+            created_at=now,
+            updated_at=now,
+            **snap,
         )
+        db.add(row)
         created = True
     else:
         for k, v in snap.items():
             setattr(row, k, v)
+        if row.status != QUEUE_STATUS_EXPORTED:
+            row.status = QUEUE_STATUS_PENDING
         row.updated_at = now
     await db.flush()
     await apply_queue_intelligence(db, row, item)
     return created
 
 
-async def list_pending_queue(db: AsyncSession, company_id: str) -> list[MaterialRequestQueue]:
-    """Active replenishment rows (pending + legacy drafted — not exported)."""
+async def sync_company_material_request_queue(db: AsyncSession, company_id: str) -> int:
+    """Ensure queue rows exist for every low-stock item in the company (backfill on list)."""
+    q = await db.execute(select(InventoryItem).where(InventoryItem.company_id == company_id))
+    created = 0
+    for item in q.scalars().all():
+        if await sync_queue_for_inventory_item(db, item):
+            created += 1
+    return created
+
+
+async def list_visible_queue(db: AsyncSession, company_id: str) -> list[MaterialRequestQueue]:
+    """Replenishment rows: pending/low-stock and exported (MR created) until cleared."""
     q = await db.execute(
         select(MaterialRequestQueue)
         .where(
             MaterialRequestQueue.company_id == company_id,
-            MaterialRequestQueue.status.in_(QUEUE_ACTIVE_STATUSES),
+            MaterialRequestQueue.status.in_(QUEUE_VISIBLE_STATUSES),
         )
         .order_by(
             MaterialRequestQueue.priority_score.desc(),
@@ -120,18 +146,43 @@ async def list_pending_queue(db: AsyncSession, company_id: str) -> list[Material
     return list(q.scalars().all())
 
 
-async def clear_active_queue(db: AsyncSession, company_id: str) -> int:
-    """Remove all visible queue rows for a company. Returns count deleted."""
+async def list_pending_queue(db: AsyncSession, company_id: str) -> list[MaterialRequestQueue]:
+    """Alias for list_visible_queue (API compatibility)."""
+    return await list_visible_queue(db, company_id)
+
+
+async def mark_queue_rows_exported(
+    db: AsyncSession,
+    rows: list[MaterialRequestQueue],
+    *,
+    export_batch_id: str,
+    exported_at: datetime | None = None,
+) -> None:
+    when = exported_at or datetime.now(timezone.utc)
+    for row in rows:
+        row.status = QUEUE_STATUS_EXPORTED
+        row.exported_at = when
+        row.export_batch_id = export_batch_id
+        row.updated_at = when
+
+
+async def clear_exported_queue(db: AsyncSession, company_id: str) -> int:
+    """Remove exported (MR created) rows after supervisor clears the queue. Returns count deleted."""
     q = await db.execute(
         select(MaterialRequestQueue).where(
             MaterialRequestQueue.company_id == company_id,
-            MaterialRequestQueue.status.in_(QUEUE_ACTIVE_STATUSES),
+            MaterialRequestQueue.status == QUEUE_STATUS_EXPORTED,
         )
     )
     rows = list(q.scalars().all())
     for row in rows:
         await db.delete(row)
     return len(rows)
+
+
+async def clear_active_queue(db: AsyncSession, company_id: str) -> int:
+    """Deprecated name — clears exported rows only."""
+    return await clear_exported_queue(db, company_id)
 
 
 async def get_queue_row(db: AsyncSession, company_id: str, queue_id: str) -> MaterialRequestQueue | None:
@@ -181,7 +232,7 @@ async def get_queue_rows_for_export(
         select(MaterialRequestQueue).where(
             MaterialRequestQueue.company_id == company_id,
             MaterialRequestQueue.id.in_(queue_item_ids),
-            MaterialRequestQueue.status.in_(QUEUE_ACTIVE_STATUSES),
+            MaterialRequestQueue.status.in_(QUEUE_EXPORTABLE_STATUSES),
         )
     )
     rows = list(q.scalars().all())

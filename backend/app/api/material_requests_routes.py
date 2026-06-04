@@ -94,7 +94,9 @@ async def list_material_request_queue(
     _: InvUser,
     cid: CompanyId,
 ) -> MaterialRequestQueueListOut:
-    rows = await queue_svc.list_pending_queue(db, cid)
+    await queue_svc.sync_company_material_request_queue(db, cid)
+    rows = await queue_svc.list_visible_queue(db, cid)
+    await db.commit()
     return MaterialRequestQueueListOut(items=[_queue_out(r) for r in rows])
 
 
@@ -109,8 +111,8 @@ async def patch_material_request_queue_item(
     row = await queue_svc.get_queue_row(db, cid, queue_id)
     if row is None:
         raise HTTPException(status_code=404, detail="Not found")
-    if row.status not in queue_svc.QUEUE_ACTIVE_STATUSES:
-        raise HTTPException(status_code=400, detail="Only active queue items can be edited")
+    if row.status not in queue_svc.QUEUE_EXPORTABLE_STATUSES:
+        raise HTTPException(status_code=400, detail="Only low-stock queue items can be edited")
     if (
         body.reorder_qty is None
         and body.reimbursable is None
@@ -151,7 +153,8 @@ async def clear_material_request_queue(
     _: InvManageUser,
     cid: CompanyId,
 ) -> None:
-    await queue_svc.clear_active_queue(db, cid)
+    await queue_svc.clear_exported_queue(db, cid)
+    await queue_svc.sync_company_material_request_queue(db, cid)
     await db.commit()
 
 

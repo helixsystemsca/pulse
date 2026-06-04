@@ -1563,11 +1563,14 @@ export function WorkersApp() {
     if (sid !== curSid) {
       payload.supervisor_id = sid || null;
     }
-    const preserveDemo = Boolean(profile.roles?.includes("demo_viewer"));
-    const nextRoles = jwtRolesForMatrixSlot(effectiveRoleKey, preserveDemo);
-    const curRoles = sortRolesForDisplay(profile.roles?.length ? profile.roles : [profile.role]);
-    if (JSON.stringify(nextRoles) !== JSON.stringify(curRoles)) {
-      payload.roles = nextRoles;
+    // JWT `company_admin` is not changed via roster PATCH; matrix dept/slot still updates HR + tenant assignment.
+    if (!principalHasAnyRole(profile, "company_admin")) {
+      const preserveDemo = Boolean(profile.roles?.includes("demo_viewer"));
+      const nextRoles = jwtRolesForMatrixSlot(effectiveRoleKey, preserveDemo);
+      const curRoles = sortRolesForDisplay(profile.roles?.length ? profile.roles : [profile.role]);
+      if (JSON.stringify(nextRoles) !== JSON.stringify(curRoles)) {
+        payload.roles = nextRoles;
+      }
     }
 
     if (isTenantFullAdmin && !principalHasAnyRole(profile, "company_admin")) {

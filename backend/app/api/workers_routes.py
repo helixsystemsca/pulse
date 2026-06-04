@@ -1511,11 +1511,10 @@ async def patch_worker(
                 raise HTTPException(status_code=400, detail="Email already in use")
             target.email = new_email
 
-    if body.roles is not None:
+    target_is_company_admin = user_has_any_role(target, UserRole.company_admin)
+    if body.roles is not None and not target_is_company_admin:
         if not user_has_any_role(actor, UserRole.company_admin) and not user_has_facility_tenant_admin_flag(actor):
             raise HTTPException(status_code=403, detail="Only company_admin can change roles")
-        if user_has_any_role(target, UserRole.company_admin):
-            raise HTTPException(status_code=400, detail="Cannot reassign company_admin role here")
         try:
             new_roles = validate_tenant_roles_non_empty([str(x) for x in body.roles])
         except ValueError as e:
@@ -1523,12 +1522,10 @@ async def patch_worker(
         if UserRole.company_admin.value in new_roles:
             raise HTTPException(status_code=400, detail="Cannot promote to company_admin via this endpoint")
         target.roles = new_roles
-    elif "role" in data and data["role"]:
+    elif "role" in data and data["role"] and not target_is_company_admin:
         if not user_has_any_role(actor, UserRole.company_admin) and not user_has_facility_tenant_admin_flag(actor):
             raise HTTPException(status_code=403, detail="Only company_admin can change roles")
         new_r = UserRole(data["role"])
-        if user_has_any_role(target, UserRole.company_admin):
-            raise HTTPException(status_code=400, detail="Cannot reassign company_admin role here")
         if new_r == UserRole.company_admin:
             raise HTTPException(status_code=400, detail="Cannot promote to company_admin via this endpoint")
         if new_r not in (UserRole.manager, UserRole.supervisor, UserRole.lead, UserRole.worker):

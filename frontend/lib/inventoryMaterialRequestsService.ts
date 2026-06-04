@@ -208,5 +208,13 @@ export async function exportMaterialRequestDraft(companyId: string | null, draft
 }
 
 export function formatQueueStatus(status: string): string {
+  const s = status.trim().toLowerCase();
+  if (s === "pending" || s === "drafted") return "Low Stock";
+  if (s === "exported") return "MR Created";
   return status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+export function isQueueRowExportable(row: Pick<MaterialRequestQueueRow, "status">): boolean {
+  const s = row.status.trim().toLowerCase();
+  return s === "pending" || s === "drafted";
 }

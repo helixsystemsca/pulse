@@ -14,7 +14,7 @@ from app.core.config import get_settings
 from app.core.email_smtp import send_material_request_export_email
 from app.models.domain import Company, InventoryItem, InventoryModuleSettings, MaterialRequestExport, MaterialRequestQueue, User
 from app.services.inventory_notifications import notifications_from_settings, parse_email_list
-from app.services.material_request_queue_service import get_queue_rows_for_export
+from app.services.material_request_queue_service import get_queue_rows_for_export, mark_queue_rows_exported
 from app.services.template_export_service import TemplateExportError, TemplateExportService
 
 
@@ -133,6 +133,8 @@ async def export_queue_to_workbook(
     )
     db.add(export_record)
     await db.flush()
+
+    await mark_queue_rows_exported(db, rows, export_batch_id=export_record.id)
 
     inv_settings = await _load_inventory_settings(db, company_id)
     recipients = resolve_mr_export_recipients(inv_settings, notify_emails)
