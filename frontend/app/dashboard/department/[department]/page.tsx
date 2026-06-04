@@ -4,27 +4,36 @@ import {
   OperationalDashboard,
   type OperationalDashboardReadyPayload,
 } from "@/components/dashboard/OperationalDashboard";
-import { PERMISSION_MATRIX_DEPARTMENTS } from "@/config/platform/permission-matrix";
 import { departmentDashboardStorageContext } from "@/lib/dashboards/dashboard-permissions";
 import { isApiMode } from "@/lib/api";
 import { navigateToPulseLogin } from "@/lib/pulse-app";
 import { readSession } from "@/lib/pulse-session";
 import { canAccessClassicNavHref } from "@/lib/rbac/session-access";
+import {
+  fetchTenantDepartments,
+  isAllowedDepartmentSlug,
+  type TenantDepartmentRow,
+} from "@/lib/tenantDepartmentsService";
 import { UI } from "@/styles/ui";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-
-const ALLOWED = new Set<string>(PERMISSION_MATRIX_DEPARTMENTS);
 
 export default function DepartmentDashboardPage() {
   const router = useRouter();
   const params = useParams();
   const department = String(params.department ?? "").toLowerCase();
+  const [tenantDepartments, setTenantDepartments] = useState<TenantDepartmentRow[]>([]);
+  const [deptsLoaded, setDeptsLoaded] = useState(false);
   const [ready, setReady] = useState(false);
 
+  const departmentAllowed = useMemo(
+    () => isAllowedDepartmentSlug(department, tenantDepartments),
+    [department, tenantDepartments],
+  );
+
   const storageContext = useMemo(
-    () => (ALLOWED.has(department) ? departmentDashboardStorageContext(department) : "operations"),
-    [department],
+    () => (departmentAllowed ? departmentDashboardStorageContext(department) : "operations"),
+    [department, departmentAllowed],
   );
 
   const onDashboardReady = useCallback((_payload?: OperationalDashboardReadyPayload) => {
@@ -37,7 +46,27 @@ export default function DepartmentDashboardPage() {
       navigateToPulseLogin();
       return;
     }
-    if (!ALLOWED.has(department)) {
+    let cancelled = false;
+    void fetchTenantDepartments(s.company_id ?? null)
+      .then((items) => {
+        if (!cancelled) setTenantDepartments(items);
+      })
+      .catch(() => {
+        if (!cancelled) setTenantDepartments([]);
+      })
+      .finally(() => {
+        if (!cancelled) setDeptsLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!deptsLoaded) return;
+    const s = readSession();
+    if (!s) return;
+    if (!departmentAllowed) {
       router.replace("/settings");
       return;
     }
@@ -47,9 +76,9 @@ export default function DepartmentDashboardPage() {
       return;
     }
     setReady(true);
-  }, [department, router]);
+  }, [department, router, deptsLoaded, departmentAllowed]);
 
-  if (!ready || !ALLOWED.has(department)) {
+  if (!ready || !departmentAllowed) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
         <p className={UI.subheader}>Loading…</p>

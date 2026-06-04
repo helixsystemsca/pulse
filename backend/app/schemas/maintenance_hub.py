@@ -48,19 +48,21 @@ def normalize_procedure_search_keywords(v: Any) -> list[str]:
     return out
 
 
+# Legacy Panorama procedure categories (reference; validation is tenant-aware in routes).
 ALLOWED_PROCEDURE_DEPARTMENT_CATEGORY_SLUGS: frozenset[str] = frozenset(
     {"maintenance", "reception", "communications", "aquatics", "fitness"}
 )
 
 
 def normalize_procedure_department_category(raw: object | None) -> str | None:
-    """Return a known department slug or None (organization-wide / invalid)."""
+    """Sync format check only — use ``normalize_procedure_department_category_for_company`` in APIs."""
+    from app.core.tenant_departments import normalize_department_slug_format
+
     if raw is None:
         return None
-    s = str(raw).strip().lower()
-    if not s:
+    if not str(raw).strip():
         return None
-    return s if s in ALLOWED_PROCEDURE_DEPARTMENT_CATEGORY_SLUGS else None
+    return normalize_department_slug_format(str(raw))
 
 
 def parse_procedure_keyword_filter(raw: Optional[str]) -> list[str]:

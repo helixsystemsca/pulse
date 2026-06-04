@@ -106,7 +106,6 @@ from app.schemas.maintenance_hub import (
     WorkOrderStatusApi,
     WorkOrderType,
     normalize_procedure_search_keywords,
-    normalize_procedure_department_category,
     normalize_procedure_steps,
     parse_procedure_keyword_filter,
     procedure_row_matches_keyword_tokens,
@@ -160,6 +159,19 @@ async def _company_id(user: User = Depends(require_tenant_user)) -> str:
 
 CompanyId = Annotated[str, Depends(_company_id)]
 Db = Annotated[AsyncSession, Depends(get_db)]
+
+
+async def _procedure_department_category(db: AsyncSession, company_id: str, raw: object | None) -> str | None:
+    from app.core.tenant_departments import normalize_procedure_department_category_for_company
+
+    if raw is None:
+        return None
+    if not str(raw).strip():
+        return None
+    norm = await normalize_procedure_department_category_for_company(db, company_id, raw)
+    if norm is None:
+        raise HTTPException(status_code=400, detail="Invalid department_category for this organization")
+    return norm
 
 
 def _asset_id_from_row(wr: PulseWorkRequest) -> Optional[str]:
@@ -426,7 +438,7 @@ async def create_procedure(
         published_at=body.published_at,
         revision_notes=(str(body.revision_notes).strip() if body.revision_notes else None),
         procedure_category=(body.procedure_category or "").strip() or None,
-        department_category=normalize_procedure_department_category(body.department_category),
+        department_category=await _procedure_department_category(db, cid, body.department_category),
         semantic_version=(body.semantic_version or "").strip() or "1.0",
         revision_date=body.revision_date,
         publication_state=(body.publication_state or "published").strip().lower()[:20] or "published",
@@ -1136,7 +1148,7 @@ async def update_procedure(
         row.procedure_category = None if v is None else (str(v).strip() or None)
     if "department_category" in patch:
         v = patch.get("department_category")
-        row.department_category = normalize_procedure_department_category(v)
+        row.department_category = await _procedure_department_category(db, cid, v)
     if "semantic_version" in patch:
         v = patch.get("semantic_version")
         row.semantic_version = None if v is None else (str(v).strip() or None)

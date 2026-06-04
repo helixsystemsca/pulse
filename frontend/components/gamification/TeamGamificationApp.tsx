@@ -7,9 +7,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { PERMISSION_MATRIX_DEPARTMENTS } from "@/config/platform/permission-matrix";
 import { readSession } from "@/lib/pulse-session";
 import { canAccessClassicNavHref } from "@/lib/rbac/session-access";
+import {
+  fetchTenantDepartments,
+  isHrDepartmentDashboardSlug,
+} from "@/lib/tenantDepartmentsService";
 import { ChevronDown, Download, Flame, Sparkles, Trophy } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageBody } from "@/components/ui/PageBody";
@@ -60,13 +63,20 @@ export function TeamGamificationApp() {
     const s = readSession();
     if (!s) return;
     const dept = (s.hr_department ?? "").trim().toLowerCase();
-    if (!dept || dept === "maintenance" || !PERMISSION_MATRIX_DEPARTMENTS.includes(dept as (typeof PERMISSION_MATRIX_DEPARTMENTS)[number])) {
-      return;
-    }
-    const route = `/dashboard/department/${dept}`;
-    if (canAccessClassicNavHref(s, route)) {
-      router.replace(route);
-    }
+    let cancelled = false;
+    void fetchTenantDepartments(s.company_id ?? null)
+      .then((tenantDepartments) => {
+        if (cancelled) return;
+        if (!isHrDepartmentDashboardSlug(dept, tenantDepartments)) return;
+        const route = `/dashboard/department/${dept}`;
+        if (canAccessClassicNavHref(s, route)) {
+          router.replace(route);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
   const [err, setErr] = useState<string | null>(null);
   const [workers, setWorkers] = useState<GamificationWorker[]>([]);

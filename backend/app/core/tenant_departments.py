@@ -95,6 +95,22 @@ async def validate_tenant_department_slug(db: AsyncSession, company_id: str, raw
     return slug
 
 
+async def normalize_procedure_department_category_for_company(
+    db: AsyncSession,
+    company_id: str,
+    raw: object | None,
+) -> str | None:
+    """Procedure ``department_category`` — tenant slug when configured, else any valid slug format."""
+    if raw is None:
+        return None
+    if not str(raw).strip():
+        return None
+    try:
+        return await validate_tenant_department_slug(db, company_id, str(raw))
+    except ValueError:
+        return None
+
+
 async def create_tenant_department(
     db: AsyncSession,
     company_id: str,
