@@ -73,7 +73,10 @@ from app.services.inventory_transaction_service import (
 )
 from app.services.inventory_low_stock import is_item_low_stock
 from app.services.inventory_replenishment_metrics_service import compute_replenishment_analytics
-from app.services.material_request_queue_service import sync_queue_for_inventory_item
+from app.services.material_request_queue_service import (
+    inventory_item_ids_mr_on_order,
+    sync_queue_for_inventory_item,
+)
 from app.models.pulse_models import PulseWorkRequest
 from app.modules.pulse import service as pulse_svc
 from app.schemas.inventory_portal import (
@@ -413,6 +416,7 @@ def _row(
     zones: dict[str, Zone],
     tools: dict[str, Tool],
     last_used: Optional[datetime],
+    mr_on_order: bool = False,
 ) -> InventoryRowOut:
     au = users.get(str(item.assigned_user_id)) if item.assigned_user_id else None
     t = tools.get(str(item.linked_tool_id)) if item.linked_tool_id else None
@@ -423,6 +427,7 @@ def _row(
         item_type=item.item_type,
         category=item.category,
         inv_status=item.inv_status,
+        mr_on_order=mr_on_order,
         quantity=item.quantity,
         unit=item.unit,
         low_stock_threshold=item.low_stock_threshold,
@@ -485,7 +490,15 @@ async def _inventory_detail_payload(db: AsyncSession, cid: str, item: InventoryI
         db, cid, user_ids=user_ids, zone_ids=zone_ids, tool_ids=tool_ids
     )
     last_used = (await last_used_at_map(db, [str(item.id)])).get(str(item.id))
-    base = _row(item, users=users, zones=zones, tools=tools, last_used=last_used)
+    mr_ids = await inventory_item_ids_mr_on_order(db, cid)
+    base = _row(
+        item,
+        users=users,
+        zones=zones,
+        tools=tools,
+        last_used=last_used,
+        mr_on_order=str(item.id) in mr_ids,
+    )
 
     wr_map: dict[str, PulseWorkRequest] = {}
     if wr_ids:
@@ -1218,6 +1231,7 @@ async def list_inventory(
         db, cid, user_ids=user_ids, zone_ids=zone_ids, tool_ids=tool_ids
     )
     last_used = await last_used_at_map(db, [str(r.id) for r in rows])
+    mr_ids = await inventory_item_ids_mr_on_order(db, cid)
     items = [
         _row(
             it,
@@ -1225,6 +1239,7 @@ async def list_inventory(
             zones=zones,
             tools=tools,
             last_used=last_used.get(str(it.id)),
+            mr_on_order=str(it.id) in mr_ids,
         )
         for it in rows
     ]

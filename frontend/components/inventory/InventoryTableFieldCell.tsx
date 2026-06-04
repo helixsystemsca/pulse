@@ -59,18 +59,25 @@ export function InventoryTableFieldCell({ column, row, departmentNamesBySlug, zo
   if (column.kind === "status") {
     return (
       <td className="px-4 py-3 align-top">
-        <span
-          className={cn(
-            "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold capitalize",
-            statusBadge(row.inv_status),
-          )}
-        >
-          <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" aria-hidden />
-          {statusLabel(row.inv_status)}
-        </span>
-        {row.reorder_flag ? (
-          <span className="mt-1 block text-[10px] font-bold uppercase text-amber-800">Reorder flagged</span>
-        ) : null}
+        <div className="flex flex-col items-start gap-1">
+          <span
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold capitalize",
+              statusBadge(row.inv_status),
+            )}
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" aria-hidden />
+            {statusLabel(row.inv_status)}
+          </span>
+          {row.mr_on_order ? (
+            <span className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-900 dark:bg-sky-900/50 dark:text-sky-100">
+              On order
+            </span>
+          ) : null}
+          {row.reorder_flag ? (
+            <span className="text-[10px] font-bold uppercase text-amber-800">Reorder flagged</span>
+          ) : null}
+        </div>
       </td>
     );
   }

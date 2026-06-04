@@ -90,6 +90,7 @@ class InventoryRowOut(BaseModel):
     item_type: str
     category: Optional[str] = None
     inv_status: str
+    mr_on_order: bool = False
     quantity: float
     unit: str
     low_stock_threshold: float

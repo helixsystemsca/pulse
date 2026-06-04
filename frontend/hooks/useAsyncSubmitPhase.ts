@@ -4,10 +4,15 @@ import { useCallback, useState } from "react";
 
 export type AsyncSubmitPhase = "idle" | "loading" | "success" | "error";
 
-export const ASYNC_SUBMIT_SUCCESS_MS = 1200;
+/** Matches tour check draw + pulse (~1.25s); callers await this before closing modals. */
+export const ASYNC_SUBMIT_SUCCESS_MS = 1300;
 export const ASYNC_SUBMIT_ERROR_MS = 1000;
 
-/** Run an async action with loading → checkmark (or shake on error) → idle. */
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+/** Run an async action with loading → checkmark (or shake on error) → idle. Resolves after the feedback animation. */
 export async function runAsyncSubmit(
   setPhase: (phase: AsyncSubmitPhase) => void,
   fn: () => Promise<void>,
@@ -16,16 +21,21 @@ export async function runAsyncSubmit(
     errorMs?: number;
     /** When false, swallows the error after the error animation. Default true. */
     rethrow?: boolean;
+    /** When false, resolves immediately after the action (no success/error dwell). Default true. */
+    waitForAnimation?: boolean;
   },
 ): Promise<void> {
+  const wait = opts?.waitForAnimation !== false;
   setPhase("loading");
   try {
     await fn();
     setPhase("success");
-    window.setTimeout(() => setPhase("idle"), opts?.successMs ?? ASYNC_SUBMIT_SUCCESS_MS);
+    if (wait) await delay(opts?.successMs ?? ASYNC_SUBMIT_SUCCESS_MS);
+    setPhase("idle");
   } catch (e) {
     setPhase("error");
-    window.setTimeout(() => setPhase("idle"), opts?.errorMs ?? ASYNC_SUBMIT_ERROR_MS);
+    if (wait) await delay(opts?.errorMs ?? ASYNC_SUBMIT_ERROR_MS);
+    setPhase("idle");
     if (opts?.rethrow !== false) throw e;
   }
 }

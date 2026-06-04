@@ -1485,7 +1485,14 @@ export function InventoryApp() {
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
                 <p className="text-xs font-bold uppercase text-pulse-muted">Status &amp; quantity</p>
-                <p className="mt-2 text-lg font-bold capitalize text-pulse-navy">{statusLabel(detail.inv_status)}</p>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <p className="text-lg font-bold capitalize text-pulse-navy">{statusLabel(detail.inv_status)}</p>
+                  {detail.mr_on_order ? (
+                    <span className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-900 dark:bg-sky-900/50 dark:text-sky-100">
+                      On order
+                    </span>
+                  ) : null}
+                </div>
                 <p className="text-sm text-pulse-muted">
                   Qty: {detail.item_type === "tool" ? "1 (tracked)" : `${detail.quantity} ${detail.unit}`}
                 </p>

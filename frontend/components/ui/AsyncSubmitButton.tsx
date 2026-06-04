@@ -1,7 +1,8 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, Loader2, X } from "lucide-react";
+import { Loader2, X } from "lucide-react";
+import { TourStyleSubmitCheck } from "@/components/ui/TourStyleSubmitCheck";
 import type { MouseEventHandler, ReactNode } from "react";
 import type { AsyncSubmitPhase } from "@/hooks/useAsyncSubmitPhase";
 import { cn } from "@/lib/cn";
@@ -141,11 +142,11 @@ export function AsyncSubmitButton({
           <motion.span
             key="success"
             className="inline-flex items-center justify-center gap-1.5"
-            initial={{ opacity: 0, scale: 0.5 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.12, ease: "easeOut" }}
           >
-            <Check className="h-5 w-5" strokeWidth={2.5} aria-hidden />
+            <TourStyleSubmitCheck size={showSuccessLabel ? 22 : 26} />
             {showSuccessLabel ? (
               <span className="text-sm font-semibold">{successLabel}</span>
             ) : null}

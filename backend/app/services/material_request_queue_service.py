@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.domain import InventoryItem, MaterialRequestQueue
@@ -34,6 +34,20 @@ QUEUE_ACTIVE_STATUSES = QUEUE_VISIBLE_STATUSES
 QUEUE_EXPORTABLE_STATUSES = QUEUE_VISIBLE_STATUSES
 
 QUEUE_MR_REQUESTED_STATUSES = (QUEUE_STATUS_ON_ORDER, QUEUE_STATUS_EXPORTED)
+
+
+async def inventory_item_ids_mr_on_order(db: AsyncSession, company_id: str) -> frozenset[str]:
+    """Inventory item ids with an active replenishment row marked on order (MR exported)."""
+    q = await db.execute(
+        select(MaterialRequestQueue.inventory_item_id).where(
+            MaterialRequestQueue.company_id == company_id,
+            or_(
+                MaterialRequestQueue.exported_at.isnot(None),
+                MaterialRequestQueue.status.in_(QUEUE_MR_REQUESTED_STATUSES),
+            ),
+        )
+    )
+    return frozenset(str(r[0]) for r in q.all())
 
 
 def queue_row_mr_requested(row: MaterialRequestQueue) -> bool:

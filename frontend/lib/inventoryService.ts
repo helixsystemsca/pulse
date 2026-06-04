@@ -73,6 +73,8 @@ export type InventoryRow = {
   item_type: string;
   category: string | null;
   inv_status: string;
+  /** Replenishment queue: MR spreadsheet was exported (on order). */
+  mr_on_order?: boolean;
   quantity: number;
   unit: string;
   low_stock_threshold: number;
