@@ -134,7 +134,8 @@ async def test_no_access_user_clears_modules() -> None:
 
 
 @pytest.mark.asyncio
-async def test_missing_hr_defaults_matrix_department_to_maintenance() -> None:
+async def test_missing_hr_does_not_default_matrix_department() -> None:
+    """Unset HR must not silently map to Panorama maintenance for matrix resolution."""
     contract = ["dashboard"]
     merged = {"department_role_feature_access": {"maintenance": {"team_member": ["dashboard"]}}}
     user = _tenant_user()
@@ -146,7 +147,7 @@ async def test_missing_hr_defaults_matrix_department_to_maintenance() -> None:
         hr_row=None,
         tenant_role=None,
     )
-    assert dbg.resolved_department == "maintenance"
+    assert dbg.resolved_department is None
     assert dbg.resolution_kind == "unassigned"
     assert any("unassigned" in w.lower() for w in dbg.warnings)
 
