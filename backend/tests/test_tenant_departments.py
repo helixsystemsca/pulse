@@ -28,9 +28,16 @@ async def test_list_tenant_departments_seeded_tenant(seeded_tenant) -> None:
 @pytest.mark.asyncio
 async def test_tenant_roles_not_routed_as_worker_user_id(seeded_tenant, db_session) -> None:
     """Regression: `/workers/tenant-roles` must not match `/workers/{user_id}`."""
-    from app.core.features.service import sync_enabled_features
+    from sqlalchemy import select
 
-    await sync_enabled_features(db_session, seeded_tenant.company_id, ["team_management"])
+    from app.models.domain import User
+
+    # Roster routes require team_management in *effective* features, not just contract.
+    manager = (
+        await db_session.execute(select(User).where(User.id == seeded_tenant.manager_id))
+    ).scalar_one()
+    manager.feature_allow_extra = ["team_management"]
+    await db_session.flush()
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         res = await client.get(
