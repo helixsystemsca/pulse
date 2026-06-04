@@ -40,7 +40,7 @@ export function parseClientApiError(err: unknown): {
     /fetch|failed to fetch|networkerror|load failed/i.test(String(err.message))
   ) {
     msg =
-      "The browser could not read the API response (network error, blocked response, or missing CORS on a server error). Refresh and try again; if other API calls work, this route may be failing on the server (check the Network tab status code).";
+      "The browser could not read the API response (connection failed or the server returned an error without CORS headers). Sign out and sign in again after permission changes, then check DevTools → Network for the real status (401, 403, 422, 500, or “failed”).";
   }
   return { message: msg, status, requestUrl };
 }

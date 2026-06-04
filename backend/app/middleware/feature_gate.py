@@ -16,6 +16,7 @@ from app.core.auth.security import decode_token
 from app.core.database import AsyncSessionLocal
 from app.core.features.paths import required_feature_for_path
 from app.core.features.service import FeatureFlagService
+from app.middleware.cors_helpers import apply_cors_headers
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,9 @@ logger = logging.getLogger(__name__)
 class FeatureGateMiddleware(BaseHTTPMiddleware):
     def __init__(self, app: ASGIApp) -> None:
         super().__init__(app)
+
+    def _json(self, request: Request, *, status_code: int, content: dict) -> JSONResponse:
+        return apply_cors_headers(request, JSONResponse(status_code=status_code, content=content))
 
     async def dispatch(self, request: Request, call_next):
         if request.method == "OPTIONS":
@@ -36,31 +40,27 @@ class FeatureGateMiddleware(BaseHTTPMiddleware):
 
         auth = request.headers.get("authorization")
         if not auth or not auth.lower().startswith("bearer "):
-            return JSONResponse(
-                status_code=401,
-                content={"detail": "not_authenticated"},
-            )
+            return self._json(request, status_code=401, content={"detail": "not_authenticated"})
         token = auth.split(None, 1)[1] if len(auth.split()) > 1 else ""
         try:
             payload = decode_token(token)
             company_id = payload.get("company_id")
             if company_id is None:
-                return JSONResponse(
+                return self._json(
+                    request,
                     status_code=401,
                     content={"detail": "company_context_required_impersonate"},
                 )
             company_id = str(company_id)
         except Exception:
-            return JSONResponse(
-                status_code=401,
-                content={"detail": "invalid_token"},
-            )
+            return self._json(request, status_code=401, content={"detail": "invalid_token"})
 
         try:
             async with AsyncSessionLocal() as session:
                 svc = FeatureFlagService(session)
                 if not await svc.any_enabled(company_id, keys):
-                    return JSONResponse(
+                    return self._json(
+                        request,
                         status_code=403,
                         content={
                             "detail": "feature_disabled",
@@ -69,9 +69,6 @@ class FeatureGateMiddleware(BaseHTTPMiddleware):
                     )
         except Exception:
             logger.exception("feature gate lookup failed for company=%s", company_id)
-            return JSONResponse(
-                status_code=503,
-                content={"detail": "feature_check_unavailable"},
-            )
+            return self._json(request, status_code=503, content={"detail": "feature_check_unavailable"})
 
         return await call_next(request)

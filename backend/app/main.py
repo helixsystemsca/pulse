@@ -282,10 +282,10 @@ app.include_router(advertising_router, prefix="/api")
 app.include_router(infrastructure_map_router, prefix="/api")
 app.include_router(compliance_router, prefix="/api")
 app.include_router(work_requests_router, prefix="/api")
-# Register before workers_router: `/workers/{user_id}` would otherwise capture `tenant-departments`.
+# Register before workers_router: `/workers/{user_id}` would otherwise capture `tenant-departments` / `tenant-roles`.
 app.include_router(tenant_departments_router, prefix="/api")
-app.include_router(workers_router, prefix="/api")
 app.include_router(tenant_roles_router, prefix="/api")
+app.include_router(workers_router, prefix="/api")
 app.include_router(inventory_portal_router, prefix="/api")
 app.include_router(storage_router, prefix="/api")
 app.include_router(material_requests_router, prefix="/api")

@@ -11,6 +11,7 @@ const DEFAULT_PULSE_APP_HOSTS = [
   "panorama.helixsystems.ca",
   "pulse.helixsystems.ca",
   "ops.helixsystems.ca",
+  "pps.helixsystems.ca",
 ];
 
 function hostnameFromPulseAppUrl(): string | null {

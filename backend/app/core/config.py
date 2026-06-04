@@ -26,9 +26,12 @@ _PULSE_HOSTED_FRONTEND_ORIGINS: tuple[str, ...] = (
     "https://panorama.helixsystems.co",
     "https://app.helixsystems.ca",
     "https://ops.helixsystems.ca",
+    "https://pps.helixsystems.ca",
     "https://www.helixsystems.ca",
 )
 _DEFAULT_PRODUCTION_FRONTEND_ORIGIN = _PULSE_HOSTED_FRONTEND_ORIGINS[0]
+# When CORS_ORIGIN_REGEX is unset, allow any Helix tenant SPA subdomain (ops, panorama, pps, …).
+_DEFAULT_HELIX_CORS_ORIGIN_REGEX = r"^https://([a-z0-9-]+\.)?helixsystems\.ca$"
 
 
 def _origin_netloc_is_safe(origin: str) -> bool:
@@ -445,7 +448,9 @@ class Settings(BaseSettings):
     @property
     def cors_origin_regex_pattern(self) -> Optional[str]:
         r = self.cors_origin_regex.strip()
-        return r if r else None
+        if r:
+            return r
+        return _DEFAULT_HELIX_CORS_ORIGIN_REGEX
 
     @property
     def is_production(self) -> bool:

@@ -72,3 +72,15 @@ def test_development_merges_localhost_origins(monkeypatch: pytest.MonkeyPatch) -
             assert o in origins
     finally:
         get_settings.cache_clear()
+
+
+def test_default_helix_cors_regex_when_env_unset(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("SECRET_KEY", "test-production-secret-key-at-least-32-chars-long")
+    monkeypatch.delenv("CORS_ORIGIN_REGEX", raising=False)
+    get_settings.cache_clear()
+    try:
+        s = Settings()
+        assert s.cors_origin_regex_pattern == r"^https://([a-z0-9-]+\.)?helixsystems\.ca$"
+    finally:
+        get_settings.cache_clear()
