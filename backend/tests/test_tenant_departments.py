@@ -26,13 +26,19 @@ async def test_list_tenant_departments_seeded_tenant(seeded_tenant) -> None:
 
 
 @pytest.mark.asyncio
-async def test_tenant_roles_not_routed_as_worker_user_id(seeded_tenant) -> None:
+async def test_tenant_roles_not_routed_as_worker_user_id(seeded_tenant, db_session) -> None:
     """Regression: `/workers/tenant-roles` must not match `/workers/{user_id}`."""
+    from app.core.features.service import sync_enabled_features
+
+    await sync_enabled_features(db_session, seeded_tenant.company_id, ["team_management"])
+
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         res = await client.get(
             "/api/workers/tenant-roles",
             headers=auth_headers(seeded_tenant.manager_token),
         )
+    assert res.status_code != 500, res.text
+    assert "invalid uuid" not in res.text.lower()
     assert res.status_code == 200, res.text
     body = res.json()
     assert "items" in body
