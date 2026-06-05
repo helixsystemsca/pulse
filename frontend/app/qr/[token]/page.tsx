@@ -71,7 +71,12 @@ export default function QrResolvePage() {
         router.replace(result.destination_path);
       } catch (e) {
         if (!cancelled) {
-          setError(parseClientApiError(e).message);
+          const parsed = parseClientApiError(e);
+          if (parsed.status === 404) {
+            setError("QR code not found. It may have been deleted or the label needs reprinting after a token change.");
+          } else {
+            setError(parsed.message);
+          }
           setLoading(false);
         }
       }

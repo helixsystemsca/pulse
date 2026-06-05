@@ -17,7 +17,7 @@ import {
   type QrResourceRow,
 } from "@/lib/qr/qrResourceService";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
-import { pulseAppHref } from "@/lib/pulse-app";
+import { qrScanHref } from "@/lib/qr/qr-scan-url";
 import { buttonVariants } from "@/styles/button-variants";
 import { cn } from "@/lib/cn";
 
@@ -200,7 +200,7 @@ export function QrCodesApp({ embedded = false }: Props) {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap justify-end gap-1">
-                      <Link href={pulseAppHref(`/qr/${row.qr_token}`)} className={SECONDARY}>
+                      <Link href={qrScanHref(row.qr_url)} className={SECONDARY}>
                         View
                       </Link>
                       {canManage ? (

@@ -9,6 +9,7 @@ import { usePulseAuth } from "@/hooks/usePulseAuth";
 import type { QrResourceType } from "@/lib/qr/qr-resource-types";
 import { fetchQrResources } from "@/lib/qr/qrResourceService";
 import { pulseAppHref } from "@/lib/pulse-app";
+import { qrScanHref } from "@/lib/qr/qr-scan-url";
 import { buttonVariants } from "@/styles/button-variants";
 import { cn } from "@/lib/cn";
 
@@ -43,7 +44,7 @@ export function QrResourceActions({ resourceType, resourceId, defaultName }: Pro
   return (
     <div className="flex flex-wrap items-center gap-2">
       {linked ? (
-        <Link href={pulseAppHref(`/qr/${linked.qr_token}`)} className={BTN}>
+        <Link href={qrScanHref(linked.qr_token)} className={BTN}>
           <QrCode className="mr-1.5 inline h-4 w-4" aria-hidden />
           Open QR
         </Link>
