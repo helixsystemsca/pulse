@@ -6,7 +6,7 @@ import { guestModeFromQuery } from "@/lib/qr/guest-access";
 import { navigateToPulseLogin } from "@/lib/pulse-app";
 import { readSession } from "@/lib/pulse-session";
 import { useParams, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 
 export default function InventoryZonePage() {
   const params = useParams();
@@ -40,5 +40,15 @@ export default function InventoryZonePage() {
     );
   }
 
-  return <InventoryZoneDetailApp zoneId={zoneId} />;
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[40vh] items-center justify-center">
+          <p className="text-sm text-pulse-muted">Loading…</p>
+        </div>
+      }
+    >
+      <InventoryZoneDetailApp zoneId={zoneId} />
+    </Suspense>
+  );
 }
