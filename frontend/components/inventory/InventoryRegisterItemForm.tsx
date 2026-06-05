@@ -168,7 +168,7 @@ function InventoryLocationLinesEditor({
               line.zone_id,
               (zone_id) => updateLine(index, { zone_id }),
               zoneOptions,
-              zones.length ? "Select location…" : "No locations — add in settings",
+              zones.length ? "Select zone…" : "No zones — add in setup wizard",
             )}
           </div>
           <div className="w-24">
@@ -629,4 +629,31 @@ export function emptyRegisterFormState(defaultMin = 5, departmentSlug = ""): Inv
     reorder_flag: false,
     custom_attributes: {},
   };
+}
+
+/** Pre-select a storage zone when registering new items (first zone by default). */
+export function registerFormStateWithDefaultZone(
+  base: InventoryRegisterFormState,
+  zones: ZoneOpt[],
+  defaultQuantity = "0",
+): InventoryRegisterFormState {
+  const first = zones[0];
+  if (!first) return base;
+  return {
+    ...base,
+    zone_id: first.id,
+    location_lines: [{ zone_id: first.id, quantity: defaultQuantity }],
+  };
+}
+
+export function validateRegisterFormZoneAssignment(
+  form: InventoryRegisterFormState,
+  registerForm: InventoryRegisterFormConfig,
+  zones: ZoneOpt[],
+): string | null {
+  const zoneFieldEnabled = enabledRegisterFields(registerForm).some((f) => f.id === "zone_id");
+  if (!zoneFieldEnabled || zones.length === 0) return null;
+  const payload = registerFormStateToPayload(form, registerForm);
+  if (payload.zone_id || (payload.location_lines && payload.location_lines.length > 0)) return null;
+  return "Select a storage zone for this item.";
 }

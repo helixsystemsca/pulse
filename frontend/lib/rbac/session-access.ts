@@ -137,6 +137,14 @@ function classicNavGate(href: string): NavGate {
       rbacAnyOf: ["inventory.scan", "inventory.manage"],
     };
   }
+  /** QR scan destinations for storage locations (not under `/dashboard/inventory` prefix). */
+  if (h.startsWith("/inventory/zones/") || h === "/inventory/zones") {
+    return {
+      kind: "module",
+      companyModules: ["inventory"],
+      rbacAnyOf: ["inventory.view", "inventory.manage", "inventory.scan"],
+    };
+  }
   if (h.startsWith("/kiosk/")) {
     return {
       kind: "module",

@@ -57,6 +57,15 @@ describe("canAccessClassicNavHref", () => {
     expect(canAccessClassicNavHref(supervisor, "/training/learning/archive")).toBe(true);
   });
 
+  it("allows inventory zone QR destinations for inventory viewers", () => {
+    const s = session({
+      contract_features: ["inventory"],
+      enabled_features: ["inventory"],
+      rbac_permissions: ["inventory.view"],
+    });
+    expect(canAccessClassicNavHref(s, "/inventory/zones/6f5b751a-5011-4ae0-be0c-802efc98a4a7")).toBe(true);
+  });
+
   it("allows communications modules when contract uses legacy keys", () => {
     const s = session({
       contract_features: ["comms_advertising_mapper", "comms_indesign_pipeline"],

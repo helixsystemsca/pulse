@@ -81,8 +81,8 @@ export function StorageLocationsStep({
   return (
     <div className="space-y-4">
       <WizardStepIntro
-        title="Storage Locations"
-        description="How is your inventory organized?"
+        title="Storage organization"
+        description="Choose how locations are structured across your site (single storeroom, multiple rooms, buildings, etc.)."
       />
       <div className="space-y-2">
         {LOCATION_MODE_OPTIONS.map((opt) => (

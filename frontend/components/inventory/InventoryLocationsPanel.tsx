@@ -27,6 +27,7 @@ type Props = {
   onBusyChange?: (busy: boolean) => void;
   onError?: (message: string | null) => void;
   inventoryPrimary?: boolean;
+  placeholderName?: string;
 };
 
 async function reloadZones(
@@ -50,6 +51,7 @@ export function InventoryLocationsPanel({
   onBusyChange,
   onError,
   inventoryPrimary = false,
+  placeholderName = "e.g. Main Storeroom",
 }: Props) {
   const [newName, setNewName] = useState("");
   const [nameDrafts, setNameDrafts] = useState<Record<string, string>>({});
@@ -112,8 +114,8 @@ export function InventoryLocationsPanel({
     <div className="space-y-4">
       <p className="text-sm text-pulse-muted">
         {inventoryPrimary
-          ? "Storage locations are defined here and in the setup wizard. They appear when registering items, filtering the list, and on item details."
-          : "Storage locations appear when registering items, filtering the list, and on item details. Schedule facilities (e.g. Facility 1 for workforce planning) are managed separately and are not listed here."}
+          ? "Storage zones and groups are created here during setup. They appear when registering items, on QR labels, and in filters."
+          : "Storage zones appear when registering items, filtering the list, and on QR codes. Schedule facilities are managed separately under Organization → Schedule."}
       </p>
       {!canManage ? (
         <p className="rounded-lg border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-sm text-amber-950 dark:border-amber-500/30 dark:bg-amber-950/40 dark:text-amber-100">
@@ -124,7 +126,7 @@ export function InventoryLocationsPanel({
       {canManage ? (
         <div className="rounded-lg border border-slate-200/90 bg-slate-50/80 p-4 dark:border-ds-border dark:bg-ds-secondary/60">
           <label className={LABEL} htmlFor="inv-new-location">
-            Add location
+            Add zone / group
           </label>
           <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-end">
             <input
@@ -132,7 +134,7 @@ export function InventoryLocationsPanel({
               className={FIELD}
               value={newName}
               disabled={busy}
-              placeholder="e.g. Tool crib — Building A"
+              placeholder={placeholderName}
               onChange={(e) => setNewName(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
@@ -148,9 +150,9 @@ export function InventoryLocationsPanel({
         </div>
       ) : null}
       <div className="space-y-3">
-        <h3 className={LABEL}>Existing locations</h3>
+        <h3 className={LABEL}>Existing zones</h3>
         {storageZones.length === 0 ? (
-          <p className="text-sm text-pulse-muted">No locations yet.{canManage ? " Add one above." : ""}</p>
+          <p className="text-sm text-pulse-muted">No zones yet.{canManage ? " Add one above." : ""}</p>
         ) : (
           storageZones.map((z) => {
             const draft = nameDrafts[z.id] ?? z.name;

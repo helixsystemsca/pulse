@@ -67,6 +67,8 @@ import {
   registerFormStateToPayload,
   registerFormStateFromRow,
   emptyRegisterFormState,
+  registerFormStateWithDefaultZone,
+  validateRegisterFormZoneAssignment,
   type InventoryRegisterFormState,
 } from "@/components/inventory/InventoryRegisterItemForm";
 import {
@@ -290,6 +292,7 @@ export function InventoryApp() {
   const [movementOpen, setMovementOpen] = useState(true);
 
   const [editOpen, setEditOpen] = useState(false);
+  const [editFormError, setEditFormError] = useState<string | null>(null);
   const [editMode, setEditMode] = useState<"create" | "edit">("create");
   const [editTargetId, setEditTargetId] = useState<string | null>(null);
   const [editFormLoading, setEditFormLoading] = useState(false);
@@ -701,8 +704,13 @@ export function InventoryApp() {
       tenantDepartments[0]?.slug ??
       "";
     setForm(
-      emptyRegisterFormState(mergedSettings.threshold_defaults.default_min ?? 5, dept),
+      registerFormStateWithDefaultZone(
+        emptyRegisterFormState(mergedSettings.threshold_defaults.default_min ?? 5, dept),
+        storageZones,
+        "0",
+      ),
     );
+    setEditFormError(null);
     setEditOpen(true);
   }
 
@@ -794,6 +802,12 @@ export function InventoryApp() {
 
   async function submitForm() {
     if (!effectiveCompanyId || !form.name.trim() || !canMutateInventory) return;
+    const zoneErr = validateRegisterFormZoneAssignment(form, mergedSettings.register_form, storageZones);
+    if (zoneErr) {
+      setEditFormError(zoneErr);
+      return;
+    }
+    setEditFormError(null);
     try {
       let savedId: string | null = editTargetId;
       await runSubmit(async () => {
@@ -1737,6 +1751,7 @@ export function InventoryApp() {
         onClose={() => {
           setEditOpen(false);
           setEditTargetId(null);
+          setEditFormError(null);
           clearPendingPhoto();
         }}
         footer={
@@ -1763,6 +1778,11 @@ export function InventoryApp() {
             <Loader2 className="h-5 w-5 animate-spin" />
             Loading item…
           </div>
+        ) : null}
+        {editFormError ? (
+          <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200">
+            {editFormError}
+          </p>
         ) : null}
         <InventoryRegisterItemForm
           registerForm={mergedSettings.register_form}

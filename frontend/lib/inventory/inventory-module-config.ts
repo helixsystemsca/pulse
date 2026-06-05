@@ -196,9 +196,8 @@ export function inventoryConfigLabel(
 export type InventoryWizardStepId =
   | "Welcome"
   | "Inventory Structure"
-  | "Storage Locations"
   | "Departments"
-  | "Location names"
+  | "Storage zones"
   | "Reorder Outputs"
   | "Procurement Terminology"
   | "Notification contacts"
@@ -215,7 +214,7 @@ export function validateInventoryWizardStep(
     case "Inventory Structure":
       if (!inventory.asset_types.length) return "Select at least one asset type to track.";
       return null;
-    case "Storage Locations":
+    case "Storage zones":
       if (!LOCATION_SET.has(inventory.location_mode)) return "Choose how inventory is organized.";
       return null;
     case "Reorder Outputs":

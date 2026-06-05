@@ -49,9 +49,8 @@ type SetupStepId = InventoryWizardStepId | PurchasingWizardStepId | "Welcome" | 
 const STEPS: SetupStepId[] = [
   "Welcome",
   "Inventory Structure",
-  "Storage Locations",
   "Departments",
-  "Location names",
+  "Storage zones",
   "Reorder Outputs",
   "Procurement Terminology",
   "Notification contacts",
@@ -131,6 +130,9 @@ export function InventorySetupWizard({
       }
     } else if (step !== "Welcome" && step !== "Register form" && step !== "Review") {
       err = validateInventoryWizardStep(step as InventoryWizardStepId, draft.inventory);
+      if (!err && step === "Storage zones" && storageZoneCount < 1) {
+        err = "Add at least one storage zone or group (e.g. Pool Chemical Fridge, Main Storeroom).";
+      }
     }
     if (err) {
       setStepError(err);
@@ -157,7 +159,12 @@ export function InventorySetupWizard({
 
   const summaryRows: { label: string; value: string }[] = [
     { label: "Inventory Structure", value: inventoryConfigLabel("asset_types", draft.inventory.asset_types) },
-    { label: "Location Structure", value: inventoryConfigLabel("location_mode", draft.inventory.location_mode) },
+    {
+      label: "Storage zones",
+      value: storageZoneCount
+        ? `${storageZoneCount} zone${storageZoneCount === 1 ? "" : "s"} · ${inventoryConfigLabel("location_mode", draft.inventory.location_mode)}`
+        : "None yet — add at least one",
+    },
     {
       label: "Shelf sub-locations",
       value: inventoryConfigLabel("enable_shelf", draft.inventory.enable_shelf),
@@ -165,10 +172,6 @@ export function InventorySetupWizard({
     {
       label: "Departments",
       value: departments.length ? departments.map((d) => d.name).join(", ") : "None configured",
-    },
-    {
-      label: "Storage locations",
-      value: storageZoneCount ? `${storageZoneCount} location${storageZoneCount === 1 ? "" : "s"}` : "None yet",
     },
     { label: "Reorder methods", value: reorderOutputsLabel(draft.inventory.reorder_outputs) },
     {
@@ -289,8 +292,8 @@ export function InventorySetupWizard({
           </p>
           <ul className="list-disc space-y-1 pl-5 text-ds-muted">
             <li>Choose asset types and how stock is organized</li>
-            <li>Add departments and storage location names for your site</li>
-            <li>Set procurement workflow and labels</li>
+            <li>Create storage zones and groups where stock is kept (used for QR codes and item assignment)</li>
+            <li>Set reorder methods and procurement labels</li>
             <li>Add notification contacts for alerts and material request exports</li>
             <li>Define transaction references and approvals</li>
             <li>Customize the register item form</li>
@@ -301,10 +304,6 @@ export function InventorySetupWizard({
 
       {step === "Inventory Structure" ? (
         <InventoryStructureStep value={draft.inventory} onChange={(inventory) => onDraftChange(applyInventoryConfig({ ...draft, inventory }))} />
-      ) : null}
-
-      {step === "Storage Locations" ? (
-        <StorageLocationsStep value={draft.inventory} onChange={(inventory) => onDraftChange(applyInventoryConfig({ ...draft, inventory }))} />
       ) : null}
 
       {step === "Departments" ? (
@@ -330,31 +329,43 @@ export function InventorySetupWizard({
         </div>
       ) : null}
 
-      {step === "Location names" ? (
-        <div className="space-y-3">
-          <WizardStepIntro
-            title="Storage location names"
-            description={
-              inventoryPrimary
-                ? "Add the rooms, buildings, or bins where stock is kept. These names are your organization's inventory locations."
-                : "Add storage location names for inventory. Schedule facilities (Facility 1, etc.) are managed under Organization → Schedule."
-            }
+      {step === "Storage zones" ? (
+        <div className="space-y-8">
+          <StorageLocationsStep
+            value={draft.inventory}
+            onChange={(inventory) => onDraftChange(applyInventoryConfig({ ...draft, inventory }))}
           />
-          {orgDataError ? (
-            <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200">
-              {orgDataError}
-            </p>
-          ) : null}
-          <InventoryLocationsPanel
-            companyId={companyId}
-            zones={zones}
-            onZonesChange={onZonesChange}
-            canManage={canManageOrgData}
-            busy={orgDataBusy}
-            onBusyChange={onOrgDataBusyChange}
-            onError={onOrgDataError}
-            inventoryPrimary={inventoryPrimary}
-          />
+          <div className="space-y-3 border-t border-ds-border pt-6">
+            <WizardStepIntro
+              title="Your zones & groups"
+              description={
+                inventoryPrimary
+                  ? "Create each place stock is stored — fridges, cabinets, storerooms, or bins. Items are assigned to a zone when registered, and QR codes link to these zones."
+                  : "Create storage zones for inventory. Schedule facilities (Facility 1, etc.) stay under Organization → Schedule."
+              }
+            />
+            {orgDataError ? (
+              <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200">
+                {orgDataError}
+              </p>
+            ) : null}
+            <InventoryLocationsPanel
+              companyId={companyId}
+              zones={zones}
+              onZonesChange={onZonesChange}
+              canManage={canManageOrgData}
+              busy={orgDataBusy}
+              onBusyChange={onOrgDataBusyChange}
+              onError={onOrgDataError}
+              inventoryPrimary={inventoryPrimary}
+              placeholderName="e.g. Pool Chemical Fridge"
+            />
+            {storageZoneCount === 0 ? (
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                Add at least one zone before continuing — new items must be assigned to a zone.
+              </p>
+            ) : null}
+          </div>
         </div>
       ) : null}
 

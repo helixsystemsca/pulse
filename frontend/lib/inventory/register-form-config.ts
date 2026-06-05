@@ -407,13 +407,15 @@ export const DEFAULT_REGISTER_FORM_FIELDS: InventoryRegisterFieldConfig[] = [
 
     enabled: true,
 
-    label: "Location",
+    label: "Storage zone",
 
     order: 100,
 
     input_type: "zone_select",
 
     show_in_table: true,
+
+    help_text: "Every item must be assigned to a zone or group created in setup (fridge, storeroom, cabinet, etc.).",
 
   },
 
