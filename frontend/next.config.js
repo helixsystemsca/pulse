@@ -1,8 +1,24 @@
 /** @type {import('next').NextConfig} */
+const apiBase = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
+
 const nextConfig = {
   reactStrictMode: true,
   async redirects() {
     return [{ source: "/dashboard/payments", destination: "/overview", permanent: true }];
+  },
+  /** Same-origin proxy so QR scans (often unauthenticated, mobile) avoid cross-origin API/CORS failures. */
+  async rewrites() {
+    if (!apiBase) return [];
+    return [
+      {
+        source: "/api/public/qr/resolve/:token",
+        destination: `${apiBase}/api/public/qr/resolve/:token`,
+      },
+      {
+        source: "/api/qr/resolve/:token",
+        destination: `${apiBase}/api/qr/resolve/:token`,
+      },
+    ];
   },
   async headers() {
     return [

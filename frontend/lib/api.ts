@@ -198,11 +198,21 @@ export function classifyApiFailure(err: unknown): {
   };
 }
 
+function resolveApiFetchBase(init?: { sameOrigin?: boolean }): string {
+  if (init?.sameOrigin) {
+    if (typeof window !== "undefined") {
+      return window.location.origin;
+    }
+    return getApiBaseUrl();
+  }
+  return getApiBaseUrl();
+}
+
 export async function apiFetch<T>(
   path: string,
-  init?: RequestInit & { json?: unknown },
+  init?: RequestInit & { json?: unknown; sameOrigin?: boolean },
 ): Promise<T> {
-  const base = getApiBaseUrl();
+  const base = resolveApiFetchBase(init);
   if (!base) {
     throw new Error("NEXT_PUBLIC_API_URL is not configured");
   }

@@ -121,7 +121,9 @@ export async function regenerateQrToken(companyId: string | null, id: string): P
 
 export async function resolveQrTokenPublic(token: string, guest = false): Promise<QrResolveResult> {
   const qs = guest ? "?guest=1" : "";
-  return apiFetch<QrResolveResult>(`/api/public/qr/resolve/${encodeURIComponent(token)}${qs}`);
+  return apiFetch<QrResolveResult>(`/api/public/qr/resolve/${encodeURIComponent(token)}${qs}`, {
+    sameOrigin: true,
+  });
 }
 
 export async function resolveQrTokenAuthenticated(
@@ -129,5 +131,7 @@ export async function resolveQrTokenAuthenticated(
   guest = false,
 ): Promise<QrResolveResult> {
   const qs = guest ? "?guest=1" : "";
-  return apiFetch<QrResolveResult>(`/api/qr/resolve/${encodeURIComponent(token)}${qs}`);
+  return apiFetch<QrResolveResult>(`/api/qr/resolve/${encodeURIComponent(token)}${qs}`, {
+    sameOrigin: true,
+  });
 }
