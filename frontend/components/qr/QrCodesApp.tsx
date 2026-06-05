@@ -25,7 +25,12 @@ const PRIMARY = cn(buttonVariants({ surface: "light", intent: "accent" }), "px-4
 const SECONDARY = cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-3 py-2 text-sm font-semibold");
 const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-muted";
 
-export function QrCodesApp() {
+type Props = {
+  /** When true, omits the page header (used inside Inventory workspace tabs). */
+  embedded?: boolean;
+};
+
+export function QrCodesApp({ embedded = false }: Props) {
   const { session } = usePulseAuth();
   const { can } = usePermissions();
   const apiCompany = session?.company_id ?? null;
@@ -89,28 +94,37 @@ export function QrCodesApp() {
     }
   }
 
+  const generateButton = canManage ? (
+    <button
+      type="button"
+      className={PRIMARY}
+      onClick={() => {
+        setEditRow(null);
+        setWizardOpen(true);
+      }}
+    >
+      <Plus className="mr-2 inline h-4 w-4" aria-hidden />
+      Generate QR
+    </button>
+  ) : null;
+
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="QR Codes"
-        icon={QrCode}
-        description="Generate, assign, and print QR codes for platform resources."
-        actions={
-          canManage ? (
-            <button
-              type="button"
-              className={PRIMARY}
-              onClick={() => {
-                setEditRow(null);
-                setWizardOpen(true);
-              }}
-            >
-              <Plus className="mr-2 inline h-4 w-4" aria-hidden />
-              Generate QR
-            </button>
-          ) : null
-        }
-      />
+      {embedded ? (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-pulse-muted">
+            Generate, assign, and print QR codes for inventory zones and other resources.
+          </p>
+          {generateButton}
+        </div>
+      ) : (
+        <PageHeader
+          title="QR Codes"
+          icon={QrCode}
+          description="Generate, assign, and print QR codes for platform resources."
+          actions={generateButton}
+        />
+      )}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
         <label className="min-w-[14rem] flex-1 space-y-1">

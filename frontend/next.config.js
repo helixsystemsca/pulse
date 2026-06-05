@@ -4,7 +4,10 @@ const apiBase = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
 const nextConfig = {
   reactStrictMode: true,
   async redirects() {
-    return [{ source: "/dashboard/payments", destination: "/overview", permanent: true }];
+    return [
+      { source: "/dashboard/payments", destination: "/overview", permanent: true },
+      { source: "/dashboard/qr-codes", destination: "/dashboard/inventory?tab=qr_codes", permanent: false },
+    ];
   },
   /** Same-origin proxy so QR scans (often unauthenticated, mobile) avoid cross-origin API/CORS failures. */
   async rewrites() {

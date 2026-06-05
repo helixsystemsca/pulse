@@ -7,7 +7,6 @@ import {
   APPROVAL_MODE_OPTIONS,
   ASSET_TYPE_OPTIONS,
   LOCATION_MODE_OPTIONS,
-  PROCUREMENT_MODE_OPTIONS,
   REFERENCE_MODE_OPTIONS,
 } from "@/lib/inventory/inventory-module-config";
 import {
@@ -117,37 +116,6 @@ export function StorageLocationsStep({
   );
 }
 
-export function ProcurementWorkflowStep({
-  value,
-  onChange,
-}: {
-  value: InventoryModuleConfig;
-  onChange: (next: InventoryModuleConfig) => void;
-}) {
-  return (
-    <div className="space-y-4">
-      <WizardStepIntro
-        title="Procurement Workflow"
-        description="How does your organization purchase inventory?"
-      />
-      <div className="space-y-2">
-        {PROCUREMENT_MODE_OPTIONS.map((opt) => (
-          <label key={opt.value} className={optionCardClass(value.procurement_mode === opt.value)}>
-            <input
-              type="radio"
-              name="procurement_mode"
-              className="mt-1"
-              checked={value.procurement_mode === opt.value}
-              onChange={() => onChange({ ...value, procurement_mode: opt.value })}
-            />
-            <span className="text-sm font-semibold text-ds-foreground">{opt.label}</span>
-          </label>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export function ReorderOutputsStep({
   value,
   onChange,
@@ -166,8 +134,8 @@ export function ReorderOutputsStep({
   return (
     <div className="space-y-4">
       <WizardStepIntro
-        title="How does your organization handle inventory reordering?"
-        description="Select one or more methods used when inventory reaches reorder levels."
+        title="Reorder & export methods"
+        description="Select one or more ways your team fulfills reorders. Each method appears as its own tab on the Order/Replenishment queue."
       />
       <div className="space-y-2">
         {REORDER_OUTPUT_OPTIONS.map((opt) => {

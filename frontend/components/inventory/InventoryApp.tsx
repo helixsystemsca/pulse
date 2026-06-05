@@ -18,7 +18,9 @@ import {
   Wrench,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { QrCodesApp } from "@/components/qr/QrCodesApp";
 import { AsyncSubmitButton } from "@/components/ui/AsyncSubmitButton";
 import { PulseDrawer } from "@/components/schedule/PulseDrawer";
 import { useAsyncSubmitPhase } from "@/hooks/useAsyncSubmitPhase";
@@ -102,6 +104,7 @@ import { defaultInventoryDepartmentFromSession } from "@/lib/inventory-departmen
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import {
   buildInventoryWorkspaceNav,
+  isWorkspaceTab,
   type InventoryWorkspaceTab,
 } from "@/lib/inventory/inventory-workspace-nav";
 import {
@@ -186,7 +189,10 @@ export function InventoryApp() {
   /** One-time inventory setup: company admins or inventory managers with manage permission. */
   const canRunInventorySetup = canMutateInventory || canConfigureOrg;
   const canOpenScannerKiosk = can("inventory.scan") || can("inventory.manage");
+  const canQrCodes = can("qr_codes.view") || can("qr_codes.manage");
   const userInventoryDepartment = defaultInventoryDepartmentFromSession(session);
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [companyPick, setCompanyPick] = useState<string | null>(null);
   const [companies, setCompanies] = useState<CompanyOption[]>([]);
@@ -451,11 +457,28 @@ export function InventoryApp() {
         purchasing: mergedSettings.purchasing,
         replenishmentLabel: mergedSettings.purchasing.replenishment_label,
         canScanner: canOpenScannerKiosk,
+        canQrCodes,
         issueHref: pulseAppHref(inventoryScannerHref({ mode: "issue" })),
         receiveHref: pulseAppHref(inventoryScannerHref({ mode: "receive" })),
         kioskHref: pulseAppHref(inventoryScannerHref({ kioskDisplay: true })),
       }),
-    [mergedSettings.purchasing, canOpenScannerKiosk],
+    [mergedSettings.purchasing, canOpenScannerKiosk, canQrCodes],
+  );
+
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab && isWorkspaceTab(tab)) {
+      setInventoryTab(tab);
+    }
+  }, [searchParams]);
+
+  const selectInventoryTab = useCallback(
+    (tab: InventoryWorkspaceTab) => {
+      setInventoryTab(tab);
+      const path = tab === "list" ? "/dashboard/inventory" : `/dashboard/inventory?tab=${tab}`;
+      router.replace(path, { scroll: false });
+    },
+    [router],
   );
 
   useEffect(() => {
@@ -987,7 +1010,7 @@ export function InventoryApp() {
               <button
                 key={item.id}
                 type="button"
-                onClick={() => setInventoryTab(item.id)}
+                onClick={() => selectInventoryTab(item.id)}
                 className={cn(NAV_TAB, active ? NAV_TAB_ACTIVE : NAV_TAB_IDLE)}
               >
                 <Icon className="h-4 w-4 shrink-0" aria-hidden />
@@ -1077,6 +1100,8 @@ export function InventoryApp() {
           {inventoryTab === "analytics" ? (
             <InventoryAnalyticsPanel summary={summary} loading={analyticsLoading} />
           ) : null}
+
+          {inventoryTab === "qr_codes" ? <QrCodesApp embedded /> : null}
 
           {inventoryTab === "list" ? (
           <>

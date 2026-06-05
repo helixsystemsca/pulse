@@ -98,8 +98,22 @@ export function procurementModeFromReorderOutputs(outputs: ReorderOutputType[]):
   return "manual";
 }
 
+export function reorderOutputLabel(output: ReorderOutputType): string {
+  return REORDER_OUTPUT_OPTIONS.find((o) => o.value === output)?.label ?? output;
+}
+
+export function reorderOutputDescription(output: ReorderOutputType): string {
+  return REORDER_OUTPUT_OPTIONS.find((o) => o.value === output)?.description ?? "";
+}
+
 export function reorderOutputsLabel(outputs: ReorderOutputType[]): string {
-  return outputs
-    .map((v) => REORDER_OUTPUT_OPTIONS.find((o) => o.value === v)?.label ?? v)
-    .join(", ");
+  return outputs.map((v) => reorderOutputLabel(v)).join(", ");
+}
+
+/** Tabs shown on the replenishment queue — one per enabled reorder output plus the shared queue. */
+export type ReplenishmentQueueTab = "queue" | ReorderOutputType;
+
+export function replenishmentQueueTabs(outputs: ReorderOutputType[]): ReplenishmentQueueTab[] {
+  const enabled = dedupeReorderOutputs(outputs.length ? outputs : DEFAULT_REORDER_OUTPUTS);
+  return ["queue", ...enabled];
 }

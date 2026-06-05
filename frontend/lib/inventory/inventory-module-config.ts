@@ -199,7 +199,6 @@ export type InventoryWizardStepId =
   | "Storage Locations"
   | "Departments"
   | "Location names"
-  | "Procurement Workflow"
   | "Reorder Outputs"
   | "Procurement Terminology"
   | "Notification contacts"
@@ -218,9 +217,6 @@ export function validateInventoryWizardStep(
       return null;
     case "Storage Locations":
       if (!LOCATION_SET.has(inventory.location_mode)) return "Choose how inventory is organized.";
-      return null;
-    case "Procurement Workflow":
-      if (!PROCUREMENT_SET.has(inventory.procurement_mode)) return "Choose a procurement workflow.";
       return null;
     case "Reorder Outputs":
       if (!inventory.reorder_outputs.length) return "Select at least one reorder output.";

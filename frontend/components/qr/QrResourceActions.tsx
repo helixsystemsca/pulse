@@ -54,7 +54,10 @@ export function QrResourceActions({ resourceType, resourceId, defaultName }: Pro
           {linked ? "Manage QR" : "Generate QR code"}
         </button>
       ) : null}
-      <Link href={pulseAppHref("/dashboard/qr-codes")} className="text-xs font-semibold text-[#2B4C7E] hover:underline">
+      <Link
+        href={pulseAppHref("/dashboard/inventory?tab=qr_codes")}
+        className="text-xs font-semibold text-[#2B4C7E] hover:underline"
+      >
         All QR codes
       </Link>
       {canManage ? (

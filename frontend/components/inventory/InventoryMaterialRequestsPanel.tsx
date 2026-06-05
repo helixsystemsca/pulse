@@ -7,7 +7,13 @@ import { cn } from "@/lib/cn";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { ReorderPackageModal, type ReorderPackageForm } from "@/components/inventory/ReorderPackageModal";
 import { ReorderPackageResultsModal } from "@/components/inventory/ReorderPackageResultsModal";
-import type { ReorderOutputType } from "@/lib/inventory/reorder-outputs-config";
+import {
+  replenishmentQueueTabs,
+  reorderOutputDescription,
+  reorderOutputLabel,
+  type ReplenishmentQueueTab,
+  type ReorderOutputType,
+} from "@/lib/inventory/reorder-outputs-config";
 import {
   clearMaterialRequestOnOrderFlag,
   clearMaterialRequestOnOrderFlags,
@@ -71,6 +77,16 @@ export function InventoryMaterialRequestsPanel({
   const [resultsOpen, setResultsOpen] = useState(false);
   const [exportHistory, setExportHistory] = useState<MaterialRequestExportRecord[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [panelTab, setPanelTab] = useState<ReplenishmentQueueTab>("queue");
+  const [lockedPackageOutputs, setLockedPackageOutputs] = useState<ReorderOutputType[] | undefined>();
+
+  const queueTabs = useMemo(() => replenishmentQueueTabs(reorderOutputs), [reorderOutputs]);
+
+  useEffect(() => {
+    if (!queueTabs.includes(panelTab)) {
+      setPanelTab("queue");
+    }
+  }, [panelTab, queueTabs]);
 
   const loadQueue = useCallback(async () => {
     setLoading(true);
@@ -292,20 +308,35 @@ export function InventoryMaterialRequestsPanel({
   }
 
   const selectedCount = selected.size;
+  const focusOutput = panelTab === "queue" ? null : panelTab;
+  const focusOutputLabel = focusOutput ? reorderOutputLabel(focusOutput) : null;
+
+  function openPackageModal(outputs?: ReorderOutputType[]) {
+    setLockedPackageOutputs(outputs);
+    setPackageOpen(true);
+  }
 
   const queueSection = useMemo(
     () => (
       <section className="space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h2 className="text-lg font-bold text-pulse-navy dark:text-gray-100">{replenishmentLabel}</h2>
+            <h2 className="text-lg font-bold text-pulse-navy dark:text-gray-100">
+              {focusOutputLabel ?? replenishmentLabel}
+            </h2>
             <p className="text-sm text-pulse-muted">
-              Items at or below minimum appear here as{" "}
-              <span className="font-medium text-pulse-navy dark:text-gray-200">Low Stock</span>. After{" "}
-              Generate Reorder Package, they show as{" "}
-              <span className="font-medium text-pulse-navy dark:text-gray-200">On order</span> after export (you can
-              still select any row to export again). Clear on-order rows when the order is placed; still-low items
-              return as Low Stock only.
+              {focusOutput ? (
+                reorderOutputDescription(focusOutput)
+              ) : (
+                <>
+                  Items at or below minimum appear here as{" "}
+                  <span className="font-medium text-pulse-navy dark:text-gray-200">Low Stock</span>. After{" "}
+                  Generate Reorder Package, they show as{" "}
+                  <span className="font-medium text-pulse-navy dark:text-gray-200">On order</span> after export (you can
+                  still select any row to export again). Clear on-order rows when the order is placed; still-low items
+                  return as Low Stock only.
+                </>
+              )}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -344,25 +375,40 @@ export function InventoryMaterialRequestsPanel({
                     Clear on-order
                   </button>
                 ) : null}
-                <button
-                  type="button"
-                  className={PRIMARY_BTN}
-                  disabled={busy || selectedCount === 0}
-                  onClick={() => setPackageOpen(true)}
-                >
-                  <Download className="mr-2 inline h-4 w-4" aria-hidden />
-                  Generate Reorder Package
-                  {selectedCount > 0 ? ` (${selectedCount})` : ""}
-                </button>
-                <button
-                  type="button"
-                  className={SECONDARY_BTN}
-                  disabled={busy || selectedCount === 0}
-                  onClick={() => void createDraft()}
-                >
-                  Create draft
-                  {selectedCount > 0 ? ` (${selectedCount})` : ""}
-                </button>
+                {focusOutput ? (
+                  <button
+                    type="button"
+                    className={PRIMARY_BTN}
+                    disabled={busy || selectedCount === 0}
+                    onClick={() => openPackageModal([focusOutput])}
+                  >
+                    <Download className="mr-2 inline h-4 w-4" aria-hidden />
+                    Generate {focusOutputLabel}
+                    {selectedCount > 0 ? ` (${selectedCount})` : ""}
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className={PRIMARY_BTN}
+                      disabled={busy || selectedCount === 0}
+                      onClick={() => openPackageModal()}
+                    >
+                      <Download className="mr-2 inline h-4 w-4" aria-hidden />
+                      Generate Reorder Package
+                      {selectedCount > 0 ? ` (${selectedCount})` : ""}
+                    </button>
+                    <button
+                      type="button"
+                      className={SECONDARY_BTN}
+                      disabled={busy || selectedCount === 0}
+                      onClick={() => void createDraft()}
+                    >
+                      Create draft
+                      {selectedCount > 0 ? ` (${selectedCount})` : ""}
+                    </button>
+                  </>
+                )}
               </>
             ) : null}
           </div>
@@ -530,6 +576,8 @@ export function InventoryMaterialRequestsPanel({
       reorderDrafts,
       selected,
       selectedCount,
+      focusOutput,
+      focusOutputLabel,
     ],
   );
 
@@ -539,14 +587,42 @@ export function InventoryMaterialRequestsPanel({
 
       <ReorderPackageModal
         open={packageOpen}
-        onClose={() => setPackageOpen(false)}
+        onClose={() => {
+          setPackageOpen(false);
+          setLockedPackageOutputs(undefined);
+        }}
         itemCount={selectedCount}
         busy={busy}
         emailDirectory={notificationEmailDirectory}
         defaultNotifyEmails={defaultMrExportEmails}
         enabledOutputs={reorderOutputs}
+        lockedOutputs={lockedPackageOutputs}
         onGenerate={handleGeneratePackage}
       />
+
+      {queueTabs.length > 1 ? (
+        <div className="flex flex-wrap gap-1 rounded-lg border border-pulse-border bg-white p-1 shadow-sm dark:border-ds-border dark:bg-ds-primary">
+          {queueTabs.map((tabId) => {
+            const active = panelTab === tabId;
+            const label = tabId === "queue" ? replenishmentLabel : reorderOutputLabel(tabId);
+            return (
+              <button
+                key={tabId}
+                type="button"
+                onClick={() => setPanelTab(tabId)}
+                className={cn(
+                  "rounded-md px-4 py-2 text-sm font-semibold transition",
+                  active
+                    ? "bg-ds-accent text-ds-accent-foreground shadow-sm"
+                    : "text-pulse-muted hover:bg-ds-interactive-hover",
+                )}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
       <ReorderPackageResultsModal
         open={resultsOpen}
         onClose={() => setResultsOpen(false)}

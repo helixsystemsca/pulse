@@ -38,6 +38,8 @@ type Props = {
   emailDirectory: string[];
   defaultNotifyEmails: string[];
   enabledOutputs: ReorderOutputType[];
+  /** When set, only this output is generated and the output picker is hidden. */
+  lockedOutputs?: ReorderOutputType[];
   onGenerate: (form: ReorderPackageForm) => void | Promise<void>;
 };
 
@@ -49,6 +51,7 @@ export function ReorderPackageModal({
   emailDirectory,
   defaultNotifyEmails,
   enabledOutputs,
+  lockedOutputs,
   onGenerate,
 }: Props) {
   const [project, setProject] = useState("");
@@ -58,11 +61,13 @@ export function ReorderPackageModal({
   const [notifyEmails, setNotifyEmails] = useState<string[]>([]);
   const [outputs, setOutputs] = useState<ReorderOutputType[]>(enabledOutputs);
 
+  const fixedOutputs = lockedOutputs?.length ? lockedOutputs : null;
+
   useEffect(() => {
     if (!open) return;
-    setOutputs(enabledOutputs);
+    setOutputs(fixedOutputs ?? enabledOutputs);
     setNotifyEmails(defaultNotifyEmails.filter((e) => emailDirectory.includes(e)));
-  }, [open, enabledOutputs, defaultNotifyEmails, emailDirectory]);
+  }, [open, enabledOutputs, defaultNotifyEmails, emailDirectory, fixedOutputs]);
 
   const outputSummary = useMemo(
     () =>
@@ -122,42 +127,52 @@ export function ReorderPackageModal({
           template; email drafts are for review only (not sent automatically).
         </p>
 
-        <div className="space-y-2">
-          <p className={LABEL}>Outputs for this package</p>
-          {REORDER_OUTPUT_OPTIONS.map((opt) => {
-            const checked = outputs.includes(opt.value);
-            const orgEnabled = enabledOutputs.includes(opt.value);
-            return (
-              <label
-                key={opt.value}
-                className={cn(
-                  "flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2.5",
-                  checked
-                    ? "border-[#2B4C7E]/40 bg-[#2B4C7E]/5 dark:border-ds-accent/40 dark:bg-ds-accent/10"
-                    : "border-slate-200 dark:border-ds-border",
-                  !orgEnabled && "opacity-60",
-                )}
-              >
-                <input
-                  type="checkbox"
-                  className="mt-0.5"
-                  checked={checked}
-                  disabled={busy || !orgEnabled}
-                  onChange={(e) => setOutputs(toggleReorderOutput(outputs, opt.value, e.target.checked))}
-                />
-                <span>
-                  <span className="block text-sm font-semibold text-pulse-navy dark:text-gray-100">{opt.label}</span>
-                  <span className="block text-xs text-pulse-muted">{opt.description}</span>
-                  {!orgEnabled ? (
-                    <span className="mt-0.5 block text-xs text-amber-700 dark:text-amber-300">
-                      Not enabled in inventory settings.
-                    </span>
-                  ) : null}
-                </span>
-              </label>
-            );
-          })}
-        </div>
+        {fixedOutputs ? (
+          <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-pulse-muted dark:border-ds-border dark:bg-ds-secondary/40">
+            Generating{" "}
+            <span className="font-semibold text-pulse-navy dark:text-gray-100">
+              {REORDER_OUTPUT_OPTIONS.find((o) => o.value === fixedOutputs[0])?.label ?? fixedOutputs[0]}
+            </span>{" "}
+            for the selected queue items.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            <p className={LABEL}>Outputs for this package</p>
+            {REORDER_OUTPUT_OPTIONS.map((opt) => {
+              const checked = outputs.includes(opt.value);
+              const orgEnabled = enabledOutputs.includes(opt.value);
+              return (
+                <label
+                  key={opt.value}
+                  className={cn(
+                    "flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2.5",
+                    checked
+                      ? "border-[#2B4C7E]/40 bg-[#2B4C7E]/5 dark:border-ds-accent/40 dark:bg-ds-accent/10"
+                      : "border-slate-200 dark:border-ds-border",
+                    !orgEnabled && "opacity-60",
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    checked={checked}
+                    disabled={busy || !orgEnabled}
+                    onChange={(e) => setOutputs(toggleReorderOutput(outputs, opt.value, e.target.checked))}
+                  />
+                  <span>
+                    <span className="block text-sm font-semibold text-pulse-navy dark:text-gray-100">{opt.label}</span>
+                    <span className="block text-xs text-pulse-muted">{opt.description}</span>
+                    {!orgEnabled ? (
+                      <span className="mt-0.5 block text-xs text-amber-700 dark:text-amber-300">
+                        Not enabled in inventory settings.
+                      </span>
+                    ) : null}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        )}
 
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block space-y-1 sm:col-span-1">
