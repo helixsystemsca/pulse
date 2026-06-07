@@ -35,4 +35,9 @@ TENANT_MODULE_SURFACES: Final[tuple[TenantModuleSurface, ...]] = (
     TenantModuleSurface("drawings", "Drawings", ("drawings.view",)),
     TenantModuleSurface("live_map", "Live map", ("live_map.view",)),
     TenantModuleSurface("compliance", "Compliance", ("compliance.view",)),
+    TenantModuleSurface(
+        "operational_improvements",
+        "Operational improvements",
+        ("operational_improvements.view", "operational_improvements.manage"),
+    ),
 )

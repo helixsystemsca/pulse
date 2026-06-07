@@ -56,6 +56,8 @@ RBAC_PERMISSION_SEED: tuple[tuple[str, str], ...] = (
     ("social_planner.view", "Social / campaign planner"),
     ("xplor_indesign.view", "Xplor → InDesign export"),
     ("communications_assets.view", "Communications assets library"),
+    ("operational_improvements.view", "View operational improvements"),
+    ("operational_improvements.manage", "Manage operational improvements"),
 )
 
 # Legacy `company_features` / `GLOBAL_SYSTEM_FEATURES` name → flat RBAC keys (bridge until grants-only).
@@ -124,6 +126,7 @@ FEATURE_TO_RBAC_PERMISSIONS: dict[str, tuple[str, ...]] = {
     "comms_campaign_planner": ("social_planner.view",),
     "comms_indesign_pipeline": ("xplor_indesign.view",),
     "comms_assets": ("communications_assets.view",),
+    "operational_improvements": ("operational_improvements.view", "operational_improvements.manage"),
 }
 
 # RBAC key must only apply if the tenant contract includes this feature key (subset of GLOBAL / company_features).
@@ -181,4 +184,6 @@ RBAC_KEY_REQUIRES_COMPANY_FEATURE: dict[str, str | None] = {
     "xplor_indesign.view": "comms_indesign_pipeline",
     "publication_pipeline.view": "comms_indesign_pipeline",
     "communications_assets.view": "comms_assets",
+    "operational_improvements.view": "operational_improvements",
+    "operational_improvements.manage": "operational_improvements",
 }

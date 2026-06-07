@@ -39,6 +39,7 @@ export const CANONICAL_PRODUCT_FEATURES = [
   "pm_workspace",
   "pm_planning",
   "work_requests",
+  "operational_improvements",
   "procedures",
   "standards_training",
   "standards_certifications",
