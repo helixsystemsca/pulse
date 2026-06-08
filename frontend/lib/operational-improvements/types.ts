@@ -28,7 +28,9 @@ export type OperationalImprovementAnalysisType =
   | "five_s"
   | "kanban"
   | "kaizen"
-  | "standardization";
+  | "standardization"
+  | "lean_waste"
+  | "value_stream_map";
 
 export type OperationalImprovementActionStatus =
   | "pending"
@@ -70,6 +72,8 @@ export const OI_ANALYSIS_TYPES: OperationalImprovementAnalysisType[] = [
   "kanban",
   "kaizen",
   "standardization",
+  "lean_waste",
+  "value_stream_map",
 ];
 
 export type ImplementationData = {
@@ -88,6 +92,33 @@ export type MeasurementData = {
   actual_results?: string | null;
   lessons_learned?: string | null;
   follow_up_review_date?: string | null;
+  scorecard_metrics?: ScorecardMetric[];
+  estimated_savings?: string | null;
+};
+
+export type ScorecardMetric = {
+  id: string;
+  label: string;
+  metric_key?: string;
+  baseline: string;
+  target: string;
+  actual: string;
+  unit?: string;
+  savings?: string;
+};
+
+export type FrameworkData = {
+  template_id?: string;
+  template_answers?: Record<string, string>;
+  recommended_analyses?: string[];
+  suggested_metrics?: string[];
+  prioritization?: {
+    impact: number;
+    effort: number;
+    risk: number;
+    quadrant?: string;
+  };
+  referenced_playbook_ids?: string[];
 };
 
 export type OperationalImprovementAnalysisRow = {
@@ -149,6 +180,7 @@ export type OperationalImprovementRow = {
   status: OperationalImprovementStatus;
   implementation_data: ImplementationData;
   measurement_data: MeasurementData;
+  framework_data: FrameworkData;
   knowledge_base_published: boolean;
   created_by_user_id?: string | null;
   created_at: string;
@@ -176,6 +208,8 @@ export type OperationalImprovementListRow = {
   updated_at: string;
   action_count: number;
   analysis_count: number;
+  prioritization_quadrant?: string | null;
+  template_id?: string | null;
 };
 
 export type OperationalImprovementStats = {
@@ -185,6 +219,31 @@ export type OperationalImprovementStats = {
   by_status: Record<string, number>;
   by_category: Record<string, number>;
   high_impact_open: number;
+  completion_rate: number;
+  total_count: number;
+  quick_wins_completed: number;
+  knowledge_base_count: number;
+  estimated_savings_total: number;
+  open_by_department: Record<string, number>;
+  by_prioritization_quadrant: Record<string, number>;
+  top_root_causes: Array<{ label: string; count: number }>;
+  top_waste_categories: Array<{ label: string; count: number }>;
+};
+
+export type OperationalImprovementPlaybook = {
+  id: string;
+  company_id: string;
+  source_improvement_id?: string | null;
+  title: string;
+  category: OperationalImprovementCategory;
+  template_id?: string | null;
+  problem?: string | null;
+  root_cause?: string | null;
+  solution?: string | null;
+  results?: string | null;
+  lessons_learned?: string | null;
+  created_by_user_id?: string | null;
+  created_at: string;
 };
 
 export type OperationalImprovementCaseStudy = {
@@ -217,6 +276,7 @@ export type OperationalImprovementCreateInput = {
   current_symptoms?: string;
   stakeholders_affected?: string;
   status?: OperationalImprovementStatus;
+  framework_data?: FrameworkData;
 };
 
 export type OperationalImprovementPatchInput = Partial<
@@ -224,6 +284,7 @@ export type OperationalImprovementPatchInput = Partial<
     title?: string;
     implementation_data?: ImplementationData;
     measurement_data?: MeasurementData;
+    framework_data?: FrameworkData;
     knowledge_base_published?: boolean;
   }
 >;

@@ -7,6 +7,7 @@ import { OperationalImprovementDetailPanel } from "@/components/operational-impr
 import { OperationalImprovementsDashboard } from "@/components/operational-improvements/OperationalImprovementsDashboard";
 import { OperationalImprovementsKnowledgeBase } from "@/components/operational-improvements/OperationalImprovementsKnowledgeBase";
 import { OperationalImprovementsListTab } from "@/components/operational-improvements/OperationalImprovementsListTab";
+import { OperationalImprovementsPlaybooks } from "@/components/operational-improvements/OperationalImprovementsPlaybooks";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { fetchOperationalImprovementStats } from "@/lib/operational-improvements/api";
 import type { OperationalImprovementListRow, OperationalImprovementStats } from "@/lib/operational-improvements/types";
@@ -14,11 +15,12 @@ import { hasRbacPermission } from "@/lib/rbac/session-access";
 import { readSession } from "@/lib/pulse-session";
 import { cn } from "@/lib/cn";
 
-type Tab = "dashboard" | "opportunities" | "knowledge";
+type Tab = "dashboard" | "opportunities" | "knowledge" | "playbooks";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "dashboard", label: "Dashboard" },
   { id: "opportunities", label: "Opportunities" },
+  { id: "playbooks", label: "Playbooks" },
   { id: "knowledge", label: "Knowledge base" },
 ];
 
@@ -29,7 +31,7 @@ export function OperationalImprovementsApp() {
 
   const initialTab = useMemo(() => {
     const raw = searchParams.get("tab");
-    return raw === "knowledge" || raw === "opportunities" || raw === "dashboard" ? raw : "dashboard";
+    return raw === "knowledge" || raw === "opportunities" || raw === "dashboard" || raw === "playbooks" ? raw : "dashboard";
   }, [searchParams]);
 
   const [tab, setTab] = useState<Tab>(initialTab);
@@ -92,6 +94,7 @@ export function OperationalImprovementsApp() {
         <OperationalImprovementsListTab onSelect={openDetail} onToast={setToast} canManage={canManage} />
       ) : null}
       {tab === "knowledge" ? <OperationalImprovementsKnowledgeBase onToast={setToast} /> : null}
+      {tab === "playbooks" ? <OperationalImprovementsPlaybooks onToast={setToast} /> : null}
 
       {toast ? (
         <div

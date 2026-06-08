@@ -44,6 +44,8 @@ export const ANALYSIS_TYPE_LABELS: Record<OperationalImprovementAnalysisType, st
   kanban: "Kanban opportunity",
   kaizen: "Kaizen opportunity",
   standardization: "Standardization",
+  lean_waste: "Lean waste",
+  value_stream_map: "Value stream map",
 };
 
 export const ACTION_STATUS_LABELS: Record<OperationalImprovementActionStatus, string> = {

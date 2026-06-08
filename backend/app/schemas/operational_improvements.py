@@ -40,6 +40,8 @@ OperationalImprovementAnalysisTypeLiteral = Literal[
     "kanban",
     "kaizen",
     "standardization",
+    "lean_waste",
+    "value_stream_map",
 ]
 
 OperationalImprovementActionStatusLiteral = Literal[
@@ -112,6 +114,7 @@ class OperationalImprovementOut(BaseModel):
     status: str
     implementation_data: dict[str, Any] = Field(default_factory=dict)
     measurement_data: dict[str, Any] = Field(default_factory=dict)
+    framework_data: dict[str, Any] = Field(default_factory=dict)
     knowledge_base_published: bool = False
     created_by_user_id: Optional[str] = None
     created_at: datetime
@@ -139,6 +142,8 @@ class OperationalImprovementListOut(BaseModel):
     updated_at: datetime
     action_count: int = 0
     analysis_count: int = 0
+    prioritization_quadrant: Optional[str] = None
+    template_id: Optional[str] = None
 
 
 class OperationalImprovementCreateIn(BaseModel):
@@ -155,6 +160,7 @@ class OperationalImprovementCreateIn(BaseModel):
     current_symptoms: Optional[str] = None
     stakeholders_affected: Optional[str] = None
     status: OperationalImprovementStatusLiteral = "identified"
+    framework_data: Optional[dict[str, Any]] = None
 
 
 class OperationalImprovementPatchIn(BaseModel):
@@ -173,6 +179,7 @@ class OperationalImprovementPatchIn(BaseModel):
     status: Optional[OperationalImprovementStatusLiteral] = None
     implementation_data: Optional[dict[str, Any]] = None
     measurement_data: Optional[dict[str, Any]] = None
+    framework_data: Optional[dict[str, Any]] = None
     knowledge_base_published: Optional[bool] = None
 
 
@@ -221,6 +228,36 @@ class OperationalImprovementStatsOut(BaseModel):
     by_status: dict[str, int]
     by_category: dict[str, int]
     high_impact_open: int
+    completion_rate: float = 0.0
+    total_count: int = 0
+    quick_wins_completed: int = 0
+    knowledge_base_count: int = 0
+    estimated_savings_total: float = 0.0
+    open_by_department: dict[str, int] = Field(default_factory=dict)
+    by_prioritization_quadrant: dict[str, int] = Field(default_factory=dict)
+    top_root_causes: list[dict[str, Any]] = Field(default_factory=list)
+    top_waste_categories: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class OperationalImprovementPlaybookOut(BaseModel):
+    id: str
+    company_id: str
+    source_improvement_id: Optional[str] = None
+    title: str
+    category: str
+    template_id: Optional[str] = None
+    problem: Optional[str] = None
+    root_cause: Optional[str] = None
+    solution: Optional[str] = None
+    results: Optional[str] = None
+    lessons_learned: Optional[str] = None
+    created_by_user_id: Optional[str] = None
+    created_at: datetime
+
+
+class OperationalImprovementPlaybookCreateIn(BaseModel):
+    title: Optional[str] = None
+    source_improvement_id: Optional[str] = None
 
 
 class OperationalImprovementCaseStudyOut(BaseModel):

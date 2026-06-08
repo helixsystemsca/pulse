@@ -23,6 +23,8 @@ from app.schemas.operational_improvements import (
     OperationalImprovementListOut,
     OperationalImprovementOut,
     OperationalImprovementPatchIn,
+    OperationalImprovementPlaybookCreateIn,
+    OperationalImprovementPlaybookOut,
     OperationalImprovementStatsOut,
 )
 from app.services import operational_improvements_service as svc
@@ -58,6 +60,40 @@ async def list_knowledge_base(
 ) -> list[OperationalImprovementCaseStudyOut]:
     rows = await svc.list_case_studies(db, cid, q=q)
     return [OperationalImprovementCaseStudyOut.model_validate(r) for r in rows]
+
+
+@router.get("/playbooks", response_model=list[OperationalImprovementPlaybookOut])
+async def list_playbooks(
+    db: Db,
+    cid: CompanyId,
+    _: OiReader,
+    q: Optional[str] = Query(None, max_length=200),
+) -> list[OperationalImprovementPlaybookOut]:
+    rows = await svc.list_playbooks(db, cid, q=q)
+    return [OperationalImprovementPlaybookOut.model_validate(svc._playbook_dict(r)) for r in rows]
+
+
+@router.post("/{improvement_id}/create-playbook", response_model=OperationalImprovementPlaybookOut, status_code=status.HTTP_201_CREATED)
+async def create_playbook_from_improvement(
+    db: Db,
+    cid: CompanyId,
+    actor: OiEditor,
+    improvement_id: str,
+    body: OperationalImprovementPlaybookCreateIn,
+) -> OperationalImprovementPlaybookOut:
+    try:
+        playbook = await svc.create_playbook_from_improvement(
+            db,
+            cid,
+            str(actor.id),
+            improvement_id,
+            title=body.title,
+        )
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Not found")
+    await db.commit()
+    await db.refresh(playbook)
+    return OperationalImprovementPlaybookOut.model_validate(svc._playbook_dict(playbook))
 
 
 @router.get("", response_model=list[OperationalImprovementListOut])
@@ -97,6 +133,7 @@ async def create_operational_improvement(
         current_symptoms=body.current_symptoms,
         stakeholders_affected=body.stakeholders_affected,
         status=body.status,
+        framework_data=body.framework_data,
     )
     await db.commit()
     loaded = await svc.get_improvement(db, cid, str(row.id))

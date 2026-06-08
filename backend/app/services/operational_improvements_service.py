@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
+from collections import Counter
 from typing import Any, Optional
 
 from sqlalchemy import func, select
@@ -14,6 +15,15 @@ from app.models.operational_improvement_models import (
     OperationalImprovementAction,
     OperationalImprovementAnalysis,
     OperationalImprovementAttachment,
+    OperationalImprovementPlaybook,
+)
+from app.services.operational_improvements_analytics import (
+    extract_root_cause_labels,
+    extract_waste_category_counts,
+    parse_savings,
+    prioritization_from_framework,
+    prioritization_quadrant,
+    top_counter_entries,
 )
 
 
@@ -98,6 +108,7 @@ def _improvement_dict(row: OperationalImprovement, *, include_children: bool = T
         "status": row.status,
         "implementation_data": row.implementation_data or {},
         "measurement_data": row.measurement_data or {},
+        "framework_data": row.framework_data or {},
         "knowledge_base_published": bool(row.knowledge_base_published),
         "created_by_user_id": str(row.created_by_user_id) if row.created_by_user_id else None,
         "created_at": row.created_at,
@@ -129,6 +140,8 @@ def _list_dict(row: OperationalImprovement) -> dict[str, Any]:
         "updated_at": row.updated_at,
         "action_count": len(row.actions),
         "analysis_count": len(row.analyses),
+        "prioritization_quadrant": prioritization_from_framework(row.framework_data),
+        "template_id": (row.framework_data or {}).get("template_id"),
     }
 
 
@@ -206,7 +219,13 @@ async def create_improvement(
     current_symptoms: Optional[str],
     stakeholders_affected: Optional[str],
     status: str,
+    framework_data: Optional[dict[str, Any]] = None,
 ) -> OperationalImprovement:
+    fw = dict(framework_data or {})
+    pri = fw.get("prioritization") or {}
+    if isinstance(pri, dict) and pri.get("impact") and pri.get("effort") and not pri.get("quadrant"):
+        pri["quadrant"] = prioritization_quadrant(int(pri["impact"]), int(pri["effort"]))
+        fw["prioritization"] = pri
     row = OperationalImprovement(
         company_id=company_id,
         display_number=await allocate_display_number(db, company_id),
@@ -223,6 +242,7 @@ async def create_improvement(
         current_symptoms=(current_symptoms or "").strip() or None,
         stakeholders_affected=(stakeholders_affected or "").strip() or None,
         status=status,
+        framework_data=fw,
         created_by_user_id=actor_id,
     )
     db.add(row)
@@ -236,8 +256,13 @@ async def patch_improvement(
     **fields: Any,
 ) -> OperationalImprovement:
     for key, value in fields.items():
-        if value is None and key not in ("implementation_data", "measurement_data"):
+        if value is None and key not in ("implementation_data", "measurement_data", "framework_data"):
             continue
+        if key == "framework_data" and isinstance(value, dict):
+            pri = value.get("prioritization") or {}
+            if isinstance(pri, dict) and pri.get("impact") and pri.get("effort"):
+                pri["quadrant"] = prioritization_quadrant(int(pri["impact"]), int(pri["effort"]))
+                value = {**value, "prioritization": pri}
         if key in ("title", "description", "department_slug", "location", "estimated_impact", "current_symptoms", "stakeholders_affected"):
             if isinstance(value, str):
                 value = value.strip() or None
@@ -252,32 +277,63 @@ async def delete_improvement(db: AsyncSession, row: OperationalImprovement) -> N
 
 
 async def compute_stats(db: AsyncSession, company_id: str) -> dict[str, Any]:
-    rows = list(
-        (
-            await db.execute(
-                select(OperationalImprovement.status, OperationalImprovement.category, OperationalImprovement.estimated_impact).where(
-                    OperationalImprovement.company_id == company_id
-                )
-            )
-        ).all()
+    stmt = (
+        select(OperationalImprovement)
+        .where(OperationalImprovement.company_id == company_id)
+        .options(selectinload(OperationalImprovement.analyses))
     )
+    improvements = list((await db.execute(stmt)).scalars().unique().all())
+
     by_status: dict[str, int] = {}
     by_category: dict[str, int] = {}
+    by_prioritization_quadrant: dict[str, int] = {}
+    open_by_department: dict[str, int] = {}
     open_count = 0
     completed_count = 0
     awaiting_review_count = 0
     high_impact_open = 0
-    for status, category, impact in rows:
+    quick_wins_completed = 0
+    knowledge_base_count = 0
+    savings_total = 0.0
+    root_cause_counter: Counter[str] = Counter()
+    waste_counter: Counter[str] = Counter()
+
+    for row in improvements:
+        status = row.status
+        category = row.category
         by_status[status] = by_status.get(status, 0) + 1
         by_category[category] = by_category.get(category, 0) + 1
+        if row.knowledge_base_published:
+            knowledge_base_count += 1
+        measurement = row.measurement_data or {}
+        savings_total += parse_savings(measurement.get("estimated_savings"))
+        for m in measurement.get("scorecard_metrics") or []:
+            if isinstance(m, dict):
+                savings_total += parse_savings(m.get("savings"))
+
+        quadrant = prioritization_from_framework(row.framework_data) or "unscored"
+        by_prioritization_quadrant[quadrant] = by_prioritization_quadrant.get(quadrant, 0) + 1
+
         if status in OPEN_STATUSES:
             open_count += 1
-            if impact and impact.strip():
+            if row.estimated_impact and row.estimated_impact.strip():
                 high_impact_open += 1
+            dept = (row.department_slug or "Unassigned").strip() or "Unassigned"
+            open_by_department[dept] = open_by_department.get(dept, 0) + 1
         elif status == "completed":
             completed_count += 1
+            if quadrant == "quick_win":
+                quick_wins_completed += 1
         elif status == "awaiting_review":
             awaiting_review_count += 1
+
+        for label in extract_root_cause_labels(row.analyses):
+            root_cause_counter[label[:120]] += 1
+        waste_counter.update(extract_waste_category_counts(row.analyses))
+
+    total = len(improvements)
+    completion_rate = round(completed_count / total, 3) if total else 0.0
+
     return {
         "open_count": open_count,
         "completed_count": completed_count,
@@ -285,6 +341,15 @@ async def compute_stats(db: AsyncSession, company_id: str) -> dict[str, Any]:
         "by_status": by_status,
         "by_category": by_category,
         "high_impact_open": high_impact_open,
+        "completion_rate": completion_rate,
+        "total_count": total,
+        "quick_wins_completed": quick_wins_completed,
+        "knowledge_base_count": knowledge_base_count,
+        "estimated_savings_total": round(savings_total, 2),
+        "open_by_department": open_by_department,
+        "by_prioritization_quadrant": by_prioritization_quadrant,
+        "top_root_causes": top_counter_entries(root_cause_counter),
+        "top_waste_categories": top_counter_entries(waste_counter),
     }
 
 
@@ -503,3 +568,90 @@ async def get_attachment(
     if not row or str(row.company_id) != company_id:
         return None
     return row
+
+
+def _playbook_dict(row: OperationalImprovementPlaybook) -> dict[str, Any]:
+    return {
+        "id": str(row.id),
+        "company_id": str(row.company_id),
+        "source_improvement_id": str(row.source_improvement_id) if row.source_improvement_id else None,
+        "title": row.title,
+        "category": row.category,
+        "template_id": row.template_id,
+        "problem": row.problem,
+        "root_cause": row.root_cause,
+        "solution": row.solution,
+        "results": row.results,
+        "lessons_learned": row.lessons_learned,
+        "created_by_user_id": str(row.created_by_user_id) if row.created_by_user_id else None,
+        "created_at": row.created_at,
+    }
+
+
+async def list_playbooks(
+    db: AsyncSession,
+    company_id: str,
+    *,
+    q: Optional[str] = None,
+) -> list[OperationalImprovementPlaybook]:
+    stmt = select(OperationalImprovementPlaybook).where(OperationalImprovementPlaybook.company_id == company_id)
+    if q and q.strip():
+        needle = f"%{q.strip().lower()}%"
+        stmt = stmt.where(
+            OperationalImprovementPlaybook.title.ilike(needle)
+            | OperationalImprovementPlaybook.problem.ilike(needle)
+            | OperationalImprovementPlaybook.root_cause.ilike(needle)
+        )
+    stmt = stmt.order_by(OperationalImprovementPlaybook.created_at.desc())
+    return list((await db.execute(stmt)).scalars().all())
+
+
+async def get_playbook(db: AsyncSession, company_id: str, playbook_id: str) -> OperationalImprovementPlaybook | None:
+    row = await db.get(OperationalImprovementPlaybook, playbook_id)
+    if not row or str(row.company_id) != company_id:
+        return None
+    return row
+
+
+def _playbook_payload_from_improvement(row: OperationalImprovement) -> dict[str, str | None]:
+    measurement = row.measurement_data or {}
+    root_labels = extract_root_cause_labels(row.analyses)
+    solution_parts = [a.action for a in row.actions if a.action.strip()]
+    return {
+        "problem": row.current_symptoms or row.description,
+        "root_cause": root_labels[-1] if root_labels else None,
+        "solution": "\n".join(solution_parts) or measurement.get("success_criteria"),
+        "results": measurement.get("actual_results"),
+        "lessons_learned": measurement.get("lessons_learned"),
+    }
+
+
+async def create_playbook_from_improvement(
+    db: AsyncSession,
+    company_id: str,
+    actor_id: str,
+    improvement_id: str,
+    *,
+    title: Optional[str] = None,
+) -> OperationalImprovementPlaybook:
+    row = await get_improvement(db, company_id, improvement_id)
+    if not row:
+        raise ValueError("Improvement not found")
+    payload = _playbook_payload_from_improvement(row)
+    fw = row.framework_data or {}
+    playbook = OperationalImprovementPlaybook(
+        company_id=company_id,
+        source_improvement_id=row.id,
+        title=(title or row.title).strip(),
+        category=row.category,
+        template_id=fw.get("template_id"),
+        problem=payload["problem"],
+        root_cause=payload["root_cause"],
+        solution=payload["solution"],
+        results=payload["results"],
+        lessons_learned=payload["lessons_learned"],
+        created_by_user_id=actor_id,
+    )
+    db.add(playbook)
+    await db.flush()
+    return playbook

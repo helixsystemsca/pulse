@@ -83,6 +83,7 @@ class OperationalImprovement(Base):
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="identified")
     implementation_data: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     measurement_data: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    framework_data: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     knowledge_base_published: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_by_user_id: Mapped[Optional[str]] = mapped_column(UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
@@ -166,3 +167,24 @@ class OperationalImprovementAttachment(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
     improvement: Mapped[OperationalImprovement] = relationship(back_populates="attachments")
+
+
+class OperationalImprovementPlaybook(Base):
+    __tablename__ = "operational_improvement_playbooks"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid.uuid4()))
+    company_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"))
+    source_improvement_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("operational_improvements.id", ondelete="SET NULL"),
+    )
+    title: Mapped[str] = mapped_column(String(512), nullable=False)
+    category: Mapped[str] = mapped_column(String(32), nullable=False, default="other")
+    template_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    problem: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    root_cause: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    solution: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    results: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    lessons_learned: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_by_user_id: Mapped[Optional[str]] = mapped_column(UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())

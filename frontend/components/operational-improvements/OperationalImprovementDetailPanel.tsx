@@ -12,10 +12,15 @@ import {
   STATUS_LABELS,
   statusBadgeClass,
 } from "@/lib/operational-improvements/labels";
+import { GuidedAnalysisEditor } from "@/components/operational-improvements/analysis-forms";
+import { PrioritizationPanel } from "@/components/operational-improvements/PrioritizationPanel";
+import { ScorecardPanel } from "@/components/operational-improvements/ScorecardPanel";
+import { defaultAnalysisData } from "@/lib/operational-improvements/analysis-defaults";
 import {
   createOperationalImprovementAction,
   createOperationalImprovementAnalysis,
   createOperationalImprovementAttachment,
+  createPlaybookFromImprovement,
   deleteOperationalImprovementAction,
   deleteOperationalImprovementAnalysis,
   deleteOperationalImprovementAttachment,
@@ -28,6 +33,8 @@ import type {
   OperationalImprovementAnalysisType,
   OperationalImprovementRow,
 } from "@/lib/operational-improvements/types";
+import { getImprovementTemplate, seedScorecardFromTemplate, type ImprovementTemplateId } from "@/lib/operational-improvements/templates";
+import type { PrioritizationScores } from "@/lib/operational-improvements/prioritization";
 import { OI_ANALYSIS_TYPES, OI_STATUSES } from "@/lib/operational-improvements/types";
 import { createWorkRequest } from "@/lib/workRequestsService";
 import { pulseAppHref } from "@/lib/pulse-app";
@@ -159,6 +166,20 @@ export function OperationalImprovementDetailPanel({
     }
   }
 
+  async function createPlaybook() {
+    if (!row || !canManage) return;
+    setBusy(true);
+    try {
+      await createPlaybookFromImprovement(row.id);
+      onToast("Playbook created — find it under Playbooks.");
+      onUpdated();
+    } catch (e) {
+      onToast(e instanceof Error ? e.message : "Could not create playbook.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <PulseDrawer open={open} onClose={onClose} title={row?.display_id ?? "Improvement"} wide>
       {loading || !row ? (
@@ -190,6 +211,9 @@ export function OperationalImprovementDetailPanel({
                     </option>
                   ))}
                 </select>
+                <button type="button" className={PRIMARY} disabled={busy} onClick={() => void createPlaybook()}>
+                  Save as playbook
+                </button>
                 <button
                   type="button"
                   className={PRIMARY}
@@ -248,27 +272,6 @@ export function OperationalImprovementDetailPanel({
   );
 }
 
-function defaultAnalysisData(type: OperationalImprovementAnalysisType): Record<string, unknown> {
-  switch (type) {
-    case "root_cause_5_whys":
-      return { whys: ["", "", "", "", ""] };
-    case "fishbone":
-      return { categories: { people: "", process: "", equipment: "", materials: "", environment: "" }, contributing_factors: [] };
-    case "process_analysis":
-      return { current_state: "", future_state: "", bottlenecks: "", waste_identified: "" };
-    case "five_s":
-      return { sort: "", set_in_order: "", shine: "", standardize: "", sustain: "" };
-    case "kanban":
-      return { opportunity: "", current_flow: "" };
-    case "kaizen":
-      return { opportunity: "", quick_wins: "" };
-    case "standardization":
-      return { current_variation: "", standard_opportunity: "" };
-    default:
-      return {};
-  }
-}
-
 function IdentificationPhase({
   row,
   canManage,
@@ -298,8 +301,26 @@ function IdentificationPhase({
       department_slug: row.department_slug ?? "",
     });
   }, [row]);
+  const template = getImprovementTemplate(row.framework_data?.template_id as ImprovementTemplateId | undefined);
+  const prioritization = row.framework_data?.prioritization as PrioritizationScores | undefined;
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
+      {template ? (
+        <div className="rounded-lg border border-ds-border bg-ds-secondary/40 p-3 text-sm">
+          <p className="font-semibold text-ds-foreground">Template: {template.label}</p>
+          <p className="mt-1 text-ds-muted">{template.guidanceIntro}</p>
+          {row.framework_data?.template_answers ? (
+            <dl className="mt-2 grid gap-1 text-xs">
+              {Object.entries(row.framework_data.template_answers).map(([k, v]) => (
+                <div key={k}>
+                  <dt className="font-semibold text-ds-muted">{k}</dt>
+                  <dd>{v}</dd>
+                </div>
+              ))}
+            </dl>
+          ) : null}
+        </div>
+      ) : null}
       {(["description", "current_symptoms", "estimated_impact", "stakeholders_affected", "location", "department_slug"] as const).map((key) => (
         <div key={key}>
           <label className={LABEL}>{key.replace(/_/g, " ")}</label>
@@ -311,6 +332,18 @@ function IdentificationPhase({
           />
         </div>
       ))}
+      <PrioritizationPanel
+        value={prioritization ?? null}
+        disabled={!canManage || busy}
+        onSave={async (scores) => {
+          await onSave({
+            framework_data: {
+              ...row.framework_data,
+              prioritization: scores,
+            },
+          });
+        }}
+      />
       {canManage ? (
         <button type="button" className={PRIMARY} disabled={busy} onClick={() => void onSave(draft)}>
           Save identification
@@ -335,12 +368,26 @@ function AnalysisPhase({
   onReload: () => Promise<void>;
   onToast: (m: string) => void;
 }) {
+  const recommended = row.framework_data?.recommended_analyses ?? getImprovementTemplate(row.framework_data?.template_id as ImprovementTemplateId | undefined)?.recommendedAnalyses ?? [];
+  const types = OI_ANALYSIS_TYPES;
   return (
     <div className="space-y-4">
+      {recommended.length ? (
+        <p className="text-sm text-ds-muted">
+          Recommended for this opportunity:{" "}
+          {recommended.map((t) => ANALYSIS_TYPE_LABELS[t as OperationalImprovementAnalysisType] ?? t).join(" · ")}
+        </p>
+      ) : null}
       {canManage ? (
         <div className="flex flex-wrap gap-2">
-          {OI_ANALYSIS_TYPES.map((t) => (
-            <button key={t} type="button" className={GHOST} disabled={busy} onClick={() => void onAdd(t)}>
+          {types.map((t) => (
+            <button
+              key={t}
+              type="button"
+              className={cn(GHOST, recommended.includes(t) && "ring-1 ring-ds-accent/40")}
+              disabled={busy}
+              onClick={() => void onAdd(t)}
+            >
               <Plus className="h-3.5 w-3.5" aria-hidden />
               {ANALYSIS_TYPE_LABELS[t]}
             </button>
@@ -371,9 +418,9 @@ function AnalysisCard({
   onReload: () => Promise<void>;
   onToast: (m: string) => void;
 }) {
-  const [dataJson, setDataJson] = useState(JSON.stringify(analysis.data ?? {}, null, 2));
+  const [data, setData] = useState<Record<string, unknown>>(analysis.data ?? {});
   useEffect(() => {
-    setDataJson(JSON.stringify(analysis.data ?? {}, null, 2));
+    setData(analysis.data ?? {});
   }, [analysis]);
   return (
     <div className="rounded-lg border border-ds-border bg-ds-secondary/40 p-3">
@@ -396,27 +443,24 @@ function AnalysisCard({
           </button>
         ) : null}
       </div>
-      <textarea
-        className={cn(FIELD, "mt-2 min-h-[120px] font-mono text-xs")}
-        disabled={!canManage || busy}
-        value={dataJson}
-        onChange={(e) => setDataJson(e.target.value)}
-      />
+      <div className="mt-3">
+        <GuidedAnalysisEditor
+          analysisType={analysis.analysis_type}
+          data={data}
+          disabled={!canManage || busy}
+          onChange={setData}
+        />
+      </div>
       {canManage ? (
         <button
           type="button"
-          className={cn(PRIMARY, "mt-2")}
+          className={cn(PRIMARY, "mt-3")}
           disabled={busy}
           onClick={() => {
-            try {
-              const data = JSON.parse(dataJson) as Record<string, unknown>;
-              void patchOperationalImprovementAnalysis(analysis.id, { data })
-                .then(onReload)
-                .then(() => onToast("Analysis saved."))
-                .catch((e) => onToast(e instanceof Error ? e.message : "Save failed."));
-            } catch {
-              onToast("Invalid JSON.");
-            }
+            void patchOperationalImprovementAnalysis(analysis.id, { data })
+              .then(onReload)
+              .then(() => onToast("Analysis saved."))
+              .catch((e) => onToast(e instanceof Error ? e.message : "Save failed."));
           }}
         >
           Save analysis
@@ -543,24 +587,38 @@ function MeasurementPhase({
   busy: boolean;
   onSave: (patch: Parameters<typeof patchOperationalImprovement>[1]) => Promise<void>;
 }) {
-  const fields = [
-    "success_criteria",
-    "baseline_metrics",
-    "target_metrics",
-    "actual_results",
-    "lessons_learned",
-    "follow_up_review_date",
-  ] as const;
+  const templateId = row.framework_data?.template_id as ImprovementTemplateId | undefined;
+  const metrics =
+    row.measurement_data?.scorecard_metrics?.length
+      ? row.measurement_data.scorecard_metrics
+      : templateId
+        ? seedScorecardFromTemplate(templateId)
+        : [];
+  const textFields = ["success_criteria", "actual_results", "lessons_learned", "follow_up_review_date"] as const;
   const [draft, setDraft] = useState<Record<string, string>>({});
   useEffect(() => {
     const next: Record<string, string> = {};
-    for (const f of fields) next[f] = String(row.measurement_data?.[f] ?? "");
+    for (const f of textFields) next[f] = String(row.measurement_data?.[f] ?? "");
     setDraft(next);
   }, [row]);
   return (
-    <div className="space-y-3">
-      <p className="text-sm text-ds-muted">Define success criteria and capture actual results.</p>
-      {fields.map((f) => (
+    <div className="space-y-6">
+      <ScorecardPanel
+        metrics={metrics}
+        estimatedSavings={String(row.measurement_data?.estimated_savings ?? "")}
+        disabled={!canManage || busy}
+        onSave={async (scorecard_metrics, estimated_savings) => {
+          await onSave({
+            measurement_data: {
+              ...row.measurement_data,
+              ...draft,
+              scorecard_metrics,
+              estimated_savings,
+            },
+          });
+        }}
+      />
+      {textFields.map((f) => (
         <div key={f}>
           <label className={LABEL}>{f.replace(/_/g, " ")}</label>
           <textarea
@@ -572,8 +630,21 @@ function MeasurementPhase({
         </div>
       ))}
       {canManage ? (
-        <button type="button" className={PRIMARY} disabled={busy} onClick={() => void onSave({ measurement_data: draft })}>
-          Save measurement
+        <button
+          type="button"
+          className={PRIMARY}
+          disabled={busy}
+          onClick={() =>
+            void onSave({
+              measurement_data: {
+                ...row.measurement_data,
+                ...draft,
+                scorecard_metrics: metrics,
+              },
+            })
+          }
+        >
+          Save narrative results
         </button>
       ) : null}
     </div>

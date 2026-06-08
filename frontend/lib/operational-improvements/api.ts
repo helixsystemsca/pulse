@@ -7,6 +7,7 @@ import type {
   OperationalImprovementCreateInput,
   OperationalImprovementListRow,
   OperationalImprovementPatchInput,
+  OperationalImprovementPlaybook,
   OperationalImprovementRow,
   OperationalImprovementStats,
 } from "@/lib/operational-improvements/types";
@@ -126,4 +127,23 @@ export async function createOperationalImprovementAttachment(
 
 export async function deleteOperationalImprovementAttachment(attachmentId: string): Promise<void> {
   await apiFetch<void>(`/api/v1/operational-improvements/attachments/${attachmentId}`, { method: "DELETE" });
+}
+
+export async function listOperationalImprovementPlaybooks(q?: string): Promise<OperationalImprovementPlaybook[]> {
+  const params = new URLSearchParams();
+  if (q?.trim()) params.set("q", q.trim());
+  const qs = params.toString();
+  return apiFetch<OperationalImprovementPlaybook[]>(
+    `/api/v1/operational-improvements/playbooks${qs ? `?${qs}` : ""}`,
+  );
+}
+
+export async function createPlaybookFromImprovement(
+  improvementId: string,
+  body?: { title?: string },
+): Promise<OperationalImprovementPlaybook> {
+  return apiFetch<OperationalImprovementPlaybook>(
+    `/api/v1/operational-improvements/${improvementId}/create-playbook`,
+    { method: "POST", json: body ?? {} },
+  );
 }
