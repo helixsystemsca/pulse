@@ -13,7 +13,7 @@ from typing import Any, Mapping, Sequence
 
 from openpyxl import load_workbook
 from openpyxl.cell import Cell
-from openpyxl.utils import column_index_from_string, get_column_letter
+from openpyxl.utils import column_index_from_string, get_column_letter, range_boundaries
 from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.worksheet.worksheet import Worksheet
 
@@ -62,6 +62,12 @@ class TemplateMap:
         block = self.raw.get("dataValidations")
         return dict(block) if isinstance(block, dict) else {}
 
+    def modal_fields(self) -> list[dict[str, Any]]:
+        raw = self.raw.get("modalFields")
+        if not isinstance(raw, list):
+            return []
+        return [dict(item) for item in raw if isinstance(item, dict)]
+
 
 def load_template_map(path: Path | None = None) -> TemplateMap:
     map_path = path or template_map_path()
@@ -69,6 +75,92 @@ def load_template_map(path: Path | None = None) -> TemplateMap:
         raise TemplateExportError(f"Template mapping file not found: {map_path}")
     with map_path.open(encoding="utf-8") as f:
         return TemplateMap(json.load(f))
+
+
+def _parse_excel_range_ref(range_ref: str) -> tuple[str, int, int, int, int]:
+    ref = (range_ref or "").strip()
+    if not ref:
+        raise TemplateExportError("Empty list range")
+    if "!" in ref:
+        sheet_part, cell_part = ref.split("!", 1)
+        sheet = sheet_part.strip().strip("'").strip('"')
+    else:
+        sheet = ""
+        cell_part = ref
+    cell_part = cell_part.replace("$", "")
+    min_col, min_row, max_col, max_row = range_boundaries(cell_part)
+    if not sheet:
+        raise TemplateExportError(f"List range must include a sheet name: {range_ref}")
+    return sheet, min_col, min_row, max_col, max_row
+
+
+def read_workbook_list_range(wb: Any, range_ref: str) -> list[str]:
+    """Read non-empty unique cell values from an Excel range (e.g. Lists!$C$4:$C$6)."""
+    sheet, min_col, min_row, max_col, max_row = _parse_excel_range_ref(range_ref)
+    if sheet not in wb.sheetnames:
+        return []
+    ws = wb[sheet]
+    values: list[str] = []
+    seen: set[str] = set()
+    for row in range(min_row, max_row + 1):
+        for col in range(min_col, max_col + 1):
+            raw = ws.cell(row, col).value
+            if raw is None:
+                continue
+            text = str(raw).strip()
+            if not text or text in seen:
+                continue
+            seen.add(text)
+            values.append(text)
+    return values
+
+
+def build_material_request_template_form(template_map: TemplateMap | None = None) -> dict[str, Any]:
+    """Form metadata for MR export modals — options loaded from the template Lists sheet."""
+    tm = template_map or load_template_map()
+    fields_cfg = tm.modal_fields()
+    if not fields_cfg:
+        fields_cfg = [
+            {"key": "project", "label": "Project", "required": True, "placeholder": "e.g. KEARL"},
+            {"key": "cost_object", "label": "Cost object", "required": False, "placeholder": "Optional"},
+            {
+                "key": "location",
+                "label": "Job description / location",
+                "required": True,
+                "placeholder": "e.g. Office consumables",
+            },
+            {"key": "comments", "label": "Comments", "required": False, "multiline": True},
+        ]
+
+    wb = load_template(tm)
+    out_fields: list[dict[str, Any]] = []
+    for item in fields_cfg:
+        key = str(item.get("key") or "").strip()
+        if not key:
+            continue
+        options: list[str] = []
+        list_range = str(item.get("listRange") or "").strip()
+        if list_range:
+            try:
+                options = read_workbook_list_range(wb, list_range)
+            except TemplateExportError:
+                options = []
+        out_fields.append(
+            {
+                "key": key,
+                "label": str(item.get("label") or key.replace("_", " ").title()),
+                "required": bool(item.get("required")),
+                "placeholder": item.get("placeholder"),
+                "multiline": bool(item.get("multiline")),
+                "options": options,
+            }
+        )
+
+    return {
+        "template_id": str(tm.raw.get("templateId") or tm.template_file),
+        "template_file": tm.template_file,
+        "fields": out_fields,
+    }
 
 
 def load_template(template_map: TemplateMap) -> Any:
@@ -299,6 +391,9 @@ class TemplateExportService:
 
     def load_template_map(self) -> TemplateMap:
         return load_template_map(self._map_path)
+
+    def material_request_form(self) -> dict[str, Any]:
+        return build_material_request_template_form(self.load_template_map())
 
     def generate_template_map(self, workbook_path: Path, *, overwrite: bool = False) -> TemplateMap:
         from app.services.template_analyzer import generate_template_map

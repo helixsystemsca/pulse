@@ -21,6 +21,7 @@ import {
   createMaterialRequestDraft,
   exportMaterialRequestDraft,
   fetchMaterialRequestExports,
+  exportMaterialRequestQueue,
   generateReorderPackage,
   fetchMaterialRequestQueue,
   queueRowHasMrRequested,
@@ -273,6 +274,25 @@ export function InventoryMaterialRequestsPanel({
     setBusy(true);
     setError(null);
     try {
+      const mrOnly =
+        form.outputs.length === 1 && form.outputs[0] === "material_requisition";
+      if (mrOnly) {
+        await exportMaterialRequestQueue(apiCompany, {
+          queue_item_ids: ids,
+          project: form.project,
+          location: form.location,
+          cost_object: form.cost_object || undefined,
+          comments: form.comments || undefined,
+          notify_emails: form.notify_emails.length ? form.notify_emails : undefined,
+        });
+        setPackageOpen(false);
+        setPackageResult(null);
+        setResultsOpen(false);
+        await loadQueue();
+        void loadExportHistory();
+        return;
+      }
+
       const result = await generateReorderPackage(apiCompany, {
         queue_item_ids: ids,
         project: form.project,

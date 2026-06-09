@@ -23,10 +23,13 @@ from app.schemas.material_requests import (
     MaterialRequestQueueListOut,
     MaterialRequestQueueOut,
     MaterialRequestQueuePatchIn,
+    MaterialRequestTemplateFormOut,
+    MaterialRequestTemplateFormFieldOut,
     ReorderOutputResultOut,
     ReorderPackageGenerateIn,
     ReorderPackageOut,
 )
+from app.services.template_export_service import TemplateExportError, TemplateExportService
 from app.services import material_request_export_service as export_svc
 from app.services import material_request_queue_service as queue_svc
 from app.services import material_request_service as draft_svc
@@ -90,6 +93,20 @@ def _draft_out(draft, items) -> MaterialRequestDraftOut:
         status=draft.status,
         items=line_out,
         estimated_total_cost=draft_svc.draft_estimated_total(items),
+    )
+
+
+@router.get("/template-form", response_model=MaterialRequestTemplateFormOut)
+async def get_material_request_template_form(_: InvUser) -> MaterialRequestTemplateFormOut:
+    """Dropdown options and labels for MR export modals (from Excel template Lists sheet)."""
+    try:
+        payload = TemplateExportService().material_request_form()
+    except TemplateExportError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return MaterialRequestTemplateFormOut(
+        template_id=payload["template_id"],
+        template_file=payload["template_file"],
+        fields=[MaterialRequestTemplateFormFieldOut(**field) for field in payload["fields"]],
     )
 
 
@@ -210,18 +227,21 @@ async def generate_reorder_package(
     cid: CompanyId,
     body: ReorderPackageGenerateIn,
 ) -> ReorderPackageOut:
-    record, results = await package_svc.generate_reorder_package(
-        db,
-        cid,
-        user,
-        queue_item_ids=body.queue_item_ids,
-        project=body.project,
-        location=body.location,
-        cost_object=body.cost_object or "",
-        comments=body.comments or "",
-        notify_emails=body.notify_emails,
-        outputs=body.outputs,
-    )
+    try:
+        record, results = await package_svc.generate_reorder_package(
+            db,
+            cid,
+            user,
+            queue_item_ids=body.queue_item_ids,
+            project=body.project,
+            location=body.location,
+            cost_object=body.cost_object or "",
+            comments=body.comments or "",
+            notify_emails=body.notify_emails,
+            outputs=body.outputs,
+        )
+    except TemplateExportError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     await db.commit()
     return ReorderPackageOut(
         package_id=record.id,

@@ -32,6 +32,10 @@ def main() -> None:
     args = parser.parse_args()
     data = generate_template_map(args.workbook, output_path=args.output, overwrite=args.overwrite)
     print(f"Wrote {args.output} ({len(data)} keys)")
+    bundled = ROOT / "backend" / "templates" / "template-map.json"
+    if args.output.resolve() != bundled.resolve() and bundled.parent.is_dir():
+        bundled.write_text(args.output.read_text(encoding="utf-8"), encoding="utf-8")
+        print(f"Synced {bundled}")
 
 
 if __name__ == "__main__":

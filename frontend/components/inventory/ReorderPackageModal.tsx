@@ -2,6 +2,11 @@
 
 import { Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import {
+  MaterialRequestExportFormFields,
+  type MaterialRequestHeaderValues,
+} from "@/components/inventory/MaterialRequestExportFormFields";
+import { useMaterialRequestTemplateForm } from "@/components/inventory/useMaterialRequestTemplateForm";
 import { EmailRecipientMultiSelect } from "@/components/inventory/EmailRecipientMultiSelect";
 import { PremiumModal } from "@/components/ui/premium-modal";
 import { buttonVariants } from "@/styles/button-variants";
@@ -18,8 +23,6 @@ const SECONDARY_BTN = cn(
   "px-4 py-2.5 text-sm font-semibold",
 );
 const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-muted";
-const INPUT =
-  "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E] focus:outline-none focus:ring-2 focus:ring-[#2B4C7E]/20 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100";
 
 export type ReorderPackageForm = {
   project: string;
@@ -78,6 +81,35 @@ export function ReorderPackageModal({
   );
 
   const includesMr = outputs.includes("material_requisition");
+  const { fields: templateFields, loading: templateLoading } = useMaterialRequestTemplateForm(
+    open && includesMr,
+  );
+
+  const headerValues: MaterialRequestHeaderValues = {
+    project,
+    location,
+    cost_object: costObject,
+    comments,
+  };
+
+  function setHeaderValue(key: keyof MaterialRequestHeaderValues, value: string) {
+    switch (key) {
+      case "project":
+        setProject(value);
+        break;
+      case "location":
+        setLocation(value);
+        break;
+      case "cost_object":
+        setCostObject(value);
+        break;
+      case "comments":
+        setComments(value);
+        break;
+      default:
+        break;
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -174,63 +206,23 @@ export function ReorderPackageModal({
           </div>
         )}
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block space-y-1 sm:col-span-1">
-            <span className={LABEL}>Project</span>
-            <input
-              className={INPUT}
-              value={project}
-              onChange={(e) => setProject(e.target.value)}
-              placeholder="e.g. KEARL"
-              required
-              disabled={busy}
-            />
-          </label>
-          <label className="block space-y-1 sm:col-span-1">
-            <span className={LABEL}>Cost object</span>
-            <input
-              className={INPUT}
-              value={costObject}
-              onChange={(e) => setCostObject(e.target.value)}
-              placeholder="Optional"
-              disabled={busy}
-            />
-          </label>
-          <label className="block space-y-1 sm:col-span-2">
-            <span className={LABEL}>Job description / location</span>
-            <input
-              className={INPUT}
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="e.g. Office consumables"
-              required
-              disabled={busy}
-            />
-          </label>
-          <label className="block space-y-1 sm:col-span-2">
-            <span className={LABEL}>Comments</span>
-            <textarea
-              className={cn(INPUT, "min-h-[88px] resize-y")}
-              value={comments}
-              onChange={(e) => setComments(e.target.value)}
-              placeholder="Optional — included in email drafts"
-              disabled={busy}
-              rows={3}
-            />
-          </label>
-          {includesMr ? (
-            <div className="sm:col-span-2">
-              <EmailRecipientMultiSelect
-                title="Email spreadsheet to"
-                description="Optional. Sends the material requisition Excel when SMTP is configured."
-                directory={emailDirectory}
-                selected={notifyEmails}
-                onChange={setNotifyEmails}
-                disabled={busy}
-              />
-            </div>
-          ) : null}
-        </div>
+        <MaterialRequestExportFormFields
+          fields={templateFields}
+          values={headerValues}
+          onChange={setHeaderValue}
+          busy={busy}
+          loading={includesMr && templateLoading}
+        />
+        {includesMr ? (
+          <EmailRecipientMultiSelect
+            title="Email spreadsheet to"
+            description="Optional. Sends the material requisition Excel when SMTP is configured."
+            directory={emailDirectory}
+            selected={notifyEmails}
+            onChange={setNotifyEmails}
+            disabled={busy}
+          />
+        ) : null}
       </form>
     </PremiumModal>
   );

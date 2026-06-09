@@ -45,6 +45,21 @@ export type MaterialRequestExportRecord = {
   created_at: string;
 };
 
+export type MaterialRequestTemplateFormField = {
+  key: "project" | "location" | "cost_object" | "comments" | string;
+  label: string;
+  required: boolean;
+  placeholder?: string | null;
+  multiline: boolean;
+  options: string[];
+};
+
+export type MaterialRequestTemplateForm = {
+  template_id: string;
+  template_file: string;
+  fields: MaterialRequestTemplateFormField[];
+};
+
 export type MaterialRequestQueueExportBody = {
   queue_item_ids: string[];
   project: string;
@@ -102,6 +117,14 @@ export async function fetchMaterialRequestQueue(companyId: string | null): Promi
     withCompany("/api/material-requests/queue", companyId),
   );
   return res.items;
+}
+
+export async function fetchMaterialRequestTemplateForm(
+  companyId: string | null,
+): Promise<MaterialRequestTemplateForm> {
+  return apiFetch<MaterialRequestTemplateForm>(
+    withCompany("/api/material-requests/template-form", companyId),
+  );
 }
 
 export async function patchMaterialRequestQueueItem(
@@ -203,6 +226,7 @@ export async function exportMaterialRequestQueue(
   const url = `${base}${withCompany("/api/material-requests/queue/export", companyId)}`;
   const res = await fetch(url, {
     method: "POST",
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...(s?.access_token ? { Authorization: `Bearer ${s.access_token}` } : {}),

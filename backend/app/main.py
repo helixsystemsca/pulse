@@ -168,6 +168,24 @@ async def lifespan(app: FastAPI):
     _startup_log.info("STARTUP STEP 3: security configuration review")
     log_security_startup_summary(settings)
 
+    _startup_log.info("STARTUP STEP 3b: material request templates")
+    try:
+        from app.services.template_export_paths import template_map_path, template_workbook_path
+        from app.services.template_export_service import load_template_map
+
+        tm = load_template_map()
+        workbook = template_workbook_path(tm.template_file)
+        if not workbook.is_file():
+            _startup_log.error(
+                "Material request template workbook missing: %s (map: %s)",
+                workbook,
+                template_map_path(),
+            )
+        else:
+            _startup_log.info("Material request templates ready: %s", template_map_path().parent)
+    except Exception:
+        _startup_log.exception("Material request template check failed")
+
     _startup_log.info("STARTUP STEP 4: application ready (lifespan yield)")
     try:
         yield

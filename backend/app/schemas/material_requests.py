@@ -38,6 +38,21 @@ class MaterialRequestQueueListOut(BaseModel):
     items: list[MaterialRequestQueueOut]
 
 
+class MaterialRequestTemplateFormFieldOut(BaseModel):
+    key: str
+    label: str
+    required: bool = False
+    placeholder: Optional[str] = None
+    multiline: bool = False
+    options: list[str] = Field(default_factory=list)
+
+
+class MaterialRequestTemplateFormOut(BaseModel):
+    template_id: str
+    template_file: str
+    fields: list[MaterialRequestTemplateFormFieldOut]
+
+
 class MaterialRequestQueuePatchIn(BaseModel):
     reorder_qty: Optional[float] = Field(None, ge=0)
     reimbursable: Optional[bool] = None

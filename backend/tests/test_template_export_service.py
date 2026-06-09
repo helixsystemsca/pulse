@@ -8,7 +8,14 @@ from pathlib import Path
 import pytest
 from openpyxl import load_workbook
 
-from app.services.template_export_service import TemplateExportService
+from app.services.template_export_paths import backend_root, templates_dir
+from app.services.template_export_service import (
+    TemplateExportService,
+    build_material_request_template_form,
+    read_workbook_list_range,
+    load_template,
+    load_template_map,
+)
 
 TEMPLATES = Path(__file__).resolve().parents[2] / "templates"
 
@@ -60,6 +67,35 @@ def test_export_preserves_requester_and_site_manager_name_dropdowns(
     assert validations.get("C24:D24") == "Lists!$H$4:$H$19"
     assert validations.get("C26:D26") == "Lists!$J$4:$J$5"
     assert ws["C24"].value == "Jane Doe"
+
+
+def test_template_form_loads_modal_dropdown_options() -> None:
+    form = build_material_request_template_form(load_template_map(TEMPLATES / "template-map.json"))
+    by_key = {f["key"]: f for f in form["fields"]}
+    assert by_key["cost_object"]["options"] == [
+        "4503048718 - I&SS",
+        "4503048145 - Mine",
+        "OTHER - (specify in the comments)",
+    ]
+    assert by_key["location"]["options"] == [
+        "Plant / Infrastructure",
+        "Mine OPS & AHS - General",
+        "OTHER",
+    ]
+    assert by_key["project"]["options"] == []
+
+
+def test_templates_resolve_from_backend_bundle() -> None:
+    bundled = backend_root() / "templates" / "template-map.json"
+    assert bundled.is_file(), "backend/templates must ship with the API for Render deploys"
+    assert templates_dir().is_dir()
+    assert (templates_dir() / "kent_material_request.xlsx").is_file()
+
+
+def test_read_workbook_list_range_parses_sheet_reference() -> None:
+    tm = load_template_map(TEMPLATES / "template-map.json")
+    wb = load_template(tm)
+    assert read_workbook_list_range(wb, "Lists!$A$4:$A$5") == ["YES", "NO"]
 
 
 def test_export_shifts_footer_validations_when_extra_line_rows_are_inserted(

@@ -2,6 +2,11 @@
 
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import {
+  MaterialRequestExportFormFields,
+  type MaterialRequestHeaderValues,
+} from "@/components/inventory/MaterialRequestExportFormFields";
+import { useMaterialRequestTemplateForm } from "@/components/inventory/useMaterialRequestTemplateForm";
 import { EmailRecipientMultiSelect } from "@/components/inventory/EmailRecipientMultiSelect";
 import { PremiumModal } from "@/components/ui/premium-modal";
 import { buttonVariants } from "@/styles/button-variants";
@@ -12,9 +17,6 @@ const SECONDARY_BTN = cn(
   buttonVariants({ surface: "light", intent: "secondary" }),
   "px-4 py-2.5 text-sm font-semibold",
 );
-const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-muted";
-const INPUT =
-  "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E] focus:outline-none focus:ring-2 focus:ring-[#2B4C7E]/20 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100";
 
 export type MaterialRequestExportForm = {
   project: string;
@@ -48,6 +50,33 @@ export function MaterialRequestExportModal({
   const [costObject, setCostObject] = useState("");
   const [comments, setComments] = useState("");
   const [notifyEmails, setNotifyEmails] = useState<string[]>([]);
+  const { fields: templateFields, loading: templateLoading } = useMaterialRequestTemplateForm(open);
+
+  const headerValues: MaterialRequestHeaderValues = {
+    project,
+    location,
+    cost_object: costObject,
+    comments,
+  };
+
+  function setHeaderValue(key: keyof MaterialRequestHeaderValues, value: string) {
+    switch (key) {
+      case "project":
+        setProject(value);
+        break;
+      case "location":
+        setLocation(value);
+        break;
+      case "cost_object":
+        setCostObject(value);
+        break;
+      case "comments":
+        setComments(value);
+        break;
+      default:
+        break;
+    }
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -100,61 +129,21 @@ export function MaterialRequestExportModal({
           MR and PO numbers, Site Manager / Client Approval signatures, and approval fields are left blank for
           completion outside Helix. Your profile full name is written in the Requester field when set.
         </p>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block space-y-1 sm:col-span-1">
-            <span className={LABEL}>Project</span>
-            <input
-              className={INPUT}
-              value={project}
-              onChange={(e) => setProject(e.target.value)}
-              placeholder="e.g. KEARL"
-              required
-              disabled={busy}
-            />
-          </label>
-          <label className="block space-y-1 sm:col-span-1">
-            <span className={LABEL}>Cost object</span>
-            <input
-              className={INPUT}
-              value={costObject}
-              onChange={(e) => setCostObject(e.target.value)}
-              placeholder="Optional"
-              disabled={busy}
-            />
-          </label>
-          <label className="block space-y-1 sm:col-span-2">
-            <span className={LABEL}>Job description / location</span>
-            <input
-              className={INPUT}
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="e.g. Office consumables"
-              required
-              disabled={busy}
-            />
-          </label>
-          <label className="block space-y-1 sm:col-span-2">
-            <span className={LABEL}>Comments</span>
-            <textarea
-              className={cn(INPUT, "min-h-[88px] resize-y")}
-              value={comments}
-              onChange={(e) => setComments(e.target.value)}
-              placeholder="Optional"
-              disabled={busy}
-              rows={3}
-            />
-          </label>
-          <div className="sm:col-span-2">
-            <EmailRecipientMultiSelect
-              title="Email spreadsheet to"
-              description="Optional. Selected addresses receive the Excel file when SMTP is configured."
-              directory={emailDirectory}
-              selected={notifyEmails}
-              onChange={setNotifyEmails}
-              disabled={busy}
-            />
-          </div>
-        </div>
+        <MaterialRequestExportFormFields
+          fields={templateFields}
+          values={headerValues}
+          onChange={setHeaderValue}
+          busy={busy}
+          loading={templateLoading}
+        />
+        <EmailRecipientMultiSelect
+          title="Email spreadsheet to"
+          description="Optional. Selected addresses receive the Excel file when SMTP is configured."
+          directory={emailDirectory}
+          selected={notifyEmails}
+          onChange={setNotifyEmails}
+          disabled={busy}
+        />
       </form>
     </PremiumModal>
   );
