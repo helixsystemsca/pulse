@@ -14,6 +14,7 @@ from typing import Any, Mapping, Sequence
 from openpyxl import load_workbook
 from openpyxl.cell import Cell
 from openpyxl.utils import column_index_from_string, get_column_letter
+from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.worksheet.worksheet import Worksheet
 
 from app.services.template_export_paths import template_map_path, template_workbook_path
@@ -56,6 +57,10 @@ class TemplateMap:
     def populate_columns(self) -> dict[str, str]:
         cols = self.raw.get("populateColumns") or self.raw.get("columns") or {}
         return {str(k): str(v) for k, v in cols.items()}
+
+    def data_validation_config(self) -> dict[str, Any]:
+        block = self.raw.get("dataValidations")
+        return dict(block) if isinstance(block, dict) else {}
 
 
 def load_template_map(path: Path | None = None) -> TemplateMap:
@@ -138,13 +143,18 @@ def _copy_row_style(ws: Worksheet, src_row: int, tgt_row: int, max_col: int = 12
         _copy_cell_style(ws.cell(src_row, c), ws.cell(tgt_row, c))
 
 
-def _ensure_rows(ws: Worksheet, template_map: TemplateMap, needed_rows: int) -> int:
-    """Ensure worksheet has enough styled data rows; return style source row."""
+def _template_data_row_capacity(template_map: TemplateMap) -> int:
+    first = template_map.first_data_row
+    return max(0, template_map.last_template_data_row - first + 1)
+
+
+def _ensure_rows(ws: Worksheet, template_map: TemplateMap, needed_rows: int) -> tuple[int, int]:
+    """Ensure worksheet has enough styled data rows; return (style source row, inserted row count)."""
     first = template_map.first_data_row
     style_row = min(template_map.last_template_data_row, first)
-    existing = max(0, template_map.last_template_data_row - first + 1)
+    existing = _template_data_row_capacity(template_map)
     if needed_rows <= existing:
-        return style_row
+        return style_row, 0
 
     extra = needed_rows - existing
     insert_at = template_map.last_template_data_row + 1
@@ -152,7 +162,70 @@ def _ensure_rows(ws: Worksheet, template_map: TemplateMap, needed_rows: int) -> 
     for i in range(extra):
         tgt = insert_at + i
         _copy_row_style(ws, style_row, tgt)
-    return style_row
+    return style_row, extra
+
+
+def _footer_column_range(columns: str, row: int) -> str:
+    parts = [p.strip() for p in str(columns).split(":") if p.strip()]
+    if len(parts) == 2:
+        return f"{parts[0]}{row}:{parts[1]}{row}"
+    col = parts[0] if parts else "C"
+    return f"{col}{row}"
+
+
+def _add_list_validation(ws: Worksheet, sqref: str, list_range: str) -> None:
+    formula = list_range if list_range.startswith("=") else f"={list_range}"
+    dv = DataValidation(
+        type="list",
+        formula1=formula,
+        allow_blank=True,
+        showInputMessage=True,
+        showErrorMessage=True,
+    )
+    dv.add(sqref)
+    ws.add_data_validation(dv)
+
+
+def apply_template_data_validations(
+    ws: Worksheet,
+    template_map: TemplateMap,
+    *,
+    row_count: int,
+    inserted_rows: int = 0,
+) -> None:
+    """Re-apply Excel list validations (openpyxl drops x14 extension validations on load)."""
+    cfg = template_map.data_validation_config()
+    if not cfg:
+        return
+
+    lists_sheet = str(cfg.get("listsSheet") or "Lists")
+    if lists_sheet not in ws.parent.sheetnames:
+        return
+
+    first = template_map.first_data_row
+    last_data_row = first + max(row_count, 1) - 1
+    if inserted_rows <= 0:
+        last_data_row = max(last_data_row, template_map.last_template_data_row)
+
+    for item in cfg.get("lineItems") or []:
+        if not isinstance(item, dict):
+            continue
+        col = str(item.get("column") or "").strip()
+        list_range = str(item.get("listRange") or "").strip()
+        if not col or not list_range:
+            continue
+        _add_list_validation(ws, f"{col}{first}:{col}{last_data_row}", list_range)
+
+    for item in cfg.get("footer") or []:
+        if not isinstance(item, dict):
+            continue
+        base_row = int(item.get("row") or 0)
+        columns = str(item.get("columns") or "C:D")
+        list_range = str(item.get("listRange") or "").strip()
+        if base_row <= 0 or not list_range:
+            continue
+        row = base_row + inserted_rows
+        _add_list_validation(ws, _footer_column_range(columns, row), list_range)
 
 
 def populate_rows(
@@ -165,7 +238,7 @@ def populate_rows(
 
     cols = template_map.populate_columns()
     first = template_map.first_data_row
-    style_row = _ensure_rows(ws, template_map, len(rows))
+    style_row, inserted_rows = _ensure_rows(ws, template_map, len(rows))
 
     line_col = (template_map.raw.get("columns") or {}).get("lineNumber", "A")
 
@@ -197,6 +270,8 @@ def populate_rows(
                 continue
             val = values[key]
             ws[f"{col_letter}{row_num}"].value = val
+
+    apply_template_data_validations(ws, template_map, row_count=len(rows), inserted_rows=inserted_rows)
 
 
 def save_workbook(wb: Any) -> bytes:

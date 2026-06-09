@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Full-screen welcome overlay after sign-in: centered card, Panorama logo, and ocean-wave progress.
+ * Full-screen welcome overlay after sign-in: centered card, platform logo, and ocean-wave progress.
  * Shown at most once per browser tab session (`sessionStorage`), so refreshes skip the animation.
  */
 
@@ -9,6 +9,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { PLATFORM_DEFAULT_LOGO_SRC } from "@/lib/branding/platform-defaults";
 import { cn } from "@/lib/cn";
 import {
   dispatchWelcomeOverlayClosed,
@@ -277,7 +278,7 @@ export function WelcomeLoaderModal({
               >
                 <div className="relative mx-auto h-[9.3rem] w-[9.3rem] sm:h-[9.9rem] sm:w-[9.9rem]">
                   <Image
-                    src="/images/panoramalogo2.png"
+                    src={PLATFORM_DEFAULT_LOGO_SRC}
                     alt=""
                     fill
                     priority
@@ -295,7 +296,7 @@ export function WelcomeLoaderModal({
                     Preparing your workspace...
                   </h1>
                   <p className="mt-1.5 whitespace-nowrap text-sm font-medium text-[#51647a]">
-                    Gathering the latest from your operation
+                    Loading your workspace
                   </p>
                 </div>
               ) : (

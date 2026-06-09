@@ -35,10 +35,10 @@
       "description": "Free-text comments. Merged range G25:G29."
     },
     "requesterName": {
-      "cell": "D25",
+      "cell": "C24",
       "label": "Name",
       "labelCell": "C25",
-      "description": "Requester full name (from the exporting user's profile)."
+      "description": "Requester full name (merged C24:D24; dropdown from Lists sheet)."
     },
     "excluded": {
       "mrNumber": {
@@ -61,7 +61,7 @@
   "dateCell": "H3",
   "costObjectCell": "G3",
   "commentsCell": "G25",
-  "requesterNameCell": "D25",
+  "requesterNameCell": "C24",
   "headerRow": 4,
   "firstDataRow": 5,
   "lastTemplateDataRow": 23,
@@ -84,5 +84,17 @@
     "quantity": "H",
     "unit": "I"
   },
-  "fileNamePattern": "MR_{project}_{date}.xlsx"
+  "fileNamePattern": "MR_{project}_{date}.xlsx",
+  "dataValidations": {
+    "listsSheet": "Lists",
+    "lineItems": [
+      { "column": "B", "listRange": "Lists!$A$4:$A$5" },
+      { "column": "C", "listRange": "Lists!$C$4:$C$6" },
+      { "column": "I", "listRange": "Lists!$F$4:$F$19" }
+    ],
+    "footer": [
+      { "row": 24, "columns": "C:D", "listRange": "Lists!$H$4:$H$19" },
+      { "row": 26, "columns": "C:D", "listRange": "Lists!$J$4:$J$5" }
+    ]
+  }
 }

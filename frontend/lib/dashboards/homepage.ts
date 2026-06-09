@@ -37,6 +37,7 @@ const DEPARTMENT_DEFAULT_DASHBOARD_ID: Record<string, string> = {
 
 /** Product module homes when the tenant has no dashboard routes. */
 const CONTRACT_MODULE_HOME_ROUTES: readonly { contractKeys: readonly string[]; route: string }[] = [
+  { contractKeys: ["operational_improvements"], route: "/dashboard/operational-improvements" },
   { contractKeys: ["inventory", "inventory_scanner"], route: "/dashboard/inventory" },
   { contractKeys: ["work_requests"], route: "/dashboard/maintenance" },
   { contractKeys: ["monitoring"], route: "/monitoring" },
@@ -46,6 +47,38 @@ const CONTRACT_MODULE_HOME_ROUTES: readonly { contractKeys: readonly string[]; r
   { contractKeys: ["procedures", "standards"], route: "/standards" },
   { contractKeys: ["team_management"], route: "/team-management" },
 ];
+
+/** Contract modules that justify the facility leadership / operations dashboard landing. */
+const FACILITY_OPS_CONTRACT_KEYS = [
+  "monitoring",
+  "work_requests",
+  "inventory",
+  "inventory_scanner",
+  "schedule",
+  "team_management",
+  "equipment",
+  "tool_tracking",
+  "rtls_tracking",
+  "logs_inspections",
+] as const;
+
+const IMPROVEMENT_FOCUSED_MODULE_HOME = "/dashboard/operational-improvements";
+
+/**
+ * Tenants with continuous improvement but no facility ops modules (personal portfolio, CI-only).
+ * These should not land on `/overview` or the Panorama-style ops dashboard.
+ */
+export function tenantIsImprovementFocused(session: PulseAuthSession | null): boolean {
+  if (!session) return false;
+  if (!tenantHasAnyCompanyModule(session, ["operational_improvements"])) return false;
+  return !tenantHasAnyCompanyModule(session, FACILITY_OPS_CONTRACT_KEYS);
+}
+
+export function resolveImprovementFocusedModuleHome(session: PulseAuthSession | null): string | null {
+  if (!tenantIsImprovementFocused(session)) return null;
+  if (!canAccessClassicNavHref(session, IMPROVEMENT_FOCUSED_MODULE_HOME)) return null;
+  return IMPROVEMENT_FOCUSED_MODULE_HOME;
+}
 
 export type DashboardHomepagePreference = {
   dashboardId: string;
@@ -120,6 +153,11 @@ export function resolvePostLoginLandingPath(session: PulseAuthSession | null): s
     return "/kiosk/inventory-scanner";
   }
 
+  const improvementHome = resolveImprovementFocusedModuleHome(session);
+  if (improvementHome) {
+    return improvementHome;
+  }
+
   if (canAccessClassicNavHref(session, "/overview")) {
     return "/overview";
   }
@@ -147,6 +185,9 @@ export function resolveAssignedDashboardHomepage(session: PulseAuthSession | nul
       if (route) return route;
     }
   }
+
+  const improvementHome = resolveImprovementFocusedModuleHome(session);
+  if (improvementHome) return improvementHome;
 
   const dept = (session.hr_department ?? "").trim().toLowerCase();
   if (dept) {

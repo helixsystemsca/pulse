@@ -10,6 +10,7 @@ import { isApiMode } from "@/lib/api";
 import { navigateToPulseLogin, pulsePostLoginPath } from "@/lib/pulse-app";
 import { isWelcomeOverlayDismissed, readSession } from "@/lib/pulse-session";
 import { sessionHasAnyRole } from "@/lib/pulse-roles";
+import { resolveImprovementFocusedModuleHome } from "@/lib/dashboards/homepage";
 import { canShowClassicSidebarItem, firstAccessibleClassicTenantHref } from "@/lib/rbac/session-access";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { useRouter } from "next/navigation";
@@ -71,6 +72,11 @@ export default function OverviewPage() {
     if (!isApiMode()) return;
     if (!session) return;
     if (session.role === "demo_viewer") return;
+    const improvementHome = resolveImprovementFocusedModuleHome(session);
+    if (improvementHome) {
+      router.replace(improvementHome);
+      return;
+    }
     if (!canShowClassicSidebarItem(session, "/overview", false)) {
       router.replace(firstAccessibleClassicTenantHref(session));
     }

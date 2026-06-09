@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach } from "vitest";
 import type { PulseAuthSession } from "@/lib/pulse-session";
-import { resolveAssignedDashboardHomepage, resolvePostLoginLandingPath } from "@/lib/dashboards/homepage";
+import { resolveAssignedDashboardHomepage, resolvePostLoginLandingPath, tenantIsImprovementFocused } from "@/lib/dashboards/homepage";
 
 function session(partial: Partial<PulseAuthSession>): PulseAuthSession {
   return {
@@ -124,5 +124,38 @@ describe("resolvePostLoginLandingPath", () => {
         }),
       ),
     ).toBe("/dashboard/inventory");
+  });
+
+  it("sends improvement-focused tenants to operational improvements instead of overview", () => {
+    const improvementSession = session({
+      role: "company_admin",
+      contract_features: ["dashboard", "operational_improvements"],
+      enabled_features: ["dashboard", "operational_improvements"],
+      rbac_permissions: [
+        "dashboard.leadership.view",
+        "operational_improvements.view",
+        "operational_improvements.manage",
+      ],
+    });
+    expect(tenantIsImprovementFocused(improvementSession)).toBe(true);
+    expect(resolvePostLoginLandingPath(improvementSession)).toBe("/dashboard/operational-improvements");
+    expect(resolveAssignedDashboardHomepage(improvementSession)).toBe("/dashboard/operational-improvements");
+  });
+
+  it("still lands on overview when facility ops modules are on contract", () => {
+    expect(
+      resolvePostLoginLandingPath(
+        session({
+          role: "company_admin",
+          contract_features: ["dashboard", "operational_improvements", "monitoring"],
+          enabled_features: ["dashboard", "operational_improvements", "monitoring"],
+          rbac_permissions: [
+            "dashboard.leadership.view",
+            "operational_improvements.view",
+            "monitoring.view",
+          ],
+        }),
+      ),
+    ).toBe("/overview");
   });
 });
