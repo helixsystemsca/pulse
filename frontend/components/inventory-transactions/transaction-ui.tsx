@@ -157,3 +157,49 @@ export const txFieldClass =
   "mt-1 w-full rounded-xl border-2 border-ds-border bg-ds-primary px-4 py-3 text-base text-ds-foreground focus:border-ds-accent focus:outline-none focus:ring-2 focus:ring-ds-accent/25";
 
 export const txLabelClass = "text-xs font-bold uppercase tracking-wider text-ds-muted";
+
+export function TxReferenceFields({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: { reference_type: string; reference_id: string; reference_note: string };
+  onChange: (v: { reference_type: string; reference_id: string; reference_note: string }) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="space-y-3 rounded-xl border border-ds-border bg-ds-secondary/30 p-4">
+      <p className="text-sm font-bold text-ds-foreground">Reference (optional)</p>
+      <label className="block">
+        <span className={txLabelClass}>Reference type</span>
+        <input
+          className={txFieldClass}
+          disabled={disabled}
+          value={value.reference_type}
+          onChange={(e) => onChange({ ...value, reference_type: e.target.value })}
+          placeholder="e.g. project, cost code"
+        />
+      </label>
+      <label className="block">
+        <span className={txLabelClass}>Reference ID</span>
+        <input
+          className={txFieldClass}
+          disabled={disabled}
+          value={value.reference_id}
+          onChange={(e) => onChange({ ...value, reference_id: e.target.value })}
+          placeholder="Identifier"
+        />
+      </label>
+      <label className="block">
+        <span className={txLabelClass}>Reference note</span>
+        <textarea
+          className={cn(txFieldClass, "min-h-[4rem] resize-y")}
+          disabled={disabled}
+          value={value.reference_note}
+          onChange={(e) => onChange({ ...value, reference_note: e.target.value })}
+          placeholder="Additional context"
+        />
+      </label>
+    </div>
+  );
+}
