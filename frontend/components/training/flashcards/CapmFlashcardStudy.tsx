@@ -24,6 +24,7 @@ import {
   resolveFlashcardStudyIndex,
   writeFlashcardStudyPosition,
 } from "@/lib/training/flashcard-study-position";
+import { recordFlashcardStudySession } from "@/lib/training/flashcard-study-sessions";
 import { useFlashcardStudySettings } from "@/lib/training/flashcard-study-settings";
 import {
   computeStudySessionStats,
@@ -90,6 +91,9 @@ export function CapmFlashcardStudy({ courseId, sectionId }: Props) {
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
   const animTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sessionStartRef = useRef<number | null>(null);
+  const sessionRecordedRef = useRef(false);
+  const cardsReviewedRef = useRef(0);
 
   const total = cards.length;
   const current = cards[index];
@@ -105,6 +109,22 @@ export function CapmFlashcardStudy({ courseId, sectionId }: Props) {
   const sessionComplete = reviewedCount >= total && total > 0;
   const interactionsLocked = animating || submitting || loading;
   const sessionStats = computeStudySessionStats(cards, reviewedCount, sessionRatings);
+
+  const recordStudySession = useCallback(() => {
+    if (sessionRecordedRef.current || sessionStartRef.current == null) return;
+    const cardsReviewed = cardsReviewedRef.current;
+    if (cardsReviewed <= 0) return;
+    sessionRecordedRef.current = true;
+    const endedAt = Date.now();
+    recordFlashcardStudySession({
+      courseId,
+      sectionId,
+      startedAt: new Date(sessionStartRef.current).toISOString(),
+      endedAt: new Date(endedAt).toISOString(),
+      cardsReviewed,
+      durationSeconds: Math.max(1, Math.round((endedAt - sessionStartRef.current) / 1000)),
+    });
+  }, [courseId, sectionId]);
 
   const clearAnimTimer = useCallback(() => {
     if (animTimerRef.current) {
@@ -188,6 +208,9 @@ export function CapmFlashcardStudy({ courseId, sectionId }: Props) {
         setFlipped(false);
         setReviewedCount(0);
         setSessionRatings([]);
+        sessionStartRef.current = Date.now();
+        sessionRecordedRef.current = false;
+        cardsReviewedRef.current = 0;
         if (filteredCards.length > 0 && startIndex >= 0) {
           applyIndex(startIndex, filteredCards);
         }
@@ -202,8 +225,17 @@ export function CapmFlashcardStudy({ courseId, sectionId }: Props) {
 
   useEffect(() => {
     void loadDeck();
-    return () => clearAnimTimer();
-  }, [loadDeck, clearAnimTimer]);
+    return () => {
+      clearAnimTimer();
+      recordStudySession();
+    };
+  }, [loadDeck, clearAnimTimer, recordStudySession]);
+
+  useEffect(() => {
+    if (sessionComplete) {
+      recordStudySession();
+    }
+  }, [sessionComplete, recordStudySession]);
 
   const rateCard = useCallback(
     async (rating: TrainingReviewRating) => {
@@ -221,6 +253,7 @@ export function CapmFlashcardStudy({ courseId, sectionId }: Props) {
         setSessionRatings((prev) => [...prev, rating]);
         const nextReviewed = reviewedCount + 1;
         setReviewedCount(nextReviewed);
+        cardsReviewedRef.current = nextReviewed;
 
         const nextIndex = index + 1;
         runWithAnimationLock(() => setFlipped(false));

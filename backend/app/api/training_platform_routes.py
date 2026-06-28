@@ -27,6 +27,7 @@ from app.schemas.training_platform import (
     TrainingProgressUpsertIn,
     TrainingSm2StateOut,
     TrainingStudyDueOut,
+    TrainingStudyStatisticsOut,
     TrainingUserProgressOut,
 )
 from app.services.training_platform.course_service import get_course_detail, get_lesson_detail, list_published_courses
@@ -52,6 +53,7 @@ from app.services.training_platform.study_service import (
     list_due_flashcards,
     submit_flashcard_review,
 )
+from app.services.training_platform.study_statistics_service import get_course_study_statistics
 
 router = APIRouter(prefix="/training", tags=["training-platform"])
 
@@ -158,6 +160,24 @@ async def course_flashcards(
 ) -> TrainingCourseFlashcardsOut:
     try:
         return await list_course_flashcards(db, company_id=cid, user_id=uid, course_id=course_id)
+    except ValueError as exc:
+        if str(exc) == "course_not_found":
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.get("/courses/{course_id}/study-statistics", response_model=TrainingStudyStatisticsOut)
+async def course_study_statistics(
+    course_id: str,
+    db: Db,
+    cid: CompanyId,
+    uid: Uid,
+    _: Annotated[User, Depends(require_tenant_user)],
+) -> TrainingStudyStatisticsOut:
+    try:
+        return await get_course_study_statistics(
+            db, company_id=cid, user_id=uid, course_id=course_id
+        )
     except ValueError as exc:
         if str(exc) == "course_not_found":
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc

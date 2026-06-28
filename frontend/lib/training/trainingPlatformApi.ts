@@ -176,6 +176,43 @@ export async function fetchCourseFlashcards(courseId: string): Promise<{
   return apiFetch(`/api/v1/training/courses/${encodeURIComponent(courseId)}/flashcards`);
 }
 
+export type TrainingStudyStatisticsSection = {
+  section_id: string;
+  section_title: string;
+  accuracy_pct: number;
+  reviews_count: number;
+  miss_count: number;
+};
+
+export type TrainingStudyStatisticsMissedCard = {
+  flashcard_id: string;
+  prompt: string;
+  miss_count: number;
+  section_id: string | null;
+  section_title: string | null;
+};
+
+export type TrainingStudyStatistics = {
+  course_id: string;
+  course_title: string;
+  cards_reviewed_today: number;
+  cards_reviewed_week: number;
+  cards_reviewed_month: number;
+  current_streak_days: number;
+  longest_streak_days: number;
+  accuracy_pct: number | null;
+  cards_mastered: number;
+  cards_due: number;
+  weakest_sections: TrainingStudyStatisticsSection[];
+  most_missed_cards: TrainingStudyStatisticsMissedCard[];
+};
+
+export async function fetchCourseStudyStatistics(courseId: string): Promise<TrainingStudyStatistics> {
+  return apiFetch(
+    `/api/v1/training/courses/${encodeURIComponent(courseId)}/study-statistics`,
+  );
+}
+
 export async function fetchStudyDue(limit = 30): Promise<{ cards: TrainingStudyDueCard[]; due_count: number }> {
   return apiFetch(`/api/v1/training/study/due?limit=${limit}`);
 }

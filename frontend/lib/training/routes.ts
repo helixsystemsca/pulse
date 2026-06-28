@@ -88,6 +88,10 @@ export function trainingFlashcardSectionStudyHref(courseId: string, sectionId: s
   return `${trainingFlashcardCourseHref(courseId)}/${encodeURIComponent(sectionId)}`;
 }
 
+export function trainingFlashcardStatisticsHref(courseId: string): string {
+  return `${trainingFlashcardCourseHref(courseId)}/statistics`;
+}
+
 /** Course section list (legacy name). */
 export function trainingFlashcardStudyHref(courseId: string): string {
   return trainingFlashcardCourseHref(courseId);

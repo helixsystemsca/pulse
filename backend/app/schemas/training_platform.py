@@ -355,6 +355,37 @@ class TrainingCourseFlashcardsOut(BaseModel):
     total: int = 0
 
 
+class TrainingStudyStatisticsSectionOut(BaseModel):
+    section_id: str
+    section_title: str
+    accuracy_pct: int = 0
+    reviews_count: int = 0
+    miss_count: int = 0
+
+
+class TrainingStudyStatisticsMissedCardOut(BaseModel):
+    flashcard_id: str
+    prompt: str
+    miss_count: int = 0
+    section_id: Optional[str] = None
+    section_title: Optional[str] = None
+
+
+class TrainingStudyStatisticsOut(BaseModel):
+    course_id: str
+    course_title: str
+    cards_reviewed_today: int = 0
+    cards_reviewed_week: int = 0
+    cards_reviewed_month: int = 0
+    current_streak_days: int = 0
+    longest_streak_days: int = 0
+    accuracy_pct: Optional[int] = None
+    cards_mastered: int = 0
+    cards_due: int = 0
+    weakest_sections: list[TrainingStudyStatisticsSectionOut] = Field(default_factory=list)
+    most_missed_cards: list[TrainingStudyStatisticsMissedCardOut] = Field(default_factory=list)
+
+
 class TrainingRecordOut(BaseModel):
     id: str
     user_id: str
