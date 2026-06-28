@@ -14,6 +14,7 @@ from app.models.training_platform_models import (
     TrainingSection,
     TrainingUserProgress,
 )
+from app.services.training_platform.card_type_normalizer import normalize_study_type
 from app.schemas.training_platform import (
     TrainingCourseKindApi,
     TrainingCourseOut,
@@ -131,6 +132,7 @@ def flashcard_out(card: TrainingFlashcard) -> TrainingFlashcardOut:
         lesson_id=str(card.lesson_id) if card.lesson_id else None,
         procedure_id=str(card.procedure_id) if card.procedure_id else None,
         card_type=cast(Any, card.card_type or "flashcard"),
+        study_type=normalize_study_type(card.card_type),
         prompt=card.prompt,
         answer=card.answer,
         explanation=card.explanation,

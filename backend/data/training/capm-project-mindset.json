@@ -173,6 +173,115 @@
               "explanation": "PMI emphasizes delivering outcomes and value rather than simply completing work.",
               "difficulty": 3,
               "tags": ["Value", "Outcomes", "Outputs"]
+            },
+            {
+              "id": "CAPM-MIND-FIB-001",
+              "card_type": "fill_blank",
+              "prompt": "Project Managers should act as responsible ________ of organizational resources.",
+              "answer": "stewards",
+              "explanation": "Stewardship involves acting ethically and responsibly while protecting organizational resources.",
+              "difficulty": 1,
+              "tags": ["Stewardship"]
+            },
+            {
+              "id": "CAPM-MIND-FIB-002",
+              "card_type": "fill_blank",
+              "prompt": "The primary objective of every project is to deliver ________.",
+              "answer": "value",
+              "explanation": "Successful projects focus on producing value for stakeholders and the organization.",
+              "difficulty": 2,
+              "tags": ["Value"]
+            },
+            {
+              "id": "CAPM-MIND-FIB-003",
+              "card_type": "fill_blank",
+              "prompt": "________ thinking recognizes that changes in one part of a project may affect many other areas.",
+              "answer": "Systems",
+              "explanation": "Systems thinking encourages considering the project as an interconnected whole.",
+              "difficulty": 2,
+              "tags": ["Systems Thinking"]
+            },
+            {
+              "id": "CAPM-MIND-FIB-004",
+              "card_type": "fill_blank",
+              "prompt": "Project Managers should base important decisions on evidence and ________ thinking rather than assumptions.",
+              "answer": "critical",
+              "explanation": "Critical thinking helps project managers make objective, informed decisions.",
+              "difficulty": 2,
+              "tags": ["Critical Thinking"]
+            },
+            {
+              "id": "CAPM-MIND-FIB-005",
+              "card_type": "fill_blank",
+              "prompt": "Recognizing and managing emotions is known as ________ intelligence.",
+              "answer": "emotional",
+              "explanation": "Emotional intelligence improves leadership, communication, and conflict resolution.",
+              "difficulty": 2,
+              "tags": ["Emotional Intelligence"]
+            },
+            {
+              "id": "CAPM-MIND-FIB-006",
+              "card_type": "fill_blank",
+              "prompt": "The ability to adjust to changing conditions is called ________.",
+              "answer": "adaptability",
+              "explanation": "Adaptability allows project managers to respond effectively to change.",
+              "difficulty": 2,
+              "tags": ["Adaptability"]
+            },
+            {
+              "id": "CAPM-MIND-FIB-007",
+              "card_type": "fill_blank",
+              "prompt": "Recovering quickly after setbacks demonstrates ________.",
+              "answer": "resilience",
+              "explanation": "Resilient project managers remain effective despite challenges.",
+              "difficulty": 2,
+              "tags": ["Resilience"]
+            },
+            {
+              "id": "CAPM-MIND-FIB-008",
+              "card_type": "fill_blank",
+              "prompt": "Project Managers should continuously seek opportunities for ________ improvement.",
+              "answer": "continuous",
+              "explanation": "Continuous improvement encourages learning and better future performance.",
+              "difficulty": 3,
+              "tags": ["Continuous Improvement"]
+            },
+            {
+              "id": "CAPM-MIND-FIB-009",
+              "card_type": "fill_blank",
+              "prompt": "Acting honestly, fairly, and responsibly demonstrates professional ________.",
+              "answer": "ethics",
+              "explanation": "Ethical behavior builds trust and supports long-term project success.",
+              "difficulty": 3,
+              "tags": ["Ethics"]
+            },
+            {
+              "id": "CAPM-MIND-FIB-010",
+              "card_type": "fill_blank",
+              "prompt": "A project should create measurable business ________ rather than simply complete activities.",
+              "answer": "business value",
+              "explanation": "Project success is measured by outcomes and value delivered.",
+              "difficulty": 3,
+              "tags": ["Business Value"],
+              "options": { "blank_answer": "value" }
+            },
+            {
+              "id": "CAPM-MIND-FIB-011",
+              "card_type": "fill_blank",
+              "prompt": "Project Managers should consider how decisions affect the entire ________ rather than a single task.",
+              "answer": "system",
+              "explanation": "Systems thinking encourages considering the broader impact of decisions.",
+              "difficulty": 3,
+              "tags": ["Systems Thinking"]
+            },
+            {
+              "id": "CAPM-MIND-FIB-012",
+              "card_type": "fill_blank",
+              "prompt": "Using lessons learned to improve future performance is an example of organizational ________.",
+              "answer": "learning",
+              "explanation": "Projects contribute to organizational learning through continuous improvement and knowledge sharing.",
+              "difficulty": 3,
+              "tags": ["Lessons Learned", "Continuous Improvement"]
             }
           ],
           "lessons": []

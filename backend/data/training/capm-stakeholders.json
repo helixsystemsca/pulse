@@ -173,6 +173,114 @@
               "explanation": "Changes should be evaluated through the approved change control process before implementation.",
               "difficulty": 5,
               "tags": ["Scenario", "Change Control", "Stakeholders"]
+            },
+            {
+              "id": "CAPM-STAKE-FIB-001",
+              "card_type": "fill_blank",
+              "prompt": "A ________ is any individual, group, or organization that can affect or be affected by a project.",
+              "answer": "stakeholder",
+              "explanation": "Stakeholders may influence or be impacted by project outcomes.",
+              "difficulty": 1,
+              "tags": ["Stakeholders"]
+            },
+            {
+              "id": "CAPM-STAKE-FIB-002",
+              "card_type": "fill_blank",
+              "prompt": "Stakeholder ________ is the process of identifying stakeholders and understanding their interests, influence, and expectations.",
+              "answer": "analysis",
+              "explanation": "Stakeholder analysis helps determine appropriate engagement strategies.",
+              "difficulty": 2,
+              "tags": ["Stakeholder Analysis"]
+            },
+            {
+              "id": "CAPM-STAKE-FIB-003",
+              "card_type": "fill_blank",
+              "prompt": "The Power/Interest Grid classifies stakeholders based on their level of power and ________.",
+              "answer": "interest",
+              "explanation": "The Power/Interest Grid helps prioritize stakeholder engagement.",
+              "difficulty": 2,
+              "tags": ["Power Interest Grid"]
+            },
+            {
+              "id": "CAPM-STAKE-FIB-004",
+              "card_type": "fill_blank",
+              "prompt": "Stakeholders with high power and high interest should be managed ________.",
+              "answer": "closely",
+              "explanation": "These stakeholders require the greatest attention and communication.",
+              "difficulty": 2,
+              "tags": ["Power Interest Grid"]
+            },
+            {
+              "id": "CAPM-STAKE-FIB-005",
+              "card_type": "fill_blank",
+              "prompt": "Stakeholders with high power but low interest should be kept ________.",
+              "answer": "satisfied",
+              "explanation": "Keep these stakeholders satisfied without overwhelming them with unnecessary detail.",
+              "difficulty": 2,
+              "tags": ["Power Interest Grid"]
+            },
+            {
+              "id": "CAPM-STAKE-FIB-006",
+              "card_type": "fill_blank",
+              "prompt": "Stakeholders with low power but high interest should be kept ________.",
+              "answer": "informed",
+              "explanation": "These stakeholders want regular updates even if they have limited authority.",
+              "difficulty": 2,
+              "tags": ["Power Interest Grid"]
+            },
+            {
+              "id": "CAPM-STAKE-FIB-007",
+              "card_type": "fill_blank",
+              "prompt": "Stakeholders with low power and low interest should be ________.",
+              "answer": "monitored",
+              "explanation": "Monitor these stakeholders in case their influence or interest changes.",
+              "difficulty": 2,
+              "tags": ["Power Interest Grid"]
+            },
+            {
+              "id": "CAPM-STAKE-FIB-008",
+              "card_type": "fill_blank",
+              "prompt": "The Salience Model evaluates stakeholders based on power, legitimacy, and ________.",
+              "answer": "urgency",
+              "explanation": "Urgency reflects how quickly a stakeholder's needs require attention.",
+              "difficulty": 2,
+              "tags": ["Salience Model"]
+            },
+            {
+              "id": "CAPM-STAKE-FIB-009",
+              "card_type": "fill_blank",
+              "prompt": "Stakeholder identification is a ________ process that continues throughout the project.",
+              "answer": "continuous",
+              "explanation": "New stakeholders may emerge at any point during the project lifecycle.",
+              "difficulty": 3,
+              "tags": ["Stakeholder Identification"]
+            },
+            {
+              "id": "CAPM-STAKE-FIB-010",
+              "card_type": "fill_blank",
+              "prompt": "The Stakeholder Engagement Assessment Matrix compares a stakeholder's current engagement level with the ________ engagement level.",
+              "answer": "desired",
+              "explanation": "The matrix helps identify where additional engagement is needed.",
+              "difficulty": 3,
+              "tags": ["Stakeholder Engagement"]
+            },
+            {
+              "id": "CAPM-STAKE-FIB-011",
+              "card_type": "fill_blank",
+              "prompt": "One of the Project Manager's responsibilities is managing stakeholder ________.",
+              "answer": "expectations",
+              "explanation": "Setting and managing expectations helps reduce conflict and improve project success.",
+              "difficulty": 3,
+              "tags": ["Stakeholder Management"]
+            },
+            {
+              "id": "CAPM-STAKE-FIB-012",
+              "card_type": "fill_blank",
+              "prompt": "Effective stakeholder engagement depends on timely and appropriate ________.",
+              "answer": "communication",
+              "explanation": "Communication is one of the most important tools for maintaining stakeholder support.",
+              "difficulty": 3,
+              "tags": ["Communication", "Stakeholders"]
             }
           ],
           "lessons": []

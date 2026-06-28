@@ -20,6 +20,26 @@ import {
   flashcardFaceContent,
 } from "@/lib/training/flashcard-deck-filter";
 import {
+  getCardHint,
+  getComparisonLeft,
+  getComparisonRight,
+  getMultipleChoiceChoices,
+  getTrueFalseCorrectValue,
+  getTrueFalseStatement,
+  isComparisonCard,
+  isFillBlankCard,
+  isFillBlankResponseCorrect,
+  isInteractiveStudyCard,
+  isMultipleChoiceCard,
+  isShuffledMultipleChoiceResponseCorrect,
+  isTrueFalseCard,
+  isTrueFalseResponseCorrect,
+  multipleChoiceOptionLabel,
+  shuffleMultipleChoiceForSession,
+  studyTypeLabel,
+  type ShuffledMultipleChoice,
+} from "@/lib/training/flashcard-card-types";
+import {
   readFlashcardStudyPosition,
   resolveFlashcardStudyIndex,
   writeFlashcardStudyPosition,
@@ -28,7 +48,9 @@ import { recordFlashcardStudySession } from "@/lib/training/flashcard-study-sess
 import { useFlashcardStudySettings } from "@/lib/training/flashcard-study-settings";
 import {
   computeStudySessionStats,
+  makeSessionReviewEvent,
   mergeReviewAfterRating,
+  type SessionReviewEvent,
 } from "@/lib/training/flashcard-session-stats";
 import { trainingFlashcardCourseHref } from "@/lib/training/routes";
 import {
@@ -86,7 +108,12 @@ export function CapmFlashcardStudy({ courseId, sectionId }: Props) {
   const [animating, setAnimating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reviewedCount, setReviewedCount] = useState(0);
-  const [sessionRatings, setSessionRatings] = useState<TrainingReviewRating[]>([]);
+  const [sessionEvents, setSessionEvents] = useState<SessionReviewEvent[]>([]);
+  const [trueFalseResponse, setTrueFalseResponse] = useState<boolean | null>(null);
+  const [multipleChoiceIndex, setMultipleChoiceIndex] = useState<number | null>(null);
+  const [mcShuffle, setMcShuffle] = useState<ShuffledMultipleChoice | null>(null);
+  const [fillBlankInput, setFillBlankInput] = useState("");
+  const [fillBlankSubmitted, setFillBlankSubmitted] = useState(false);
 
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
@@ -99,6 +126,26 @@ export function CapmFlashcardStudy({ courseId, sectionId }: Props) {
   const total = cards.length;
   const current = cards[index];
   const card = current?.flashcard;
+  const isTrueFalse = card ? isTrueFalseCard(card) : false;
+  const isMultipleChoice = card ? isMultipleChoiceCard(card) : false;
+  const isFillBlank = card ? isFillBlankCard(card) : false;
+  const isComparison = card ? isComparisonCard(card) : false;
+  const isInteractive = card ? isInteractiveStudyCard(card) : false;
+  const mcChoices = mcShuffle?.displayChoices ?? (card && isMultipleChoice ? getMultipleChoiceChoices(card) : []);
+  const mcCorrectDisplayIndex = mcShuffle?.correctDisplayIndex ?? 0;
+  const trueFalseCorrect =
+    isTrueFalse && card && trueFalseResponse !== null
+      ? isTrueFalseResponseCorrect(card, trueFalseResponse)
+      : null;
+  const multipleChoiceCorrect =
+    isMultipleChoice && card && multipleChoiceIndex !== null && mcShuffle
+      ? isShuffledMultipleChoiceResponseCorrect(mcShuffle, multipleChoiceIndex)
+      : null;
+  const fillBlankCorrect =
+    isFillBlank && card && fillBlankSubmitted
+      ? isFillBlankResponseCorrect(card, fillBlankInput)
+      : null;
+  const cardHint = card ? getCardHint(card) : null;
   cardsRef.current = cards;
   const faces = card ? flashcardFaceContent(card, settings) : null;
   const cardNumber = total > 0 ? index + 1 : 0;
@@ -110,7 +157,7 @@ export function CapmFlashcardStudy({ courseId, sectionId }: Props) {
   );
   const sessionComplete = reviewedCount >= total && total > 0;
   const interactionsLocked = animating || submitting || loading;
-  const sessionStats = computeStudySessionStats(cards, reviewedCount, sessionRatings);
+  const sessionStats = computeStudySessionStats(cards, reviewedCount, sessionEvents);
 
   const recordStudySession = useCallback(() => {
     if (sessionRecordedRef.current || sessionStartRef.current == null) return;
@@ -209,7 +256,7 @@ export function CapmFlashcardStudy({ courseId, sectionId }: Props) {
         setIndex(startIndex);
         setFlipped(false);
         setReviewedCount(0);
-        setSessionRatings([]);
+        setSessionEvents([]);
         sessionStartRef.current = Date.now();
         sessionRecordedRef.current = false;
         cardsReviewedRef.current = 0;
@@ -256,9 +303,23 @@ export function CapmFlashcardStudy({ courseId, sectionId }: Props) {
     }
   }, [sessionComplete, recordStudySession]);
 
-  const rateCard = useCallback(
-    async (rating: TrainingReviewRating) => {
-      if (!card || interactionsLocked || !flipped) return;
+  useEffect(() => {
+    setTrueFalseResponse(null);
+    setMultipleChoiceIndex(null);
+    setFillBlankInput("");
+    setFillBlankSubmitted(false);
+    setFlipped(false);
+    if (card && isMultipleChoiceCard(card)) {
+      setMcShuffle(shuffleMultipleChoiceForSession(card));
+    } else {
+      setMcShuffle(null);
+    }
+  }, [index, card?.id]);
+
+  const submitReview = useCallback(
+    async (rating: TrainingReviewRating, opts?: { skipFlipCheck?: boolean }) => {
+      if (!card || interactionsLocked) return;
+      if (!opts?.skipFlipCheck && !flipped) return;
       if (rating !== "again" && rating !== "good" && rating !== "easy") return;
       setSubmitting(true);
       setError(null);
@@ -269,13 +330,15 @@ export function CapmFlashcardStudy({ courseId, sectionId }: Props) {
             i === index ? mergeReviewAfterRating(item, rating, response) : item,
           ),
         );
-        setSessionRatings((prev) => [...prev, rating]);
+        setSessionEvents((prev) => [...prev, makeSessionReviewEvent(cardsRef.current[index]!, rating)]);
         const nextReviewed = reviewedCount + 1;
         setReviewedCount(nextReviewed);
         cardsReviewedRef.current = nextReviewed;
 
         const nextIndex = index + 1;
-        runWithAnimationLock(() => setFlipped(false));
+        if (!isInteractive) {
+          runWithAnimationLock(() => setFlipped(false));
+        }
         window.setTimeout(() => {
           if (nextIndex < total) {
             applyIndex(nextIndex);
@@ -287,7 +350,59 @@ export function CapmFlashcardStudy({ courseId, sectionId }: Props) {
         setSubmitting(false);
       }
     },
-    [applyIndex, card, flipped, flipMs, index, interactionsLocked, reviewedCount, runWithAnimationLock, total],
+    [
+      applyIndex,
+      card,
+      flipped,
+      flipMs,
+      index,
+      interactionsLocked,
+      isInteractive,
+      reviewedCount,
+      runWithAnimationLock,
+      total,
+    ],
+  );
+
+  const rateCard = useCallback(
+    async (rating: TrainingReviewRating) => {
+      await submitReview(rating);
+    },
+    [submitReview],
+  );
+
+  const answerMultipleChoice = useCallback(
+    (selectedDisplayIndex: number) => {
+      if (!card || !isMultipleChoiceCard(card) || !mcShuffle || interactionsLocked || multipleChoiceIndex !== null) {
+        return;
+      }
+      if (selectedDisplayIndex < 0 || selectedDisplayIndex >= mcShuffle.displayChoices.length) return;
+      setMultipleChoiceIndex(selectedDisplayIndex);
+      const rating: TrainingReviewRating = isShuffledMultipleChoiceResponseCorrect(mcShuffle, selectedDisplayIndex)
+        ? "good"
+        : "again";
+      void submitReview(rating, { skipFlipCheck: true });
+    },
+    [card, interactionsLocked, mcShuffle, multipleChoiceIndex, submitReview],
+  );
+
+  const answerFillBlank = useCallback(() => {
+    if (!card || !isFillBlankCard(card) || interactionsLocked || fillBlankSubmitted) return;
+    const trimmed = fillBlankInput.trim();
+    if (!trimmed) return;
+    setFillBlankSubmitted(true);
+    const rating: TrainingReviewRating = isFillBlankResponseCorrect(card, trimmed) ? "good" : "again";
+    void submitReview(rating, { skipFlipCheck: true });
+  }, [card, fillBlankInput, fillBlankSubmitted, interactionsLocked, submitReview]);
+
+  const answerTrueFalse = useCallback(
+    (response: boolean) => {
+      if (!card || !isTrueFalseCard(card) || interactionsLocked || trueFalseResponse !== null) return;
+      setTrueFalseResponse(response);
+      const rating: TrainingReviewRating = isTrueFalseResponseCorrect(card, response) ? "good" : "again";
+      void submitReview(rating, { skipFlipCheck: true });
+    },
+    [card, interactionsLocked, submitReview, trueFalseResponse],
   );
 
   useEffect(() => {
@@ -299,8 +414,10 @@ export function CapmFlashcardStudy({ courseId, sectionId }: Props) {
       if (target?.closest("input, textarea, select, [contenteditable=true]")) return;
 
       if (e.code === "Space") {
-        e.preventDefault();
-        toggleFlip();
+        if (!isInteractive) {
+          e.preventDefault();
+          toggleFlip();
+        }
         return;
       }
       if (e.code === "ArrowLeft") {
@@ -326,12 +443,49 @@ export function CapmFlashcardStudy({ courseId, sectionId }: Props) {
       if (e.key === "3" && flipped) {
         e.preventDefault();
         void rateCard("easy");
+        return;
+      }
+      if (isTrueFalse && trueFalseResponse === null) {
+        if (e.key === "t" || e.key === "T") {
+          e.preventDefault();
+          answerTrueFalse(true);
+          return;
+        }
+        if (e.key === "f" || e.key === "F") {
+          e.preventDefault();
+          answerTrueFalse(false);
+          return;
+        }
+      }
+      if (isMultipleChoice && multipleChoiceIndex === null) {
+        const num = Number.parseInt(e.key, 10);
+        if (num >= 1 && num <= mcChoices.length) {
+          e.preventDefault();
+          answerMultipleChoice(num - 1);
+        }
       }
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [flipped, goTo, index, interactionsLocked, loading, rateCard, sessionComplete, toggleFlip]);
+  }, [
+    answerMultipleChoice,
+    answerTrueFalse,
+    flipped,
+    goTo,
+    index,
+    interactionsLocked,
+    isInteractive,
+    isMultipleChoice,
+    isTrueFalse,
+    loading,
+    mcChoices.length,
+    multipleChoiceIndex,
+    rateCard,
+    sessionComplete,
+    toggleFlip,
+    trueFalseResponse,
+  ]);
 
   const onTouchStart = (e: React.TouchEvent) => {
     if (interactionsLocked || sessionComplete) return;
@@ -475,6 +629,258 @@ export function CapmFlashcardStudy({ courseId, sectionId }: Props) {
             </Link>
           </div>
         </div>
+      ) : isTrueFalse && card ? (
+        <>
+          <div className="flashcard-scene">
+            <div className="flashcard-face flashcard-face--static">
+              <p className="text-xs font-bold uppercase tracking-wider text-teal-700 dark:text-teal-400">
+                {studyTypeLabel(card)}
+              </p>
+              <p className="mt-4 text-xl font-medium leading-relaxed text-ds-foreground">
+                {getTrueFalseStatement(card)}
+              </p>
+              {trueFalseResponse !== null && trueFalseCorrect !== null ? (
+                <div
+                  className={cn(
+                    "flashcard-tf-feedback",
+                    trueFalseCorrect ? "flashcard-tf-feedback--correct" : "flashcard-tf-feedback--incorrect",
+                  )}
+                >
+                  {trueFalseCorrect ? "Correct" : "Incorrect"} — correct answer:{" "}
+                  {getTrueFalseCorrectValue(card) ? "True" : "False"}
+                </div>
+              ) : null}
+              {card.explanation && trueFalseResponse !== null ? (
+                <p className="mt-3 rounded-lg bg-ds-muted/15 px-3 py-2 text-sm text-ds-muted">{card.explanation}</p>
+              ) : null}
+            </div>
+          </div>
+
+          {error ? <div className={uiCalloutWarning}>{error}</div> : null}
+
+          {trueFalseResponse === null ? (
+            <div className="space-y-2">
+              <div className="flashcard-tf-row">
+                <button
+                  type="button"
+                  disabled={interactionsLocked}
+                  onClick={() => answerTrueFalse(true)}
+                  className="flashcard-tf-btn text-emerald-800 dark:text-emerald-300"
+                >
+                  True
+                </button>
+                <button
+                  type="button"
+                  disabled={interactionsLocked}
+                  onClick={() => answerTrueFalse(false)}
+                  className="flashcard-tf-btn text-red-800 dark:text-red-300"
+                >
+                  False
+                </button>
+              </div>
+              <p className="text-center text-xs text-ds-muted">
+                Tap True or False
+                <span className="hidden sm:inline"> · keyboard T / F</span>
+              </p>
+            </div>
+          ) : (
+            <p className="text-center text-xs text-ds-muted">Next card…</p>
+          )}
+
+          <div className="flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => goTo(index - 1)}
+              disabled={index === 0 || interactionsLocked}
+              className="inline-flex items-center gap-1 rounded-lg border border-ds-border px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40 hover:bg-ds-muted/20"
+            >
+              <ChevronLeft className="h-4 w-4" aria-hidden />
+              Previous
+            </button>
+            <button
+              type="button"
+              onClick={() => goTo(index + 1)}
+              disabled={index >= total - 1 || interactionsLocked}
+              className="inline-flex items-center gap-1 rounded-lg border border-ds-border px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40 hover:bg-ds-muted/20"
+            >
+              Next
+              <ChevronRight className="h-4 w-4" aria-hidden />
+            </button>
+          </div>
+        </>
+      ) : isMultipleChoice && card && mcChoices.length > 0 ? (
+        <>
+          <div className="flashcard-scene">
+            <div className="flashcard-face flashcard-face--static">
+              <p className="text-xs font-bold uppercase tracking-wider text-teal-700 dark:text-teal-400">
+                {studyTypeLabel(card)}
+              </p>
+              <p className="mt-4 text-xl font-medium leading-relaxed text-ds-foreground">{card.prompt}</p>
+              {multipleChoiceIndex !== null && multipleChoiceCorrect !== null ? (
+                <div
+                  className={cn(
+                    "flashcard-tf-feedback",
+                    multipleChoiceCorrect ? "flashcard-tf-feedback--correct" : "flashcard-tf-feedback--incorrect",
+                  )}
+                >
+                  {multipleChoiceCorrect ? "Correct" : "Incorrect"}
+                </div>
+              ) : null}
+              {card.explanation && multipleChoiceIndex !== null ? (
+                <p className="mt-3 rounded-lg bg-ds-muted/15 px-3 py-2 text-sm text-ds-muted">{card.explanation}</p>
+              ) : null}
+            </div>
+          </div>
+
+          {error ? <div className={uiCalloutWarning}>{error}</div> : null}
+
+          <div className="space-y-2">
+            <div className="flashcard-mc-list">
+              {mcChoices.map((choice, choiceIndex) => {
+                const answered = multipleChoiceIndex !== null;
+                const selected = multipleChoiceIndex === choiceIndex;
+                const isCorrectOption = choiceIndex === mcCorrectDisplayIndex;
+                return (
+                  <button
+                    key={`${choiceIndex}-${choice}`}
+                    type="button"
+                    disabled={interactionsLocked || answered}
+                    onClick={() => answerMultipleChoice(choiceIndex)}
+                    className={cn(
+                      "flashcard-mc-btn",
+                      answered && selected && multipleChoiceCorrect && "flashcard-mc-btn--correct",
+                      answered && selected && !multipleChoiceCorrect && "flashcard-mc-btn--incorrect",
+                      answered && !selected && isCorrectOption && "flashcard-mc-btn--reveal-correct",
+                      answered && !selected && !isCorrectOption && "opacity-60",
+                    )}
+                  >
+                    <span className="flashcard-mc-btn-key">{multipleChoiceOptionLabel(choiceIndex)}</span>
+                    <span className="min-w-0 flex-1">{choice}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {multipleChoiceIndex === null ? (
+              <p className="text-center text-xs text-ds-muted">
+                Tap an answer
+                {mcChoices.length <= 9 ? (
+                  <span className="hidden sm:inline">
+                    {" "}
+                    · press 1–{mcChoices.length} on keyboard
+                  </span>
+                ) : null}
+              </p>
+            ) : (
+              <p className="text-center text-xs text-ds-muted">Next card…</p>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => goTo(index - 1)}
+              disabled={index === 0 || interactionsLocked}
+              className="inline-flex items-center gap-1 rounded-lg border border-ds-border px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40 hover:bg-ds-muted/20"
+            >
+              <ChevronLeft className="h-4 w-4" aria-hidden />
+              Previous
+            </button>
+            <button
+              type="button"
+              onClick={() => goTo(index + 1)}
+              disabled={index >= total - 1 || interactionsLocked}
+              className="inline-flex items-center gap-1 rounded-lg border border-ds-border px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40 hover:bg-ds-muted/20"
+            >
+              Next
+              <ChevronRight className="h-4 w-4" aria-hidden />
+            </button>
+          </div>
+        </>
+      ) : isFillBlank && card ? (
+        <>
+          <div className="flashcard-scene">
+            <div className="flashcard-face flashcard-face--static">
+              <p className="text-xs font-bold uppercase tracking-wider text-teal-700 dark:text-teal-400">
+                {studyTypeLabel(card)}
+              </p>
+              <p className="mt-4 text-xl font-medium leading-relaxed text-ds-foreground">{card.prompt}</p>
+              {cardHint && !fillBlankSubmitted ? (
+                <p className="mt-3 text-sm text-ds-muted">Hint: {cardHint}</p>
+              ) : null}
+              {fillBlankSubmitted && fillBlankCorrect !== null ? (
+                <div
+                  className={cn(
+                    "flashcard-tf-feedback",
+                    fillBlankCorrect ? "flashcard-tf-feedback--correct" : "flashcard-tf-feedback--incorrect",
+                  )}
+                >
+                  {fillBlankCorrect ? "Correct" : "Incorrect"}
+                  {!fillBlankCorrect ? (
+                    <span className="block mt-1 text-sm font-normal">Answer: {card.answer}</span>
+                  ) : null}
+                </div>
+              ) : null}
+              {card.explanation && fillBlankSubmitted ? (
+                <p className="mt-3 rounded-lg bg-ds-muted/15 px-3 py-2 text-sm text-ds-muted">{card.explanation}</p>
+              ) : null}
+            </div>
+          </div>
+
+          {error ? <div className={uiCalloutWarning}>{error}</div> : null}
+
+          {!fillBlankSubmitted ? (
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={fillBlankInput}
+                onChange={(e) => setFillBlankInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    answerFillBlank();
+                  }
+                }}
+                disabled={interactionsLocked}
+                placeholder="Type your answer"
+                className="flashcard-fill-input"
+                autoComplete="off"
+                spellCheck={false}
+              />
+              <button
+                type="button"
+                disabled={interactionsLocked || !fillBlankInput.trim()}
+                onClick={answerFillBlank}
+                className="flashcard-fill-submit"
+              >
+                Submit
+              </button>
+              <p className="text-center text-xs text-ds-muted">Enter your answer and submit</p>
+            </div>
+          ) : (
+            <p className="text-center text-xs text-ds-muted">Next card…</p>
+          )}
+
+          <div className="flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => goTo(index - 1)}
+              disabled={index === 0 || interactionsLocked}
+              className="inline-flex items-center gap-1 rounded-lg border border-ds-border px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40 hover:bg-ds-muted/20"
+            >
+              <ChevronLeft className="h-4 w-4" aria-hidden />
+              Previous
+            </button>
+            <button
+              type="button"
+              onClick={() => goTo(index + 1)}
+              disabled={index >= total - 1 || interactionsLocked}
+              className="inline-flex items-center gap-1 rounded-lg border border-ds-border px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40 hover:bg-ds-muted/20"
+            >
+              Next
+              <ChevronRight className="h-4 w-4" aria-hidden />
+            </button>
+          </div>
+        </>
       ) : (
         <>
           <div
@@ -496,9 +902,29 @@ export function CapmFlashcardStudy({ courseId, sectionId }: Props) {
               >
                 <div className="flashcard-face">
                   <p className="text-xs font-bold uppercase tracking-wider text-teal-700 dark:text-teal-400">
-                    {faces?.frontLabel}
+                    {card ? studyTypeLabel(card) : faces?.frontLabel}
                   </p>
-                  <p className="mt-4 text-xl font-medium leading-relaxed text-ds-foreground">{faces?.frontText}</p>
+                  {isComparison && card ? (
+                    <div className="flashcard-comparison-row mt-4">
+                      <div className="flashcard-comparison-col">
+                        <p className="text-[10px] font-bold uppercase tracking-wide text-ds-muted">Left</p>
+                        <p className="mt-2 text-base font-medium leading-relaxed text-ds-foreground">
+                          {getComparisonLeft(card) || "—"}
+                        </p>
+                      </div>
+                      <div className="flashcard-comparison-col">
+                        <p className="text-[10px] font-bold uppercase tracking-wide text-ds-muted">Right</p>
+                        <p className="mt-2 text-base font-medium leading-relaxed text-ds-foreground">
+                          {getComparisonRight(card) || "—"}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="mt-4 text-xl font-medium leading-relaxed text-ds-foreground">{faces?.frontText}</p>
+                  )}
+                  {cardHint && !flipped ? (
+                    <p className="mt-3 text-sm text-ds-muted">Hint: {cardHint}</p>
+                  ) : null}
                   <p className="mt-8 text-center text-xs text-ds-muted">
                     Tap or press <kbd className="rounded border border-ds-border px-1.5 py-0.5 font-mono text-[10px]">Space</kbd> to flip
                   </p>

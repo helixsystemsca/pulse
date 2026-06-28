@@ -146,6 +146,116 @@
               "explanation": "Only Directive PMOs directly manage projects.",
               "difficulty": 3,
               "tags": ["PMO", "scenario"]
+            },
+            {
+              "id": "CAPM-ENV-FIB-001",
+              "card_type": "fill_blank",
+              "prompt": "Factors outside the project team's control that influence a project are known as Enterprise Environmental ________.",
+              "answer": "Factors",
+              "explanation": "Enterprise Environmental Factors (EEFs) are conditions that influence project success.",
+              "difficulty": 1,
+              "tags": ["EEF"]
+            },
+            {
+              "id": "CAPM-ENV-FIB-002",
+              "card_type": "fill_blank",
+              "prompt": "Policies, procedures, templates, and lessons learned are examples of Organizational Process ________.",
+              "answer": "Assets",
+              "explanation": "OPAs are internal organizational knowledge and resources used to support projects.",
+              "difficulty": 2,
+              "tags": ["OPA"]
+            },
+            {
+              "id": "CAPM-ENV-FIB-003",
+              "card_type": "fill_blank",
+              "prompt": "Unlike OPAs, Enterprise Environmental Factors may be ________ or external to the organization.",
+              "answer": "internal",
+              "explanation": "EEFs can originate from inside or outside the organization.",
+              "difficulty": 2,
+              "tags": ["EEF"]
+            },
+            {
+              "id": "CAPM-ENV-FIB-004",
+              "card_type": "fill_blank",
+              "prompt": "Historical project information is typically stored as an Organizational Process ________.",
+              "answer": "Asset",
+              "explanation": "Historical records are valuable organizational knowledge for future projects.",
+              "difficulty": 2,
+              "tags": ["OPA", "Lessons Learned"]
+            },
+            {
+              "id": "CAPM-ENV-FIB-005",
+              "card_type": "fill_blank",
+              "prompt": "Government regulations are an example of an external Enterprise Environmental ________.",
+              "answer": "Factor",
+              "explanation": "Regulations are outside the organization's control but influence projects.",
+              "difficulty": 2,
+              "tags": ["EEF"]
+            },
+            {
+              "id": "CAPM-ENV-FIB-006",
+              "card_type": "fill_blank",
+              "prompt": "A Project Management Office is commonly abbreviated as ________.",
+              "answer": "PMO",
+              "explanation": "PMO stands for Project Management Office.",
+              "difficulty": 2,
+              "tags": ["PMO"]
+            },
+            {
+              "id": "CAPM-ENV-FIB-007",
+              "card_type": "fill_blank",
+              "prompt": "A ________ PMO provides support with templates, best practices, and training while allowing Project Managers to maintain authority.",
+              "answer": "Supportive",
+              "explanation": "Supportive PMOs provide guidance with minimal control.",
+              "difficulty": 2,
+              "tags": ["PMO"]
+            },
+            {
+              "id": "CAPM-ENV-FIB-008",
+              "card_type": "fill_blank",
+              "prompt": "A ________ PMO requires compliance with standardized project management practices.",
+              "answer": "Controlling",
+              "explanation": "Controlling PMOs enforce organizational standards.",
+              "difficulty": 2,
+              "tags": ["PMO"]
+            },
+            {
+              "id": "CAPM-ENV-FIB-009",
+              "card_type": "fill_blank",
+              "prompt": "A ________ PMO has the highest level of authority and may directly manage projects.",
+              "answer": "Directive",
+              "explanation": "Directive PMOs have the greatest control over projects and project managers.",
+              "difficulty": 2,
+              "tags": ["PMO"]
+            },
+            {
+              "id": "CAPM-ENV-FIB-010",
+              "card_type": "fill_blank",
+              "prompt": "Templates developed by an organization are considered Organizational Process ________.",
+              "answer": "process assets",
+              "explanation": "Templates are reusable organizational resources.",
+              "difficulty": 3,
+              "tags": ["OPA"],
+              "options": { "blank_answer": "Assets" }
+            },
+            {
+              "id": "CAPM-ENV-FIB-011",
+              "card_type": "fill_blank",
+              "prompt": "Organizational culture is considered an Enterprise Environmental ________.",
+              "answer": "environmental factor",
+              "explanation": "Culture influences how projects are managed but is not a process asset.",
+              "difficulty": 3,
+              "tags": ["EEF"],
+              "options": { "blank_answer": "Factor" }
+            },
+            {
+              "id": "CAPM-ENV-FIB-012",
+              "card_type": "fill_blank",
+              "prompt": "One major purpose of a PMO is to improve project ________ across the organization.",
+              "answer": "consistency",
+              "explanation": "PMOs promote standardized project management practices and governance.",
+              "difficulty": 3,
+              "tags": ["PMO", "Governance"]
             }
           ],
           "lessons": []

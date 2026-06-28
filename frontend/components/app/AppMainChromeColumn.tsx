@@ -29,7 +29,7 @@ export function AppMainChromeColumn({
         />
       ) : null}
       <main
-        className={["relative z-0 min-h-0 flex-1 overflow-y-auto bg-ds-bg", mainClassName].filter(Boolean).join(" ")}
+        className={["relative z-0 min-h-0 flex-1 overflow-x-hidden overflow-y-auto bg-ds-bg", mainClassName].filter(Boolean).join(" ")}
       >
         <div
           className={[

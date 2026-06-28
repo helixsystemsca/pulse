@@ -173,6 +173,141 @@
               "explanation": "PMI generally favors collaborative problem-solving because it addresses the root cause while preserving relationships.",
               "difficulty": 5,
               "tags": ["Scenario", "Conflict Management"]
+            },
+            {
+              "id": "CAPM-RES-FIB-001",
+              "card_type": "fill_blank",
+              "prompt": "Project ________ Management includes the processes required to identify, acquire, develop, manage, and control project resources.",
+              "answer": "Resource",
+              "explanation": "Resources include people, equipment, facilities, materials, and supplies.",
+              "difficulty": 1,
+              "tags": ["Resource Management"]
+            },
+            {
+              "id": "CAPM-RES-FIB-002",
+              "card_type": "fill_blank",
+              "prompt": "A Responsibility Assignment Matrix is commonly abbreviated as ________.",
+              "answer": "RAM",
+              "explanation": "A RAM maps project work to responsible resources.",
+              "difficulty": 2,
+              "tags": ["RAM"]
+            },
+            {
+              "id": "CAPM-RES-FIB-003",
+              "card_type": "fill_blank",
+              "prompt": "The most common type of Responsibility Assignment Matrix is the ________ chart.",
+              "answer": "RACI",
+              "explanation": "RACI identifies Responsible, Accountable, Consulted, and Informed roles.",
+              "difficulty": 2,
+              "tags": ["RACI"]
+            },
+            {
+              "id": "CAPM-RES-FIB-004",
+              "card_type": "fill_blank",
+              "prompt": "In a RACI chart, the person who performs the work is ________.",
+              "answer": "Responsible",
+              "explanation": "The Responsible role completes the assigned work.",
+              "difficulty": 2,
+              "tags": ["RACI"]
+            },
+            {
+              "id": "CAPM-RES-FIB-005",
+              "card_type": "fill_blank",
+              "prompt": "In a RACI chart, the person ultimately answerable for the outcome is ________.",
+              "answer": "Accountable",
+              "explanation": "Each activity should normally have only one Accountable person.",
+              "difficulty": 2,
+              "tags": ["RACI"]
+            },
+            {
+              "id": "CAPM-RES-FIB-006",
+              "card_type": "fill_blank",
+              "prompt": "Adjusting the schedule to resolve resource over-allocation is called resource ________.",
+              "answer": "leveling",
+              "explanation": "Resource leveling may extend the project schedule.",
+              "difficulty": 2,
+              "tags": ["Resource Leveling"]
+            },
+            {
+              "id": "CAPM-RES-FIB-007",
+              "card_type": "fill_blank",
+              "prompt": "Adjusting activities within available float without changing the project completion date is called resource ________.",
+              "answer": "smoothing",
+              "explanation": "Resource smoothing balances workload while maintaining the project finish date.",
+              "difficulty": 2,
+              "tags": ["Resource Smoothing"]
+            },
+            {
+              "id": "CAPM-RES-FIB-008",
+              "card_type": "fill_blank",
+              "prompt": "A graphical display of resource usage over time is called a resource ________.",
+              "answer": "histogram",
+              "explanation": "Histograms help identify resource shortages or over-allocation.",
+              "difficulty": 2,
+              "tags": ["Resource Histogram"]
+            },
+            {
+              "id": "CAPM-RES-FIB-009",
+              "card_type": "fill_blank",
+              "prompt": "The first stage of Tuckman's team development model is ________.",
+              "answer": "Forming",
+              "explanation": "During Forming, team members are introduced and begin understanding the project.",
+              "difficulty": 2,
+              "tags": ["Tuckman"]
+            },
+            {
+              "id": "CAPM-RES-FIB-010",
+              "card_type": "fill_blank",
+              "prompt": "The stage of team development where conflict commonly occurs is ________.",
+              "answer": "Storming",
+              "explanation": "Storming is characterized by disagreements and role clarification.",
+              "difficulty": 2,
+              "tags": ["Tuckman"]
+            },
+            {
+              "id": "CAPM-RES-FIB-011",
+              "card_type": "fill_blank",
+              "prompt": "The stage where the team works effectively toward project goals is ________.",
+              "answer": "Performing",
+              "explanation": "Performing teams are highly collaborative and productive.",
+              "difficulty": 2,
+              "tags": ["Tuckman"]
+            },
+            {
+              "id": "CAPM-RES-FIB-012",
+              "card_type": "fill_blank",
+              "prompt": "The preferred conflict resolution technique in project management is ________.",
+              "answer": "collaboration",
+              "explanation": "Collaboration addresses the root cause and seeks a win-win outcome.",
+              "difficulty": 3,
+              "tags": ["Conflict Resolution"]
+            },
+            {
+              "id": "CAPM-RES-FIB-013",
+              "card_type": "fill_blank",
+              "prompt": "The conflict resolution technique where both parties give up something is called ________.",
+              "answer": "compromise",
+              "explanation": "Compromise results in a solution that partially satisfies everyone.",
+              "difficulty": 3,
+              "tags": ["Conflict Resolution"]
+            },
+            {
+              "id": "CAPM-RES-FIB-014",
+              "card_type": "fill_blank",
+              "prompt": "Choosing to temporarily avoid a conflict is known as ________.",
+              "answer": "withdraw",
+              "explanation": "Withdrawal (avoidance) may be appropriate when emotions are high or more information is needed.",
+              "difficulty": 3,
+              "tags": ["Conflict Resolution"]
+            },
+            {
+              "id": "CAPM-RES-FIB-015",
+              "card_type": "fill_blank",
+              "prompt": "A document that establishes team values, working agreements, and expected behaviors is called a team ________.",
+              "answer": "charter",
+              "explanation": "A team charter promotes collaboration and sets expectations early.",
+              "difficulty": 3,
+              "tags": ["Team Charter"]
             }
           ],
           "lessons": []

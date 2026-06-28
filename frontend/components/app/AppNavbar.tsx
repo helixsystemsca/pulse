@@ -5,7 +5,7 @@
  */
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Bell, ChevronDown, Image as ImageIcon, KeyRound, LogOut, Megaphone, MessageSquare, Settings, X } from "lucide-react";
+import { Bell, ChevronDown, Image as ImageIcon, KeyRound, LogOut, Megaphone, Menu, MessageSquare, Settings, X } from "lucide-react";
 import { AppHeaderWordmark } from "@/components/branding/AppHeaderWordmark";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -30,6 +30,7 @@ import { firstAccessibleClassicTenantHref } from "@/lib/rbac/session-access";
 import { cn } from "@/lib/cn";
 import { isApiMode } from "@/lib/api";
 import { fetchFeedbackUnreadCount } from "@/lib/feedbackApi";
+import { useSidebarState } from "@/components/app/SidebarState";
 
 const FEEDBACK_HEADER_TIP_DISMISSED_KEY = "pulse_feedback_header_tip_dismissed_v1";
 function IconBadgeCount({ count }: { count: number }) {
@@ -55,6 +56,7 @@ export type AppNavbarProps = {
 export function AppNavbar({ notificationCount: notificationCountProp = 0, messagesCount = 0 }: AppNavbarProps) {
   const pathname = usePathname();
   const { authed, session } = usePulseAuth();
+  const { toggleSidebar } = useSidebarState();
   const [userOpen, setUserOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -210,7 +212,17 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
         className="flex min-h-0 w-full flex-1 items-center justify-between gap-4 overflow-visible pr-3 sm:pr-4"
         style={{ minHeight: "var(--pulse-header-bar-height)" }}
       >
-        <div className="flex min-w-0 flex-1 items-center pl-1.5 sm:pl-2">
+        <div className="flex min-w-0 flex-1 items-center gap-1 pl-1 sm:pl-1.5 sm:gap-2">
+          {authed ? (
+            <button
+              type="button"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white/95 hover:bg-ds-chrome-hover active:bg-ds-chrome-active lg:hidden"
+              aria-label="Open navigation menu"
+              onClick={toggleSidebar}
+            >
+              <Menu className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+            </button>
+          ) : null}
           <Link
             href={logoHref}
             className="inline-flex min-w-0 items-center whitespace-nowrap leading-none"

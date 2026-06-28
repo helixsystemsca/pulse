@@ -173,6 +173,114 @@
               "explanation": "Many organizations distribute project management responsibilities across roles such as Product Owner, Scrum Master, Team Lead, or Functional Manager.",
               "difficulty": 1,
               "tags": ["Roles"]
+            },
+            {
+              "id": "CAPM-PMR-FIB-001",
+              "card_type": "fill_blank",
+              "prompt": "The Project Manager is responsible for leading the project team to achieve the project's ________.",
+              "answer": "objectives",
+              "explanation": "The Project Manager is accountable for guiding the team toward successful project outcomes.",
+              "difficulty": 1,
+              "tags": ["Project Manager", "Leadership"]
+            },
+            {
+              "id": "CAPM-PMR-FIB-002",
+              "card_type": "fill_blank",
+              "prompt": "One of the Project Manager's primary responsibilities is balancing competing project ________.",
+              "answer": "constraints",
+              "explanation": "Project Managers continually balance scope, schedule, cost, quality, resources, and risk.",
+              "difficulty": 2,
+              "tags": ["Project Manager", "Constraints"]
+            },
+            {
+              "id": "CAPM-PMR-FIB-003",
+              "card_type": "fill_blank",
+              "prompt": "A successful Project Manager focuses on delivering project ________ rather than simply completing tasks.",
+              "answer": "value",
+              "explanation": "Modern project management emphasizes business value over completing activities.",
+              "difficulty": 2,
+              "tags": ["Value", "Project Manager"]
+            },
+            {
+              "id": "CAPM-PMR-FIB-004",
+              "card_type": "fill_blank",
+              "prompt": "The Project Manager should communicate with stakeholders in a ________ and timely manner.",
+              "answer": "clear",
+              "explanation": "Clear communication reduces misunderstandings and builds trust.",
+              "difficulty": 2,
+              "tags": ["Communication"]
+            },
+            {
+              "id": "CAPM-PMR-FIB-005",
+              "card_type": "fill_blank",
+              "prompt": "The Project Manager is responsible for managing project ________, but not necessarily performing the technical work.",
+              "answer": "work",
+              "explanation": "The Project Manager coordinates and leads the project rather than completing every technical task.",
+              "difficulty": 2,
+              "tags": ["Project Manager"]
+            },
+            {
+              "id": "CAPM-PMR-FIB-006",
+              "card_type": "fill_blank",
+              "prompt": "Building ________ among stakeholders is an important part of effective project leadership.",
+              "answer": "trust",
+              "explanation": "Trust improves communication, collaboration, and stakeholder engagement.",
+              "difficulty": 2,
+              "tags": ["Leadership", "Stakeholders"]
+            },
+            {
+              "id": "CAPM-PMR-FIB-007",
+              "card_type": "fill_blank",
+              "prompt": "The Project Manager should encourage open ________ within the project team.",
+              "answer": "communication",
+              "explanation": "Open communication helps identify issues early and strengthens collaboration.",
+              "difficulty": 2,
+              "tags": ["Communication", "Leadership"]
+            },
+            {
+              "id": "CAPM-PMR-FIB-008",
+              "card_type": "fill_blank",
+              "prompt": "When problems occur, the Project Manager should focus on solving the ________ cause rather than treating symptoms.",
+              "answer": "root",
+              "explanation": "Addressing root causes leads to more effective and lasting solutions.",
+              "difficulty": 3,
+              "tags": ["Problem Solving"]
+            },
+            {
+              "id": "CAPM-PMR-FIB-009",
+              "card_type": "fill_blank",
+              "prompt": "Effective Project Managers support the team's success by removing ________.",
+              "answer": "obstacles",
+              "explanation": "Removing blockers allows the team to stay productive and focused.",
+              "difficulty": 3,
+              "tags": ["Leadership", "Servant Leadership"]
+            },
+            {
+              "id": "CAPM-PMR-FIB-010",
+              "card_type": "fill_blank",
+              "prompt": "The Project Manager should make decisions using available ________ rather than assumptions whenever possible.",
+              "answer": "information",
+              "explanation": "Evidence-based decision making leads to better project outcomes.",
+              "difficulty": 3,
+              "tags": ["Decision Making"]
+            },
+            {
+              "id": "CAPM-PMR-FIB-011",
+              "card_type": "fill_blank",
+              "prompt": "One important leadership responsibility is resolving ________ before they negatively affect project performance.",
+              "answer": "conflicts",
+              "explanation": "Early conflict resolution helps maintain team effectiveness.",
+              "difficulty": 3,
+              "tags": ["Conflict Management"]
+            },
+            {
+              "id": "CAPM-PMR-FIB-012",
+              "card_type": "fill_blank",
+              "prompt": "The Project Manager continuously monitors project ________ to support informed decision making.",
+              "answer": "performance",
+              "explanation": "Performance data helps identify trends, issues, and opportunities for improvement.",
+              "difficulty": 3,
+              "tags": ["Performance", "Monitoring"]
             }
           ],
           "lessons": []

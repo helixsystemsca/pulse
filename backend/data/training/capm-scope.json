@@ -173,6 +173,117 @@
               "explanation": "All requested changes should be evaluated for impacts to scope, schedule, cost, quality, risk, and resources before approval.",
               "difficulty": 2,
               "tags": ["Change Control"]
+            },
+            {
+              "id": "CAPM-SCOPE-FIB-001",
+              "card_type": "fill_blank",
+              "prompt": "Project ________ defines the work required to deliver the project's products, services, or results.",
+              "answer": "scope",
+              "explanation": "Project scope defines the work, not the product itself.",
+              "difficulty": 1,
+              "tags": ["Scope"]
+            },
+            {
+              "id": "CAPM-SCOPE-FIB-002",
+              "card_type": "fill_blank",
+              "prompt": "Product ________ describes the features and functions of the project's deliverable.",
+              "answer": "product scope",
+              "explanation": "Product scope focuses on what is being created.",
+              "difficulty": 2,
+              "tags": ["Product Scope"],
+              "options": { "blank_answer": "scope" }
+            },
+            {
+              "id": "CAPM-SCOPE-FIB-003",
+              "card_type": "fill_blank",
+              "prompt": "A ________ is a condition or capability that must be met by the project or product.",
+              "answer": "requirement",
+              "explanation": "Requirements define stakeholder needs and expectations.",
+              "difficulty": 2,
+              "tags": ["Requirements"]
+            },
+            {
+              "id": "CAPM-SCOPE-FIB-004",
+              "card_type": "fill_blank",
+              "prompt": "The Work Breakdown Structure is commonly abbreviated as ________.",
+              "answer": "WBS",
+              "explanation": "The WBS decomposes project work into manageable components.",
+              "difficulty": 2,
+              "tags": ["WBS"]
+            },
+            {
+              "id": "CAPM-SCOPE-FIB-005",
+              "card_type": "fill_blank",
+              "prompt": "The ________ is the lowest level of the Work Breakdown Structure.",
+              "answer": "work package",
+              "explanation": "Work packages are the units used for estimating, scheduling, and assigning work.",
+              "difficulty": 2,
+              "tags": ["WBS", "Work Package"]
+            },
+            {
+              "id": "CAPM-SCOPE-FIB-006",
+              "card_type": "fill_blank",
+              "prompt": "The approved scope statement, WBS, and WBS Dictionary together form the scope ________.",
+              "answer": "baseline",
+              "explanation": "The scope baseline is used to measure and control scope performance.",
+              "difficulty": 2,
+              "tags": ["Scope Baseline"]
+            },
+            {
+              "id": "CAPM-SCOPE-FIB-007",
+              "card_type": "fill_blank",
+              "prompt": "Uncontrolled expansion of project scope without formal approval is called scope ________.",
+              "answer": "creep",
+              "explanation": "Scope creep is a common cause of project overruns.",
+              "difficulty": 2,
+              "tags": ["Scope Creep"]
+            },
+            {
+              "id": "CAPM-SCOPE-FIB-008",
+              "card_type": "fill_blank",
+              "prompt": "Adding extra features that were never requested by the customer is known as ________ plating.",
+              "answer": "gold",
+              "explanation": "Gold plating adds unnecessary work and should be avoided.",
+              "difficulty": 3,
+              "tags": ["Gold Plating"]
+            },
+            {
+              "id": "CAPM-SCOPE-FIB-009",
+              "card_type": "fill_blank",
+              "prompt": "The process of obtaining formal customer acceptance of completed deliverables is called Validate ________.",
+              "answer": "validate scope",
+              "explanation": "Validate Scope focuses on customer acceptance, not quality inspection.",
+              "difficulty": 2,
+              "tags": ["Validate Scope"],
+              "options": { "blank_answer": "Scope" }
+            },
+            {
+              "id": "CAPM-SCOPE-FIB-010",
+              "card_type": "fill_blank",
+              "prompt": "The process of monitoring project and product scope while managing approved changes is called Control ________.",
+              "answer": "control scope",
+              "explanation": "Control Scope ensures only approved changes are implemented.",
+              "difficulty": 3,
+              "tags": ["Control Scope"],
+              "options": { "blank_answer": "Scope" }
+            },
+            {
+              "id": "CAPM-SCOPE-FIB-011",
+              "card_type": "fill_blank",
+              "prompt": "Every requested change should go through the project's formal change ________ process.",
+              "answer": "control",
+              "explanation": "Change control evaluates impacts before implementation.",
+              "difficulty": 3,
+              "tags": ["Change Control"]
+            },
+            {
+              "id": "CAPM-SCOPE-FIB-012",
+              "card_type": "fill_blank",
+              "prompt": "The WBS follows the ________% Rule, meaning it includes all project work.",
+              "answer": "100",
+              "explanation": "The 100% Rule states that the WBS captures all scope required to complete the project.",
+              "difficulty": 3,
+              "tags": ["WBS", "100% Rule"]
             }
           ],
           "lessons": []

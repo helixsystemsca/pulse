@@ -191,6 +191,114 @@
               "explanation": "PMI emphasizes situational leadership rather than relying on a single leadership style.",
               "difficulty": 2,
               "tags": ["Leadership", "Situational"]
+            },
+            {
+              "id": "CAPM-LEAD-FIB-001",
+              "card_type": "fill_blank",
+              "prompt": "Leadership is the ability to ________ others toward achieving a common goal.",
+              "answer": "influence",
+              "explanation": "Project Managers lead primarily through influence rather than formal authority.",
+              "difficulty": 1,
+              "tags": ["Leadership"]
+            },
+            {
+              "id": "CAPM-LEAD-FIB-002",
+              "card_type": "fill_blank",
+              "prompt": "A ________ leader focuses on supporting the team and removing obstacles to success.",
+              "answer": "servant",
+              "explanation": "Servant leadership is emphasized in Agile and modern project management.",
+              "difficulty": 2,
+              "tags": ["Servant Leadership"]
+            },
+            {
+              "id": "CAPM-LEAD-FIB-003",
+              "card_type": "fill_blank",
+              "prompt": "Project Managers should adapt their leadership ________ to fit the needs of the team and project.",
+              "answer": "style",
+              "explanation": "No single leadership style is appropriate for every situation.",
+              "difficulty": 2,
+              "tags": ["Leadership"]
+            },
+            {
+              "id": "CAPM-LEAD-FIB-004",
+              "card_type": "fill_blank",
+              "prompt": "________ intelligence is the ability to recognize and manage emotions in yourself and others.",
+              "answer": "Emotional",
+              "explanation": "Emotional intelligence improves communication, leadership, and conflict resolution.",
+              "difficulty": 2,
+              "tags": ["Emotional Intelligence"]
+            },
+            {
+              "id": "CAPM-LEAD-FIB-005",
+              "card_type": "fill_blank",
+              "prompt": "A Project Manager should demonstrate active ________ when communicating with stakeholders.",
+              "answer": "listening",
+              "explanation": "Listening carefully helps build trust and identify concerns early.",
+              "difficulty": 2,
+              "tags": ["Communication"]
+            },
+            {
+              "id": "CAPM-LEAD-FIB-006",
+              "card_type": "fill_blank",
+              "prompt": "Strong leaders encourage ________ so team members feel comfortable raising issues early.",
+              "answer": "trust",
+              "explanation": "Trust creates psychological safety and improves collaboration.",
+              "difficulty": 2,
+              "tags": ["Leadership", "Trust"]
+            },
+            {
+              "id": "CAPM-LEAD-FIB-007",
+              "card_type": "fill_blank",
+              "prompt": "The preferred conflict resolution technique in most situations is ________.",
+              "answer": "collaboration",
+              "explanation": "Collaboration seeks a win-win solution that addresses the root cause of the conflict.",
+              "difficulty": 3,
+              "tags": ["Conflict Management"]
+            },
+            {
+              "id": "CAPM-LEAD-FIB-008",
+              "card_type": "fill_blank",
+              "prompt": "Project Managers should resolve conflicts as ________ as practical.",
+              "answer": "early",
+              "explanation": "Small conflicts are easier to resolve before they escalate.",
+              "difficulty": 3,
+              "tags": ["Conflict Management"]
+            },
+            {
+              "id": "CAPM-LEAD-FIB-009",
+              "card_type": "fill_blank",
+              "prompt": "Leadership focuses on inspiring people, while management focuses on coordinating ________.",
+              "answer": "work",
+              "explanation": "Leadership and management complement each other in successful projects.",
+              "difficulty": 2,
+              "tags": ["Leadership", "Management"]
+            },
+            {
+              "id": "CAPM-LEAD-FIB-010",
+              "card_type": "fill_blank",
+              "prompt": "One responsibility of a servant leader is removing ________ that prevent the team from succeeding.",
+              "answer": "impediments",
+              "explanation": "Servant leaders enable team success by eliminating barriers.",
+              "difficulty": 3,
+              "tags": ["Servant Leadership"]
+            },
+            {
+              "id": "CAPM-LEAD-FIB-011",
+              "card_type": "fill_blank",
+              "prompt": "Successful leaders encourage continuous ________ by reflecting on lessons learned and improving team performance.",
+              "answer": "improvement",
+              "explanation": "Continuous improvement is a core principle of effective leadership and Agile practices.",
+              "difficulty": 3,
+              "tags": ["Continuous Improvement"]
+            },
+            {
+              "id": "CAPM-LEAD-FIB-012",
+              "card_type": "fill_blank",
+              "prompt": "Project Managers should empower team members to make appropriate ________ whenever possible.",
+              "answer": "decisions",
+              "explanation": "Empowered teams are generally more engaged, responsive, and effective.",
+              "difficulty": 3,
+              "tags": ["Leadership", "Empowerment"]
             }
           ],
           "lessons": []

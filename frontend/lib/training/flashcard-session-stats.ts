@@ -1,4 +1,5 @@
 import type { TrainingReviewRating, TrainingStudyDueCard } from "@/lib/training/trainingPlatformApi";
+import { resolveStudyType } from "@/lib/training/flashcard-card-types";
 import { isMasteredFlashcard } from "@/lib/training/flashcard-deck-filter";
 
 export function isDueFlashcard(card: TrainingStudyDueCard, now: Date = new Date()): boolean {
@@ -8,12 +9,25 @@ export function isDueFlashcard(card: TrainingStudyDueCard, now: Date = new Date(
   return new Date(review.next_review_at) <= now;
 }
 
+export type SessionReviewEvent = {
+  studyType: string;
+  rating: TrainingReviewRating;
+};
+
+export type StudySessionStatsByCardType = {
+  studyType: string;
+  reviewsCount: number;
+  correctCount: number;
+  accuracyPct: number | null;
+};
+
 export type StudySessionStats = {
   cardsRemaining: number;
   mastered: number;
   reviewDue: number;
   currentStreak: number;
   sessionAccuracy: number | null;
+  byCardType: StudySessionStatsByCardType[];
 };
 
 export function sessionStreakFromRatings(ratings: readonly TrainingReviewRating[]): number {
@@ -35,18 +49,54 @@ export function sessionAccuracyPct(ratings: readonly TrainingReviewRating[]): nu
   return Math.round((correct / ratings.length) * 100);
 }
 
+function isCorrectRating(rating: TrainingReviewRating): boolean {
+  return rating === "good" || rating === "easy";
+}
+
+export function aggregateSessionStatsByCardType(
+  events: readonly SessionReviewEvent[],
+): StudySessionStatsByCardType[] {
+  const buckets = new Map<string, { total: number; correct: number }>();
+  for (const event of events) {
+    const bucket = buckets.get(event.studyType) ?? { total: 0, correct: 0 };
+    bucket.total += 1;
+    if (isCorrectRating(event.rating)) bucket.correct += 1;
+    buckets.set(event.studyType, bucket);
+  }
+  return [...buckets.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([studyType, bucket]) => ({
+      studyType,
+      reviewsCount: bucket.total,
+      correctCount: bucket.correct,
+      accuracyPct: bucket.total > 0 ? Math.round((bucket.correct / bucket.total) * 100) : null,
+    }));
+}
+
 export function computeStudySessionStats(
   cards: TrainingStudyDueCard[],
   reviewedCount: number,
-  sessionRatings: readonly TrainingReviewRating[],
+  sessionEvents: readonly SessionReviewEvent[],
 ): StudySessionStats {
   const now = new Date();
+  const ratings = sessionEvents.map((e) => e.rating);
   return {
     cardsRemaining: Math.max(0, cards.length - reviewedCount),
     mastered: cards.filter((c) => isMasteredFlashcard(c, now)).length,
     reviewDue: cards.filter((c) => isDueFlashcard(c, now)).length,
-    currentStreak: sessionStreakFromRatings(sessionRatings),
-    sessionAccuracy: sessionAccuracyPct(sessionRatings),
+    currentStreak: sessionStreakFromRatings(ratings),
+    sessionAccuracy: sessionAccuracyPct(ratings),
+    byCardType: aggregateSessionStatsByCardType(sessionEvents),
+  };
+}
+
+export function makeSessionReviewEvent(
+  card: TrainingStudyDueCard,
+  rating: TrainingReviewRating,
+): SessionReviewEvent {
+  return {
+    studyType: resolveStudyType(card.flashcard),
+    rating,
   };
 }
 

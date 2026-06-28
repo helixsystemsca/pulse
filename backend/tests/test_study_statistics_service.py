@@ -12,9 +12,10 @@ from app.services.training_platform.study_statistics_service import (
 
 
 class _Card:
-    def __init__(self, card_id: str, lesson_id: str | None) -> None:
+    def __init__(self, card_id: str, lesson_id: str | None, card_type: str = "flashcard") -> None:
         self.id = card_id
         self.lesson_id = lesson_id
+        self.card_type = card_type
 
 
 class _Review:
@@ -71,3 +72,18 @@ def test_collect_review_events_prefers_review_log() -> None:
     events = _collect_review_events(cards, reviews)  # type: ignore[arg-type]
     assert len(events) == 2
     assert events[0].rating == "again"
+    assert events[0].study_type == "flashcard"
+
+
+def test_collect_review_events_includes_study_type_alias() -> None:
+    cards = [_Card("fc-mcq", "lesson-1", card_type="multiple_choice")]
+    reviews = {
+        "fc-mcq": _Review(
+            "fc-mcq",
+            last_rating="good",
+            last_reviewed_at=datetime(2026, 6, 27, tzinfo=timezone.utc),
+        )
+    }
+    events = _collect_review_events(cards, reviews)  # type: ignore[arg-type]
+    assert len(events) == 1
+    assert events[0].study_type == "mcq"

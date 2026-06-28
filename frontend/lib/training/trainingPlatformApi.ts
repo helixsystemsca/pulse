@@ -83,12 +83,14 @@ export type TrainingFlashcard = {
   course_id: string | null;
   lesson_id: string | null;
   card_type: string;
+  study_type?: string;
   prompt: string;
   answer: string;
   explanation: string | null;
   difficulty: number;
   tags: string[];
   sort_order: number;
+  options: Record<string, unknown>;
 };
 
 export type TrainingStudyDueCard = {
@@ -192,6 +194,13 @@ export type TrainingStudyStatisticsMissedCard = {
   section_title: string | null;
 };
 
+export type TrainingStudyStatisticsByCardType = {
+  study_type: string;
+  reviews_count: number;
+  correct_count: number;
+  accuracy_pct: number;
+};
+
 export type TrainingStudyStatistics = {
   course_id: string;
   course_title: string;
@@ -205,6 +214,7 @@ export type TrainingStudyStatistics = {
   cards_due: number;
   weakest_sections: TrainingStudyStatisticsSection[];
   most_missed_cards: TrainingStudyStatisticsMissedCard[];
+  by_card_type: TrainingStudyStatisticsByCardType[];
 };
 
 export async function fetchCourseStudyStatistics(courseId: string): Promise<TrainingStudyStatistics> {

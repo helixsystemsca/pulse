@@ -160,7 +160,38 @@ export function FlashcardStatisticsPage({ courseId }: Props) {
             </div>
           </section>
 
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <section className="rounded-xl border border-ds-border bg-ds-card p-5 shadow-sm lg:col-span-2">
+              <h3 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-ds-muted">
+                <BarChart3 className="h-4 w-4" aria-hidden />
+                Accuracy by card type
+              </h3>
+              {(stats.by_card_type ?? []).length === 0 ? (
+                <p className="mt-4 text-sm text-ds-muted">
+                  Study more cards to see performance by question type.
+                </p>
+              ) : (
+                <ul className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                  {(stats.by_card_type ?? []).map((row) => (
+                    <li
+                      key={row.study_type}
+                      className="rounded-lg border border-ds-border px-4 py-3"
+                    >
+                      <p className="text-sm font-medium capitalize text-ds-foreground">
+                        {row.study_type.replace(/_/g, " ")}
+                      </p>
+                      <p className="mt-1 text-xs text-ds-muted">
+                        {row.reviews_count} reviews · {row.correct_count} correct
+                      </p>
+                      <p className="mt-2 text-lg font-semibold tabular-nums text-teal-700 dark:text-teal-400">
+                        {row.accuracy_pct}%
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
             <section className="rounded-xl border border-ds-border bg-ds-card p-5 shadow-sm">
               <h3 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-ds-muted">
                 <TrendingDown className="h-4 w-4" aria-hidden />

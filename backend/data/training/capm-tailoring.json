@@ -119,6 +119,99 @@
               "explanation": "Tailoring means selecting the most appropriate processes—not simply removing work.",
               "difficulty": 1,
               "tags": ["Tailoring"]
+            },
+            {
+              "id": "CAPM-TAILOR-FIB-001",
+              "card_type": "fill_blank",
+              "prompt": "Project ________ is the process of adapting project management approaches to best fit the project and its environment.",
+              "answer": "tailoring",
+              "explanation": "Every project is unique and may require adjustments to processes, methods, and artifacts.",
+              "difficulty": 1,
+              "tags": ["Tailoring"]
+            },
+            {
+              "id": "CAPM-TAILOR-FIB-002",
+              "card_type": "fill_blank",
+              "prompt": "Tailoring does not mean skipping project management—it means applying it ________.",
+              "answer": "appropriately",
+              "explanation": "The goal is to use the right amount of project management for the situation.",
+              "difficulty": 2,
+              "tags": ["Tailoring"]
+            },
+            {
+              "id": "CAPM-TAILOR-FIB-003",
+              "card_type": "fill_blank",
+              "prompt": "Project size, complexity, uncertainty, and organizational culture are all factors that influence ________ decisions.",
+              "answer": "tailoring decisions",
+              "explanation": "Many project characteristics affect how project management should be applied.",
+              "difficulty": 2,
+              "tags": ["Tailoring"],
+              "options": { "blank_answer": "tailoring" }
+            },
+            {
+              "id": "CAPM-TAILOR-FIB-004",
+              "card_type": "fill_blank",
+              "prompt": "Projects with highly stable requirements often benefit from a more ________ delivery approach.",
+              "answer": "predictive",
+              "explanation": "Stable requirements generally support predictive planning and execution.",
+              "difficulty": 2,
+              "tags": ["Tailoring", "Predictive"]
+            },
+            {
+              "id": "CAPM-TAILOR-FIB-005",
+              "card_type": "fill_blank",
+              "prompt": "Projects with rapidly changing requirements often benefit from a more ________ delivery approach.",
+              "answer": "agile",
+              "explanation": "Agile methods accommodate frequent change and customer feedback.",
+              "difficulty": 2,
+              "tags": ["Tailoring", "Agile"]
+            },
+            {
+              "id": "CAPM-TAILOR-FIB-006",
+              "card_type": "fill_blank",
+              "prompt": "Tailoring should always support successful project ________ rather than simply following every process.",
+              "answer": "outcomes",
+              "explanation": "The objective is delivering value, not blindly following a methodology.",
+              "difficulty": 3,
+              "tags": ["Tailoring", "Outcomes"]
+            },
+            {
+              "id": "CAPM-TAILOR-FIB-007",
+              "card_type": "fill_blank",
+              "prompt": "Tailoring decisions should consider both the project environment and stakeholder ________.",
+              "answer": "needs",
+              "explanation": "Successful tailoring balances organizational requirements with stakeholder expectations.",
+              "difficulty": 3,
+              "tags": ["Tailoring", "Stakeholders"]
+            },
+            {
+              "id": "CAPM-TAILOR-FIB-008",
+              "card_type": "fill_blank",
+              "prompt": "Using the exact same methodology for every project without adjustment is generally considered poor ________.",
+              "answer": "tailoring practice",
+              "explanation": "Projects differ in complexity, risk, and objectives, so project management should be adapted accordingly.",
+              "difficulty": 3,
+              "tags": ["Tailoring"],
+              "options": { "blank_answer": "tailoring" }
+            },
+            {
+              "id": "CAPM-TAILOR-FIB-009",
+              "card_type": "fill_blank",
+              "prompt": "A hybrid approach is itself an example of project ________.",
+              "answer": "project tailoring",
+              "explanation": "Hybrid delivery combines predictive and agile practices to fit the project's needs.",
+              "difficulty": 2,
+              "tags": ["Tailoring", "Hybrid"],
+              "options": { "blank_answer": "tailoring" }
+            },
+            {
+              "id": "CAPM-TAILOR-FIB-010",
+              "card_type": "fill_blank",
+              "prompt": "The purpose of tailoring is to maximize project ________ while minimizing unnecessary work.",
+              "answer": "success",
+              "explanation": "Tailoring applies only the practices that add value to a specific project.",
+              "difficulty": 2,
+              "tags": ["Tailoring", "Success"]
             }
           ],
           "lessons": []

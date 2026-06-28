@@ -58,12 +58,15 @@ describe("flashcard session stats", () => {
         last_reviewed_at: past,
       }),
     ];
-    const stats = computeStudySessionStats(deck, 1, ["good"]);
+    const stats = computeStudySessionStats(deck, 1, [{ studyType: "flashcard", rating: "good" }]);
     expect(stats.cardsRemaining).toBe(2);
     expect(stats.mastered).toBe(1);
     expect(stats.reviewDue).toBe(2);
     expect(stats.currentStreak).toBe(1);
     expect(stats.sessionAccuracy).toBe(100);
+    expect(stats.byCardType).toEqual([
+      { studyType: "flashcard", reviewsCount: 1, correctCount: 1, accuracyPct: 100 },
+    ]);
   });
 
   it("detects due cards", () => {

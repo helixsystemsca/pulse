@@ -110,6 +110,115 @@
               "explanation": "Projects may deliver intangible benefits such as goodwill, strategic alignment, or improved reputation.",
               "difficulty": 1,
               "tags": ["benefits", "truefalse"]
+            },
+            {
+              "id": "CAPM-PF-FIB-001",
+              "card_type": "fill_blank",
+              "prompt": "A project is a ________ endeavor undertaken to create a unique product, service, or result.",
+              "answer": "temporary",
+              "explanation": "Projects have a defined beginning and end.",
+              "difficulty": 1,
+              "tags": ["Project", "Definition"]
+            },
+            {
+              "id": "CAPM-PF-FIB-002",
+              "card_type": "fill_blank",
+              "prompt": "Projects create a ________ product, service, or result.",
+              "answer": "unique",
+              "explanation": "Every project produces a unique outcome.",
+              "difficulty": 1,
+              "tags": ["Project", "Definition"]
+            },
+            {
+              "id": "CAPM-PF-FIB-003",
+              "card_type": "fill_blank",
+              "prompt": "Unlike projects, ________ are ongoing and repetitive.",
+              "answer": "operations",
+              "explanation": "Operations sustain the business while projects introduce change.",
+              "difficulty": 2,
+              "tags": ["Operations"]
+            },
+            {
+              "id": "CAPM-PF-FIB-004",
+              "card_type": "fill_blank",
+              "prompt": "A project may end when its objectives have been ________.",
+              "answer": "achieved",
+              "explanation": "Successfully meeting objectives is one reason a project closes.",
+              "difficulty": 2,
+              "tags": ["Project Closure"]
+            },
+            {
+              "id": "CAPM-PF-FIB-005",
+              "card_type": "fill_blank",
+              "prompt": "Benefits that can be easily measured in dollars are considered ________ benefits.",
+              "answer": "tangible",
+              "explanation": "Revenue, profit, and cost savings are tangible benefits.",
+              "difficulty": 2,
+              "tags": ["Benefits"]
+            },
+            {
+              "id": "CAPM-PF-FIB-006",
+              "card_type": "fill_blank",
+              "prompt": "Improved reputation and customer satisfaction are examples of ________ benefits.",
+              "answer": "intangible",
+              "explanation": "Not every project benefit can be measured financially.",
+              "difficulty": 2,
+              "tags": ["Benefits"]
+            },
+            {
+              "id": "CAPM-PF-FIB-007",
+              "card_type": "fill_blank",
+              "prompt": "Projects are initiated to deliver ________ to the organization and stakeholders.",
+              "answer": "value",
+              "explanation": "Successful projects focus on outcomes rather than simply producing deliverables.",
+              "difficulty": 2,
+              "tags": ["Value"]
+            },
+            {
+              "id": "CAPM-PF-FIB-008",
+              "card_type": "fill_blank",
+              "prompt": "A project can be terminated if the business ________ no longer exists.",
+              "answer": "need",
+              "explanation": "Projects should only continue while they provide organizational value.",
+              "difficulty": 2,
+              "tags": ["Business Need"]
+            },
+            {
+              "id": "CAPM-PF-FIB-009",
+              "card_type": "fill_blank",
+              "prompt": "One common reason to initiate a project is market ________.",
+              "answer": "demand",
+              "explanation": "Organizations often launch projects to respond to market opportunities.",
+              "difficulty": 2,
+              "tags": ["Business Case"]
+            },
+            {
+              "id": "CAPM-PF-FIB-010",
+              "card_type": "fill_blank",
+              "prompt": "Projects are temporary, but the ________ they create may continue providing value after the project closes.",
+              "answer": "deliverables",
+              "explanation": "The project ends, but its products or services may continue to exist for years.",
+              "difficulty": 3,
+              "tags": ["Deliverables"]
+            },
+            {
+              "id": "CAPM-PF-FIB-011",
+              "card_type": "fill_blank",
+              "prompt": "A project is considered successful when it delivers the intended ________.",
+              "answer": "intended value",
+              "explanation": "Completing work is important, but delivering value is the ultimate objective.",
+              "difficulty": 2,
+              "tags": ["Value"],
+              "options": { "blank_answer": "value" }
+            },
+            {
+              "id": "CAPM-PF-FIB-012",
+              "card_type": "fill_blank",
+              "prompt": "Customer requests, legal requirements, and new technology are common project ________.",
+              "answer": "drivers",
+              "explanation": "Projects are initiated in response to organizational or external drivers.",
+              "difficulty": 2,
+              "tags": ["Project Drivers"]
             }
           ],
           "lessons": []

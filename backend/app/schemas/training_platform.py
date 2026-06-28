@@ -5,7 +5,9 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+from app.services.training_platform.card_type_normalizer import coerce_import_flashcard_dict
 
 # ---------------------------------------------------------------------------
 # Shared literals (aligned with training_platform_models enums)
@@ -14,7 +16,18 @@ from pydantic import BaseModel, Field
 TrainingCourseStatusApi = Literal["draft", "published", "archived"]
 TrainingCourseKindApi = Literal["certification", "onboarding", "compliance", "procedure", "internal", "safety"]
 TrainingFlashcardTypeApi = Literal[
-    "flashcard", "multiple_choice", "true_false", "ordering", "fill_blank", "scenario", "matching"
+    "flashcard",
+    "multiple_choice",
+    "true_false",
+    "mcq",
+    "tf",
+    "ordering",
+    "fill_blank",
+    "scenario",
+    "comparison",
+    "matching",
+    "definition",
+    "recall",
 ]
 TrainingReviewRatingApi = Literal["again", "unsure", "good", "easy"]
 TrainingQuizKindApi = Literal["practice", "lesson", "final_exam", "knowledge_check"]
@@ -212,6 +225,7 @@ class TrainingFlashcardOut(BaseModel):
     lesson_id: Optional[str] = None
     procedure_id: Optional[str] = None
     card_type: TrainingFlashcardTypeApi = "flashcard"
+    study_type: str = "flashcard"
     prompt: str
     answer: str
     explanation: Optional[str] = None
@@ -363,6 +377,13 @@ class TrainingStudyStatisticsSectionOut(BaseModel):
     miss_count: int = 0
 
 
+class TrainingStudyStatisticsByCardTypeOut(BaseModel):
+    study_type: str
+    reviews_count: int = 0
+    correct_count: int = 0
+    accuracy_pct: int = 0
+
+
 class TrainingStudyStatisticsMissedCardOut(BaseModel):
     flashcard_id: str
     prompt: str
@@ -384,6 +405,7 @@ class TrainingStudyStatisticsOut(BaseModel):
     cards_due: int = 0
     weakest_sections: list[TrainingStudyStatisticsSectionOut] = Field(default_factory=list)
     most_missed_cards: list[TrainingStudyStatisticsMissedCardOut] = Field(default_factory=list)
+    by_card_type: list[TrainingStudyStatisticsByCardTypeOut] = Field(default_factory=list)
 
 
 class TrainingRecordOut(BaseModel):
@@ -461,6 +483,13 @@ class TrainingImportFlashcardIn(BaseModel):
     tags: list[str] = Field(default_factory=list)
     options: dict[str, Any] = Field(default_factory=dict)
     knowledge_edges: list[TrainingKnowledgeEdgeCreate] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_legacy_import_fields(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            return coerce_import_flashcard_dict(data)
+        return data
 
 
 class TrainingImportQuestionIn(BaseModel):

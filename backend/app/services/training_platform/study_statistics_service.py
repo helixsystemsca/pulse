@@ -18,10 +18,12 @@ from app.models.training_platform_models import (
     TrainingSection,
 )
 from app.schemas.training_platform import (
+    TrainingStudyStatisticsByCardTypeOut,
     TrainingStudyStatisticsMissedCardOut,
     TrainingStudyStatisticsOut,
     TrainingStudyStatisticsSectionOut,
 )
+from app.services.training_platform.card_type_normalizer import normalize_study_type
 
 _SECTION_FLASHCARD_SLUG_SUFFIX = "__flashcards"
 _HIDDEN_SECTION_SLUG = "__course_flashcards__"
@@ -35,6 +37,7 @@ class _ReviewEvent:
     lesson_id: str | None
     rating: str
     reviewed_at: datetime
+    study_type: str
 
 
 def _utc_now() -> datetime:
@@ -124,6 +127,7 @@ def _collect_review_events(
     events: list[_ReviewEvent] = []
     for card in cards:
         cid = str(card.id)
+        study_type = normalize_study_type(card.card_type)
         review = reviews.get(cid)
         if review is None:
             continue
@@ -142,6 +146,7 @@ def _collect_review_events(
                         lesson_id=str(card.lesson_id) if card.lesson_id else None,
                         rating=rating,
                         reviewed_at=reviewed_at,
+                        study_type=study_type,
                     )
                 )
         elif review.last_reviewed_at and review.last_rating:
@@ -153,6 +158,7 @@ def _collect_review_events(
                         lesson_id=str(card.lesson_id) if card.lesson_id else None,
                         rating=str(review.last_rating),
                         reviewed_at=reviewed_at,
+                        study_type=study_type,
                     )
                 )
     return events
@@ -274,6 +280,25 @@ async def get_course_study_statistics(
         )
     weakest_sections.sort(key=lambda s: (s.accuracy_pct, -s.miss_count, s.section_title))
 
+    type_stats: dict[str, dict[str, int]] = defaultdict(lambda: {"total": 0, "correct": 0})
+    for event in events:
+        bucket = type_stats[event.study_type]
+        bucket["total"] += 1
+        if event.rating in _CORRECT_RATINGS:
+            bucket["correct"] += 1
+    by_card_type: list[TrainingStudyStatisticsByCardTypeOut] = []
+    for study_type, bucket in sorted(type_stats.items(), key=lambda x: x[0]):
+        total = int(bucket["total"])
+        correct = int(bucket["correct"])
+        by_card_type.append(
+            TrainingStudyStatisticsByCardTypeOut(
+                study_type=study_type,
+                reviews_count=total,
+                correct_count=correct,
+                accuracy_pct=round((correct / total) * 100) if total > 0 else 0,
+            )
+        )
+
     most_missed: list[TrainingStudyStatisticsMissedCardOut] = []
     for flashcard_id, miss_count in sorted(card_misses.items(), key=lambda x: (-x[1], x[0]))[:8]:
         lesson_id = card_lessons.get(flashcard_id)
@@ -301,4 +326,5 @@ async def get_course_study_statistics(
         cards_due=cards_due,
         weakest_sections=weakest_sections[:5],
         most_missed_cards=most_missed,
+        by_card_type=by_card_type,
     )

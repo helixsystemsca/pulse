@@ -146,6 +146,114 @@
               "explanation": "Predictive projects rely on baselines, making late changes costly. Agile expects and manages change throughout development.",
               "difficulty": 3,
               "tags": ["cost-of-change", "comparison"]
+            },
+            {
+              "id": "CAPM-DA-FIB-001",
+              "card_type": "fill_blank",
+              "prompt": "In a ________ approach, requirements are defined early and delivery typically occurs once at the end of the project.",
+              "answer": "predictive",
+              "explanation": "Predictive projects emphasize upfront planning and stable requirements.",
+              "difficulty": 1,
+              "tags": ["Predictive"]
+            },
+            {
+              "id": "CAPM-DA-FIB-002",
+              "card_type": "fill_blank",
+              "prompt": "An ________ approach delivers usable portions of the product throughout the project.",
+              "answer": "incremental",
+              "explanation": "Each increment adds new functionality while providing value.",
+              "difficulty": 2,
+              "tags": ["Incremental"]
+            },
+            {
+              "id": "CAPM-DA-FIB-003",
+              "card_type": "fill_blank",
+              "prompt": "An ________ approach repeatedly refines the solution before final delivery.",
+              "answer": "iterative",
+              "explanation": "Each iteration improves the overall solution.",
+              "difficulty": 2,
+              "tags": ["Iterative"]
+            },
+            {
+              "id": "CAPM-DA-FIB-004",
+              "card_type": "fill_blank",
+              "prompt": "________ delivery emphasizes frequent customer feedback and adapting to changing requirements.",
+              "answer": "Agile",
+              "explanation": "Agile embraces change and delivers value frequently.",
+              "difficulty": 2,
+              "tags": ["Agile"]
+            },
+            {
+              "id": "CAPM-DA-FIB-005",
+              "card_type": "fill_blank",
+              "prompt": "A ________ approach combines elements of predictive and agile delivery methods.",
+              "answer": "hybrid",
+              "explanation": "Hybrid projects tailor the delivery approach to fit the work.",
+              "difficulty": 2,
+              "tags": ["Hybrid"]
+            },
+            {
+              "id": "CAPM-DA-FIB-006",
+              "card_type": "fill_blank",
+              "prompt": "A review performed at the end of a project phase to determine whether work should continue is called a ________ gate.",
+              "answer": "phase",
+              "explanation": "Phase gates are governance checkpoints used to evaluate project progress.",
+              "difficulty": 2,
+              "tags": ["Phase Gate"]
+            },
+            {
+              "id": "CAPM-DA-FIB-007",
+              "card_type": "fill_blank",
+              "prompt": "As a predictive project progresses, the cost of making changes generally ________.",
+              "answer": "increases",
+              "explanation": "Late changes are usually more expensive in predictive projects.",
+              "difficulty": 3,
+              "tags": ["Cost of Change"]
+            },
+            {
+              "id": "CAPM-DA-FIB-008",
+              "card_type": "fill_blank",
+              "prompt": "Agile projects typically deliver value in short, repeated ________.",
+              "answer": "iterations",
+              "explanation": "Iterations allow teams to gather feedback and continuously improve.",
+              "difficulty": 2,
+              "tags": ["Agile"]
+            },
+            {
+              "id": "CAPM-DA-FIB-009",
+              "card_type": "fill_blank",
+              "prompt": "When selecting a delivery approach, one important consideration is the stability of project ________.",
+              "answer": "requirements",
+              "explanation": "Stable requirements often favor predictive delivery, while changing requirements may favor agile.",
+              "difficulty": 2,
+              "tags": ["Selection"]
+            },
+            {
+              "id": "CAPM-DA-FIB-010",
+              "card_type": "fill_blank",
+              "prompt": "A phase gate may result in a decision to continue, modify, repeat, or ________ the project.",
+              "answer": "terminate",
+              "explanation": "Projects that no longer provide value may be stopped at a phase gate.",
+              "difficulty": 3,
+              "tags": ["Phase Gate"]
+            },
+            {
+              "id": "CAPM-DA-FIB-011",
+              "card_type": "fill_blank",
+              "prompt": "Predictive projects emphasize detailed ________ before execution begins.",
+              "answer": "planning",
+              "explanation": "Planning is completed as early as possible in predictive delivery.",
+              "difficulty": 2,
+              "tags": ["Predictive"]
+            },
+            {
+              "id": "CAPM-DA-FIB-012",
+              "card_type": "fill_blank",
+              "prompt": "Agile projects prioritize responding to ________ over following a rigid plan.",
+              "answer": "change",
+              "explanation": "Adaptability is one of the core principles of Agile delivery.",
+              "difficulty": 2,
+              "tags": ["Agile"]
             }
           ],
           "lessons": []

@@ -173,6 +173,114 @@
               "explanation": "Governance also considers strategic alignment, compliance, risk, value, and organizational objectives.",
               "difficulty": 2,
               "tags": ["Governance"]
+            },
+            {
+              "id": "CAPM-GOV-FIB-001",
+              "card_type": "fill_blank",
+              "prompt": "Project ________ provides oversight, direction, and accountability throughout the project lifecycle.",
+              "answer": "governance",
+              "explanation": "Governance establishes how projects are directed and controlled to support organizational objectives.",
+              "difficulty": 1,
+              "tags": ["Governance"]
+            },
+            {
+              "id": "CAPM-GOV-FIB-002",
+              "card_type": "fill_blank",
+              "prompt": "A governance framework helps ensure projects remain aligned with organizational ________.",
+              "answer": "strategy",
+              "explanation": "Projects should continually support the organization's strategic goals.",
+              "difficulty": 2,
+              "tags": ["Governance", "Strategy"]
+            },
+            {
+              "id": "CAPM-GOV-FIB-003",
+              "card_type": "fill_blank",
+              "prompt": "Major project decisions are typically made by the Project Sponsor or the governance ________.",
+              "answer": "board",
+              "explanation": "Strategic decisions are generally escalated beyond the Project Manager.",
+              "difficulty": 2,
+              "tags": ["Governance", "Sponsor"]
+            },
+            {
+              "id": "CAPM-GOV-FIB-004",
+              "card_type": "fill_blank",
+              "prompt": "A ________ gate is a formal review used to determine whether a project should continue to the next phase.",
+              "answer": "decision",
+              "explanation": "Decision gates evaluate project performance before additional investment is approved.",
+              "difficulty": 2,
+              "tags": ["Decision Gates"]
+            },
+            {
+              "id": "CAPM-GOV-FIB-005",
+              "card_type": "fill_blank",
+              "prompt": "Governance establishes clear ________ for project decisions and outcomes.",
+              "answer": "accountability",
+              "explanation": "Clearly assigning ownership improves decision making and oversight.",
+              "difficulty": 2,
+              "tags": ["Accountability"]
+            },
+            {
+              "id": "CAPM-GOV-FIB-006",
+              "card_type": "fill_blank",
+              "prompt": "Projects should comply with organizational policies, legal requirements, and applicable ________.",
+              "answer": "regulations",
+              "explanation": "Compliance is a key responsibility of project governance.",
+              "difficulty": 2,
+              "tags": ["Compliance"]
+            },
+            {
+              "id": "CAPM-GOV-FIB-007",
+              "card_type": "fill_blank",
+              "prompt": "When a project no longer supports organizational objectives, governance may decide to ________ it.",
+              "answer": "terminate",
+              "explanation": "Projects should only continue while they provide organizational value.",
+              "difficulty": 3,
+              "tags": ["Governance", "Business Value"]
+            },
+            {
+              "id": "CAPM-GOV-FIB-008",
+              "card_type": "fill_blank",
+              "prompt": "The Project Manager should ________ major strategic decisions that exceed their authority.",
+              "answer": "escalate",
+              "explanation": "Major governance decisions belong with the appropriate authority.",
+              "difficulty": 3,
+              "tags": ["Escalation"]
+            },
+            {
+              "id": "CAPM-GOV-FIB-009",
+              "card_type": "fill_blank",
+              "prompt": "Governance focuses on ensuring projects continue delivering organizational ________.",
+              "answer": "value",
+              "explanation": "Governance is concerned with business outcomes, not just project execution.",
+              "difficulty": 3,
+              "tags": ["Business Value"]
+            },
+            {
+              "id": "CAPM-GOV-FIB-010",
+              "card_type": "fill_blank",
+              "prompt": "Project governance provides oversight, while project management focuses on project ________.",
+              "answer": "execution",
+              "explanation": "Governance directs projects; project management executes them.",
+              "difficulty": 3,
+              "tags": ["Governance", "Project Management"]
+            },
+            {
+              "id": "CAPM-GOV-FIB-011",
+              "card_type": "fill_blank",
+              "prompt": "Governance reviews should consider project cost, schedule, risk, and strategic ________.",
+              "answer": "alignment",
+              "explanation": "A successful project should remain aligned with organizational priorities.",
+              "difficulty": 3,
+              "tags": ["Strategic Alignment"]
+            },
+            {
+              "id": "CAPM-GOV-FIB-012",
+              "card_type": "fill_blank",
+              "prompt": "One purpose of governance is to support informed ________ throughout the project lifecycle.",
+              "answer": "decision-making",
+              "explanation": "Governance establishes consistent processes for making important project decisions.",
+              "difficulty": 3,
+              "tags": ["Decision Making", "Governance"]
             }
           ],
           "lessons": []

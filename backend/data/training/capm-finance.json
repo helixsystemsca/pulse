@@ -191,6 +191,173 @@
               "explanation": "SPI > 1.0 indicates positive schedule performance, while CPI < 1.0 indicates negative cost performance.",
               "difficulty": 5,
               "tags": ["Scenario", "EVM", "CPI", "SPI"]
+            },
+            {
+              "id": "CAPM-COST-FIB-001",
+              "card_type": "fill_blank",
+              "prompt": "Project ________ Management includes the processes required to estimate, budget, finance, fund, manage, and control project costs.",
+              "answer": "Cost",
+              "explanation": "Cost Management ensures the project is completed within the approved budget.",
+              "difficulty": 1,
+              "tags": ["Cost Management"]
+            },
+            {
+              "id": "CAPM-COST-FIB-002",
+              "card_type": "fill_blank",
+              "prompt": "The approved version of the project budget used to measure performance is called the cost ________.",
+              "answer": "baseline",
+              "explanation": "The cost baseline is used to monitor and control project spending.",
+              "difficulty": 2,
+              "tags": ["Cost Baseline"]
+            },
+            {
+              "id": "CAPM-COST-FIB-003",
+              "card_type": "fill_blank",
+              "prompt": "Known-unknown risks are funded through the ________ reserve.",
+              "answer": "contingency",
+              "explanation": "Contingency reserve is included in the cost baseline.",
+              "difficulty": 2,
+              "tags": ["Contingency Reserve"]
+            },
+            {
+              "id": "CAPM-COST-FIB-004",
+              "card_type": "fill_blank",
+              "prompt": "Unknown-unknown risks are funded through the ________ reserve.",
+              "answer": "management",
+              "explanation": "Management reserve is outside the cost baseline.",
+              "difficulty": 2,
+              "tags": ["Management Reserve"]
+            },
+            {
+              "id": "CAPM-COST-FIB-005",
+              "card_type": "fill_blank",
+              "prompt": "Planned Value is commonly abbreviated as ________.",
+              "answer": "PV",
+              "explanation": "PV is the authorized budget assigned to scheduled work.",
+              "difficulty": 2,
+              "tags": ["PV", "EVM"]
+            },
+            {
+              "id": "CAPM-COST-FIB-006",
+              "card_type": "fill_blank",
+              "prompt": "Earned Value is commonly abbreviated as ________.",
+              "answer": "EV",
+              "explanation": "EV represents the value of work actually completed.",
+              "difficulty": 2,
+              "tags": ["EV", "EVM"]
+            },
+            {
+              "id": "CAPM-COST-FIB-007",
+              "card_type": "fill_blank",
+              "prompt": "Actual Cost is commonly abbreviated as ________.",
+              "answer": "AC",
+              "explanation": "AC represents the actual amount spent performing the work.",
+              "difficulty": 2,
+              "tags": ["AC", "EVM"]
+            },
+            {
+              "id": "CAPM-COST-FIB-008",
+              "card_type": "fill_blank",
+              "prompt": "Budget at Completion is commonly abbreviated as ________.",
+              "answer": "BAC",
+              "explanation": "BAC is the total approved budget for the project.",
+              "difficulty": 2,
+              "tags": ["BAC", "EVM"]
+            },
+            {
+              "id": "CAPM-COST-FIB-009",
+              "card_type": "fill_blank",
+              "prompt": "Cost Variance is calculated as EV minus ________.",
+              "answer": "actual cost",
+              "explanation": "CV = EV − AC.",
+              "difficulty": 3,
+              "tags": ["CV", "Formula"],
+              "options": { "blank_answer": "AC" }
+            },
+            {
+              "id": "CAPM-COST-FIB-010",
+              "card_type": "fill_blank",
+              "prompt": "Schedule Variance is calculated as EV minus ________.",
+              "answer": "planned value",
+              "explanation": "SV = EV − PV.",
+              "difficulty": 3,
+              "tags": ["SV", "Formula"],
+              "options": { "blank_answer": "PV" }
+            },
+            {
+              "id": "CAPM-COST-FIB-011",
+              "card_type": "fill_blank",
+              "prompt": "Cost Performance Index is calculated as EV divided by ________.",
+              "answer": "actual cost (CPI)",
+              "explanation": "CPI = EV ÷ AC.",
+              "difficulty": 3,
+              "tags": ["CPI", "Formula"],
+              "options": { "blank_answer": "AC" }
+            },
+            {
+              "id": "CAPM-COST-FIB-012",
+              "card_type": "fill_blank",
+              "prompt": "Schedule Performance Index is calculated as EV divided by ________.",
+              "answer": "planned value (SPI)",
+              "explanation": "SPI = EV ÷ PV.",
+              "difficulty": 3,
+              "tags": ["SPI", "Formula"],
+              "options": { "blank_answer": "PV" }
+            },
+            {
+              "id": "CAPM-COST-FIB-013",
+              "card_type": "fill_blank",
+              "prompt": "A CPI greater than 1.0 means the project is ________ budget.",
+              "answer": "under",
+              "explanation": "More value has been earned than money spent.",
+              "difficulty": 3,
+              "tags": ["CPI"]
+            },
+            {
+              "id": "CAPM-COST-FIB-014",
+              "card_type": "fill_blank",
+              "prompt": "An SPI less than 1.0 means the project is ________ schedule.",
+              "answer": "behind",
+              "explanation": "Less work has been completed than planned.",
+              "difficulty": 3,
+              "tags": ["SPI"]
+            },
+            {
+              "id": "CAPM-COST-FIB-015",
+              "card_type": "fill_blank",
+              "prompt": "Estimate at Completion is commonly abbreviated as ________.",
+              "answer": "EAC",
+              "explanation": "EAC forecasts the total project cost when complete.",
+              "difficulty": 3,
+              "tags": ["EAC"]
+            },
+            {
+              "id": "CAPM-COST-FIB-016",
+              "card_type": "fill_blank",
+              "prompt": "Estimate to Complete is commonly abbreviated as ________.",
+              "answer": "ETC",
+              "explanation": "ETC estimates the remaining cost required to finish the project.",
+              "difficulty": 3,
+              "tags": ["ETC"]
+            },
+            {
+              "id": "CAPM-COST-FIB-017",
+              "card_type": "fill_blank",
+              "prompt": "Variance at Completion is commonly abbreviated as ________.",
+              "answer": "VAC",
+              "explanation": "VAC predicts whether the project will finish over or under budget.",
+              "difficulty": 3,
+              "tags": ["VAC"]
+            },
+            {
+              "id": "CAPM-COST-FIB-018",
+              "card_type": "fill_blank",
+              "prompt": "To improve cost performance, the Project Manager should monitor the ________ Performance Index.",
+              "answer": "cost performance",
+              "explanation": "The Cost Performance Index (CPI) measures cost efficiency.",
+              "difficulty": 4,
+              "tags": ["CPI", "Performance"],
+              "options": { "blank_answer": "Cost" }
             }
           ],
           "lessons": []

@@ -13,6 +13,7 @@ import { AppLayoutFooter } from "./AppLayoutFooter";
 import { GamificationProvider } from "@/components/gamification/GamificationProvider";
 import { SidebarStateProvider } from "@/components/app/SidebarState";
 import { AppMainChromeColumn } from "@/components/app/AppMainChromeColumn";
+import { AppMobileNavDrawer } from "@/components/app/AppMobileNavDrawer";
 import { OnboardingFlyoutBridgeProvider } from "@/lib/onboarding/onboarding-flyout-bridge";
 import { OnboardingTourProvider } from "@/lib/onboarding/onboarding-tour-context";
 
@@ -42,6 +43,7 @@ export function AppLayout({
           <OnboardingFlyoutBridgeProvider>
             <OnboardingTourProvider>
             <SidebarStateProvider>
+            {chrome ? <AppMobileNavDrawer /> : null}
             <InactivitySessionGuard />
             <ServerTimeSync />
             <ProximityPromptHost />

@@ -173,6 +173,133 @@
               "explanation": "Fast tracking primarily increases project risk, while crashing typically increases project cost.",
               "difficulty": 2,
               "tags": ["Fast Tracking", "Crashing"]
+            },
+            {
+              "id": "CAPM-SCHED-FIB-001",
+              "card_type": "fill_blank",
+              "prompt": "Project ________ Management includes the processes required to ensure timely completion of the project.",
+              "answer": "Schedule",
+              "explanation": "Schedule Management focuses on planning, developing, and controlling the project schedule.",
+              "difficulty": 1,
+              "tags": ["Schedule Management"]
+            },
+            {
+              "id": "CAPM-SCHED-FIB-002",
+              "card_type": "fill_blank",
+              "prompt": "An ________ is a distinct piece of work that must be performed to produce a project deliverable.",
+              "answer": "activity",
+              "explanation": "Activities are scheduled and sequenced to complete project work.",
+              "difficulty": 2,
+              "tags": ["Activities"]
+            },
+            {
+              "id": "CAPM-SCHED-FIB-003",
+              "card_type": "fill_blank",
+              "prompt": "The most common dependency relationship is ________-to-Start (FS).",
+              "answer": "Finish",
+              "explanation": "Finish-to-Start means one activity must finish before the next can begin.",
+              "difficulty": 2,
+              "tags": ["Dependencies", "FS"]
+            },
+            {
+              "id": "CAPM-SCHED-FIB-004",
+              "card_type": "fill_blank",
+              "prompt": "A ________ has zero duration and marks a significant event in the project schedule.",
+              "answer": "milestone",
+              "explanation": "Milestones represent important achievements or decision points.",
+              "difficulty": 2,
+              "tags": ["Milestones"]
+            },
+            {
+              "id": "CAPM-SCHED-FIB-005",
+              "card_type": "fill_blank",
+              "prompt": "The ________ path is the longest path through the schedule network and determines the shortest project duration.",
+              "answer": "critical",
+              "explanation": "Any delay to a critical path activity may delay the entire project.",
+              "difficulty": 2,
+              "tags": ["Critical Path"]
+            },
+            {
+              "id": "CAPM-SCHED-FIB-006",
+              "card_type": "fill_blank",
+              "prompt": "Activities on the critical path typically have zero total ________.",
+              "answer": "float",
+              "explanation": "Critical path activities have no scheduling flexibility.",
+              "difficulty": 2,
+              "tags": ["Critical Path", "Float"]
+            },
+            {
+              "id": "CAPM-SCHED-FIB-007",
+              "card_type": "fill_blank",
+              "prompt": "The amount of time an activity can be delayed without delaying the project is called ________.",
+              "answer": "total float",
+              "explanation": "Float is also commonly referred to as slack.",
+              "difficulty": 2,
+              "tags": ["Float"],
+              "options": { "blank_answer": "float" }
+            },
+            {
+              "id": "CAPM-SCHED-FIB-008",
+              "card_type": "fill_blank",
+              "prompt": "Adding additional resources to shorten the project schedule is called ________.",
+              "answer": "crashing",
+              "explanation": "Crashing reduces schedule duration but usually increases project cost.",
+              "difficulty": 3,
+              "tags": ["Crashing"]
+            },
+            {
+              "id": "CAPM-SCHED-FIB-009",
+              "card_type": "fill_blank",
+              "prompt": "Performing activities in parallel that were originally planned in sequence is called ________ tracking.",
+              "answer": "fast",
+              "explanation": "Fast tracking shortens the schedule by overlapping work, increasing project risk.",
+              "difficulty": 3,
+              "tags": ["Fast Tracking"]
+            },
+            {
+              "id": "CAPM-SCHED-FIB-010",
+              "card_type": "fill_blank",
+              "prompt": "Crashing generally increases project ________, while fast tracking generally increases project risk.",
+              "answer": "cost",
+              "explanation": "These are the primary trade-offs of the two schedule compression techniques.",
+              "difficulty": 3,
+              "tags": ["Crashing", "Fast Tracking"]
+            },
+            {
+              "id": "CAPM-SCHED-FIB-011",
+              "card_type": "fill_blank",
+              "prompt": "The process of identifying relationships among project activities is called activity ________.",
+              "answer": "sequencing",
+              "explanation": "Activity sequencing establishes the logical order of work.",
+              "difficulty": 3,
+              "tags": ["Sequencing"]
+            },
+            {
+              "id": "CAPM-SCHED-FIB-012",
+              "card_type": "fill_blank",
+              "prompt": "Both crashing and fast tracking are examples of schedule ________ techniques.",
+              "answer": "compression",
+              "explanation": "Schedule compression shortens the project timeline without reducing scope.",
+              "difficulty": 3,
+              "tags": ["Schedule Compression"]
+            },
+            {
+              "id": "CAPM-SCHED-FIB-013",
+              "card_type": "fill_blank",
+              "prompt": "If a critical path activity slips by two days and no corrective action is taken, the project completion date will likely be ________.",
+              "answer": "delayed",
+              "explanation": "Critical path activities determine the project's finish date.",
+              "difficulty": 3,
+              "tags": ["Critical Path"]
+            },
+            {
+              "id": "CAPM-SCHED-FIB-014",
+              "card_type": "fill_blank",
+              "prompt": "Free float measures how long an activity can be delayed without delaying a ________ activity.",
+              "answer": "successor",
+              "explanation": "Free float is more restrictive than total float because it considers the next activity.",
+              "difficulty": 3,
+              "tags": ["Free Float"]
             }
           ],
           "lessons": []

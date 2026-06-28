@@ -27,6 +27,7 @@ from app.schemas.training_platform import (
     TrainingImportResultOut,
     TrainingImportSectionIn,
 )
+from app.services.training_platform.card_type_normalizer import merge_flashcard_option_fields
 from app.services.training_platform.deck_service import set_deck_version_on_course
 from app.services.training_platform.import_validation import (
     ImportValidationResult,
@@ -487,7 +488,7 @@ class TrainingImportService:
             existing.card_type = fc.card_type
             existing.difficulty = fc.difficulty
             existing.tags = fc.tags
-            existing.options = fc.options
+            existing.options = merge_flashcard_option_fields(existing.options, fc.options)
             existing.lesson_id = lesson_id
             existing.metadata_ = meta
             existing.is_active = True
