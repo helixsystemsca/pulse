@@ -215,17 +215,18 @@ class TrainingImportService:
                 skipped=skipped,
             )
 
-        holder_lesson_id = self._ensure_course_level_lesson(course_id, course_in.slug)
-        for fc in course_in.flashcards:
-            self._upsert_flashcard(
-                fc,
-                course_id=course_id,
-                lesson_id=holder_lesson_id,
-                card_index=card_index,
-                stats=stats,
-                created=created,
-                updated=updated,
-            )
+        if course_in.flashcards:
+            holder_lesson_id = self._ensure_course_level_lesson(course_id, course_in.slug)
+            for fc in course_in.flashcards:
+                self._upsert_flashcard(
+                    fc,
+                    course_id=course_id,
+                    lesson_id=holder_lesson_id,
+                    card_index=card_index,
+                    stats=stats,
+                    created=created,
+                    updated=updated,
+                )
 
         for quiz_in in course_in.quizzes:
             self._add_quiz(quiz_in.model_dump(), course_id=course_id, lesson_id=None, stats=stats, created=created)

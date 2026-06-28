@@ -19,17 +19,23 @@ from app.models.training_platform_models import (
 from app.schemas.training_platform import TrainingProgressUpsertIn, TrainingUserProgressOut
 from app.services.training_platform.serializers import user_progress_out
 
+_FLASHCARD_HOLDER_LESSON_SUFFIX = "__flashcards"
+
 
 async def _lesson_ids_for_course(db: AsyncSession, company_id: str, course_id: str) -> list[str]:
     rows = (
         await db.execute(
-            select(TrainingLesson.id).where(
+            select(TrainingLesson.id, TrainingLesson.slug).where(
                 TrainingLesson.company_id == company_id,
                 TrainingLesson.course_id == course_id,
             )
         )
-    ).scalars().all()
-    return [str(r) for r in rows]
+    ).all()
+    return [
+        str(lesson_id)
+        for lesson_id, slug in rows
+        if not (slug or "").endswith(_FLASHCARD_HOLDER_LESSON_SUFFIX)
+    ]
 
 
 async def _completed_lesson_count(
