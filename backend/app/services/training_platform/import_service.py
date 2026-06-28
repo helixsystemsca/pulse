@@ -297,26 +297,26 @@ class TrainingImportService:
         stats["sections"] += 1
         section_id = str(section.id)
 
-        holder_lesson_id = self._ensure_section_flashcard_lesson(
-            course_id=course_id,
-            section_id=section_id,
-            section_slug=section_in.slug,
-            section_title=section_in.title,
-            stats=stats,
-            created=created,
-            updated=updated,
-        )
-
-        for fc in section_in.flashcards:
-            self._upsert_flashcard(
-                fc,
+        if section_in.flashcards:
+            holder_lesson_id = self._ensure_section_flashcard_lesson(
                 course_id=course_id,
-                lesson_id=holder_lesson_id,
-                card_index=card_index,
+                section_id=section_id,
+                section_slug=section_in.slug,
+                section_title=section_in.title,
                 stats=stats,
                 created=created,
                 updated=updated,
             )
+            for fc in section_in.flashcards:
+                self._upsert_flashcard(
+                    fc,
+                    course_id=course_id,
+                    lesson_id=holder_lesson_id,
+                    card_index=card_index,
+                    stats=stats,
+                    created=created,
+                    updated=updated,
+                )
 
         for lesson_in in section_in.lessons:
             existing_lesson = self.db.execute(
