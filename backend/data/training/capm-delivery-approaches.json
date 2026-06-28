@@ -1,0 +1,156 @@
+{
+  "version": "1.0",
+  "source_name": "capm-delivery-approaches-v1",
+  "courses": [
+    {
+      "slug": "capm",
+      "title": "CAPM",
+      "course_kind": "certification",
+      "certification_slug": "capm",
+      "sections": [
+        {
+          "slug": "delivery-approaches",
+          "title": "Delivery Approaches",
+          "flashcards": [
+            {
+              "id": "CAPM-DA-001",
+              "card_type": "flashcard",
+              "prompt": "What characterizes a Predictive project approach?",
+              "answer": "Requirements are fixed early, work is completed once, and delivery typically occurs once at the end of the project.",
+              "explanation": "Predictive approaches emphasize planning upfront, stable requirements, and controlling cost and schedule through defined baselines.",
+              "difficulty": 1,
+              "tags": ["predictive", "delivery-approach"]
+            },
+            {
+              "id": "CAPM-DA-002",
+              "card_type": "flashcard",
+              "prompt": "What characterizes an Iterative project approach?",
+              "answer": "Requirements evolve through repeated cycles, but the final solution is delivered once.",
+              "explanation": "Iteration improves the solution over multiple cycles before the final delivery.",
+              "difficulty": 1,
+              "tags": ["iterative"]
+            },
+            {
+              "id": "CAPM-DA-003",
+              "card_type": "flashcard",
+              "prompt": "What characterizes an Incremental project approach?",
+              "answer": "The solution is delivered in multiple usable increments, each adding functionality.",
+              "explanation": "Each increment provides value while expanding the completed product.",
+              "difficulty": 1,
+              "tags": ["incremental"]
+            },
+            {
+              "id": "CAPM-DA-004",
+              "card_type": "flashcard",
+              "prompt": "What characterizes an Agile project approach?",
+              "answer": "Requirements are dynamic, work is completed in repeated iterations, and value is delivered frequently.",
+              "explanation": "Agile focuses on customer collaboration, adaptability, and continuous delivery of value.",
+              "difficulty": 1,
+              "tags": ["agile"]
+            },
+            {
+              "id": "CAPM-DA-005",
+              "card_type": "flashcard",
+              "prompt": "What is the primary difference between Iterative and Incremental development?",
+              "answer": "Iterative refines the same solution repeatedly before final delivery, while Incremental delivers usable portions of the product over time.",
+              "explanation": "Iterative improves quality; Incremental increases delivered functionality.",
+              "difficulty": 2,
+              "tags": ["iterative", "incremental", "comparison"]
+            },
+            {
+              "id": "CAPM-DA-006",
+              "card_type": "flashcard",
+              "prompt": "What is the primary goal of a Predictive project approach?",
+              "answer": "Managing cost and schedule through upfront planning and stable requirements.",
+              "explanation": "Predictive approaches prioritize predictability over flexibility.",
+              "difficulty": 2,
+              "tags": ["predictive"]
+            },
+            {
+              "id": "CAPM-DA-007",
+              "card_type": "flashcard",
+              "prompt": "What is the primary goal of an Agile approach?",
+              "answer": "Delivering value quickly while adapting to changing requirements.",
+              "explanation": "Agile values customer feedback and flexibility over following a fixed plan.",
+              "difficulty": 2,
+              "tags": ["agile"]
+            },
+            {
+              "id": "CAPM-DA-008",
+              "card_type": "scenario",
+              "prompt": "Your customer knows exactly what they want, requirements are stable, and strict regulatory approval is required. Which delivery approach is most appropriate?",
+              "answer": "Predictive.",
+              "explanation": "Stable requirements and heavy governance are strong indicators for a Predictive approach.",
+              "difficulty": 3,
+              "tags": ["scenario", "predictive"]
+            },
+            {
+              "id": "CAPM-DA-009",
+              "card_type": "scenario",
+              "prompt": "Requirements are expected to change frequently, and stakeholders want usable features every few weeks. Which approach is most appropriate?",
+              "answer": "Agile.",
+              "explanation": "Frequent feedback and changing requirements align with Agile delivery.",
+              "difficulty": 3,
+              "tags": ["scenario", "agile"]
+            },
+            {
+              "id": "CAPM-DA-010",
+              "card_type": "flashcard",
+              "prompt": "What is a Hybrid delivery approach?",
+              "answer": "A Hybrid approach combines elements of Predictive and Agile methods within the same project.",
+              "explanation": "Hybrid allows organizations to tailor delivery methods to different project components.",
+              "difficulty": 2,
+              "tags": ["hybrid"]
+            },
+            {
+              "id": "CAPM-DA-011",
+              "card_type": "scenario",
+              "prompt": "A project uses a traditional schedule but tracks work with Kanban boards and daily stand-ups. What delivery approach is this?",
+              "answer": "Hybrid.",
+              "explanation": "This combines Predictive planning with Agile execution practices.",
+              "difficulty": 3,
+              "tags": ["hybrid", "kanban"]
+            },
+            {
+              "id": "CAPM-DA-012",
+              "card_type": "flashcard",
+              "prompt": "What factors should be considered when choosing a project delivery approach?",
+              "answer": "Requirements stability, customer involvement, risk, regulations, schedule constraints, team experience, project complexity, organizational culture, and delivery cadence.",
+              "explanation": "PMI recommends considering the product, project, organization, and delivery cadence before selecting an approach.",
+              "difficulty": 2,
+              "tags": ["tailoring", "selection"]
+            },
+            {
+              "id": "CAPM-DA-013",
+              "card_type": "flashcard",
+              "prompt": "What is a Phase Gate?",
+              "answer": "A review held at the end of a project phase to determine whether the project should continue, be modified, repeated, or terminated.",
+              "explanation": "Phase gates compare project performance against the original plan before proceeding.",
+              "difficulty": 2,
+              "tags": ["phase-gate"]
+            },
+            {
+              "id": "CAPM-DA-014",
+              "card_type": "flashcard",
+              "prompt": "What decisions can be made during a Phase Gate review?",
+              "answer": "Continue, modify, repeat the phase, or terminate the project.",
+              "explanation": "These decisions ensure projects remain aligned with business objectives.",
+              "difficulty": 2,
+              "tags": ["phase-gate"]
+            },
+            {
+              "id": "CAPM-DA-015",
+              "card_type": "flashcard",
+              "prompt": "How does the cost of change differ between Predictive and Agile projects?",
+              "answer": "Changes generally become more expensive as Predictive projects progress, while Agile accommodates change more easily through iterative delivery.",
+              "explanation": "Predictive projects rely on baselines, making late changes costly. Agile expects and manages change throughout development.",
+              "difficulty": 3,
+              "tags": ["cost-of-change", "comparison"]
+            }
+          ],
+          "lessons": []
+        }
+      ]
+    }
+  ]
+}

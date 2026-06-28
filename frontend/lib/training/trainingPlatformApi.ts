@@ -99,7 +99,9 @@ export type TrainingStudyDueCard = {
     ease_factor: number;
     interval_days: number;
     repetitions: number;
+    last_rating: TrainingReviewRating | null;
     next_review_at: string | null;
+    last_reviewed_at: string | null;
   } | null;
 };
 
@@ -194,4 +196,109 @@ export async function fetchLearningPaths(): Promise<TrainingLearningPath[]> {
 
 export async function fetchTrainingDashboard(): Promise<TrainingDashboard> {
   return apiFetch<TrainingDashboard>("/api/v1/training/dashboard");
+}
+
+export type TrainingDeckSummary = {
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  course_kind: TrainingCourseKind;
+  status: "draft" | "published" | "archived";
+  certification_id: string | null;
+  certification_slug: string | null;
+  certification_title: string | null;
+  deck_version: string;
+  updated_at: string | null;
+  card_count: number;
+  section_count: number;
+  tags: string[];
+};
+
+export type TrainingImportResult = {
+  batch_id: string | null;
+  source_name: string;
+  status: "completed" | "failed_validation";
+  stats: Record<string, number>;
+  created: Record<string, number>;
+  updated: Record<string, number>;
+  skipped: Record<string, number>;
+  errors: { severity: string; code: string; path: string; message: string }[];
+  warnings: { severity: string; code: string; path: string; message: string }[];
+};
+
+export async function fetchTrainingDecks(includeArchived = true): Promise<TrainingDeckSummary[]> {
+  const q = includeArchived ? "?include_archived=true" : "?include_archived=false";
+  return apiFetch<TrainingDeckSummary[]>(`/api/v1/training/decks${q}`);
+}
+
+export async function importTrainingDeckPack(rawJson: string): Promise<TrainingImportResult> {
+  return apiFetch<TrainingImportResult>("/api/v1/training/import", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: rawJson,
+  });
+}
+
+export async function exportTrainingDeck(courseId: string): Promise<Record<string, unknown>> {
+  return apiFetch<Record<string, unknown>>(
+    `/api/v1/training/decks/${encodeURIComponent(courseId)}/export`,
+  );
+}
+
+export async function duplicateTrainingDeck(
+  courseId: string,
+  body: { new_slug?: string; new_title?: string },
+): Promise<TrainingDeckSummary> {
+  return apiFetch<TrainingDeckSummary>(
+    `/api/v1/training/decks/${encodeURIComponent(courseId)}/duplicate`,
+    { method: "POST", json: body },
+  );
+}
+
+export async function archiveTrainingDeck(courseId: string): Promise<TrainingDeckSummary> {
+  return apiFetch<TrainingDeckSummary>(
+    `/api/v1/training/decks/${encodeURIComponent(courseId)}/archive`,
+    { method: "POST" },
+  );
+}
+
+export type TrainingDeckValidationReport = {
+  source_name: string | null;
+  version: string | null;
+  status: "valid" | "invalid";
+  errors: { severity: string; code: string; path: string; message: string }[];
+  warnings: { severity: string; code: string; path: string; message: string }[];
+  statistics: {
+    courses: number;
+    sections: number;
+    flashcards: number;
+    flashcards_with_explanation: number;
+    flashcards_with_tags: number;
+    flashcards_missing_explanation: number;
+    flashcards_missing_tags: number;
+    sections_without_cards: number;
+    invalid_difficulty_count: number;
+    duplicate_questions: number;
+    duplicate_answers: number;
+    by_difficulty: Record<string, number>;
+  };
+};
+
+export async function validateTrainingDeck(rawJson: string): Promise<TrainingDeckValidationReport> {
+  return apiFetch<TrainingDeckValidationReport>("/api/v1/training/decks/validate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: rawJson,
+  });
+}
+
+export async function renameTrainingDeck(
+  courseId: string,
+  body: { title: string; description?: string | null },
+): Promise<TrainingDeckSummary> {
+  return apiFetch<TrainingDeckSummary>(
+    `/api/v1/training/decks/${encodeURIComponent(courseId)}`,
+    { method: "PATCH", json: body },
+  );
 }

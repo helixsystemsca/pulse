@@ -1,0 +1,183 @@
+{
+  "version": "1.0",
+  "source_name": "capm-schedule-v1",
+  "courses": [
+    {
+      "slug": "capm",
+      "title": "CAPM",
+      "course_kind": "certification",
+      "certification_slug": "capm",
+      "sections": [
+        {
+          "slug": "schedule",
+          "title": "Schedule",
+          "flashcards": [
+            {
+              "id": "CAPM-SCHED-001",
+              "card_type": "flashcard",
+              "prompt": "What is schedule management?",
+              "answer": "The processes required to plan, develop, manage, execute, and control the project schedule.",
+              "explanation": "Schedule management ensures project activities are completed on time.",
+              "difficulty": 1,
+              "tags": ["Schedule", "Definition"]
+            },
+            {
+              "id": "CAPM-SCHED-002",
+              "card_type": "flashcard",
+              "prompt": "What is an activity?",
+              "answer": "A distinct piece of work that must be performed to produce a project deliverable.",
+              "explanation": "Activities are derived from work packages during schedule planning.",
+              "difficulty": 1,
+              "tags": ["Activities"]
+            },
+            {
+              "id": "CAPM-SCHED-003",
+              "card_type": "flashcard",
+              "prompt": "What is activity sequencing?",
+              "answer": "The process of identifying and documenting relationships among project activities.",
+              "explanation": "Sequencing determines the logical order of project work.",
+              "difficulty": 2,
+              "tags": ["Sequencing"]
+            },
+            {
+              "id": "CAPM-SCHED-004",
+              "card_type": "flashcard",
+              "prompt": "What are the four dependency types?",
+              "answer": "Finish-to-Start (FS), Finish-to-Finish (FF), Start-to-Start (SS), and Start-to-Finish (SF).",
+              "explanation": "Finish-to-Start is the most common dependency relationship.",
+              "difficulty": 2,
+              "tags": ["Dependencies"]
+            },
+            {
+              "id": "CAPM-SCHED-005",
+              "card_type": "flashcard",
+              "prompt": "What is a Finish-to-Start dependency?",
+              "answer": "The successor activity cannot start until the predecessor activity has finished.",
+              "explanation": "This is the most frequently used dependency in project scheduling.",
+              "difficulty": 2,
+              "tags": ["Dependencies", "FS"]
+            },
+            {
+              "id": "CAPM-SCHED-006",
+              "card_type": "flashcard",
+              "prompt": "What is a milestone?",
+              "answer": "A significant event or point in a project with zero duration.",
+              "explanation": "Milestones are used to measure progress and major achievements.",
+              "difficulty": 2,
+              "tags": ["Milestones"]
+            },
+            {
+              "id": "CAPM-SCHED-007",
+              "card_type": "flashcard",
+              "prompt": "What is the Critical Path?",
+              "answer": "The longest path through the project network that determines the shortest possible project duration.",
+              "explanation": "Activities on the critical path have zero total float.",
+              "difficulty": 2,
+              "tags": ["Critical Path"]
+            },
+            {
+              "id": "CAPM-SCHED-008",
+              "card_type": "true_false",
+              "prompt": "True or False: Delaying an activity on the critical path will delay the project unless corrective action is taken.",
+              "answer": "True.",
+              "explanation": "Critical path activities have no schedule flexibility.",
+              "difficulty": 2,
+              "tags": ["Critical Path"]
+            },
+            {
+              "id": "CAPM-SCHED-009",
+              "card_type": "flashcard",
+              "prompt": "What is float (slack)?",
+              "answer": "The amount of time an activity can be delayed without delaying the project or a successor activity.",
+              "explanation": "Float indicates schedule flexibility.",
+              "difficulty": 2,
+              "tags": ["Float"]
+            },
+            {
+              "id": "CAPM-SCHED-010",
+              "card_type": "flashcard",
+              "prompt": "What is the difference between total float and free float?",
+              "answer": "Total float is the amount an activity can be delayed without delaying the project finish date. Free float is the amount an activity can be delayed without delaying the early start of any successor activity.",
+              "explanation": "Free float is always less than or equal to total float.",
+              "difficulty": 3,
+              "tags": ["Float", "Comparison"]
+            },
+            {
+              "id": "CAPM-SCHED-011",
+              "card_type": "flashcard",
+              "prompt": "What is schedule compression?",
+              "answer": "Techniques used to shorten the project schedule without reducing project scope.",
+              "explanation": "The two primary schedule compression techniques are crashing and fast tracking.",
+              "difficulty": 2,
+              "tags": ["Schedule Compression"]
+            },
+            {
+              "id": "CAPM-SCHED-012",
+              "card_type": "flashcard",
+              "prompt": "What is crashing?",
+              "answer": "Adding additional resources to critical path activities to shorten the schedule.",
+              "explanation": "Crashing usually increases project cost.",
+              "difficulty": 2,
+              "tags": ["Crashing"]
+            },
+            {
+              "id": "CAPM-SCHED-013",
+              "card_type": "flashcard",
+              "prompt": "What is fast tracking?",
+              "answer": "Performing activities in parallel that were originally planned in sequence.",
+              "explanation": "Fast tracking increases schedule risk because work overlaps.",
+              "difficulty": 2,
+              "tags": ["Fast Tracking"]
+            },
+            {
+              "id": "CAPM-SCHED-014",
+              "card_type": "flashcard",
+              "prompt": "What is the difference between crashing and fast tracking?",
+              "answer": "Crashing shortens the schedule by adding resources and increasing cost. Fast tracking shortens the schedule by overlapping work and increasing risk.",
+              "explanation": "Both are schedule compression techniques with different trade-offs.",
+              "difficulty": 3,
+              "tags": ["Crashing", "Fast Tracking"]
+            },
+            {
+              "id": "CAPM-SCHED-015",
+              "card_type": "scenario",
+              "prompt": "Your project is behind schedule, and management authorizes hiring additional staff to recover lost time. Which schedule compression technique is being used?",
+              "answer": "Crashing.",
+              "explanation": "Adding resources to shorten the schedule is crashing.",
+              "difficulty": 4,
+              "tags": ["Scenario", "Crashing"]
+            },
+            {
+              "id": "CAPM-SCHED-016",
+              "card_type": "scenario",
+              "prompt": "Your project is behind schedule, and two activities are allowed to proceed simultaneously instead of sequentially. Which schedule compression technique is being used?",
+              "answer": "Fast Tracking.",
+              "explanation": "Fast tracking overlaps activities to reduce project duration.",
+              "difficulty": 4,
+              "tags": ["Scenario", "Fast Tracking"]
+            },
+            {
+              "id": "CAPM-SCHED-017",
+              "card_type": "scenario",
+              "prompt": "A critical path activity is delayed by three days. What should the Project Manager assess first?",
+              "answer": "The impact on the project completion date and whether corrective action is required.",
+              "explanation": "Delays to critical path activities directly threaten the project finish date.",
+              "difficulty": 5,
+              "tags": ["Critical Path", "Scenario"]
+            },
+            {
+              "id": "CAPM-SCHED-018",
+              "card_type": "true_false",
+              "prompt": "True or False: Fast tracking always increases project cost.",
+              "answer": "False.",
+              "explanation": "Fast tracking primarily increases project risk, while crashing typically increases project cost.",
+              "difficulty": 2,
+              "tags": ["Fast Tracking", "Crashing"]
+            }
+          ],
+          "lessons": []
+        }
+      ]
+    }
+  ]
+}

@@ -27,6 +27,7 @@ from app.schemas.training_platform import (
     TrainingImportResultOut,
     TrainingImportSectionIn,
 )
+from app.services.training_platform.deck_service import set_deck_version_on_course
 from app.services.training_platform.import_validation import (
     ImportValidationResult,
     TrainingImportValidationError,
@@ -104,6 +105,7 @@ class TrainingImportService:
             self._upsert_course(
                 course_in,
                 cert_by_slug=cert_by_slug,
+                deck_version=pack.version,
                 stats=stats,
                 created=created,
                 updated=updated,
@@ -145,6 +147,7 @@ class TrainingImportService:
         course_in: Any,
         *,
         cert_by_slug: dict[str, TrainingCertification],
+        deck_version: str,
         stats: dict[str, int],
         created: dict[str, int],
         updated: dict[str, int],
@@ -172,6 +175,7 @@ class TrainingImportService:
             course.tags = course_in.tags
             course.certification_id = certification_id
             course.status = TrainingCourseStatus.published.value
+            set_deck_version_on_course(course, deck_version)
             updated["courses"] += 1
         else:
             course = TrainingCourse(
@@ -190,6 +194,7 @@ class TrainingImportService:
             )
             self.db.add(course)
             self.db.flush()
+            set_deck_version_on_course(course, deck_version)
             created["courses"] += 1
         stats["courses"] += 1
         course_id = str(course.id)

@@ -1,0 +1,201 @@
+{
+  "version": "1.0",
+  "source_name": "capm-leadership-v1",
+  "courses": [
+    {
+      "slug": "capm",
+      "title": "CAPM",
+      "course_kind": "certification",
+      "certification_slug": "capm",
+      "sections": [
+        {
+          "slug": "leadership",
+          "title": "Leadership",
+          "flashcards": [
+            {
+              "id": "CAPM-LEAD-001",
+              "card_type": "flashcard",
+              "prompt": "Why is understanding organizational politics important for a Project Manager?",
+              "answer": "It helps the Project Manager influence stakeholders, negotiate effectively, and improve the likelihood of project success.",
+              "explanation": "Project Managers often rely on influence rather than formal authority.",
+              "difficulty": 1,
+              "tags": ["Leadership", "Power"]
+            },
+            {
+              "id": "CAPM-LEAD-002",
+              "card_type": "flashcard",
+              "prompt": "What is positional power?",
+              "answer": "Authority gained from a formal role or position within the organization.",
+              "explanation": "Examples include managers directing employees because of their assigned position.",
+              "difficulty": 1,
+              "tags": ["Power", "Positional"]
+            },
+            {
+              "id": "CAPM-LEAD-003",
+              "card_type": "flashcard",
+              "prompt": "What is expert power?",
+              "answer": "Influence gained through knowledge, experience, or specialized skills.",
+              "explanation": "Expert power often earns trust regardless of job title.",
+              "difficulty": 1,
+              "tags": ["Power", "Expert"]
+            },
+            {
+              "id": "CAPM-LEAD-004",
+              "card_type": "flashcard",
+              "prompt": "What is referent power?",
+              "answer": "Influence gained because others respect or identify with a person or higher authority.",
+              "explanation": "People follow because they admire or trust the individual.",
+              "difficulty": 1,
+              "tags": ["Power", "Referent"]
+            },
+            {
+              "id": "CAPM-LEAD-005",
+              "card_type": "flashcard",
+              "prompt": "What is reward power?",
+              "answer": "Influence gained through the ability to provide rewards or recognition.",
+              "explanation": "Rewards may be financial, recognition-based, or career related.",
+              "difficulty": 1,
+              "tags": ["Power", "Reward"]
+            },
+            {
+              "id": "CAPM-LEAD-006",
+              "card_type": "flashcard",
+              "prompt": "What is coercive power?",
+              "answer": "Influence gained through the ability to apply discipline or negative consequences.",
+              "explanation": "Coercive power should generally be used sparingly.",
+              "difficulty": 1,
+              "tags": ["Power", "Coercive"]
+            },
+            {
+              "id": "CAPM-LEAD-007",
+              "card_type": "flashcard",
+              "prompt": "Which forms of power are generally considered the most effective for Project Managers?",
+              "answer": "Expert power and referent power.",
+              "explanation": "Project Managers often have limited formal authority, making influence through expertise and relationships more effective.",
+              "difficulty": 3,
+              "tags": ["Power", "Comparison"]
+            },
+            {
+              "id": "CAPM-LEAD-008",
+              "card_type": "flashcard",
+              "prompt": "What is the primary difference between leadership and management?",
+              "answer": "Leadership focuses on vision, motivation, and influencing people, while management focuses on planning, controlling, and executing work.",
+              "explanation": "Successful Project Managers use both leadership and management skills.",
+              "difficulty": 2,
+              "tags": ["Leadership", "Management"]
+            },
+            {
+              "id": "CAPM-LEAD-009",
+              "card_type": "true_false",
+              "prompt": "True or False: Leadership and management are mutually exclusive.",
+              "answer": "False.",
+              "explanation": "PMI emphasizes that effective Project Managers need both.",
+              "difficulty": 1,
+              "tags": ["Leadership"]
+            },
+            {
+              "id": "CAPM-LEAD-010",
+              "card_type": "flashcard",
+              "prompt": "What is servant leadership?",
+              "answer": "A leadership style that focuses on supporting, developing, and empowering team members.",
+              "explanation": "Servant Leaders prioritize the team's growth and success.",
+              "difficulty": 1,
+              "tags": ["Leadership Styles", "Servant"]
+            },
+            {
+              "id": "CAPM-LEAD-011",
+              "card_type": "flashcard",
+              "prompt": "What is transformational leadership?",
+              "answer": "A leadership style that inspires and motivates people toward a shared vision and meaningful change.",
+              "explanation": "Transformational leaders encourage innovation and long-term improvement.",
+              "difficulty": 1,
+              "tags": ["Leadership Styles", "Transformational"]
+            },
+            {
+              "id": "CAPM-LEAD-012",
+              "card_type": "flashcard",
+              "prompt": "What is transactional leadership?",
+              "answer": "A leadership style focused on achieving results through structure, expectations, and rewards or consequences.",
+              "explanation": "Transactional leadership emphasizes performance and accountability.",
+              "difficulty": 1,
+              "tags": ["Leadership Styles", "Transactional"]
+            },
+            {
+              "id": "CAPM-LEAD-013",
+              "card_type": "flashcard",
+              "prompt": "What is laissez-faire leadership?",
+              "answer": "A hands-off leadership style where team members make many of their own decisions.",
+              "explanation": "This style works best with experienced and highly capable teams.",
+              "difficulty": 1,
+              "tags": ["Leadership Styles", "Laissez-faire"]
+            },
+            {
+              "id": "CAPM-LEAD-014",
+              "card_type": "flashcard",
+              "prompt": "What is charismatic leadership?",
+              "answer": "A leadership style that motivates others through confidence, enthusiasm, and strong personal influence.",
+              "explanation": "Charismatic leaders often inspire loyalty through personality and conviction.",
+              "difficulty": 1,
+              "tags": ["Leadership Styles", "Charismatic"]
+            },
+            {
+              "id": "CAPM-LEAD-015",
+              "card_type": "flashcard",
+              "prompt": "What is interactional leadership?",
+              "answer": "A leadership style that combines transactional, transformational, and charismatic leadership approaches.",
+              "explanation": "Interactional leaders adapt their style to suit different situations.",
+              "difficulty": 2,
+              "tags": ["Leadership Styles", "Interactional"]
+            },
+            {
+              "id": "CAPM-LEAD-016",
+              "card_type": "scenario",
+              "prompt": "A Project Manager removes obstacles, coaches the team, and focuses on helping people succeed rather than directing their work. Which leadership style is being demonstrated?",
+              "answer": "Servant Leadership.",
+              "explanation": "Servant leaders enable others to perform at their best.",
+              "difficulty": 4,
+              "tags": ["Scenario", "Servant Leadership"]
+            },
+            {
+              "id": "CAPM-LEAD-017",
+              "card_type": "scenario",
+              "prompt": "A Project Manager inspires the team around a compelling future vision and encourages innovation. Which leadership style is being demonstrated?",
+              "answer": "Transformational Leadership.",
+              "explanation": "Transformational leaders motivate people by creating and communicating a compelling vision.",
+              "difficulty": 4,
+              "tags": ["Scenario", "Transformational"]
+            },
+            {
+              "id": "CAPM-LEAD-018",
+              "card_type": "scenario",
+              "prompt": "A Project Manager rewards strong performance and addresses poor performance through corrective action. Which leadership style is being demonstrated?",
+              "answer": "Transactional Leadership.",
+              "explanation": "Transactional leadership is based on performance management.",
+              "difficulty": 4,
+              "tags": ["Scenario", "Transactional"]
+            },
+            {
+              "id": "CAPM-LEAD-019",
+              "card_type": "flashcard",
+              "prompt": "According to PMI, what are the three major responsibilities of a leader?",
+              "answer": "Vision, alignment, and motivation.",
+              "explanation": "Leadership focuses on creating direction and inspiring people to achieve shared goals.",
+              "difficulty": 2,
+              "tags": ["Leadership"]
+            },
+            {
+              "id": "CAPM-LEAD-020",
+              "card_type": "true_false",
+              "prompt": "True or False: Project Managers should adapt their leadership style based on the situation and the needs of the team.",
+              "answer": "True.",
+              "explanation": "PMI emphasizes situational leadership rather than relying on a single leadership style.",
+              "difficulty": 2,
+              "tags": ["Leadership", "Situational"]
+            }
+          ],
+          "lessons": []
+        }
+      ]
+    }
+  ]
+}

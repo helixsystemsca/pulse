@@ -160,6 +160,33 @@ class TrainingCourseSummaryOut(BaseModel):
     progress_status: Optional[TrainingProgressStatusApi] = None
 
 
+class TrainingDeckSummaryOut(BaseModel):
+    id: str
+    slug: str
+    title: str
+    description: Optional[str] = None
+    course_kind: TrainingCourseKindApi = "internal"
+    status: TrainingCourseStatusApi = "draft"
+    certification_id: Optional[str] = None
+    certification_slug: Optional[str] = None
+    certification_title: Optional[str] = None
+    deck_version: str = "1.0"
+    updated_at: Optional[datetime] = None
+    card_count: int = 0
+    section_count: int = 0
+    tags: list[str] = Field(default_factory=list)
+
+
+class TrainingDeckRenameIn(BaseModel):
+    title: str = Field(min_length=1, max_length=512)
+    description: Optional[str] = None
+
+
+class TrainingDeckDuplicateIn(BaseModel):
+    new_slug: Optional[str] = Field(None, max_length=128)
+    new_title: Optional[str] = Field(None, max_length=512)
+
+
 class TrainingCourseCreate(BaseModel):
     slug: str
     title: str
@@ -499,3 +526,27 @@ class TrainingImportResultOut(BaseModel):
     skipped: dict[str, int] = Field(default_factory=dict)
     errors: list[TrainingImportIssueOut] = Field(default_factory=list)
     warnings: list[TrainingImportIssueOut] = Field(default_factory=list)
+
+
+class TrainingDeckValidationStatsOut(BaseModel):
+    courses: int = 0
+    sections: int = 0
+    flashcards: int = 0
+    flashcards_with_explanation: int = 0
+    flashcards_with_tags: int = 0
+    flashcards_missing_explanation: int = 0
+    flashcards_missing_tags: int = 0
+    sections_without_cards: int = 0
+    invalid_difficulty_count: int = 0
+    duplicate_questions: int = 0
+    duplicate_answers: int = 0
+    by_difficulty: dict[str, int] = Field(default_factory=dict)
+
+
+class TrainingDeckValidationReportOut(BaseModel):
+    source_name: Optional[str] = None
+    version: Optional[str] = None
+    status: Literal["valid", "invalid"]
+    errors: list[TrainingImportIssueOut] = Field(default_factory=list)
+    warnings: list[TrainingImportIssueOut] = Field(default_factory=list)
+    statistics: TrainingDeckValidationStatsOut = Field(default_factory=TrainingDeckValidationStatsOut)

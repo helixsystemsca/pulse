@@ -1,0 +1,111 @@
+{
+  "version": "1.0",
+  "source_name": "capm-integrated-review-v1",
+  "courses": [
+    {
+      "slug": "capm",
+      "title": "CAPM",
+      "course_kind": "certification",
+      "certification_slug": "capm",
+      "sections": [
+        {
+          "slug": "integrated-review",
+          "title": "Integrated Review",
+          "flashcards": [
+            {
+              "id": "CAPM-MIX-001",
+              "card_type": "scenario",
+              "prompt": "A stakeholder requests a new feature during execution that will increase cost and delay the schedule. What should the Project Manager do FIRST?",
+              "answer": "Submit the request through the project's formal change control process.",
+              "explanation": "The impact on scope, schedule, cost, quality, and risk should be evaluated before any work begins.",
+              "difficulty": 5,
+              "tags": ["Change Control", "Scope", "Stakeholders"]
+            },
+            {
+              "id": "CAPM-MIX-002",
+              "card_type": "scenario",
+              "prompt": "A key stakeholder has high authority but little day-to-day interest in the project. How should the Project Manager manage this stakeholder?",
+              "answer": "Keep the stakeholder satisfied.",
+              "explanation": "According to the Power/Interest Grid, high-power, low-interest stakeholders should be kept satisfied.",
+              "difficulty": 5,
+              "tags": ["Stakeholders", "Power Interest Grid"]
+            },
+            {
+              "id": "CAPM-MIX-003",
+              "card_type": "scenario",
+              "prompt": "A project is ahead of schedule but over budget. Which combination of performance indexes is most likely?",
+              "answer": "SPI > 1.0 and CPI < 1.0.",
+              "explanation": "SPI measures schedule performance while CPI measures cost performance.",
+              "difficulty": 5,
+              "tags": ["SPI", "CPI", "EVM"]
+            },
+            {
+              "id": "CAPM-MIX-004",
+              "card_type": "scenario",
+              "prompt": "During a phase review, executives question whether the project still supports organizational strategy. What project management concept is being applied?",
+              "answer": "Project governance.",
+              "explanation": "Governance ensures projects continue supporting organizational objectives.",
+              "difficulty": 4,
+              "tags": ["Governance", "Business Value"]
+            },
+            {
+              "id": "CAPM-MIX-005",
+              "card_type": "scenario",
+              "prompt": "A project team begins implementing an unapproved customer request. What project issue has occurred?",
+              "answer": "Scope creep.",
+              "explanation": "Unapproved changes to project scope constitute scope creep.",
+              "difficulty": 4,
+              "tags": ["Scope Creep", "Change Control"]
+            },
+            {
+              "id": "CAPM-MIX-006",
+              "card_type": "scenario",
+              "prompt": "A team completes a deliverable that passes quality inspection, but the customer has not formally accepted it. Which process remains?",
+              "answer": "Validate Scope.",
+              "explanation": "Control Quality verifies quality, while Validate Scope obtains customer acceptance.",
+              "difficulty": 4,
+              "tags": ["Validate Scope", "Quality"]
+            },
+            {
+              "id": "CAPM-MIX-007",
+              "card_type": "scenario",
+              "prompt": "Several team members are assigned to more work than they can complete. Which scheduling technique adjusts the schedule based on resource availability?",
+              "answer": "Resource leveling.",
+              "explanation": "Resource leveling resolves over-allocation, even if it extends the schedule.",
+              "difficulty": 5,
+              "tags": ["Resource Leveling", "Resources"]
+            },
+            {
+              "id": "CAPM-MIX-008",
+              "card_type": "scenario",
+              "prompt": "A Project Manager helps remove obstacles, mentors team members, and focuses on team success instead of directing every task. Which leadership style is demonstrated?",
+              "answer": "Servant leadership.",
+              "explanation": "Servant leaders enable the team rather than control it.",
+              "difficulty": 4,
+              "tags": ["Leadership", "Servant Leadership"]
+            },
+            {
+              "id": "CAPM-MIX-009",
+              "card_type": "scenario",
+              "prompt": "Late in the project, management asks to shorten the completion date without reducing scope. They approve hiring additional contractors. Which schedule compression technique is being used?",
+              "answer": "Crashing.",
+              "explanation": "Crashing shortens the schedule by adding resources, usually increasing cost.",
+              "difficulty": 5,
+              "tags": ["Crashing", "Schedule"]
+            },
+            {
+              "id": "CAPM-MIX-010",
+              "card_type": "scenario",
+              "prompt": "The project no longer supports the organization's strategic objectives even though it is on schedule and within budget. What should happen next?",
+              "answer": "Governance should review the project and determine whether it should continue, be modified, or be terminated.",
+              "explanation": "A project's continued alignment with organizational strategy is a key governance responsibility.",
+              "difficulty": 5,
+              "tags": ["Governance", "Business Value", "Decision Gates"]
+            }
+          ],
+          "lessons": []
+        }
+      ]
+    }
+  ]
+}

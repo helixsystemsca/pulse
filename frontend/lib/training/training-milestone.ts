@@ -14,6 +14,19 @@ export const TRAINING_MILESTONE_HIDDEN_ROUTE_PREFIXES = [
   "/training/compliance",
 ] as const;
 
+/** Certification / program names recognized for flashcard study decks. */
+export const FLASHCARD_CERTIFICATION_HINTS = [
+  "capm",
+  "camp",
+  "fmp",
+  "six sigma",
+  "power bi",
+  "pmp",
+  "pmi",
+  "lean",
+  "itil",
+] as const;
+
 export function isTrainingRouteHiddenInMilestone(pathname: string): boolean {
   if (!TRAINING_MILESTONE_FLASHCARDS_ONLY) return false;
   const path = pathname.split("?")[0] ?? pathname;
@@ -23,11 +36,33 @@ export function isTrainingRouteHiddenInMilestone(pathname: string): boolean {
   );
 }
 
-/** Courses eligible for flashcard study (CAPM / certification packs). */
-export function isFlashcardStudyCourse(course: { slug: string; title: string; course_kind: string }): boolean {
-  const slug = course.slug.toLowerCase();
-  const title = course.title.toLowerCase();
-  if (slug.includes("capm") || title.includes("capm")) return true;
+type FlashcardCourseLike = {
+  slug: string;
+  title: string;
+  course_kind: string;
+  status?: string;
+  tags?: string[];
+  certification_slug?: string | null;
+  certification_title?: string | null;
+};
+
+/** Courses eligible for flashcard study (certification decks). */
+export function isFlashcardStudyCourse(course: FlashcardCourseLike): boolean {
+  if (course.status === "archived") return false;
   if (course.course_kind === "certification") return true;
-  return false;
+  if (course.certification_slug || course.certification_title) return true;
+
+  const hay = [course.slug, course.title, ...(course.tags ?? [])].join(" ").toLowerCase();
+  return FLASHCARD_CERTIFICATION_HINTS.some((hint) => hay.includes(hint));
+}
+
+export function flashcardCertificationLabel(course: FlashcardCourseLike): string {
+  if (course.certification_title) return course.certification_title;
+  if (course.certification_slug) {
+    return course.certification_slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+  const hay = `${course.slug} ${course.title}`.toLowerCase();
+  const match = FLASHCARD_CERTIFICATION_HINTS.find((hint) => hay.includes(hint));
+  if (match) return match.replace(/\b\w/g, (c) => c.toUpperCase());
+  return course.course_kind === "certification" ? "Certification" : course.course_kind;
 }

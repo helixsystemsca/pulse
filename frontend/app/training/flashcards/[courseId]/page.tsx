@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
-import { CapmFlashcardStudy } from "@/components/training/flashcards/CapmFlashcardStudy";
+import { FlashcardSectionPicker } from "@/components/training/flashcards/FlashcardSectionPicker";
 
 export const metadata: Metadata = {
-  title: "Study | Flashcards | Training | Helix",
+  title: "Sections | Flashcards | Training | Helix",
 };
 
 type Props = { params: Promise<{ courseId: string }> };
 
-export default async function TrainingFlashcardStudyPage({ params }: Props) {
+export default async function TrainingFlashcardCoursePage({ params }: Props) {
   const { courseId } = await params;
-  return <CapmFlashcardStudy courseId={courseId} />;
+  return <FlashcardSectionPicker courseId={courseId} />;
 }

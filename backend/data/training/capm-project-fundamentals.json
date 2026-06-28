@@ -1,0 +1,120 @@
+{
+  "version": "1.0",
+  "source_name": "capm-project-fundamentals-v1",
+  "courses": [
+    {
+      "slug": "capm",
+      "title": "CAPM",
+      "course_kind": "certification",
+      "certification_slug": "capm",
+      "sections": [
+        {
+          "slug": "project-fundamentals",
+          "title": "Project Fundamentals",
+          "flashcards": [
+            {
+              "id": "CAPM-PF-001",
+              "card_type": "flashcard",
+              "prompt": "What is a project?",
+              "answer": "A temporary endeavor undertaken to create a unique product, service, or result.",
+              "explanation": "A project always has a defined beginning and end, while its deliverables may continue to provide value after the project is complete.",
+              "difficulty": 1,
+              "tags": ["definition", "project", "fundamentals"]
+            },
+            {
+              "id": "CAPM-PF-002",
+              "card_type": "flashcard",
+              "prompt": "What are the two defining characteristics of every project?",
+              "answer": "Projects are temporary and create a unique product, service, or result.",
+              "explanation": "These are the two key characteristics PMI uses to distinguish projects from ongoing operations.",
+              "difficulty": 1,
+              "tags": ["project", "definition"]
+            },
+            {
+              "id": "CAPM-PF-003",
+              "card_type": "flashcard",
+              "prompt": "Do project deliverables always end when the project ends?",
+              "answer": "No. The project ends, but its deliverables often continue to provide value.",
+              "explanation": "Projects are temporary, but the products, services, or results they create are often long lasting.",
+              "difficulty": 1,
+              "tags": ["deliverables"]
+            },
+            {
+              "id": "CAPM-PF-004",
+              "card_type": "multiple_choice",
+              "prompt": "Which statement best describes a project?",
+              "answer": "A temporary endeavor that creates a unique product, service, or result.",
+              "explanation": "Projects are temporary and unique, while operations are continuous.",
+              "difficulty": 2,
+              "tags": ["exam", "definition"],
+              "options": {
+                "choices": [
+                  "An ongoing operational activity",
+                  "A temporary endeavor that creates a unique product, service, or result",
+                  "A recurring business process",
+                  "A permanent organizational function"
+                ],
+                "correct_index": 1
+              }
+            },
+            {
+              "id": "CAPM-PF-005",
+              "card_type": "flashcard",
+              "prompt": "List four reasons a project may be terminated.",
+              "answer": "Objectives are achieved, objectives cannot be achieved, funding ends, business need no longer exists.",
+              "explanation": "Other reasons include lack of physical resources or legal causes.",
+              "difficulty": 2,
+              "tags": ["termination"]
+            },
+            {
+              "id": "CAPM-PF-006",
+              "card_type": "scenario",
+              "prompt": "A project loses its funding halfway through execution. Should the project continue?",
+              "answer": "Not necessarily. Loss of funding is a valid reason for a project to be terminated.",
+              "explanation": "Projects can end before completion if funding, resources, or business need no longer exist.",
+              "difficulty": 2,
+              "tags": ["termination", "scenario"]
+            },
+            {
+              "id": "CAPM-PF-007",
+              "card_type": "flashcard",
+              "prompt": "Name at least five common reasons organizations initiate projects.",
+              "answer": "Market demand, customer request, new technology, legal requirements, stakeholder demands, business process improvements, political, environmental, social, or economic reasons.",
+              "explanation": "Projects are initiated to create value or respond to organizational or external drivers.",
+              "difficulty": 2,
+              "tags": ["business-case"]
+            },
+            {
+              "id": "CAPM-PF-008",
+              "card_type": "flashcard",
+              "prompt": "What is the difference between tangible and intangible project benefits?",
+              "answer": "Tangible benefits are measurable (profit, revenue, market share). Intangible benefits are difficult to quantify (brand recognition, goodwill, reputation, strategic alignment).",
+              "explanation": "Both types contribute to project value and may be included in a business case.",
+              "difficulty": 2,
+              "tags": ["benefits"]
+            },
+            {
+              "id": "CAPM-PF-009",
+              "card_type": "scenario",
+              "prompt": "A project improves an organization's public image but generates no immediate revenue. Is this still considered project value?",
+              "answer": "Yes. Improved reputation and brand recognition are intangible benefits.",
+              "explanation": "Projects can create value through both tangible and intangible outcomes.",
+              "difficulty": 2,
+              "tags": ["benefits", "scenario"]
+            },
+            {
+              "id": "CAPM-PF-010",
+              "card_type": "true_false",
+              "prompt": "True or False: Every successful project must produce tangible financial benefits.",
+              "answer": "False.",
+              "explanation": "Projects may deliver intangible benefits such as goodwill, strategic alignment, or improved reputation.",
+              "difficulty": 1,
+              "tags": ["benefits", "truefalse"]
+            }
+          ],
+          "lessons": []
+        }
+      ]
+    }
+  ]
+}

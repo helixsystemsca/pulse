@@ -8,31 +8,55 @@ import {
   ChevronRight,
   Loader2,
   RotateCcw,
-  ThumbsDown,
-  ThumbsUp,
 } from "lucide-react";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { sectionTitleForFlashcard, buildLessonSectionTitleMap } from "@/lib/training/flashcard-section-lookup";
+import {
+  filterCardsForSection,
+  findSectionById,
+} from "@/lib/training/flashcard-sections";
+import {
+  applyFlashcardStudySettings,
+  flashcardFaceContent,
+} from "@/lib/training/flashcard-deck-filter";
 import {
   readFlashcardStudyPosition,
   resolveFlashcardStudyIndex,
   writeFlashcardStudyPosition,
 } from "@/lib/training/flashcard-study-position";
-import { TRAINING_ROUTES } from "@/lib/training/routes";
+import { useFlashcardStudySettings } from "@/lib/training/flashcard-study-settings";
+import {
+  computeStudySessionStats,
+  mergeReviewAfterRating,
+} from "@/lib/training/flashcard-session-stats";
+import { trainingFlashcardCourseHref } from "@/lib/training/routes";
 import {
   fetchCourseFlashcards,
   fetchTrainingCourse,
   postFlashcardReview,
-  postTrainingProgress,
+  type TrainingReviewRating,
   type TrainingStudyDueCard,
 } from "@/lib/training/trainingPlatformApi";
 import { cn } from "@/lib/cn";
 import { uiCalloutWarning, uiPageTitle } from "@/styles/ui-classes";
+import { FlashcardStudySettingsPanel } from "@/components/training/flashcards/FlashcardStudySettingsPanel";
+import { FlashcardStudyStatsBar } from "@/components/training/flashcards/FlashcardStudyStatsBar";
 import "./flashcard-study.css";
 
 const SWIPE_THRESHOLD_PX = 48;
 
-type Props = { courseId: string };
+const CONFIDENCE_RATINGS: {
+  id: TrainingReviewRating;
+  label: string;
+  shortcut: string;
+  className: string;
+}[] = [
+  { id: "again", label: "Again", shortcut: "1", className: "flashcard-rating-btn--again" },
+  { id: "good", label: "Good", shortcut: "2", className: "flashcard-rating-btn--good" },
+  { id: "easy", label: "Easy", shortcut: "3", className: "flashcard-rating-btn--easy" },
+];
+
+type Props = { courseId: string; sectionId: string };
 
 function useFlipDurationMs(): number {
   const [ms, setMs] = useState(600);
@@ -46,11 +70,14 @@ function useFlipDurationMs(): number {
   return ms;
 }
 
-export function CapmFlashcardStudy({ courseId }: Props) {
+export function CapmFlashcardStudy({ courseId, sectionId }: Props) {
   const flipMs = useFlipDurationMs();
+  const { settings, setSettings } = useFlashcardStudySettings();
   const [courseTitle, setCourseTitle] = useState("");
+  const [sectionTitle, setSectionTitle] = useState("");
   const [sectionLookup, setSectionLookup] = useState<Map<string, string>>(() => new Map());
   const [cards, setCards] = useState<TrainingStudyDueCard[]>([]);
+  const [sectionCardTotal, setSectionCardTotal] = useState(0);
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -58,6 +85,7 @@ export function CapmFlashcardStudy({ courseId }: Props) {
   const [animating, setAnimating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reviewedCount, setReviewedCount] = useState(0);
+  const [sessionRatings, setSessionRatings] = useState<TrainingReviewRating[]>([]);
 
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
@@ -66,15 +94,17 @@ export function CapmFlashcardStudy({ courseId }: Props) {
   const total = cards.length;
   const current = cards[index];
   const card = current?.flashcard;
+  const faces = card ? flashcardFaceContent(card, settings) : null;
   const cardNumber = total > 0 ? index + 1 : 0;
   const progressPct = total > 0 ? Math.round((cardNumber / total) * 100) : 0;
-  const sectionName = sectionTitleForFlashcard(
+  const sectionName = sectionTitle || sectionTitleForFlashcard(
     card?.lesson_id,
     sectionLookup,
     courseTitle || "Course",
   );
   const sessionComplete = reviewedCount >= total && total > 0;
   const interactionsLocked = animating || submitting || loading;
+  const sessionStats = computeStudySessionStats(cards, reviewedCount, sessionRatings);
 
   const clearAnimTimer = useCallback(() => {
     if (animTimerRef.current) {
@@ -101,11 +131,11 @@ export function CapmFlashcardStudy({ courseId }: Props) {
       const list = deckCards ?? cards;
       setIndex(next);
       const id = list[next]?.flashcard.id;
-      if (id) {
-        writeFlashcardStudyPosition(courseId, { flashcardId: id, index: next });
+      if (id && settings.resumePreviousSession) {
+        writeFlashcardStudyPosition(courseId, { flashcardId: id, index: next }, sectionId);
       }
     },
-    [cards, courseId],
+    [cards, courseId, sectionId, settings.resumePreviousSession],
   );
 
   const goTo = useCallback(
@@ -135,25 +165,31 @@ export function CapmFlashcardStudy({ courseId }: Props) {
           fetchCourseFlashcards(courseId),
           fetchTrainingCourse(courseId),
         ]);
+        const section = findSectionById(course, sectionId);
+        if (!section) {
+          throw new Error("Section not found for this course.");
+        }
+        const sectionCards = filterCardsForSection(deck.cards, section);
+        const filteredCards = applyFlashcardStudySettings(sectionCards, settings);
         setCourseTitle(deck.course_title);
+        setSectionTitle(section.title);
         setSectionLookup(buildLessonSectionTitleMap(course));
-        setCards(deck.cards);
-        const cardIds = deck.cards.map((c) => c.flashcard.id);
-        const saved = opts?.resetSession ? null : readFlashcardStudyPosition(courseId);
+        setSectionCardTotal(sectionCards.length);
+        setCards(filteredCards);
+        const cardIds = filteredCards.map((c) => c.flashcard.id);
+        const saved =
+          opts?.resetSession || !settings.resumePreviousSession
+            ? null
+            : readFlashcardStudyPosition(courseId, sectionId);
         const startIndex = opts?.resetSession
           ? 0
           : resolveFlashcardStudyIndex(cardIds, saved);
         setIndex(startIndex);
         setFlipped(false);
         setReviewedCount(0);
-        if (deck.total > 0 && startIndex >= 0) {
-          applyIndex(startIndex, deck.cards);
-          await postTrainingProgress({
-            scope_kind: "course",
-            scope_id: courseId,
-            status: "in_progress",
-            progress_pct: Math.round(((startIndex + 1) / deck.total) * 100),
-          });
+        setSessionRatings([]);
+        if (filteredCards.length > 0 && startIndex >= 0) {
+          applyIndex(startIndex, filteredCards);
         }
       } catch (e) {
         setError(parseClientApiError(e).message);
@@ -161,7 +197,7 @@ export function CapmFlashcardStudy({ courseId }: Props) {
         setLoading(false);
       }
     },
-    [applyIndex, courseId],
+    [applyIndex, courseId, sectionId, settings],
   );
 
   useEffect(() => {
@@ -169,27 +205,22 @@ export function CapmFlashcardStudy({ courseId }: Props) {
     return () => clearAnimTimer();
   }, [loadDeck, clearAnimTimer]);
 
-  const persistCourseProgress = async (nextReviewed: number) => {
-    if (total === 0) return;
-    const pct = Math.min(100, Math.round((nextReviewed / total) * 100));
-    await postTrainingProgress({
-      scope_kind: "course",
-      scope_id: courseId,
-      status: pct >= 100 ? "completed" : "in_progress",
-      progress_pct: pct,
-    });
-  };
-
   const rateCard = useCallback(
-    async (rating: "again" | "good") => {
+    async (rating: TrainingReviewRating) => {
       if (!card || interactionsLocked || !flipped) return;
+      if (rating !== "again" && rating !== "good" && rating !== "easy") return;
       setSubmitting(true);
       setError(null);
       try {
-        await postFlashcardReview(card.id, rating);
+        const response = await postFlashcardReview(card.id, rating);
+        setCards((prev) =>
+          prev.map((item, i) =>
+            i === index ? mergeReviewAfterRating(item, rating, response) : item,
+          ),
+        );
+        setSessionRatings((prev) => [...prev, rating]);
         const nextReviewed = reviewedCount + 1;
         setReviewedCount(nextReviewed);
-        await persistCourseProgress(nextReviewed);
 
         const nextIndex = index + 1;
         runWithAnimationLock(() => setFlipped(false));
@@ -238,6 +269,11 @@ export function CapmFlashcardStudy({ courseId }: Props) {
       if (e.key === "2" && flipped) {
         e.preventDefault();
         void rateCard("good");
+        return;
+      }
+      if (e.key === "3" && flipped) {
+        e.preventDefault();
+        void rateCard("easy");
       }
     };
 
@@ -284,24 +320,32 @@ export function CapmFlashcardStudy({ courseId }: Props) {
     return (
       <div className="space-y-3">
         <div className={uiCalloutWarning}>{error}</div>
-        <Link href={TRAINING_ROUTES.flashcards} className="text-sm font-semibold text-teal-700 hover:underline">
-          ← Back to courses
+        <Link href={trainingFlashcardCourseHref(courseId)} className="text-sm font-semibold text-teal-700 hover:underline">
+          ← Back to sections
         </Link>
       </div>
     );
   }
 
   if (total === 0) {
+    const filteredEmpty = sectionCardTotal > 0;
     return (
-      <div className="space-y-4 text-center">
-        <p className="text-sm text-ds-muted">This course has no flashcards yet.</p>
-        <Link
-          href={TRAINING_ROUTES.flashcards}
-          className="inline-flex items-center gap-1 text-sm font-semibold text-teal-700 hover:underline"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden />
-          Choose another course
-        </Link>
+      <div className="mx-auto max-w-2xl space-y-4">
+        <FlashcardStudySettingsPanel settings={settings} onChange={setSettings} />
+        <div className="space-y-4 text-center">
+          <p className="text-sm text-ds-muted">
+            {filteredEmpty
+              ? "No cards match your study settings. Try changing settings above."
+              : "This section has no flashcards yet."}
+          </p>
+          <Link
+            href={trainingFlashcardCourseHref(courseId)}
+            className="inline-flex items-center gap-1 text-sm font-semibold text-teal-700 hover:underline"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden />
+            Back to sections
+          </Link>
+        </div>
       </div>
     );
   }
@@ -310,19 +354,19 @@ export function CapmFlashcardStudy({ courseId }: Props) {
     <div className="mx-auto max-w-2xl space-y-5">
       <div className="space-y-3">
         <Link
-          href={TRAINING_ROUTES.flashcards}
+          href={trainingFlashcardCourseHref(courseId)}
           className="inline-flex items-center gap-1 text-sm font-medium text-ds-muted hover:text-ds-foreground"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden />
-          Courses
+          Sections
         </Link>
 
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-wide text-teal-700 dark:text-teal-400">
-              {sectionName}
+              {courseTitle}
             </p>
-            <h2 className={cn(uiPageTitle, "mt-0.5 truncate")}>{courseTitle}</h2>
+            <h2 className={cn(uiPageTitle, "mt-0.5 truncate")}>{sectionName}</h2>
           </div>
           <div className="text-right">
             <p className="text-xs font-medium uppercase tracking-wide text-ds-muted">Card</p>
@@ -349,12 +393,19 @@ export function CapmFlashcardStudy({ courseId }: Props) {
             <div className="flashcard-progress-fill" style={{ width: `${progressPct}%` }} />
           </div>
         </div>
+
+        <FlashcardStudyStatsBar stats={sessionStats} />
       </div>
+
+      <FlashcardStudySettingsPanel settings={settings} onChange={setSettings} />
 
       {sessionComplete ? (
         <div className="rounded-xl border border-ds-border bg-ds-card p-8 text-center">
           <p className="text-lg font-semibold text-ds-foreground">Session complete</p>
           <p className="mt-2 text-sm text-ds-muted">You reviewed all {total} cards. Progress has been saved.</p>
+          <div className="mt-6">
+            <FlashcardStudyStatsBar stats={sessionStats} />
+          </div>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <button
               type="button"
@@ -365,10 +416,10 @@ export function CapmFlashcardStudy({ courseId }: Props) {
               Study again
             </button>
             <Link
-              href={TRAINING_ROUTES.flashcards}
+              href={trainingFlashcardCourseHref(courseId)}
               className="inline-flex items-center rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700"
             >
-              Back to courses
+              Back to sections
             </Link>
           </div>
         </div>
@@ -393,16 +444,18 @@ export function CapmFlashcardStudy({ courseId }: Props) {
               >
                 <div className="flashcard-face">
                   <p className="text-xs font-bold uppercase tracking-wider text-teal-700 dark:text-teal-400">
-                    Question
+                    {faces?.frontLabel}
                   </p>
-                  <p className="mt-4 text-xl font-medium leading-relaxed text-ds-foreground">{card?.prompt}</p>
+                  <p className="mt-4 text-xl font-medium leading-relaxed text-ds-foreground">{faces?.frontText}</p>
                   <p className="mt-8 text-center text-xs text-ds-muted">
                     Tap or press <kbd className="rounded border border-ds-border px-1.5 py-0.5 font-mono text-[10px]">Space</kbd> to flip
                   </p>
                 </div>
                 <div className="flashcard-face flashcard-face-back">
-                  <p className="text-xs font-bold uppercase tracking-wider text-teal-700 dark:text-teal-400">Answer</p>
-                  <p className="mt-4 text-xl font-medium leading-relaxed text-ds-foreground">{card?.answer}</p>
+                  <p className="text-xs font-bold uppercase tracking-wider text-teal-700 dark:text-teal-400">
+                    {faces?.backLabel}
+                  </p>
+                  <p className="mt-4 text-xl font-medium leading-relaxed text-ds-foreground">{faces?.backText}</p>
                   {card?.explanation ? (
                     <p className="mt-4 rounded-lg bg-ds-muted/15 px-3 py-2 text-sm text-ds-muted">{card.explanation}</p>
                   ) : null}
@@ -424,7 +477,7 @@ export function CapmFlashcardStudy({ courseId }: Props) {
               Previous
             </button>
             <p className="hidden text-center text-[11px] text-ds-muted sm:block">
-              ← → navigate · Space flip · 1 Again · 2 Got it
+              ← → navigate · Space flip · 1 Again · 2 Good · 3 Easy
             </p>
             <button
               type="button"
@@ -438,27 +491,24 @@ export function CapmFlashcardStudy({ courseId }: Props) {
           </div>
 
           {flipped ? (
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                disabled={interactionsLocked}
-                onClick={() => void rateCard("again")}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900 dark:bg-red-950/50 dark:text-red-200"
-              >
-                <ThumbsDown className="h-4 w-4" aria-hidden />
-                Again
-                <kbd className="ml-1 hidden rounded border border-red-300/60 px-1 py-0.5 font-mono text-[10px] sm:inline">1</kbd>
-              </button>
-              <button
-                type="button"
-                disabled={interactionsLocked}
-                onClick={() => void rateCard("good")}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-200"
-              >
-                <ThumbsUp className="h-4 w-4" aria-hidden />
-                Got it
-                <kbd className="ml-1 hidden rounded border border-emerald-300/60 px-1 py-0.5 font-mono text-[10px] sm:inline">2</kbd>
-              </button>
+            <div className="space-y-2">
+              <p className="text-center text-xs font-medium text-ds-muted">How confident are you?</p>
+              <div className="flashcard-rating-row">
+                {CONFIDENCE_RATINGS.map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    disabled={interactionsLocked}
+                    onClick={() => void rateCard(opt.id)}
+                    className={cn("flashcard-rating-btn", opt.className)}
+                  >
+                    <span>{opt.label}</span>
+                    <kbd className="hidden rounded border border-current/25 px-1 py-0.5 font-mono text-[10px] opacity-70 sm:inline">
+                      {opt.shortcut}
+                    </kbd>
+                  </button>
+                ))}
+              </div>
             </div>
           ) : (
             <p className="text-center text-xs text-ds-muted sm:hidden">Swipe left or right to change cards</p>

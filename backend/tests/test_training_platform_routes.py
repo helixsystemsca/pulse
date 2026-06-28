@@ -207,3 +207,55 @@ async def test_training_import_upsert_and_validation(client, seeded_tenant) -> N
     )
     assert dup.status_code == 400, dup.text
     assert any(e["code"] == "duplicate_id" for e in dup.json()["errors"])
+
+
+@pytest.mark.asyncio
+async def test_training_deck_management(client, seeded_tenant) -> None:
+    mgr_headers = auth_headers(seeded_tenant.manager_token)
+    worker_headers = auth_headers(seeded_tenant.worker_token)
+
+    imp = await client.post("/api/v1/training/import", headers=mgr_headers, json=_CAPM_SECTION_PACK)
+    assert imp.status_code == 201, imp.text
+    course_id = next(
+        c["id"] for c in (await client.get("/api/v1/training/courses", headers=mgr_headers)).json()
+        if c["slug"] == "capm"
+    )
+
+    denied = await client.get("/api/v1/training/decks", headers=worker_headers)
+    assert denied.status_code == 403, denied.text
+
+    decks = await client.get("/api/v1/training/decks", headers=mgr_headers)
+    assert decks.status_code == 200, decks.text
+    body = decks.json()
+    assert len(body) >= 1
+    deck = next(d for d in body if d["slug"] == "capm")
+    assert deck["card_count"] >= 1
+    assert deck["section_count"] >= 1
+    assert deck["deck_version"] == "1.0"
+
+    export = await client.get(f"/api/v1/training/decks/{course_id}/export", headers=mgr_headers)
+    assert export.status_code == 200, export.text
+    pack = export.json()
+    assert pack["version"] == "1.0"
+    assert pack["courses"][0]["slug"] == "capm"
+
+    renamed = await client.patch(
+        f"/api/v1/training/decks/{course_id}",
+        headers=mgr_headers,
+        json={"title": "CAPM Prep (Renamed)", "description": "Updated deck"},
+    )
+    assert renamed.status_code == 200, renamed.text
+    assert renamed.json()["title"] == "CAPM Prep (Renamed)"
+
+    dup = await client.post(
+        f"/api/v1/training/decks/{course_id}/duplicate",
+        headers=mgr_headers,
+        json={"new_slug": "capm-copy"},
+    )
+    assert dup.status_code == 201, dup.text
+    assert dup.json()["slug"] == "capm-copy"
+    assert dup.json()["card_count"] >= 1
+
+    archived = await client.post(f"/api/v1/training/decks/{course_id}/archive", headers=mgr_headers)
+    assert archived.status_code == 200, archived.text
+    assert archived.json()["status"] == "archived"

@@ -1,0 +1,129 @@
+{
+  "version": "1.0",
+  "source_name": "capm-tailoring-v1",
+  "courses": [
+    {
+      "slug": "capm",
+      "title": "CAPM",
+      "course_kind": "certification",
+      "certification_slug": "capm",
+      "sections": [
+        {
+          "slug": "tailoring",
+          "title": "Tailoring",
+          "flashcards": [
+            {
+              "id": "CAPM-TAIL-001",
+              "card_type": "flashcard",
+              "prompt": "What does tailoring mean in project management?",
+              "answer": "Tailoring is selecting and adapting the appropriate project management processes, methods, tools, and life cycle phases to best suit a specific project.",
+              "explanation": "PMI emphasizes that every project is different and should use an approach that fits its unique circumstances.",
+              "difficulty": 1,
+              "tags": ["Tailoring", "Project Management"]
+            },
+            {
+              "id": "CAPM-TAIL-002",
+              "card_type": "true_false",
+              "prompt": "True or False: Every project should use the exact same project management methodology.",
+              "answer": "False.",
+              "explanation": "Every project should be tailored based on its size, complexity, risk, organization, and customer needs.",
+              "difficulty": 1,
+              "tags": ["Tailoring"]
+            },
+            {
+              "id": "CAPM-TAIL-003",
+              "card_type": "flashcard",
+              "prompt": "What factors should be considered when tailoring a project management approach?",
+              "answer": "Project management maturity, risk tolerance, regulations, customer centricity, release size, team size, project size, duration, criticality, and product type.",
+              "explanation": "Tailoring ensures the methodology matches both the organization and the project.",
+              "difficulty": 2,
+              "tags": ["Tailoring", "Selection"]
+            },
+            {
+              "id": "CAPM-TAIL-004",
+              "card_type": "scenario",
+              "prompt": "A highly regulated pharmaceutical project requires extensive documentation and approvals. What should the project manager do?",
+              "answer": "Tailor the project approach to include more formal governance, documentation, and controls.",
+              "explanation": "Projects operating in highly regulated environments require more rigorous project management processes.",
+              "difficulty": 3,
+              "tags": ["Tailoring", "Scenario"]
+            },
+            {
+              "id": "CAPM-TAIL-005",
+              "card_type": "flashcard",
+              "prompt": "Name four project management tools that may be added or removed when tailoring a project.",
+              "answer": "Kanban boards, Gantt charts, Sprint Backlogs, Product Backlogs, Burndown Charts, Roadmaps, Information Radiators, Version Control.",
+              "explanation": "Not every project requires every project management tool.",
+              "difficulty": 2,
+              "tags": ["Tailoring", "Tools"]
+            },
+            {
+              "id": "CAPM-TAIL-006",
+              "card_type": "flashcard",
+              "prompt": "What project measurements may be added or removed during tailoring?",
+              "answer": "Velocity, Throughput, Features Delivered, Earned Value Management, Defects Raised, First Pass Yield.",
+              "explanation": "Measurements should support the chosen delivery approach and project goals.",
+              "difficulty": 2,
+              "tags": ["Measurements"]
+            },
+            {
+              "id": "CAPM-TAIL-007",
+              "card_type": "flashcard",
+              "prompt": "Which measurement is commonly associated with Agile projects?",
+              "answer": "Velocity.",
+              "explanation": "Velocity measures how much work an Agile team completes during an iteration.",
+              "difficulty": 2,
+              "tags": ["Agile", "Measurements"]
+            },
+            {
+              "id": "CAPM-TAIL-008",
+              "card_type": "flashcard",
+              "prompt": "Which measurement is most commonly associated with Predictive projects?",
+              "answer": "Earned Value Management (EVM).",
+              "explanation": "Predictive projects commonly use EVM to monitor cost and schedule performance.",
+              "difficulty": 2,
+              "tags": ["Predictive", "EVM"]
+            },
+            {
+              "id": "CAPM-TAIL-009",
+              "card_type": "flashcard",
+              "prompt": "Name four project management activities that can be added or removed during tailoring.",
+              "answer": "Sprint Planning, Daily Stand-ups, Retrospectives, Rolling Wave Planning, Risk Meetings, Kick-offs, Code Inspections, Backlog Refinement.",
+              "explanation": "Processes should support the selected project life cycle.",
+              "difficulty": 2,
+              "tags": ["Processes", "Tailoring"]
+            },
+            {
+              "id": "CAPM-TAIL-010",
+              "card_type": "scenario",
+              "prompt": "Your customer wants frequent software releases every two weeks. Which activities are most appropriate?",
+              "answer": "Sprint Planning, Daily Stand-ups, Sprint Reviews, and Retrospectives.",
+              "explanation": "These Agile ceremonies support iterative delivery and continuous improvement.",
+              "difficulty": 3,
+              "tags": ["Agile", "Scenario"]
+            },
+            {
+              "id": "CAPM-TAIL-011",
+              "card_type": "scenario",
+              "prompt": "A construction project has fixed requirements and strict deadlines. Which planning tool is most appropriate?",
+              "answer": "A Gantt Chart.",
+              "explanation": "Gantt charts are commonly used for predictive scheduling where activities and dependencies are defined up front.",
+              "difficulty": 3,
+              "tags": ["Predictive", "Gantt"]
+            },
+            {
+              "id": "CAPM-TAIL-012",
+              "card_type": "true_false",
+              "prompt": "True or False: Tailoring means eliminating project management processes to reduce workload.",
+              "answer": "False — tailoring selects appropriate processes, not simply removing work.",
+              "explanation": "Tailoring means selecting the most appropriate processes—not simply removing work.",
+              "difficulty": 1,
+              "tags": ["Tailoring"]
+            }
+          ],
+          "lessons": []
+        }
+      ]
+    }
+  ]
+}

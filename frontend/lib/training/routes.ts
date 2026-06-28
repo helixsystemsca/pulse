@@ -27,6 +27,8 @@ export const TRAINING_ROUTES = {
   complianceQueues: "/training/compliance/queues",
   /** Flashcards milestone — primary Training entry. */
   flashcards: "/training/flashcards",
+  /** Manager deck library (import, export, duplicate). */
+  flashcardDecks: "/training/flashcards/decks",
 } as const;
 
 /** Sub-views under Training → Compliance → Workforce. */
@@ -78,8 +80,17 @@ export type TrainingLearningSectionSlug =
   | "procedures"
   | "acknowledgments";
 
-export function trainingFlashcardStudyHref(courseId: string): string {
+export function trainingFlashcardCourseHref(courseId: string): string {
   return `${TRAINING_ROUTES.flashcards}/${encodeURIComponent(courseId)}`;
+}
+
+export function trainingFlashcardSectionStudyHref(courseId: string, sectionId: string): string {
+  return `${trainingFlashcardCourseHref(courseId)}/${encodeURIComponent(sectionId)}`;
+}
+
+/** Course section list (legacy name). */
+export function trainingFlashcardStudyHref(courseId: string): string {
+  return trainingFlashcardCourseHref(courseId);
 }
 
 export function trainingCourseHref(courseId: string): string {

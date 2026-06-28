@@ -1,0 +1,201 @@
+{
+  "version": "1.0",
+  "source_name": "capm-finance-v1",
+  "courses": [
+    {
+      "slug": "capm",
+      "title": "CAPM",
+      "course_kind": "certification",
+      "certification_slug": "capm",
+      "sections": [
+        {
+          "slug": "finance",
+          "title": "Finance",
+          "flashcards": [
+            {
+              "id": "CAPM-COST-001",
+              "card_type": "flashcard",
+              "prompt": "What is Project Cost Management?",
+              "answer": "The processes involved in planning, estimating, budgeting, financing, funding, managing, and controlling project costs.",
+              "explanation": "Cost Management helps ensure the project is completed within the approved budget.",
+              "difficulty": 1,
+              "tags": ["Cost Management"]
+            },
+            {
+              "id": "CAPM-COST-002",
+              "card_type": "flashcard",
+              "prompt": "What is a cost estimate?",
+              "answer": "A prediction of the monetary resources needed to complete project work.",
+              "explanation": "Cost estimates are progressively refined throughout the project lifecycle.",
+              "difficulty": 1,
+              "tags": ["Cost Estimate"]
+            },
+            {
+              "id": "CAPM-COST-003",
+              "card_type": "flashcard",
+              "prompt": "What is the cost baseline?",
+              "answer": "The approved version of the project budget used to measure and monitor project performance.",
+              "explanation": "The cost baseline excludes management reserve.",
+              "difficulty": 2,
+              "tags": ["Cost Baseline"]
+            },
+            {
+              "id": "CAPM-COST-004",
+              "card_type": "flashcard",
+              "prompt": "What is the difference between contingency reserve and management reserve?",
+              "answer": "Contingency reserve covers known-unknown risks and is included in the cost baseline. Management reserve covers unknown-unknown risks and is not included in the cost baseline.",
+              "explanation": "Contingency reserve is planned; management reserve is held by management for unforeseen work.",
+              "difficulty": 3,
+              "tags": ["Contingency Reserve", "Management Reserve"]
+            },
+            {
+              "id": "CAPM-COST-005",
+              "card_type": "flashcard",
+              "prompt": "What is Planned Value (PV)?",
+              "answer": "The authorized budget assigned to scheduled work.",
+              "explanation": "PV represents how much work should have been completed according to the schedule.",
+              "difficulty": 2,
+              "tags": ["EVM", "PV"]
+            },
+            {
+              "id": "CAPM-COST-006",
+              "card_type": "flashcard",
+              "prompt": "What is Earned Value (EV)?",
+              "answer": "The measure of work actually completed expressed in terms of the approved budget.",
+              "explanation": "EV measures the value of completed work, not the amount spent.",
+              "difficulty": 2,
+              "tags": ["EVM", "EV"]
+            },
+            {
+              "id": "CAPM-COST-007",
+              "card_type": "flashcard",
+              "prompt": "What is Actual Cost (AC)?",
+              "answer": "The actual cost incurred for the work performed during a given period.",
+              "explanation": "AC represents what has actually been spent.",
+              "difficulty": 2,
+              "tags": ["EVM", "AC"]
+            },
+            {
+              "id": "CAPM-COST-008",
+              "card_type": "flashcard",
+              "prompt": "What is Budget at Completion (BAC)?",
+              "answer": "The total approved budget for the project.",
+              "explanation": "BAC represents the project's planned total cost.",
+              "difficulty": 2,
+              "tags": ["BAC"]
+            },
+            {
+              "id": "CAPM-COST-009",
+              "card_type": "flashcard",
+              "prompt": "What is Cost Variance (CV)?",
+              "answer": "CV = EV − AC.",
+              "explanation": "A positive CV means the project is under budget; a negative CV means it is over budget.",
+              "difficulty": 2,
+              "tags": ["CV", "Formula"]
+            },
+            {
+              "id": "CAPM-COST-010",
+              "card_type": "flashcard",
+              "prompt": "What is Schedule Variance (SV)?",
+              "answer": "SV = EV − PV.",
+              "explanation": "A positive SV indicates the project is ahead of schedule.",
+              "difficulty": 2,
+              "tags": ["SV", "Formula"]
+            },
+            {
+              "id": "CAPM-COST-011",
+              "card_type": "flashcard",
+              "prompt": "What is Cost Performance Index (CPI)?",
+              "answer": "CPI = EV ÷ AC.",
+              "explanation": "A CPI greater than 1.0 indicates good cost performance.",
+              "difficulty": 3,
+              "tags": ["CPI", "Formula"]
+            },
+            {
+              "id": "CAPM-COST-012",
+              "card_type": "flashcard",
+              "prompt": "What is Schedule Performance Index (SPI)?",
+              "answer": "SPI = EV ÷ PV.",
+              "explanation": "An SPI greater than 1.0 indicates the project is ahead of schedule.",
+              "difficulty": 3,
+              "tags": ["SPI", "Formula"]
+            },
+            {
+              "id": "CAPM-COST-013",
+              "card_type": "flashcard",
+              "prompt": "How do you interpret a CPI greater than 1.0?",
+              "answer": "The project is under budget.",
+              "explanation": "More value has been earned than money spent.",
+              "difficulty": 3,
+              "tags": ["CPI"]
+            },
+            {
+              "id": "CAPM-COST-014",
+              "card_type": "flashcard",
+              "prompt": "How do you interpret an SPI less than 1.0?",
+              "answer": "The project is behind schedule.",
+              "explanation": "Less work has been completed than planned.",
+              "difficulty": 3,
+              "tags": ["SPI"]
+            },
+            {
+              "id": "CAPM-COST-015",
+              "card_type": "flashcard",
+              "prompt": "What is Estimate at Completion (EAC)?",
+              "answer": "The expected total cost of the project when it is completed.",
+              "explanation": "EAC forecasts the final project cost based on current performance.",
+              "difficulty": 3,
+              "tags": ["EAC"]
+            },
+            {
+              "id": "CAPM-COST-016",
+              "card_type": "flashcard",
+              "prompt": "What is Estimate to Complete (ETC)?",
+              "answer": "The expected cost required to finish the remaining project work.",
+              "explanation": "ETC estimates future spending from today until project completion.",
+              "difficulty": 3,
+              "tags": ["ETC"]
+            },
+            {
+              "id": "CAPM-COST-017",
+              "card_type": "flashcard",
+              "prompt": "What is Variance at Completion (VAC)?",
+              "answer": "VAC = BAC − EAC.",
+              "explanation": "VAC predicts how much the project will be over or under budget when complete.",
+              "difficulty": 3,
+              "tags": ["VAC", "Formula"]
+            },
+            {
+              "id": "CAPM-COST-018",
+              "card_type": "scenario",
+              "prompt": "Your project's CPI is 0.82. What does this indicate?",
+              "answer": "The project is over budget.",
+              "explanation": "A CPI below 1.0 means the project is spending more money than the value of the work completed.",
+              "difficulty": 4,
+              "tags": ["Scenario", "CPI"]
+            },
+            {
+              "id": "CAPM-COST-019",
+              "card_type": "scenario",
+              "prompt": "Your project's SPI is 1.12. What does this indicate?",
+              "answer": "The project is ahead of schedule.",
+              "explanation": "An SPI above 1.0 indicates more work has been completed than planned.",
+              "difficulty": 4,
+              "tags": ["Scenario", "SPI"]
+            },
+            {
+              "id": "CAPM-COST-020",
+              "card_type": "scenario",
+              "prompt": "A stakeholder asks whether the project is performing well. Current metrics are CPI = 0.91 and SPI = 1.08. What is the best assessment?",
+              "answer": "The project is ahead of schedule but over budget.",
+              "explanation": "SPI > 1.0 indicates positive schedule performance, while CPI < 1.0 indicates negative cost performance.",
+              "difficulty": 5,
+              "tags": ["Scenario", "EVM", "CPI", "SPI"]
+            }
+          ],
+          "lessons": []
+        }
+      ]
+    }
+  ]
+}

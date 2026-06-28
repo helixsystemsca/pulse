@@ -1,0 +1,156 @@
+{
+  "version": "1.0",
+  "source_name": "capm-eefs-opas-v1",
+  "courses": [
+    {
+      "slug": "capm",
+      "title": "CAPM",
+      "course_kind": "certification",
+      "certification_slug": "capm",
+      "sections": [
+        {
+          "slug": "eefs-opas",
+          "title": "EEFs & OPAs",
+          "flashcards": [
+            {
+              "id": "CAPM-EEFO-001",
+              "card_type": "flashcard",
+              "prompt": "What are Enterprise Environmental Factors (EEFs)?",
+              "answer": "Conditions outside the immediate control of the project team that influence, constrain, or direct the project.",
+              "explanation": "EEFs may be internal or external to the organization and cannot usually be changed by the project manager.",
+              "difficulty": 1,
+              "tags": ["EEF", "definition"]
+            },
+            {
+              "id": "CAPM-EEFO-002",
+              "card_type": "flashcard",
+              "prompt": "What are Organizational Process Assets (OPAs)?",
+              "answer": "The organization's plans, processes, policies, procedures, templates, and knowledge bases that can be used to execute projects.",
+              "explanation": "Unlike EEFs, OPAs are organizational assets that can often be updated or improved.",
+              "difficulty": 1,
+              "tags": ["OPA", "definition"]
+            },
+            {
+              "id": "CAPM-EEFO-003",
+              "card_type": "flashcard",
+              "prompt": "What is the primary difference between EEFs and OPAs?",
+              "answer": "EEFs influence the project but are generally outside the project team's control. OPAs are organizational resources and processes that support project execution.",
+              "explanation": "A common CAPM exam question is distinguishing between factors that influence projects and assets that help execute them.",
+              "difficulty": 2,
+              "tags": ["EEF", "OPA", "comparison"]
+            },
+            {
+              "id": "CAPM-EEFO-004",
+              "card_type": "flashcard",
+              "prompt": "Name four examples of external Enterprise Environmental Factors.",
+              "answer": "Government regulations, marketplace conditions, legal restrictions, industry standards, academic research, commercial databases, social and cultural influences.",
+              "explanation": "External EEFs originate outside the organization.",
+              "difficulty": 2,
+              "tags": ["EEF", "external"]
+            },
+            {
+              "id": "CAPM-EEFO-005",
+              "card_type": "flashcard",
+              "prompt": "Name four examples of internal Enterprise Environmental Factors.",
+              "answer": "Organizational culture, governance, infrastructure, employee capability, IT software, resource availability, geographic distribution.",
+              "explanation": "Internal EEFs originate within the performing organization.",
+              "difficulty": 2,
+              "tags": ["EEF", "internal"]
+            },
+            {
+              "id": "CAPM-EEFO-006",
+              "card_type": "scenario",
+              "prompt": "Government regulations require additional testing before a product can be released. Is this an EEF or an OPA?",
+              "answer": "Enterprise Environmental Factor.",
+              "explanation": "Government regulations are external influences outside the project's control.",
+              "difficulty": 2,
+              "tags": ["scenario", "EEF"]
+            },
+            {
+              "id": "CAPM-EEFO-007",
+              "card_type": "scenario",
+              "prompt": "Your organization requires every project to use a standard risk register template. Is this an EEF or an OPA?",
+              "answer": "Organizational Process Asset.",
+              "explanation": "Templates are organizational assets that help execute projects.",
+              "difficulty": 2,
+              "tags": ["OPA", "scenario"]
+            },
+            {
+              "id": "CAPM-EEFO-008",
+              "card_type": "flashcard",
+              "prompt": "Give five examples of Organizational Process Assets.",
+              "answer": "Templates, policies, change control procedures, financial controls, lessons learned repository, issue management procedures, communication requirements.",
+              "explanation": "OPAs consist of reusable organizational knowledge and standardized processes.",
+              "difficulty": 2,
+              "tags": ["OPA"]
+            },
+            {
+              "id": "CAPM-EEFO-009",
+              "card_type": "flashcard",
+              "prompt": "What is a Project Management Office (PMO)?",
+              "answer": "An organizational structure that standardizes project governance and supports project management across the organization.",
+              "explanation": "PMOs vary in the amount of control they exercise over projects.",
+              "difficulty": 1,
+              "tags": ["PMO"]
+            },
+            {
+              "id": "CAPM-EEFO-010",
+              "card_type": "flashcard",
+              "prompt": "What are the three types of PMOs?",
+              "answer": "Supportive, Controlling, and Directive.",
+              "explanation": "They differ mainly by the amount of authority and control they exercise over projects.",
+              "difficulty": 2,
+              "tags": ["PMO"]
+            },
+            {
+              "id": "CAPM-EEFO-011",
+              "card_type": "flashcard",
+              "prompt": "Which PMO has the highest level of control over projects?",
+              "answer": "Directive PMO.",
+              "explanation": "Directive PMOs directly manage projects and assign project managers.",
+              "difficulty": 2,
+              "tags": ["PMO", "directive"]
+            },
+            {
+              "id": "CAPM-EEFO-012",
+              "card_type": "flashcard",
+              "prompt": "Which PMO provides templates, best practices, and consulting but has the lowest level of control?",
+              "answer": "Supportive PMO.",
+              "explanation": "Supportive PMOs primarily advise and share knowledge rather than direct projects.",
+              "difficulty": 2,
+              "tags": ["PMO", "supportive"]
+            },
+            {
+              "id": "CAPM-EEFO-013",
+              "card_type": "flashcard",
+              "prompt": "What distinguishes a Controlling PMO from a Supportive PMO?",
+              "answer": "A Controlling PMO requires compliance with project management standards and methodologies, while a Supportive PMO only provides guidance and resources.",
+              "explanation": "Controlling PMOs have moderate authority.",
+              "difficulty": 2,
+              "tags": ["PMO", "comparison"]
+            },
+            {
+              "id": "CAPM-EEFO-014",
+              "card_type": "flashcard",
+              "prompt": "List four common responsibilities of a PMO.",
+              "answer": "Developing methodologies, managing shared resources, coaching and mentoring, project audits, coordinating communication, maintaining templates.",
+              "explanation": "PMOs promote consistency and governance across projects.",
+              "difficulty": 2,
+              "tags": ["PMO"]
+            },
+            {
+              "id": "CAPM-EEFO-015",
+              "card_type": "scenario",
+              "prompt": "Your PMO assigns project managers directly and has authority over project execution. Which type of PMO is this?",
+              "answer": "Directive PMO — it directly manages projects and assigns project managers.",
+              "explanation": "Only Directive PMOs directly manage projects.",
+              "difficulty": 3,
+              "tags": ["PMO", "scenario"]
+            }
+          ],
+          "lessons": []
+        }
+      ]
+    }
+  ]
+}

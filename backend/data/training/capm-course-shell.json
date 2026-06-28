@@ -1,0 +1,41 @@
+{
+  "version": "1.0",
+  "source_name": "capm-course-shell",
+  "certifications": [
+    {
+      "slug": "capm",
+      "title": "CAPM",
+      "description": "Certified Associate in Project Management (PMI)",
+      "issuer": "PMI",
+      "external_code": "CAPM"
+    }
+  ],
+  "courses": [
+    {
+      "slug": "capm",
+      "title": "CAPM",
+      "description": "PMI Certified Associate in Project Management flashcard deck. Import flashcards per section via JSON.",
+      "course_kind": "certification",
+      "certification_slug": "capm",
+      "tags": ["capm", "pmi", "certification"],
+      "sections": [
+        { "slug": "project-fundamentals", "title": "Project Fundamentals", "flashcards": [], "lessons": [] },
+        { "slug": "delivery-approaches", "title": "Delivery Approaches", "flashcards": [], "lessons": [] },
+        { "slug": "eefs-opas", "title": "EEFs & OPAs", "flashcards": [], "lessons": [] },
+        { "slug": "pmo", "title": "PMO", "flashcards": [], "lessons": [] },
+        { "slug": "tailoring", "title": "Tailoring", "flashcards": [], "lessons": [] },
+        { "slug": "project-manager", "title": "Project Manager", "flashcards": [], "lessons": [] },
+        { "slug": "leadership", "title": "Leadership", "flashcards": [], "lessons": [] },
+        { "slug": "governance", "title": "Governance", "flashcards": [], "lessons": [] },
+        { "slug": "stakeholders", "title": "Stakeholders", "flashcards": [], "lessons": [] },
+        { "slug": "scope", "title": "Scope", "flashcards": [], "lessons": [] },
+        { "slug": "schedule", "title": "Schedule", "flashcards": [], "lessons": [] },
+        { "slug": "finance", "title": "Finance", "flashcards": [], "lessons": [] },
+        { "slug": "resources", "title": "Resources", "flashcards": [], "lessons": [] },
+        { "slug": "risk", "title": "Risk", "flashcards": [], "lessons": [] }
+      ],
+      "flashcards": [],
+      "quizzes": []
+    }
+  ]
+}

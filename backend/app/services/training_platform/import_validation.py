@@ -25,6 +25,10 @@ ImportIssueCode = Literal[
     "duplicate_question",
     "duplicate_answer",
     "duplicate_slug",
+    "missing_explanation",
+    "missing_tags",
+    "invalid_difficulty",
+    "empty_section",
 ]
 
 

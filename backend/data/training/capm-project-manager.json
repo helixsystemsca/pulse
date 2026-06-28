@@ -1,0 +1,183 @@
+{
+  "version": "1.0",
+  "source_name": "capm-project-manager-v1",
+  "courses": [
+    {
+      "slug": "capm",
+      "title": "CAPM",
+      "course_kind": "certification",
+      "certification_slug": "capm",
+      "sections": [
+        {
+          "slug": "project-manager",
+          "title": "Project Manager",
+          "flashcards": [
+            {
+              "id": "CAPM-PM-001",
+              "card_type": "flashcard",
+              "prompt": "What is project management?",
+              "answer": "The application of knowledge, skills, tools, and techniques to project activities to meet project requirements.",
+              "explanation": "Project management applies structured practices to successfully achieve project objectives.",
+              "difficulty": 1,
+              "tags": ["Project Management", "Definition"]
+            },
+            {
+              "id": "CAPM-PM-002",
+              "card_type": "flashcard",
+              "prompt": "What are five benefits of effective project management?",
+              "answer": "Meeting business objectives, increasing project success, resolving issues, satisfying stakeholders, managing constraints, and recovering failing projects.",
+              "explanation": "Effective project management increases the likelihood of successful project delivery.",
+              "difficulty": 2,
+              "tags": ["Benefits"]
+            },
+            {
+              "id": "CAPM-PM-003",
+              "card_type": "flashcard",
+              "prompt": "What are five common consequences of poor project management?",
+              "answer": "Cost overruns, missed deadlines, poor quality, dissatisfied stakeholders, scope creep, and failure to achieve objectives.",
+              "explanation": "Poor project management negatively affects project outcomes and stakeholder confidence.",
+              "difficulty": 2,
+              "tags": ["Failures"]
+            },
+            {
+              "id": "CAPM-PM-004",
+              "card_type": "flashcard",
+              "prompt": "How does a Project Manager differ from an Operations Manager?",
+              "answer": "A Project Manager leads temporary initiatives that create change, while an Operations Manager oversees ongoing business operations.",
+              "explanation": "Projects are temporary and unique, whereas operations are continuous.",
+              "difficulty": 2,
+              "tags": ["Operations", "Comparison"]
+            },
+            {
+              "id": "CAPM-PM-005",
+              "card_type": "flashcard",
+              "prompt": "How does a Project Manager differ from a Functional Manager?",
+              "answer": "A Functional Manager oversees a functional department, while a Project Manager leads work across functions to achieve project objectives.",
+              "explanation": "Project Managers coordinate work across organizational boundaries.",
+              "difficulty": 2,
+              "tags": ["Functional Manager"]
+            },
+            {
+              "id": "CAPM-PM-006",
+              "card_type": "flashcard",
+              "prompt": "Who is included within a Project Manager's sphere of influence?",
+              "answer": "Project team, sponsor, PMO, portfolio manager, program manager, functional managers, operations, suppliers, customers, business partners, and regulatory agencies.",
+              "explanation": "Project managers influence far more than just their immediate project team.",
+              "difficulty": 2,
+              "tags": ["Sphere of Influence"]
+            },
+            {
+              "id": "CAPM-PM-007",
+              "card_type": "scenario",
+              "prompt": "A project requires support from several departments. Which project management concept best explains the need to collaborate across these groups?",
+              "answer": "The Project Manager's sphere of influence.",
+              "explanation": "Project Managers routinely work with people beyond the immediate project team.",
+              "difficulty": 3,
+              "tags": ["Scenario", "Sphere of Influence"]
+            },
+            {
+              "id": "CAPM-PM-008",
+              "card_type": "flashcard",
+              "prompt": "What activities may a Project Manager perform before a project officially begins?",
+              "answer": "Business case analysis, consulting executives, strategic analysis, and helping develop the project charter.",
+              "explanation": "Project Managers often contribute before formal project initiation.",
+              "difficulty": 2,
+              "tags": ["Initiation"]
+            },
+            {
+              "id": "CAPM-PM-009",
+              "card_type": "flashcard",
+              "prompt": "What activities may occur after project completion?",
+              "answer": "Benefits measurement and organizational change management.",
+              "explanation": "Projects may continue delivering value after formal closure.",
+              "difficulty": 2,
+              "tags": ["Closing"]
+            },
+            {
+              "id": "CAPM-PM-010",
+              "card_type": "flashcard",
+              "prompt": "Who is the Project Sponsor?",
+              "answer": "The individual responsible for defining project objectives, approving the project charter, and ensuring project benefits are realized.",
+              "explanation": "The Sponsor champions the project and provides executive support.",
+              "difficulty": 1,
+              "tags": ["Sponsor"]
+            },
+            {
+              "id": "CAPM-PM-011",
+              "card_type": "flashcard",
+              "prompt": "List four responsibilities of the Project Sponsor.",
+              "answer": "Approves the charter, assigns the Project Manager, approves the project management plan, supports benefit realization, escalates major issues, and authorizes project completion.",
+              "explanation": "The Sponsor provides governance and executive decision-making.",
+              "difficulty": 2,
+              "tags": ["Sponsor"]
+            },
+            {
+              "id": "CAPM-PM-012",
+              "card_type": "scenario",
+              "prompt": "A major issue exceeds the Project Manager's authority. Who should it be escalated to?",
+              "answer": "The Project Sponsor.",
+              "explanation": "The Sponsor serves as the primary escalation point for significant issues.",
+              "difficulty": 3,
+              "tags": ["Sponsor", "Scenario"]
+            },
+            {
+              "id": "CAPM-PM-013",
+              "card_type": "flashcard",
+              "prompt": "Who are the Project Team?",
+              "answer": "The individuals responsible for performing the work required to achieve the project's objectives.",
+              "explanation": "The Project Team executes the project deliverables.",
+              "difficulty": 1,
+              "tags": ["Project Team"]
+            },
+            {
+              "id": "CAPM-PM-014",
+              "card_type": "flashcard",
+              "prompt": "What is the Project Management Team?",
+              "answer": "The people responsible for planning, managing, and guiding the project, which may include specialists such as quality or risk managers.",
+              "explanation": "The Project Management Team is distinct from the broader Project Team.",
+              "difficulty": 1,
+              "tags": ["Project Management Team"]
+            },
+            {
+              "id": "CAPM-PM-015",
+              "card_type": "flashcard",
+              "prompt": "What is the difference between the Project Team and the Project Management Team?",
+              "answer": "The Project Team performs the project work, while the Project Management Team plans and manages the work.",
+              "explanation": "The Project Management Team may be a subset of the Project Team.",
+              "difficulty": 2,
+              "tags": ["Comparison"]
+            },
+            {
+              "id": "CAPM-PM-016",
+              "card_type": "flashcard",
+              "prompt": "What are the three PMI competency areas for Project Managers?",
+              "answer": "Ways of Working, Business Acumen, and Power Skills.",
+              "explanation": "These competency areas describe the knowledge and skills expected of modern Project Managers.",
+              "difficulty": 2,
+              "tags": ["Competencies"]
+            },
+            {
+              "id": "CAPM-PM-017",
+              "card_type": "scenario",
+              "prompt": "A Project Manager demonstrates strong negotiation, conflict resolution, and team motivation. Which PMI competency area is being demonstrated?",
+              "answer": "Power Skills.",
+              "explanation": "Power Skills focus on interpersonal leadership and communication abilities.",
+              "difficulty": 3,
+              "tags": ["Power Skills", "Scenario"]
+            },
+            {
+              "id": "CAPM-PM-018",
+              "card_type": "true_false",
+              "prompt": "True or False: Every Project Manager must have the title 'Project Manager.'",
+              "answer": "False.",
+              "explanation": "Many organizations distribute project management responsibilities across roles such as Product Owner, Scrum Master, Team Lead, or Functional Manager.",
+              "difficulty": 1,
+              "tags": ["Roles"]
+            }
+          ],
+          "lessons": []
+        }
+      ]
+    }
+  ]
+}

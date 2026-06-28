@@ -1,0 +1,183 @@
+{
+  "version": "1.0",
+  "source_name": "capm-stakeholders-v1",
+  "courses": [
+    {
+      "slug": "capm",
+      "title": "CAPM",
+      "course_kind": "certification",
+      "certification_slug": "capm",
+      "sections": [
+        {
+          "slug": "stakeholders",
+          "title": "Stakeholders",
+          "flashcards": [
+            {
+              "id": "CAPM-STAKE-001",
+              "card_type": "flashcard",
+              "prompt": "Who is a stakeholder?",
+              "answer": "An individual, group, or organization that can affect, be affected by, or perceive itself to be affected by a project, program, or portfolio.",
+              "explanation": "Stakeholders may have positive or negative influence on a project's outcomes.",
+              "difficulty": 1,
+              "tags": ["Stakeholders", "Definition"]
+            },
+            {
+              "id": "CAPM-STAKE-002",
+              "card_type": "true_false",
+              "prompt": "True or False: Stakeholders only include people directly working on the project.",
+              "answer": "False.",
+              "explanation": "Stakeholders include anyone who can affect or be affected by the project.",
+              "difficulty": 1,
+              "tags": ["Stakeholders"]
+            },
+            {
+              "id": "CAPM-STAKE-003",
+              "card_type": "flashcard",
+              "prompt": "Name five common project stakeholders.",
+              "answer": "Project Sponsor, customer, project team, functional managers, suppliers, PMO, regulatory agencies, executives, end users.",
+              "explanation": "Stakeholders exist both inside and outside the organization.",
+              "difficulty": 2,
+              "tags": ["Stakeholders"]
+            },
+            {
+              "id": "CAPM-STAKE-004",
+              "card_type": "flashcard",
+              "prompt": "What is stakeholder engagement?",
+              "answer": "The process of communicating and collaborating with stakeholders to meet their needs and expectations.",
+              "explanation": "Engaged stakeholders are more likely to support project success.",
+              "difficulty": 1,
+              "tags": ["Stakeholder Engagement"]
+            },
+            {
+              "id": "CAPM-STAKE-005",
+              "card_type": "flashcard",
+              "prompt": "What is stakeholder analysis?",
+              "answer": "The process of identifying stakeholders, assessing their interests, influence, expectations, and potential impact on the project.",
+              "explanation": "Stakeholder analysis helps determine appropriate engagement strategies.",
+              "difficulty": 2,
+              "tags": ["Stakeholder Analysis"]
+            },
+            {
+              "id": "CAPM-STAKE-006",
+              "card_type": "scenario",
+              "prompt": "A new executive joins the organization halfway through the project. What should the Project Manager do first?",
+              "answer": "Identify and analyze the new stakeholder.",
+              "explanation": "Stakeholder identification is an ongoing process throughout the project lifecycle.",
+              "difficulty": 4,
+              "tags": ["Scenario", "Stakeholder Analysis"]
+            },
+            {
+              "id": "CAPM-STAKE-007",
+              "card_type": "flashcard",
+              "prompt": "What is the Power/Interest Grid?",
+              "answer": "A stakeholder analysis tool that categorizes stakeholders based on their level of authority and interest in the project.",
+              "explanation": "The grid helps determine the most appropriate engagement strategy.",
+              "difficulty": 2,
+              "tags": ["Power Interest Grid"]
+            },
+            {
+              "id": "CAPM-STAKE-008",
+              "card_type": "flashcard",
+              "prompt": "What are the four categories of the Power/Interest Grid?",
+              "answer": "Manage Closely, Keep Satisfied, Keep Informed, Monitor.",
+              "explanation": "Each category requires a different communication strategy.",
+              "difficulty": 2,
+              "tags": ["Power Interest Grid"]
+            },
+            {
+              "id": "CAPM-STAKE-009",
+              "card_type": "flashcard",
+              "prompt": "Which stakeholders should be managed most closely?",
+              "answer": "Stakeholders with high power and high interest.",
+              "explanation": "These stakeholders have the greatest ability to influence project success.",
+              "difficulty": 3,
+              "tags": ["Power Interest Grid"]
+            },
+            {
+              "id": "CAPM-STAKE-010",
+              "card_type": "flashcard",
+              "prompt": "Which stakeholders should be kept satisfied but not overloaded with information?",
+              "answer": "High power, low interest stakeholders.",
+              "explanation": "They have significant influence but may not require frequent detailed updates.",
+              "difficulty": 3,
+              "tags": ["Power Interest Grid"]
+            },
+            {
+              "id": "CAPM-STAKE-011",
+              "card_type": "flashcard",
+              "prompt": "Which stakeholders should be kept informed?",
+              "answer": "Low power, high interest stakeholders.",
+              "explanation": "Although they have limited authority, they remain highly interested in project outcomes.",
+              "difficulty": 3,
+              "tags": ["Power Interest Grid"]
+            },
+            {
+              "id": "CAPM-STAKE-012",
+              "card_type": "flashcard",
+              "prompt": "Which stakeholders require the least communication effort?",
+              "answer": "Low power, low interest stakeholders.",
+              "explanation": "These stakeholders should still be monitored for changes in influence or interest.",
+              "difficulty": 2,
+              "tags": ["Power Interest Grid"]
+            },
+            {
+              "id": "CAPM-STAKE-013",
+              "card_type": "flashcard",
+              "prompt": "What is the Salience Model?",
+              "answer": "A stakeholder classification model based on power, legitimacy, and urgency.",
+              "explanation": "The Salience Model helps prioritize stakeholder attention.",
+              "difficulty": 2,
+              "tags": ["Salience Model"]
+            },
+            {
+              "id": "CAPM-STAKE-014",
+              "card_type": "scenario",
+              "prompt": "A stakeholder has authority over funding and urgently requires immediate project changes. What should the Project Manager do?",
+              "answer": "Prioritize engagement with that stakeholder.",
+              "explanation": "Stakeholders with high power and urgency require immediate attention.",
+              "difficulty": 4,
+              "tags": ["Scenario", "Salience Model"]
+            },
+            {
+              "id": "CAPM-STAKE-015",
+              "card_type": "flashcard",
+              "prompt": "What is a Stakeholder Engagement Assessment Matrix?",
+              "answer": "A tool that compares a stakeholder's current engagement level with the desired engagement level.",
+              "explanation": "It helps identify where additional communication or engagement is needed.",
+              "difficulty": 2,
+              "tags": ["Stakeholder Engagement"]
+            },
+            {
+              "id": "CAPM-STAKE-016",
+              "card_type": "scenario",
+              "prompt": "A key stakeholder actively opposes the project. What should the Project Manager do first?",
+              "answer": "Understand the stakeholder's concerns and develop an engagement strategy.",
+              "explanation": "PMI emphasizes understanding concerns before attempting to influence stakeholder behavior.",
+              "difficulty": 4,
+              "tags": ["Scenario", "Stakeholder Engagement"]
+            },
+            {
+              "id": "CAPM-STAKE-017",
+              "card_type": "true_false",
+              "prompt": "True or False: Stakeholder engagement should only occur during project initiation.",
+              "answer": "False — stakeholder engagement continues throughout the project lifecycle.",
+              "explanation": "Stakeholder engagement is a continuous activity throughout the project lifecycle.",
+              "difficulty": 2,
+              "tags": ["Stakeholder Engagement"]
+            },
+            {
+              "id": "CAPM-STAKE-018",
+              "card_type": "scenario",
+              "prompt": "A stakeholder requests a significant scope change directly from a team member without following change control. What should the Project Manager do FIRST?",
+              "answer": "Ensure the request follows the project's formal change management process.",
+              "explanation": "Changes should be evaluated through the approved change control process before implementation.",
+              "difficulty": 5,
+              "tags": ["Scenario", "Change Control", "Stakeholders"]
+            }
+          ],
+          "lessons": []
+        }
+      ]
+    }
+  ]
+}

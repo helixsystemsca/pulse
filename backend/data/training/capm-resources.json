@@ -1,0 +1,183 @@
+{
+  "version": "1.0",
+  "source_name": "capm-resources-v1",
+  "courses": [
+    {
+      "slug": "capm",
+      "title": "CAPM",
+      "course_kind": "certification",
+      "certification_slug": "capm",
+      "sections": [
+        {
+          "slug": "resources",
+          "title": "Resources",
+          "flashcards": [
+            {
+              "id": "CAPM-RES-001",
+              "card_type": "flashcard",
+              "prompt": "What is Project Resource Management?",
+              "answer": "The processes required to identify, acquire, develop, manage, and control the resources needed for successful project completion.",
+              "explanation": "Resources include people, equipment, materials, facilities, and technology.",
+              "difficulty": 1,
+              "tags": ["Resource Management"]
+            },
+            {
+              "id": "CAPM-RES-002",
+              "card_type": "flashcard",
+              "prompt": "What is a resource management plan?",
+              "answer": "A document describing how project resources will be acquired, managed, developed, and released.",
+              "explanation": "The plan establishes the approach for managing project resources throughout the lifecycle.",
+              "difficulty": 2,
+              "tags": ["Resource Plan"]
+            },
+            {
+              "id": "CAPM-RES-003",
+              "card_type": "flashcard",
+              "prompt": "What is a Responsibility Assignment Matrix (RAM)?",
+              "answer": "A chart that maps project activities or deliverables to the people responsible for completing them.",
+              "explanation": "The RAM helps clarify ownership and accountability.",
+              "difficulty": 2,
+              "tags": ["RAM", "RACI"]
+            },
+            {
+              "id": "CAPM-RES-004",
+              "card_type": "flashcard",
+              "prompt": "What is a RACI chart?",
+              "answer": "A Responsibility Assignment Matrix that identifies who is Responsible, Accountable, Consulted, and Informed for each activity.",
+              "explanation": "RACI is one of the most common responsibility assignment tools.",
+              "difficulty": 2,
+              "tags": ["RACI"]
+            },
+            {
+              "id": "CAPM-RES-005",
+              "card_type": "flashcard",
+              "prompt": "What do the letters in RACI stand for?",
+              "answer": "Responsible, Accountable, Consulted, Informed.",
+              "explanation": "Each role defines a different level of involvement in project work.",
+              "difficulty": 2,
+              "tags": ["RACI"]
+            },
+            {
+              "id": "CAPM-RES-006",
+              "card_type": "flashcard",
+              "prompt": "What is the difference between Responsible and Accountable in a RACI chart?",
+              "answer": "Responsible performs the work. Accountable owns the outcome and approves the work.",
+              "explanation": "There should typically be only one Accountable person for each activity.",
+              "difficulty": 3,
+              "tags": ["RACI", "Comparison"]
+            },
+            {
+              "id": "CAPM-RES-007",
+              "card_type": "flashcard",
+              "prompt": "What is resource leveling?",
+              "answer": "Adjusting the schedule to resolve resource over-allocation based on resource availability.",
+              "explanation": "Resource leveling may extend the project schedule.",
+              "difficulty": 2,
+              "tags": ["Resource Leveling"]
+            },
+            {
+              "id": "CAPM-RES-008",
+              "card_type": "flashcard",
+              "prompt": "What is resource smoothing?",
+              "answer": "Adjusting activities within available float so resource demand is more consistent without changing the project end date.",
+              "explanation": "Unlike resource leveling, resource smoothing does not change the critical path.",
+              "difficulty": 2,
+              "tags": ["Resource Smoothing"]
+            },
+            {
+              "id": "CAPM-RES-009",
+              "card_type": "flashcard",
+              "prompt": "What is the difference between resource leveling and resource smoothing?",
+              "answer": "Resource leveling may delay the project schedule, while resource smoothing adjusts work within available float without changing the completion date.",
+              "explanation": "Both techniques optimize resource usage but have different schedule impacts.",
+              "difficulty": 3,
+              "tags": ["Resource Leveling", "Resource Smoothing"]
+            },
+            {
+              "id": "CAPM-RES-010",
+              "card_type": "flashcard",
+              "prompt": "What is a resource histogram?",
+              "answer": "A graphical representation showing the amount of resources assigned over time.",
+              "explanation": "Resource histograms help identify periods of over-allocation or under-utilization.",
+              "difficulty": 2,
+              "tags": ["Resource Histogram"]
+            },
+            {
+              "id": "CAPM-RES-011",
+              "card_type": "flashcard",
+              "prompt": "What is a team charter?",
+              "answer": "A document that establishes team values, agreements, operating guidelines, and expected behaviors.",
+              "explanation": "Team charters improve collaboration and reduce conflict.",
+              "difficulty": 2,
+              "tags": ["Team Charter"]
+            },
+            {
+              "id": "CAPM-RES-012",
+              "card_type": "flashcard",
+              "prompt": "What is team development?",
+              "answer": "The process of improving competencies, interaction, and the overall team environment to enhance project performance.",
+              "explanation": "Strong teams produce better project outcomes.",
+              "difficulty": 2,
+              "tags": ["Team Development"]
+            },
+            {
+              "id": "CAPM-RES-013",
+              "card_type": "flashcard",
+              "prompt": "What are the five stages of Tuckman's team development model?",
+              "answer": "Forming, Storming, Norming, Performing, and Adjourning.",
+              "explanation": "Teams generally progress through these stages as they mature.",
+              "difficulty": 2,
+              "tags": ["Tuckman"]
+            },
+            {
+              "id": "CAPM-RES-014",
+              "card_type": "scenario",
+              "prompt": "A newly formed project team is polite but uncertain about their roles. Which Tuckman stage are they in?",
+              "answer": "Forming.",
+              "explanation": "During Forming, team members are learning about the project and each other.",
+              "difficulty": 4,
+              "tags": ["Scenario", "Tuckman"]
+            },
+            {
+              "id": "CAPM-RES-015",
+              "card_type": "scenario",
+              "prompt": "Team members begin disagreeing over responsibilities and project priorities. Which Tuckman stage is this?",
+              "answer": "Storming.",
+              "explanation": "Storming is characterized by conflict as the team establishes roles and working relationships.",
+              "difficulty": 4,
+              "tags": ["Scenario", "Tuckman"]
+            },
+            {
+              "id": "CAPM-RES-016",
+              "card_type": "flashcard",
+              "prompt": "What conflict resolution technique seeks a solution that fully satisfies all parties?",
+              "answer": "Collaborate (Problem Solving).",
+              "explanation": "Collaboration generally produces the most durable and mutually beneficial solution.",
+              "difficulty": 3,
+              "tags": ["Conflict Management"]
+            },
+            {
+              "id": "CAPM-RES-017",
+              "card_type": "flashcard",
+              "prompt": "Name the five common conflict resolution techniques.",
+              "answer": "Collaborate, Compromise, Smooth (Accommodate), Force (Direct), and Withdraw (Avoid).",
+              "explanation": "Each technique is appropriate under different circumstances.",
+              "difficulty": 2,
+              "tags": ["Conflict Management"]
+            },
+            {
+              "id": "CAPM-RES-018",
+              "card_type": "scenario",
+              "prompt": "Two experienced team members disagree on the best technical solution. What should the Project Manager do FIRST?",
+              "answer": "Facilitate collaboration so both parties can work together to identify the best solution.",
+              "explanation": "PMI generally favors collaborative problem-solving because it addresses the root cause while preserving relationships.",
+              "difficulty": 5,
+              "tags": ["Scenario", "Conflict Management"]
+            }
+          ],
+          "lessons": []
+        }
+      ]
+    }
+  ]
+}

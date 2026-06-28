@@ -10,6 +10,7 @@ from app.models.training_platform_models import (
     TrainingCourse,
     TrainingCourseStatus,
     TrainingLesson,
+    TrainingSection,
     TrainingUserProgress,
 )
 from app.schemas.training_platform import TrainingCourseOut, TrainingCourseSummaryOut, TrainingLessonOut
@@ -65,7 +66,7 @@ async def get_course_detail(
     q = (
         select(TrainingCourse)
         .where(TrainingCourse.company_id == company_id, TrainingCourse.id == course_id)
-        .options(selectinload(TrainingCourse.sections).selectinload("lessons"))
+        .options(selectinload(TrainingCourse.sections).selectinload(TrainingSection.lessons))
     )
     course = (await db.execute(q)).scalar_one_or_none()
     if course is None:

@@ -2,15 +2,22 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { BookOpen, ChevronRight, GraduationCap, Loader2 } from "lucide-react";
+import { BookOpen, ChevronRight, GraduationCap, Loader2, Settings2 } from "lucide-react";
+import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
-import { isFlashcardStudyCourse } from "@/lib/training/training-milestone";
-import { trainingFlashcardStudyHref } from "@/lib/training/routes";
+import { sessionHasAnyRole } from "@/lib/pulse-roles";
+import {
+  flashcardCertificationLabel,
+  isFlashcardStudyCourse,
+} from "@/lib/training/training-milestone";
+import { TRAINING_ROUTES, trainingFlashcardStudyHref } from "@/lib/training/routes";
 import { fetchTrainingCourses, type TrainingCourseSummary } from "@/lib/training/trainingPlatformApi";
 import { cn } from "@/lib/cn";
 import { uiCalloutWarning, uiPageDescription, uiPageStack, uiPageTitle } from "@/styles/ui-classes";
 
 export function FlashcardCoursePicker() {
+  const { session } = usePulseAuth();
+  const canManageDecks = sessionHasAnyRole(session, "manager", "company_admin", "system_admin");
   const [courses, setCourses] = useState<TrainingCourseSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,11 +46,24 @@ export function FlashcardCoursePicker() {
   return (
     <div className={uiPageStack}>
       <header className="space-y-1">
-        <h2 className={uiPageTitle}>Flashcards</h2>
-        <p className={cn(uiPageDescription, "max-w-2xl")}>
-          Select a course to study with spaced repetition. CAPM and certification packs appear here when published
-          for your organization.
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className={uiPageTitle}>Flashcards</h2>
+            <p className={cn(uiPageDescription, "max-w-2xl")}>
+              Select a certification deck to study with spaced repetition. CAPM, FMP, Six Sigma, Power BI, and other
+              published packs appear here.
+            </p>
+          </div>
+          {canManageDecks ? (
+            <Link
+              href={TRAINING_ROUTES.flashcardDecks}
+              className="inline-flex items-center gap-2 rounded-lg border border-ds-border px-3 py-2 text-sm font-semibold hover:bg-ds-muted/20"
+            >
+              <Settings2 className="h-4 w-4" aria-hidden />
+              Manage decks
+            </Link>
+          ) : null}
+        </div>
       </header>
 
       {loading ? (
@@ -80,7 +100,7 @@ export function FlashcardCoursePicker() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide text-teal-700 dark:text-teal-400">
-                        {course.slug.toLowerCase().includes("capm") ? "CAPM" : course.course_kind}
+                        {flashcardCertificationLabel(course)}
                       </p>
                       <h3 className="mt-0.5 text-base font-semibold text-ds-foreground group-hover:text-teal-700 dark:group-hover:text-teal-300">
                         {course.title}
@@ -92,7 +112,7 @@ export function FlashcardCoursePicker() {
                 {course.description ? (
                   <p className="mt-3 line-clamp-2 flex-1 text-sm text-ds-muted">{course.description}</p>
                 ) : null}
-                <p className="mt-4 text-xs font-medium text-ds-muted">Tap to start studying →</p>
+                <p className="mt-4 text-xs font-medium text-ds-muted">Tap to choose a section →</p>
               </Link>
             </li>
           ))}

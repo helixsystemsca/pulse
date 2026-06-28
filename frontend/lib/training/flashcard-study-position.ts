@@ -7,14 +7,18 @@ export type FlashcardStudyPosition = {
   index: number;
 };
 
-export function flashcardStudyPositionKey(courseId: string): string {
+export function flashcardStudyPositionKey(courseId: string, sectionId?: string): string {
+  if (sectionId) return `${KEY_PREFIX}${courseId}.${sectionId}`;
   return `${KEY_PREFIX}${courseId}`;
 }
 
-export function readFlashcardStudyPosition(courseId: string): FlashcardStudyPosition | null {
+export function readFlashcardStudyPosition(
+  courseId: string,
+  sectionId?: string,
+): FlashcardStudyPosition | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = localStorage.getItem(flashcardStudyPositionKey(courseId));
+    const raw = localStorage.getItem(flashcardStudyPositionKey(courseId, sectionId));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as FlashcardStudyPosition;
     if (typeof parsed.flashcardId !== "string" || typeof parsed.index !== "number") return null;
@@ -27,10 +31,11 @@ export function readFlashcardStudyPosition(courseId: string): FlashcardStudyPosi
 export function writeFlashcardStudyPosition(
   courseId: string,
   position: FlashcardStudyPosition,
+  sectionId?: string,
 ): void {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(flashcardStudyPositionKey(courseId), JSON.stringify(position));
+    localStorage.setItem(flashcardStudyPositionKey(courseId, sectionId), JSON.stringify(position));
   } catch {
     /* quota / private mode */
   }

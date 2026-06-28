@@ -1,0 +1,183 @@
+{
+  "version": "1.0",
+  "source_name": "capm-scope-v1",
+  "courses": [
+    {
+      "slug": "capm",
+      "title": "CAPM",
+      "course_kind": "certification",
+      "certification_slug": "capm",
+      "sections": [
+        {
+          "slug": "scope",
+          "title": "Scope",
+          "flashcards": [
+            {
+              "id": "CAPM-SCOPE-001",
+              "card_type": "flashcard",
+              "prompt": "What is project scope?",
+              "answer": "The work that must be performed to deliver a product, service, or result with the specified features and functions.",
+              "explanation": "Project scope defines the work required to complete the project successfully.",
+              "difficulty": 1,
+              "tags": ["Scope", "Project Scope"]
+            },
+            {
+              "id": "CAPM-SCOPE-002",
+              "card_type": "flashcard",
+              "prompt": "What is product scope?",
+              "answer": "The features and functions that characterize a product, service, or result.",
+              "explanation": "Product scope describes what will be delivered, while project scope describes the work required to deliver it.",
+              "difficulty": 1,
+              "tags": ["Scope", "Product Scope"]
+            },
+            {
+              "id": "CAPM-SCOPE-003",
+              "card_type": "flashcard",
+              "prompt": "What is the difference between product scope and project scope?",
+              "answer": "Product scope defines what will be delivered. Project scope defines the work required to deliver it.",
+              "explanation": "PMI frequently tests the distinction between these two concepts.",
+              "difficulty": 2,
+              "tags": ["Scope", "Comparison"]
+            },
+            {
+              "id": "CAPM-SCOPE-004",
+              "card_type": "flashcard",
+              "prompt": "What is a requirement?",
+              "answer": "A condition or capability that must be present in a product, service, or result to satisfy a stakeholder need or contract.",
+              "explanation": "Requirements form the basis of project scope.",
+              "difficulty": 1,
+              "tags": ["Requirements"]
+            },
+            {
+              "id": "CAPM-SCOPE-005",
+              "card_type": "flashcard",
+              "prompt": "What is the scope baseline?",
+              "answer": "The approved version of the scope statement, Work Breakdown Structure (WBS), and WBS Dictionary.",
+              "explanation": "The scope baseline is used to measure project performance and control changes.",
+              "difficulty": 2,
+              "tags": ["Scope Baseline"]
+            },
+            {
+              "id": "CAPM-SCOPE-006",
+              "card_type": "flashcard",
+              "prompt": "What is a Work Breakdown Structure (WBS)?",
+              "answer": "A hierarchical decomposition of the total project scope into manageable work packages.",
+              "explanation": "The WBS organizes all project work into smaller, manageable components.",
+              "difficulty": 1,
+              "tags": ["WBS"]
+            },
+            {
+              "id": "CAPM-SCOPE-007",
+              "card_type": "flashcard",
+              "prompt": "What is a work package?",
+              "answer": "The lowest level of the Work Breakdown Structure where work can be estimated, scheduled, assigned, monitored, and controlled.",
+              "explanation": "Work packages are the foundation for planning and execution.",
+              "difficulty": 2,
+              "tags": ["WBS", "Work Package"]
+            },
+            {
+              "id": "CAPM-SCOPE-008",
+              "card_type": "true_false",
+              "prompt": "True or False: The WBS includes all project work required to complete the project.",
+              "answer": "True.",
+              "explanation": "The WBS follows the 100% Rule by including all project scope.",
+              "difficulty": 2,
+              "tags": ["WBS"]
+            },
+            {
+              "id": "CAPM-SCOPE-009",
+              "card_type": "flashcard",
+              "prompt": "What is scope creep?",
+              "answer": "The uncontrolled expansion of project scope without formal approval through the change control process.",
+              "explanation": "Scope creep is one of the most common causes of project overruns.",
+              "difficulty": 2,
+              "tags": ["Scope Creep"]
+            },
+            {
+              "id": "CAPM-SCOPE-010",
+              "card_type": "scenario",
+              "prompt": "A customer asks for an additional feature during development and a developer begins working on it immediately. What has occurred?",
+              "answer": "Scope creep.",
+              "explanation": "Additional work should not begin until the change has been formally evaluated and approved.",
+              "difficulty": 4,
+              "tags": ["Scenario", "Scope Creep"]
+            },
+            {
+              "id": "CAPM-SCOPE-011",
+              "card_type": "flashcard",
+              "prompt": "What is gold plating?",
+              "answer": "Adding features or work that were not requested or approved by the customer.",
+              "explanation": "Gold plating is discouraged because it increases cost and risk without approved business value.",
+              "difficulty": 2,
+              "tags": ["Gold Plating"]
+            },
+            {
+              "id": "CAPM-SCOPE-012",
+              "card_type": "flashcard",
+              "prompt": "What is the difference between scope creep and gold plating?",
+              "answer": "Scope creep results from unapproved customer or stakeholder requests. Gold plating occurs when the project team adds extra work without being asked.",
+              "explanation": "Both are undesirable because they bypass formal change control.",
+              "difficulty": 3,
+              "tags": ["Scope Creep", "Gold Plating"]
+            },
+            {
+              "id": "CAPM-SCOPE-013",
+              "card_type": "flashcard",
+              "prompt": "What is Validate Scope?",
+              "answer": "The process of obtaining formal acceptance of completed project deliverables from the customer or sponsor.",
+              "explanation": "Validate Scope focuses on customer acceptance.",
+              "difficulty": 2,
+              "tags": ["Validate Scope"]
+            },
+            {
+              "id": "CAPM-SCOPE-014",
+              "card_type": "flashcard",
+              "prompt": "What is the difference between Validate Scope and Control Quality?",
+              "answer": "Control Quality verifies that deliverables meet quality requirements, while Validate Scope obtains formal customer acceptance.",
+              "explanation": "A common CAPM exam question distinguishes verification from acceptance.",
+              "difficulty": 3,
+              "tags": ["Validate Scope", "Quality"]
+            },
+            {
+              "id": "CAPM-SCOPE-015",
+              "card_type": "scenario",
+              "prompt": "A deliverable passes all quality inspections but the customer has not yet accepted it. Which process is still required?",
+              "answer": "Validate Scope.",
+              "explanation": "Quality verification does not replace formal customer acceptance.",
+              "difficulty": 4,
+              "tags": ["Scenario", "Validate Scope"]
+            },
+            {
+              "id": "CAPM-SCOPE-016",
+              "card_type": "flashcard",
+              "prompt": "What is Control Scope?",
+              "answer": "The process of monitoring project and product scope and managing changes to the scope baseline.",
+              "explanation": "Control Scope ensures approved changes are implemented while preventing unauthorized changes.",
+              "difficulty": 2,
+              "tags": ["Control Scope"]
+            },
+            {
+              "id": "CAPM-SCOPE-017",
+              "card_type": "scenario",
+              "prompt": "A stakeholder requests a major new feature halfway through the project. What should the Project Manager do FIRST?",
+              "answer": "Submit the request through the project's formal change control process.",
+              "explanation": "Project Managers should never approve significant scope changes without following the approved change process.",
+              "difficulty": 5,
+              "tags": ["Scenario", "Change Control"]
+            },
+            {
+              "id": "CAPM-SCOPE-018",
+              "card_type": "true_false",
+              "prompt": "True or False: Every requested scope change should automatically be approved if it adds value.",
+              "answer": "False.",
+              "explanation": "All requested changes should be evaluated for impacts to scope, schedule, cost, quality, risk, and resources before approval.",
+              "difficulty": 2,
+              "tags": ["Change Control"]
+            }
+          ],
+          "lessons": []
+        }
+      ]
+    }
+  ]
+}

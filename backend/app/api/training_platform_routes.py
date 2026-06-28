@@ -16,6 +16,10 @@ from app.schemas.training_platform import (
     TrainingCourseOut,
     TrainingCourseSummaryOut,
     TrainingDashboardOut,
+    TrainingDeckDuplicateIn,
+    TrainingDeckRenameIn,
+    TrainingDeckSummaryOut,
+    TrainingDeckValidationReportOut,
     TrainingFlashcardReviewSubmit,
     TrainingImportResultOut,
     TrainingLearningPathOut,
@@ -26,6 +30,15 @@ from app.schemas.training_platform import (
     TrainingUserProgressOut,
 )
 from app.services.training_platform.course_service import get_course_detail, get_lesson_detail, list_published_courses
+from app.services.training_platform.deck_validator import validate_deck_pack
+from app.services.training_platform.deck_validator_serializers import deck_validation_report_out
+from app.services.training_platform.deck_service import (
+    archive_deck,
+    duplicate_deck,
+    export_deck_pack,
+    list_training_decks,
+    rename_deck,
+)
 from app.services.training_platform.import_service import TrainingImportService, validation_failure_result
 from app.services.training_platform.import_validation import (
     TrainingImportValidationError,
@@ -270,3 +283,103 @@ async def import_training_pack(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     await db.commit()
     return JSONResponse(status_code=status.HTTP_201_CREATED, content=result.model_dump())
+
+
+@router.get("/decks", response_model=list[TrainingDeckSummaryOut])
+async def list_decks(
+    db: Db,
+    cid: CompanyId,
+    _: Annotated[User, Depends(require_manager_or_above)],
+    include_archived: bool = Query(True),
+) -> list[TrainingDeckSummaryOut]:
+    return await list_training_decks(db, company_id=cid, include_archived=include_archived)
+
+
+@router.post("/decks/validate", response_model=TrainingDeckValidationReportOut)
+async def validate_deck(
+    request: Request,
+    _: Annotated[User, Depends(require_manager_or_above)],
+) -> TrainingDeckValidationReportOut:
+    """Validate deck JSON without importing or modifying data."""
+    raw = await request.body()
+    report = validate_deck_pack(raw)
+    return deck_validation_report_out(report)
+
+
+@router.get("/decks/{course_id}/export")
+async def export_deck(
+    course_id: str,
+    db: Db,
+    cid: CompanyId,
+    _: Annotated[User, Depends(require_manager_or_above)],
+) -> JSONResponse:
+    try:
+        pack = await export_deck_pack(db, company_id=cid, course_id=course_id)
+    except ValueError as exc:
+        if str(exc) == "course_not_found":
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    filename = f"{pack.courses[0].slug if pack.courses else 'deck'}.json"
+    return JSONResponse(
+        content=pack.model_dump(mode="json"),
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.post("/decks/{course_id}/duplicate", response_model=TrainingDeckSummaryOut, status_code=status.HTTP_201_CREATED)
+async def duplicate_deck_route(
+    course_id: str,
+    body: TrainingDeckDuplicateIn,
+    db: Db,
+    cid: CompanyId,
+    user: Annotated[User, Depends(require_manager_or_above)],
+) -> TrainingDeckSummaryOut:
+    try:
+        result = await duplicate_deck(
+            db,
+            company_id=cid,
+            course_id=course_id,
+            body=body,
+            user_id=str(user.id),
+        )
+    except ValueError as exc:
+        if str(exc) == "course_not_found":
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    await db.commit()
+    return result
+
+
+@router.post("/decks/{course_id}/archive", response_model=TrainingDeckSummaryOut)
+async def archive_deck_route(
+    course_id: str,
+    db: Db,
+    cid: CompanyId,
+    _: Annotated[User, Depends(require_manager_or_above)],
+) -> TrainingDeckSummaryOut:
+    try:
+        result = await archive_deck(db, company_id=cid, course_id=course_id)
+    except ValueError as exc:
+        if str(exc) == "course_not_found":
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    await db.commit()
+    return result
+
+
+@router.patch("/decks/{course_id}", response_model=TrainingDeckSummaryOut)
+async def rename_deck_route(
+    course_id: str,
+    body: TrainingDeckRenameIn,
+    db: Db,
+    cid: CompanyId,
+    _: Annotated[User, Depends(require_manager_or_above)],
+) -> TrainingDeckSummaryOut:
+    try:
+        result = await rename_deck(db, company_id=cid, course_id=course_id, body=body)
+    except ValueError as exc:
+        if str(exc) == "course_not_found":
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    await db.commit()
+    return result

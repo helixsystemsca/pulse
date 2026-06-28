@@ -1,0 +1,183 @@
+{
+  "version": "1.0",
+  "source_name": "capm-project-mindset-v1",
+  "courses": [
+    {
+      "slug": "capm",
+      "title": "CAPM",
+      "course_kind": "certification",
+      "certification_slug": "capm",
+      "sections": [
+        {
+          "slug": "project-mindset",
+          "title": "Project Mindset",
+          "flashcards": [
+            {
+              "id": "CAPM-MIND-001",
+              "card_type": "flashcard",
+              "prompt": "What is stewardship in project management?",
+              "answer": "Stewardship is the responsible planning and management of project resources while acting ethically and in the best interests of the organization and stakeholders.",
+              "explanation": "Stewardship requires accountability, integrity, ethical behavior, and responsible use of resources.",
+              "difficulty": 1,
+              "tags": ["Stewardship", "Ethics"]
+            },
+            {
+              "id": "CAPM-MIND-002",
+              "card_type": "true_false",
+              "prompt": "True or False: Stewardship includes acting ethically and protecting organizational resources.",
+              "answer": "True.",
+              "explanation": "Stewardship emphasizes ethical behavior and responsible management of project assets.",
+              "difficulty": 1,
+              "tags": ["Stewardship"]
+            },
+            {
+              "id": "CAPM-MIND-003",
+              "card_type": "flashcard",
+              "prompt": "What is systems thinking?",
+              "answer": "Systems thinking is considering how all parts of a project interact and influence one another rather than viewing them independently.",
+              "explanation": "Changes in one area of a project often affect multiple other areas.",
+              "difficulty": 1,
+              "tags": ["Systems Thinking"]
+            },
+            {
+              "id": "CAPM-MIND-004",
+              "card_type": "scenario",
+              "prompt": "A schedule change impacts procurement, staffing, and budget. Which mindset should the Project Manager apply?",
+              "answer": "Systems thinking.",
+              "explanation": "Systems thinking recognizes the interconnected nature of project components.",
+              "difficulty": 4,
+              "tags": ["Systems Thinking", "Scenario"]
+            },
+            {
+              "id": "CAPM-MIND-005",
+              "card_type": "flashcard",
+              "prompt": "What is critical thinking?",
+              "answer": "Critical thinking is objectively evaluating information before making decisions or solving problems.",
+              "explanation": "Project Managers should rely on evidence and analysis rather than assumptions.",
+              "difficulty": 1,
+              "tags": ["Critical Thinking"]
+            },
+            {
+              "id": "CAPM-MIND-006",
+              "card_type": "scenario",
+              "prompt": "Conflicting information is received from two stakeholders. What should the Project Manager do first?",
+              "answer": "Objectively evaluate the available information before making a decision.",
+              "explanation": "Critical thinking requires gathering and evaluating facts before acting.",
+              "difficulty": 3,
+              "tags": ["Critical Thinking", "Scenario"]
+            },
+            {
+              "id": "CAPM-MIND-007",
+              "card_type": "flashcard",
+              "prompt": "What is emotional intelligence?",
+              "answer": "The ability to recognize, understand, and manage your own emotions while understanding and influencing the emotions of others.",
+              "explanation": "Emotional intelligence strengthens communication, leadership, and conflict resolution.",
+              "difficulty": 1,
+              "tags": ["Emotional Intelligence"]
+            },
+            {
+              "id": "CAPM-MIND-008",
+              "card_type": "scenario",
+              "prompt": "Two team members become frustrated during a meeting. Which skill helps the Project Manager resolve the conflict effectively?",
+              "answer": "Emotional intelligence.",
+              "explanation": "Recognizing emotions and responding appropriately helps maintain productive relationships.",
+              "difficulty": 4,
+              "tags": ["Emotional Intelligence", "Conflict"]
+            },
+            {
+              "id": "CAPM-MIND-009",
+              "card_type": "flashcard",
+              "prompt": "What does adaptability mean for a Project Manager?",
+              "answer": "The ability to adjust plans, leadership style, or delivery approach in response to changing conditions.",
+              "explanation": "Adaptability allows projects to remain successful despite uncertainty.",
+              "difficulty": 1,
+              "tags": ["Adaptability"]
+            },
+            {
+              "id": "CAPM-MIND-010",
+              "card_type": "scenario",
+              "prompt": "Customer priorities change significantly midway through a project. Which mindset is most important?",
+              "answer": "Adaptability.",
+              "explanation": "Project Managers should adjust their approach while continuing to deliver value.",
+              "difficulty": 4,
+              "tags": ["Adaptability", "Scenario"]
+            },
+            {
+              "id": "CAPM-MIND-011",
+              "card_type": "flashcard",
+              "prompt": "What is resilience?",
+              "answer": "The ability to recover quickly from setbacks while maintaining focus on project objectives.",
+              "explanation": "Resilient Project Managers remain effective under pressure.",
+              "difficulty": 1,
+              "tags": ["Resilience"]
+            },
+            {
+              "id": "CAPM-MIND-012",
+              "card_type": "scenario",
+              "prompt": "A critical supplier fails to deliver on time. Which mindset helps the Project Manager recover effectively?",
+              "answer": "Resilience.",
+              "explanation": "Resilience enables Project Managers to adapt and continue moving the project forward.",
+              "difficulty": 3,
+              "tags": ["Resilience", "Scenario"]
+            },
+            {
+              "id": "CAPM-MIND-013",
+              "card_type": "flashcard",
+              "prompt": "Why is continuous improvement important in project management?",
+              "answer": "It encourages teams to learn from experience and improve future performance.",
+              "explanation": "Continuous improvement increases efficiency and project success over time.",
+              "difficulty": 1,
+              "tags": ["Continuous Improvement"]
+            },
+            {
+              "id": "CAPM-MIND-014",
+              "card_type": "scenario",
+              "prompt": "A team reviews what went well and what could be improved after completing a sprint. What practice is this?",
+              "answer": "Continuous improvement through retrospective learning.",
+              "explanation": "Retrospectives identify opportunities for future improvement.",
+              "difficulty": 3,
+              "tags": ["Continuous Improvement", "Retrospective"]
+            },
+            {
+              "id": "CAPM-MIND-015",
+              "card_type": "flashcard",
+              "prompt": "What is value in project management?",
+              "answer": "The worth, importance, or usefulness of a project's outcomes to stakeholders and the organization.",
+              "explanation": "Projects should focus on delivering measurable value rather than simply completing tasks.",
+              "difficulty": 1,
+              "tags": ["Value"]
+            },
+            {
+              "id": "CAPM-MIND-016",
+              "card_type": "scenario",
+              "prompt": "A feature adds little benefit but significantly increases cost. What should the Project Manager consider first?",
+              "answer": "Whether the feature provides sufficient value to justify its cost.",
+              "explanation": "Projects should maximize value rather than simply deliver more scope.",
+              "difficulty": 4,
+              "tags": ["Value", "Business Value"]
+            },
+            {
+              "id": "CAPM-MIND-017",
+              "card_type": "true_false",
+              "prompt": "True or False: Delivering more features always increases project value.",
+              "answer": "False.",
+              "explanation": "Value depends on stakeholder needs and business outcomes, not the quantity of deliverables.",
+              "difficulty": 2,
+              "tags": ["Value"]
+            },
+            {
+              "id": "CAPM-MIND-018",
+              "card_type": "flashcard",
+              "prompt": "What is the difference between delivering outputs and delivering value?",
+              "answer": "Outputs are the products or deliverables created by the project, while value is the benefit those outputs provide to stakeholders or the organization.",
+              "explanation": "PMI emphasizes delivering outcomes and value rather than simply completing work.",
+              "difficulty": 3,
+              "tags": ["Value", "Outcomes", "Outputs"]
+            }
+          ],
+          "lessons": []
+        }
+      ]
+    }
+  ]
+}
