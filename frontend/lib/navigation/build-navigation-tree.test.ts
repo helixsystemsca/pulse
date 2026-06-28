@@ -54,7 +54,7 @@ describe("buildNavigationTree", () => {
     const items = resolveAuthorizedNavItems(trainingSession);
     const tree = buildNavigationTree(trainingSession);
     expect(items.map((i) => i.key)).toEqual(
-      expect.arrayContaining(["logs_inspections", "schedule", "training_overview", "training_learning", "training_compliance"]),
+      expect.arrayContaining(["logs_inspections", "schedule", "training_flashcards"]),
     );
     const domainNames = tree.map((d) => d.domain);
     expect(domainNames).not.toContain("Dashboards");

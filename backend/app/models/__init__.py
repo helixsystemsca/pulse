@@ -102,6 +102,22 @@ from app.models.pulse_models import (
     PulseWorkerProfile,
 )
 from app.models.gamification_models import BadgeDefinition, Review, Task, TaskEvent, UserBadge, UserStats, XpLedger
+from app.models.training_platform_models import (
+    TrainingCertification,
+    TrainingCourse,
+    TrainingFlashcard,
+    TrainingImportBatch,
+    TrainingKnowledgeEdge,
+    TrainingLearningPath,
+    TrainingLearningPathItem,
+    TrainingLesson,
+    TrainingQuestion,
+    TrainingQuiz,
+    TrainingRecord,
+    TrainingReviewHistory,
+    TrainingSection,
+    TrainingUserProgress,
+)
 
 __all__ = [
     "AlertSeverity",
@@ -195,4 +211,18 @@ __all__ = [
     "XpLedger",
     "BadgeDefinition",
     "UserBadge",
+    "TrainingCertification",
+    "TrainingCourse",
+    "TrainingSection",
+    "TrainingLesson",
+    "TrainingFlashcard",
+    "TrainingReviewHistory",
+    "TrainingQuiz",
+    "TrainingQuestion",
+    "TrainingLearningPath",
+    "TrainingLearningPathItem",
+    "TrainingUserProgress",
+    "TrainingRecord",
+    "TrainingKnowledgeEdge",
+    "TrainingImportBatch",
 ]

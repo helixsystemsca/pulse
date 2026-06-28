@@ -13,6 +13,9 @@ import {
 /** Learning hub sections (URL slugs). Legacy slugs normalize via {@link normalizeLearningSection}. */
 export const TRAINING_LEARNING_SECTIONS = [
   "my-learning",
+  "courses",
+  "study",
+  "paths",
   "assign",
   "bundles",
   "library",
@@ -45,6 +48,9 @@ export function isTrainingComplianceSection(value: string): value is TrainingCom
 
 const LEARNING_TO_LEGACY: Record<TrainingLearningSection, WorkforceTrainingSection | null> = {
   "my-learning": "overview",
+  courses: "overview",
+  study: "overview",
+  paths: "overview",
   assign: "overview",
   bundles: "overview",
   library: "overview",
@@ -83,6 +89,7 @@ export function canViewTrainingLearningSection(
 ): boolean {
   if (!session) return false;
   if (section === "my-learning") return canViewMyLearning(session);
+  if (section === "courses" || section === "study" || section === "paths") return canViewMyLearning(session);
   if (section === "archive") return canViewTrainingSupervisionViews(session);
   if (section === "assign") return canAssignLearning(session);
   if (section === "bundles") return canManageLearningBundles(session);

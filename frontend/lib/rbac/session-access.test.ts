@@ -77,21 +77,24 @@ describe("canAccessClassicNavHref", () => {
   });
 });
 
-describe("tenantSidebarNavItemsForLiveApp — training compliance", () => {
-  it("shows Training · Compliance for manager with standards_compliance matrix toggle", () => {
+describe("tenantSidebarNavItemsForLiveApp — training flashcards milestone", () => {
+  it("shows Training · Flashcards and hides dormant compliance nav", () => {
     const items = tenantSidebarNavItemsForLiveApp(
       session({
         contract_features: ["procedures"],
-        enabled_features: ["procedures", "standards_compliance"],
+        enabled_features: ["procedures", "standards_training", "standards_compliance"],
         rbac_permissions: [
           "procedures.view",
+          "standards.training.view",
           "standards.compliance.view",
           "standards.training.compliance.view",
         ],
         roles: ["manager"],
       }),
     );
-    expect(items.some((i) => i.key === "training_compliance")).toBe(true);
+    expect(items.some((i) => i.key === "training_flashcards")).toBe(true);
+    expect(items.some((i) => i.key === "training_compliance")).toBe(false);
+    expect(items.some((i) => i.key === "training_overview")).toBe(false);
   });
 });
 

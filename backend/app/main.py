@@ -93,6 +93,7 @@ from app.api.telemetry_ingest_routes import router as telemetry_ingest_router
 from app.api.telemetry_positions_routes import router as telemetry_positions_router
 from app.api.routines_routes import router as routines_router
 from app.api.training_routes import router as training_router
+from app.api.training_platform_routes import router as training_platform_router
 from app.core.bootstrap import ensure_bootstrap_system_admin
 from app.core.rbac.catalog_sync import sync_rbac_catalog_permissions
 from app.core.config import get_settings
@@ -346,6 +347,7 @@ app.include_router(schedule_employee_availability_router, prefix="/api/v1")
 app.include_router(maintenance_hub_router, prefix="/api/v1")
 app.include_router(routines_router, prefix="/api/v1")
 app.include_router(training_router, prefix="/api/v1")
+app.include_router(training_platform_router, prefix="/api/v1")
 app.include_router(pm_task_router, prefix="/api/v1")
 app.include_router(pm_tools_router, prefix="/api/v1")
 app.include_router(pm_internal_router, prefix="/api/v1")

@@ -1,0 +1,67 @@
+.flashcard-scene {
+  perspective: 1200px;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.flashcard-inner {
+  position: relative;
+  width: 100%;
+  min-height: 300px;
+  transform-style: preserve-3d;
+  will-change: transform;
+  transition: transform 0.6s cubic-bezier(0.34, 1.15, 0.48, 1);
+}
+
+.flashcard-inner.is-flipped {
+  transform: rotateY(180deg);
+}
+
+.flashcard-inner.is-animating {
+  pointer-events: none;
+}
+
+.flashcard-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 1rem;
+  border: 1px solid var(--ds-border, #e2e8f0);
+  background: var(--ds-card, #fff);
+  padding: 2rem 1.75rem;
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
+}
+
+.flashcard-face-back {
+  transform: rotateY(180deg);
+}
+
+.flashcard-scene.is-swiping .flashcard-inner {
+  transition: transform 0.35s cubic-bezier(0.34, 1.15, 0.48, 1);
+}
+
+.flashcard-progress-track {
+  height: 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ds-muted, #94a3b8) 22%, transparent);
+  overflow: hidden;
+}
+
+.flashcard-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #0d9488, #14b8a6);
+  transition: width 0.45s cubic-bezier(0.34, 1.15, 0.48, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flashcard-inner,
+  .flashcard-progress-fill {
+    transition-duration: 0.01ms;
+  }
+}

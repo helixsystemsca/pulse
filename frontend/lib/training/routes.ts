@@ -11,6 +11,9 @@ export const TRAINING_ROUTES = {
   learningBundles: "/training/learning/bundles",
   learningLibrary: "/training/learning/library",
   learningArchive: "/training/learning/archive",
+  learningCourses: "/training/learning/courses",
+  learningStudy: "/training/learning/study",
+  learningPaths: "/training/learning/paths",
   /** @deprecated use learningMyLearning */
   learningAssignments: "/training/learning/my-learning",
   /** @deprecated use learningLibrary */
@@ -22,6 +25,8 @@ export const TRAINING_ROUTES = {
   complianceWorkers: "/training/compliance/workers",
   complianceRegistry: "/training/compliance/registry",
   complianceQueues: "/training/compliance/queues",
+  /** Flashcards milestone — primary Training entry. */
+  flashcards: "/training/flashcards",
 } as const;
 
 /** Sub-views under Training → Compliance → Workforce. */
@@ -66,9 +71,24 @@ export type TrainingLearningSectionSlug =
   | "bundles"
   | "library"
   | "archive"
+  | "courses"
+  | "study"
+  | "paths"
   | "assignments"
   | "procedures"
   | "acknowledgments";
+
+export function trainingFlashcardStudyHref(courseId: string): string {
+  return `${TRAINING_ROUTES.flashcards}/${encodeURIComponent(courseId)}`;
+}
+
+export function trainingCourseHref(courseId: string): string {
+  return `${TRAINING_ROUTES.learningCourses}/${encodeURIComponent(courseId)}`;
+}
+
+export function trainingLessonHref(courseId: string, lessonId: string): string {
+  return `${trainingCourseHref(courseId)}/lessons/${encodeURIComponent(lessonId)}`;
+}
 
 export function trainingLearningHref(section: TrainingLearningSectionSlug): string {
   const map: Record<TrainingLearningSectionSlug, string> = {
@@ -80,6 +100,9 @@ export function trainingLearningHref(section: TrainingLearningSectionSlug): stri
     procedures: TRAINING_ROUTES.learningLibrary,
     archive: TRAINING_ROUTES.learningArchive,
     acknowledgments: TRAINING_ROUTES.learningArchive,
+    courses: TRAINING_ROUTES.learningCourses,
+    study: TRAINING_ROUTES.learningStudy,
+    paths: TRAINING_ROUTES.learningPaths,
   };
   return map[section] ?? TRAINING_ROUTES.learningMyLearning;
 }

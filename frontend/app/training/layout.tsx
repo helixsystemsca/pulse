@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { AppLayout } from "@/components/app/AppLayout";
 import { StandardsLayoutClient } from "@/components/standards/StandardsLayoutClient";
+import { TrainingMilestoneGuard } from "@/components/training/domain/TrainingMilestoneGuard";
 
 export const metadata: Metadata = {
   title: "Training",
@@ -9,7 +10,9 @@ export const metadata: Metadata = {
 export default function TrainingLayout({ children }: { children: React.ReactNode }) {
   return (
     <AppLayout mainClassName="bg-ds-bg">
-      <StandardsLayoutClient>{children}</StandardsLayoutClient>
+      <TrainingMilestoneGuard>
+        <StandardsLayoutClient>{children}</StandardsLayoutClient>
+      </TrainingMilestoneGuard>
     </AppLayout>
   );
 }

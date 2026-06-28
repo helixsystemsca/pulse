@@ -2,9 +2,12 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { BookOpen, ClipboardList, History, Layers, Send, UserPlus } from "lucide-react";
+import { BookOpen, Brain, ClipboardList, GitBranch, GraduationCap, History, Layers, Send, UserPlus } from "lucide-react";
 import { ProceduresApp } from "@/components/procedures/ProceduresApp";
 import { ProcedureAcknowledgmentsArchiveClient } from "@/components/standards/ProcedureAcknowledgmentsArchiveClient";
+import { CourseCatalog } from "@/components/training/courses/CourseCatalog";
+import { LearningPathsPanel } from "@/components/training/paths/LearningPathsPanel";
+import { FlashcardStudySession } from "@/components/training/study/FlashcardStudySession";
 import { MyProceduresAssignmentsView } from "@/components/training/domain/MyProceduresAssignmentsView";
 import { LearningAssignPanel } from "@/components/training/domain/LearningAssignPanel";
 import { LearningBundleManager } from "@/components/training/domain/LearningBundleManager";
@@ -36,6 +39,9 @@ import {
 
 const TABS: { id: TrainingLearningSection; label: string; icon: typeof ClipboardList }[] = [
   { id: "my-learning", label: "My Learning", icon: ClipboardList },
+  { id: "courses", label: "Courses", icon: GraduationCap },
+  { id: "study", label: "Study", icon: Brain },
+  { id: "paths", label: "Paths", icon: GitBranch },
   { id: "assign", label: "Assign", icon: Send },
   { id: "bundles", label: "Bundles", icon: Layers },
   { id: "library", label: "Procedure library", icon: BookOpen },
@@ -58,6 +64,8 @@ export function TrainingLearningShell({ section }: { section: string }) {
   const fallback = firstAllowedTrainingLearningSection(session);
   const workerOnlyHub =
     !canAssignLearning(session) && !canManageLearningBundles(session);
+  const workerPlatformSection =
+    activeSection === "courses" || activeSection === "study" || activeSection === "paths";
 
   if (workerOnlyHub && activeSection === "my-learning") {
     return (
@@ -71,6 +79,43 @@ export function TrainingLearningShell({ section }: { section: string }) {
         </header>
         <TrainingEmployeeSelfView />
         <MyProceduresAssignmentsView embedded />
+      </div>
+    );
+  }
+
+  if (workerOnlyHub && workerPlatformSection) {
+    return (
+      <div className={uiPageStack}>
+        <header className="space-y-1">
+          <h2 className={uiPageTitle}>Learning</h2>
+          <p className={cn(uiPageDescription, "max-w-2xl")}>
+            Structured courses, flashcard study, and learning paths.
+          </p>
+        </header>
+        {visibleTabs.length > 1 ? (
+          <nav className={uiTabNav} aria-label="Learning sections">
+            {visibleTabs
+              .filter((t) => ["my-learning", "courses", "study", "paths"].includes(t.id))
+              .map((t) => {
+                const Icon = t.icon;
+                const href = trainingLearningHref(t.id);
+                const isActive = activeSection === t.id;
+                return (
+                  <Link
+                    key={t.id}
+                    href={href}
+                    className={cn(uiTabLink, isActive ? uiTabLinkActive : uiTabLinkIdle)}
+                  >
+                    <Icon className={uiIconInTab} aria-hidden />
+                    {t.label}
+                  </Link>
+                );
+              })}
+          </nav>
+        ) : null}
+        {activeSection === "courses" ? <CourseCatalog /> : null}
+        {activeSection === "study" ? <FlashcardStudySession /> : null}
+        {activeSection === "paths" ? <LearningPathsPanel /> : null}
       </div>
     );
   }
@@ -131,6 +176,9 @@ export function TrainingLearningShell({ section }: { section: string }) {
       ) : null}
       {canViewActive && activeSection === "assign" ? <LearningAssignPanel /> : null}
       {canViewActive && activeSection === "bundles" ? <LearningBundleManager /> : null}
+      {canViewActive && activeSection === "courses" ? <CourseCatalog /> : null}
+      {canViewActive && activeSection === "study" ? <FlashcardStudySession /> : null}
+      {canViewActive && activeSection === "paths" ? <LearningPathsPanel /> : null}
       {canViewActive && activeSection === "library" ? <ProceduresApp /> : null}
       {canViewActive && activeSection === "archive" ? <ProcedureAcknowledgmentsArchiveClient /> : null}
 
