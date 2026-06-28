@@ -80,7 +80,23 @@ export function FlashcardCoursePicker() {
           <GraduationCap className="mx-auto h-10 w-10 text-ds-muted" aria-hidden />
           <p className="mt-3 text-sm font-semibold text-ds-foreground">No study courses available</p>
           <p className={cn(uiPageDescription, "mx-auto mt-1 max-w-md")}>
-            Ask your administrator to import a CAPM flashcard pack. Courses will appear here once published.
+            Flashcard packs must be imported into your tenant database — JSON files in the repo are not loaded
+            automatically.{" "}
+            {canManageDecks ? (
+              <>
+                Use{" "}
+                <Link href={TRAINING_ROUTES.flashcardDecks} className="font-semibold text-teal-700 hover:underline">
+                  Manage decks → Import deck
+                </Link>{" "}
+                or run{" "}
+                <code className="rounded bg-ds-muted/30 px-1 py-0.5 text-xs">
+                  python -m scripts.seed_capm_training_packs
+                </code>{" "}
+                with your <code className="rounded bg-ds-muted/30 px-1 py-0.5 text-xs">COMPANY_ID</code>.
+              </>
+            ) : (
+              "Ask your administrator to import the CAPM flashcard packs."
+            )}
           </p>
         </div>
       ) : null}

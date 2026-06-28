@@ -43,6 +43,13 @@ function bearerTokenForRequest(url: string): string | undefined {
   return readSession()?.access_token;
 }
 
+/** Bearer for tenant API calls (REST and WebSocket). Honors impersonation overlay when active. */
+export function getTenantApiBearerToken(): string | undefined {
+  const overlay = getImpersonationOverlayAccessToken();
+  if (overlay) return overlay;
+  return readSession()?.access_token;
+}
+
 /** Bearer for authenticated `fetch` to API URLs (e.g. loading protected images where `<img src>` cannot attach headers). */
 export function getApiBearerForUrl(url: string): string | undefined {
   return bearerTokenForRequest(url);

@@ -2,7 +2,8 @@
 
 import { useCallback, useRef, useState } from "react";
 import { usePulseWs } from "@/hooks/usePulseWs";
-import { readSession } from "@/lib/pulse-session";
+import { usePulseAuth } from "@/hooks/usePulseAuth";
+import { getImpersonationOverlayAccessToken } from "@/lib/impersonation-overlay-token";
 import { playLevelUp, playXpTick } from "@/lib/gamificationSounds";
 import { BadgeUnlockModal, type BadgePayload } from "@/components/gamification/BadgeUnlockModal";
 import { LevelUpModal } from "@/components/gamification/LevelUpModal";
@@ -24,7 +25,9 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
   const [toast, setToast] = useState<XpToastPayload | null>(null);
   const [levelUp, setLevelUp] = useState<{ old: number; next: number; borders: string[] } | null>(null);
   const [badge, setBadge] = useState<BadgePayload | null>(null);
-  const me = readSession()?.sub ?? null;
+  const { session } = usePulseAuth();
+  const me = session?.sub ?? null;
+  const wsToken = getImpersonationOverlayAccessToken() ?? session?.access_token ?? null;
   const toastClear = useRef<() => void>(() => {});
 
   toastClear.current = () => setToast(null);
@@ -73,7 +76,7 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
     [me],
   );
 
-  usePulseWs(onWs, Boolean(me));
+  usePulseWs(onWs, Boolean(me && wsToken), wsToken);
 
   return (
     <>

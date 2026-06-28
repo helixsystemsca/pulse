@@ -91,6 +91,7 @@ export function CapmFlashcardStudy({ courseId, sectionId }: Props) {
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
   const animTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cardsRef = useRef<TrainingStudyDueCard[]>([]);
   const sessionStartRef = useRef<number | null>(null);
   const sessionRecordedRef = useRef(false);
   const cardsReviewedRef = useRef(0);
@@ -98,6 +99,7 @@ export function CapmFlashcardStudy({ courseId, sectionId }: Props) {
   const total = cards.length;
   const current = cards[index];
   const card = current?.flashcard;
+  cardsRef.current = cards;
   const faces = card ? flashcardFaceContent(card, settings) : null;
   const cardNumber = total > 0 ? index + 1 : 0;
   const progressPct = total > 0 ? Math.round((cardNumber / total) * 100) : 0;
@@ -148,14 +150,14 @@ export function CapmFlashcardStudy({ courseId, sectionId }: Props) {
 
   const applyIndex = useCallback(
     (next: number, deckCards?: TrainingStudyDueCard[]) => {
-      const list = deckCards ?? cards;
+      const list = deckCards ?? cardsRef.current;
       setIndex(next);
       const id = list[next]?.flashcard.id;
       if (id && settings.resumePreviousSession) {
         writeFlashcardStudyPosition(courseId, { flashcardId: id, index: next }, sectionId);
       }
     },
-    [cards, courseId, sectionId, settings.resumePreviousSession],
+    [courseId, sectionId, settings.resumePreviousSession],
   );
 
   const goTo = useCallback(
@@ -211,8 +213,15 @@ export function CapmFlashcardStudy({ courseId, sectionId }: Props) {
         sessionStartRef.current = Date.now();
         sessionRecordedRef.current = false;
         cardsReviewedRef.current = 0;
-        if (filteredCards.length > 0 && startIndex >= 0) {
-          applyIndex(startIndex, filteredCards);
+        if (filteredCards.length > 0 && startIndex >= 0 && settings.resumePreviousSession) {
+          const id = filteredCards[startIndex]?.flashcard.id;
+          if (id) {
+            writeFlashcardStudyPosition(
+              courseId,
+              { flashcardId: id, index: startIndex },
+              sectionId,
+            );
+          }
         }
       } catch (e) {
         setError(parseClientApiError(e).message);
@@ -220,7 +229,7 @@ export function CapmFlashcardStudy({ courseId, sectionId }: Props) {
         setLoading(false);
       }
     },
-    [applyIndex, courseId, sectionId, settings],
+    [courseId, sectionId, settings],
   );
 
   useEffect(() => {
@@ -229,7 +238,17 @@ export function CapmFlashcardStudy({ courseId, sectionId }: Props) {
       clearAnimTimer();
       recordStudySession();
     };
-  }, [loadDeck, clearAnimTimer, recordStudySession]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload when route or study filters change
+  }, [
+    courseId,
+    sectionId,
+    settings.shuffleCards,
+    settings.hideMasteredCards,
+    settings.studyNewCardsOnly,
+    settings.studyIncorrectCardsOnly,
+    settings.reverseQuestionAnswer,
+    settings.resumePreviousSession,
+  ]);
 
   useEffect(() => {
     if (sessionComplete) {
@@ -340,7 +359,7 @@ export function CapmFlashcardStudy({ courseId, sectionId }: Props) {
     else goTo(index - 1);
   };
 
-  if (loading) {
+  if (loading && cards.length === 0) {
     return (
       <div className="flex items-center gap-2 text-sm text-ds-muted">
         <Loader2 className="h-4 w-4 animate-spin" aria-hidden />

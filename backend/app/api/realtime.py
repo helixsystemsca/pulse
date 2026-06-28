@@ -98,6 +98,10 @@ async def websocket_endpoint(websocket: WebSocket, token: str | None = None) -> 
         ):
             await websocket.close(code=4401)
             return
+        token_tv = int(data.get("tv", 0))
+        if token_tv != int(getattr(user, "token_version", 0) or 0):
+            await websocket.close(code=4401)
+            return
         company_id = str(user.company_id)
 
     await websocket.accept()

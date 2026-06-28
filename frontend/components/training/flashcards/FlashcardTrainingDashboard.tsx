@@ -223,7 +223,7 @@ export function FlashcardTrainingDashboard({ courseId }: Props) {
         </div>
       </header>
 
-      {loading ? (
+      {loading && !stats ? (
         <div className="flex items-center gap-2 text-sm text-ds-muted">
           <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
           Loading dashboard…
@@ -232,7 +232,7 @@ export function FlashcardTrainingDashboard({ courseId }: Props) {
 
       {error ? <div className={uiCalloutWarning}>{error}</div> : null}
 
-      {stats && !loading ? (
+      {stats ? (
         <>
           <section aria-label="Course progress summary" className="space-y-3">
             <div className="flashcard-dashboard-kpis">

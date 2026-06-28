@@ -9,6 +9,9 @@ Usage
   cd backend
   COMPANY_ID=<tenant-uuid> python -m scripts.seed_capm_course_shell
 
+  Or import all CAPM packs (shell + flashcards):
+  COMPANY_ID=<uuid> python -m scripts.seed_capm_training_packs
+
   Or import the JSON via API / Deck management UI:
   data/training/capm-course-shell.json
 """
