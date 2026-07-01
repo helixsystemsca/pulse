@@ -1328,7 +1328,7 @@ function DashboardBody({
                   <WorkforceTimeOffMonth entries={model.workforce.timeOffThisMonth} />
                 </div>
                 {showSecondary ? (
-                  <div className="mt-3 grid shrink-0 gap-3 border-t border-[color-mix(in_srgb,var(--ds-text-primary)_10%,transparent)] pt-3 sm:grid-cols-2">
+                  <div className="mt-3 grid shrink-0 grid-cols-1 gap-3 border-t border-[color-mix(in_srgb,var(--ds-text-primary)_10%,transparent)] pt-3 lg:grid-cols-2">
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[color-mix(in_srgb,var(--ds-text-primary)_48%,transparent)]">
                         On schedule

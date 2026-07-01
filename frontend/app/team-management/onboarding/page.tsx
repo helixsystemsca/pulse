@@ -1,7 +1,5 @@
-import { OnboardingSection } from "@/components/team-management/sections/OnboardingSection";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Onboarding" };
-
-export default function TeamManagementOnboardingPage() {
-  return <OnboardingSection />;
+export default function LegacyOnboardingRedirectPage() {
+  redirect("/team-management/growth/onboarding");
 }

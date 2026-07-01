@@ -10,9 +10,10 @@ import {
   WORKFORCE_HUB_HERO_METRICS,
   WORKFORCE_HUB_SUPPORT_METRICS,
 } from "@/lib/team-management/mock-data";
-import { TEAM_MANAGEMENT_SECTIONS } from "@/lib/team-management/sections";
+import { TEAM_MANAGEMENT_NAV } from "@/lib/team-management/navigation";
 import { cn } from "@/lib/cn";
 
+/** @deprecated OverviewSection is the landing page — this hub remains for legacy references. */
 export function TeamManagementHub() {
   return (
     <div className="space-y-6">
@@ -47,7 +48,7 @@ export function TeamManagementHub() {
             Explore
           </p>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {TEAM_MANAGEMENT_SECTIONS.map((section) => (
+            {TEAM_MANAGEMENT_NAV.map((section) => (
               <Link
                 key={section.id}
                 href={section.href}

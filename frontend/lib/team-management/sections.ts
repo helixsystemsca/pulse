@@ -1,13 +1,10 @@
+/**
+ * @deprecated Prefer `@/lib/team-management/navigation` — legacy section metadata for hub cards.
+ */
 import type { MasterFeatureIcon } from "@/config/platform/master-feature-registry";
+import { TEAM_MANAGEMENT_NAV } from "@/lib/team-management/navigation";
 
-export type TeamManagementSectionId =
-  | "insights"
-  | "hiring"
-  | "development"
-  | "onboarding"
-  | "recognition"
-  | "workforce-planning"
-  | "coordination";
+export type TeamManagementSectionId = (typeof TEAM_MANAGEMENT_NAV)[number]["id"];
 
 export type TeamManagementSectionMeta = {
   id: TeamManagementSectionId;
@@ -19,72 +16,29 @@ export type TeamManagementSectionMeta = {
   href: string;
 };
 
-export const TEAM_MANAGEMENT_SECTIONS: readonly TeamManagementSectionMeta[] = [
-  {
-    id: "insights",
-    slug: "insights",
-    label: "Team Insights",
-    shortLabel: "Insights",
-    description: "Workforce operational visibility — coverage, training, risks, and engagement.",
-    icon: "sparkles",
-    href: "/team-management/insights",
-  },
-  {
-    id: "hiring",
-    slug: "hiring",
-    label: "Hiring",
-    shortLabel: "Hiring",
-    description: "Candidate pipeline, interviews, and onboarding readiness.",
-    icon: "clipboard",
-    href: "/team-management/hiring",
-  },
-  {
-    id: "development",
-    slug: "development",
-    label: "Development",
-    shortLabel: "Development",
-    description: "Growth profiles, mentorship, and leadership readiness.",
-    icon: "activity",
-    href: "/team-management/development",
-  },
-  {
-    id: "onboarding",
-    slug: "onboarding",
-    label: "Onboarding",
-    shortLabel: "Onboarding",
-    description: "Checklists, training progression, and readiness signoffs.",
-    icon: "list-checks",
-    href: "/team-management/onboarding",
-  },
-  {
-    id: "recognition",
-    slug: "recognition",
-    label: "Recognition",
-    shortLabel: "Recognition",
-    description: "Milestones, certifications, and peer appreciation.",
-    icon: "sparkles",
-    href: "/team-management/recognition",
-  },
-  {
-    id: "workforce-planning",
-    slug: "workforce-planning",
-    label: "Workforce Planning",
-    shortLabel: "Planning",
-    description: "Continuity, forecasting, and staffing coverage.",
-    icon: "calendar",
-    href: "/team-management/workforce-planning",
-  },
-  {
-    id: "coordination",
-    slug: "coordination",
-    label: "Coordination",
-    shortLabel: "Coordination",
-    description: "Follow-ups, handoffs, and leadership action items.",
-    icon: "clipboard",
-    href: "/team-management/coordination",
-  },
-] as const;
+const ICON_BY_SECTION: Record<TeamManagementSectionId, MasterFeatureIcon> = {
+  overview: "users",
+  people: "users",
+  performance: "activity",
+  growth: "list-checks",
+  planning: "clipboard",
+  meetings: "clipboard",
+};
+
+export const TEAM_MANAGEMENT_SECTIONS: readonly TeamManagementSectionMeta[] = TEAM_MANAGEMENT_NAV.map(
+  (item) => ({
+    id: item.id,
+    slug: item.id,
+    label: item.label,
+    shortLabel: item.shortLabel,
+    description: item.description,
+    icon: ICON_BY_SECTION[item.id],
+    href: item.href,
+  }),
+);
 
 export function teamManagementSectionBySlug(slug: string): TeamManagementSectionMeta | undefined {
   return TEAM_MANAGEMENT_SECTIONS.find((s) => s.slug === slug);
 }
+
+export { TEAM_MANAGEMENT_NAV, TEAM_MANAGEMENT_LEGACY_REDIRECTS } from "@/lib/team-management/navigation";

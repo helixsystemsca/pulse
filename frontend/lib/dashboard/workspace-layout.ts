@@ -46,6 +46,13 @@ export const WORKSPACE_COLUMN_FRACTION: Record<WorkspaceColumnId, number> = {
   right: 0.25,
 };
 
+/** Below this width the workspace stacks into a single column (matches `lg` breakpoint). */
+export const WORKSPACE_STACK_BREAKPOINT_PX = 1024;
+
+export function isStackedWorkspaceLayout(containerWidthPx: number): boolean {
+  return containerWidthPx < WORKSPACE_STACK_BREAKPOINT_PX;
+}
+
 export function widgetZoneClass(widgetId: string): WidgetZoneClass {
   return HERO_WIDGET_IDS.has(widgetId) ? "hero" : "edge";
 }
@@ -91,6 +98,9 @@ export function workspaceLayoutIsEmpty(layout: WorkspaceLayout): boolean {
 }
 
 export function columnWidthPx(containerWidthPx: number, column: WorkspaceColumnId, gapPx = 12): number {
+  if (isStackedWorkspaceLayout(containerWidthPx)) {
+    return Math.max(0, containerWidthPx);
+  }
   const fraction = WORKSPACE_COLUMN_FRACTION[column];
   const totalGaps = 2 * gapPx;
   return Math.max(0, containerWidthPx * fraction - totalGaps / 3);

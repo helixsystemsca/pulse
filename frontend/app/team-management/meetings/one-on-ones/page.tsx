@@ -1,0 +1,14 @@
+import { OneOnOnesSection } from "@/components/team-management/meetings/OneOnOnesSection";
+import { TeamSectionSubNav } from "@/components/team-management/shared/TeamSectionSubNav";
+import { MEETINGS_SUB_NAV } from "@/lib/team-management/navigation";
+
+export const metadata = { title: "One-on-Ones · Meetings" };
+
+export default function MeetingsOneOnOnesPage() {
+  return (
+    <div className="space-y-6">
+      <TeamSectionSubNav items={MEETINGS_SUB_NAV} ariaLabel="Meetings sections" />
+      <OneOnOnesSection />
+    </div>
+  );
+}

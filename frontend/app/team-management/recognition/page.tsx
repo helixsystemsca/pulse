@@ -1,7 +1,5 @@
-import { RecognitionSection } from "@/components/team-management/sections/RecognitionSection";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Recognition" };
-
-export default function TeamManagementRecognitionPage() {
-  return <RecognitionSection />;
+export default function LegacyRecognitionRedirectPage() {
+  redirect("/team-management");
 }

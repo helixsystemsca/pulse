@@ -1789,6 +1789,117 @@ class PulseWorkerTraining(Base):
     )
 
 
+class PulseWorkerDevelopment(Base):
+    """Employee development profile — quadrant, assessment, plan, timeline, history (1:1 with users)."""
+
+    __tablename__ = "pulse_worker_development"
+
+    user_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    development_quadrant: Mapped[str] = mapped_column(String(1), nullable=False, server_default=text("'C'"))
+    development_status: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'developing'"))
+    last_assessment_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    next_review_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    manager_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    career_goals: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    assessment: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    development_plan: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    skills: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    timeline: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    history: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    career: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    recognitions: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
+class PulseWorkerMeeting(Base):
+    """Manager–employee meetings (one-on-ones, team meetings)."""
+
+    __tablename__ = "pulse_worker_meetings"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    employee_user_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    manager_user_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    meeting_type: Mapped[str] = mapped_column(String(32), nullable=False, default="one_on_one")
+    scheduled_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="upcoming")
+    agenda: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    wins: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    challenges: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    goals: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    manager_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    employee_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    next_meeting_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    recurrence: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    # DB column "metadata" — Python name cannot be `metadata` (reserved on DeclarativeBase).
+    meeting_metadata: Mapped[dict[str, Any]] = mapped_column(
+        "metadata", JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
+class PulseMeetingActionItem(Base):
+    """Action items from meetings — extensible for project integration."""
+
+    __tablename__ = "pulse_meeting_action_items"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    meeting_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("pulse_worker_meetings.id", ondelete="CASCADE"), nullable=True
+    )
+    employee_user_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    assigned_to_user_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    due_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="open")
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    project_id: Mapped[Optional[str]] = mapped_column(UUID(as_uuid=False), nullable=True)
+    # DB column "metadata" — Python name cannot be `metadata` (reserved on DeclarativeBase).
+    action_metadata: Mapped[dict[str, Any]] = mapped_column(
+        "metadata", JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
 class PulseWorkersSettings(Base):
     """Company-level workers module config (permission matrix, shifts, skill tags, rules)."""
 

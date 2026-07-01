@@ -7,12 +7,19 @@ export const NAV_ROUTE_ALIASES: Readonly<Record<string, string>> = {
   "/dashboard/maintenance/work-requests": "/dashboard/maintenance",
   "/dashboard/maintenance/work-orders": "/dashboard/maintenance",
   "/dashboard/maintenance/inspections": "/dashboard/compliance",
-  "/dashboard/maintenance/analytics": "/team-management/insights",
+  "/dashboard/maintenance/analytics": "/team-management",
   "/dashboard/maintenance/messaging": "/dashboard/messages",
   "/dashboard/maintenance/preventative": "/dashboard/maintenance",
   "/operations": "/monitoring",
   "/admin": "/overview",
   "/dashboard/purchasing": "/dashboard/inventory",
+  "/team-management/development": "/team-management/performance",
+  "/team-management/onboarding": "/team-management/growth/onboarding",
+  "/team-management/hiring": "/team-management/planning/hiring",
+  "/team-management/workforce-planning": "/team-management/planning/workforce",
+  "/team-management/coordination": "/team-management/meetings/coordination",
+  "/team-management/recognition": "/team-management",
+  "/team-management/insights": "/team-management",
 };
 
 export function resolveNavRouteAlias(pathname: string): string {

@@ -1,7 +1,5 @@
-import { TeamInsightsSection } from "@/components/team-management/sections/TeamInsightsSection";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Team Insights" };
-
-export default function TeamManagementInsightsPage() {
-  return <TeamInsightsSection />;
+export default function LegacyInsightsRedirectPage() {
+  redirect("/team-management");
 }

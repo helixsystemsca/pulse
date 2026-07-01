@@ -1,7 +1,5 @@
-import { DevelopmentSection } from "@/components/team-management/sections/DevelopmentSection";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Development" };
-
-export default function TeamManagementDevelopmentPage() {
-  return <DevelopmentSection />;
+export default function LegacyDevelopmentRedirectPage() {
+  redirect("/team-management/performance");
 }

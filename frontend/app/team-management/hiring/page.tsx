@@ -1,7 +1,5 @@
-import { HiringSection } from "@/components/team-management/sections/HiringSection";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Hiring" };
-
-export default function TeamManagementHiringPage() {
-  return <HiringSection />;
+export default function LegacyHiringRedirectPage() {
+  redirect("/team-management/planning/hiring");
 }

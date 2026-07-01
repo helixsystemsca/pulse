@@ -46,9 +46,9 @@ export function WorkspaceDashboard({
 }: WorkspaceDashboardProps) {
   return (
     <div
-      className="dash-workspace grid min-h-0 min-w-0 w-full grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)] items-start"
+      className="dash-workspace grid min-h-0 min-w-0 w-full grid-cols-1 items-start lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)]"
       style={{ gap: DASHBOARD_GRID_GAP_PX, transitionDuration: `${DASHBOARD_LAYOUT_TRANSITION_MS}ms` }}
-      data-dashboard-layout="workspace-3col"
+      data-dashboard-layout="workspace-responsive"
     >
       {(["left", "hero", "right"] as const).map((column) => (
         <WorkspaceColumn
@@ -89,8 +89,9 @@ function WorkspaceColumn({
     <section
       className={cn(
         "dash-workspace-column flex min-h-0 min-w-0 flex-col",
-        column === "hero" && "dash-workspace-column--hero",
-        column !== "hero" && "dash-workspace-column--edge",
+        column === "hero" && "dash-workspace-column--hero order-1 lg:order-none",
+        column === "left" && "dash-workspace-column--edge order-2 lg:order-none",
+        column === "right" && "dash-workspace-column--edge order-3 lg:order-none",
       )}
       data-workspace-column={column}
       aria-label={COLUMN_LABEL[column]}

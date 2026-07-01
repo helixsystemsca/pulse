@@ -1,7 +1,5 @@
-import { WorkforcePlanningSection } from "@/components/team-management/sections/WorkforcePlanningSection";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Workforce Planning" };
-
-export default function TeamManagementWorkforcePlanningPage() {
-  return <WorkforcePlanningSection />;
+export default function LegacyWorkforcePlanningRedirectPage() {
+  redirect("/team-management/planning/workforce");
 }

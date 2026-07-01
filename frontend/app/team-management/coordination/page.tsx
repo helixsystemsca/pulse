@@ -1,7 +1,5 @@
-import { CoordinationSection } from "@/components/team-management/sections/CoordinationSection";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Coordination" };
-
-export default function TeamManagementCoordinationPage() {
-  return <CoordinationSection />;
+export default function LegacyCoordinationRedirectPage() {
+  redirect("/team-management/meetings/coordination");
 }
