@@ -139,8 +139,18 @@ def test_options_preflight_worker_meetings_includes_ops_origin() -> None:
 
 
 @pytest.mark.asyncio
-async def test_worker_development_list_not_captured_by_user_id_route(seeded_tenant) -> None:
+async def test_worker_development_list_not_captured_by_user_id_route(seeded_tenant, db_session) -> None:
     """Regression: `/workers/development` must not match `/workers/{user_id}`."""
+    from sqlalchemy import select
+
+    from app.models.domain import User
+
+    manager = (
+        await db_session.execute(select(User).where(User.id == seeded_tenant.manager_id))
+    ).scalar_one()
+    manager.feature_allow_extra = ["team_management"]
+    await db_session.flush()
+
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         res = await client.get(
             "/api/workers/development?include_inactive=false",
@@ -149,6 +159,8 @@ async def test_worker_development_list_not_captured_by_user_id_route(seeded_tena
                 "Origin": OPS_ORIGIN,
             },
         )
+    assert res.status_code != 500, res.text
+    assert "invalid uuid" not in res.text.lower()
     assert res.status_code == 200, res.text
     assert res.headers.get("access-control-allow-origin") == OPS_ORIGIN
     body = res.json()
@@ -156,7 +168,17 @@ async def test_worker_development_list_not_captured_by_user_id_route(seeded_tena
 
 
 @pytest.mark.asyncio
-async def test_worker_meetings_list_not_captured_by_user_id_route(seeded_tenant) -> None:
+async def test_worker_meetings_list_not_captured_by_user_id_route(seeded_tenant, db_session) -> None:
+    from sqlalchemy import select
+
+    from app.models.domain import User
+
+    manager = (
+        await db_session.execute(select(User).where(User.id == seeded_tenant.manager_id))
+    ).scalar_one()
+    manager.feature_allow_extra = ["team_management"]
+    await db_session.flush()
+
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         res = await client.get(
             "/api/workers/meetings?status=upcoming",
@@ -165,6 +187,8 @@ async def test_worker_meetings_list_not_captured_by_user_id_route(seeded_tenant)
                 "Origin": OPS_ORIGIN,
             },
         )
+    assert res.status_code != 500, res.text
+    assert "invalid uuid" not in res.text.lower()
     assert res.status_code == 200, res.text
     assert res.headers.get("access-control-allow-origin") == OPS_ORIGIN
     body = res.json()
