@@ -1,3 +1,5 @@
+"use client";
+
 import { TeamManagementFuturePage } from "@/components/team-management/shared/TeamManagementFuturePage";
 import { TeamSectionSubNav } from "@/components/team-management/shared/TeamSectionSubNav";
 import { GROWTH_SUB_NAV } from "@/lib/team-management/navigation";
