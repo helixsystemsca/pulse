@@ -12,6 +12,7 @@ import { fetchWorkerDetail, type WorkerDetail } from "@/lib/workersService";
 import { fetchWorkerTraining, type WorkerTrainingApiResponse } from "@/lib/trainingApi";
 
 export function useEmployeeProfile(userId: string | null, options?: { onUpdated?: () => void }) {
+  const onUpdated = options?.onUpdated;
   const { session } = usePulseAuth();
   const companyId = session?.company_id ?? null;
   const [development, setDevelopment] = useState<WorkerDevelopmentDetail | null>(null);
@@ -63,7 +64,7 @@ export function useEmployeeProfile(userId: string | null, options?: { onUpdated?
       try {
         const res = await patchWorkerDevelopment(userId, patch);
         setDevelopment(normalizeDevelopmentDetail(res.detail));
-        options?.onUpdated?.();
+        onUpdated?.();
         return {
           planOverwriteRequired: res.plan_overwrite_required,
           message: res.message,
@@ -75,7 +76,7 @@ export function useEmployeeProfile(userId: string | null, options?: { onUpdated?
         setSaving(false);
       }
     },
-    [userId, options?.onUpdated],
+    [userId, onUpdated],
   );
 
   return {

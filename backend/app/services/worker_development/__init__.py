@@ -4,6 +4,7 @@ from app.services.worker_development.service import (
     get_development_detail,
     get_or_create_development,
     list_development_summaries,
+    list_recognition_feed,
     patch_development,
     summary_from_row,
 )
@@ -17,6 +18,7 @@ __all__ = [
     "get_development_detail",
     "get_or_create_development",
     "list_development_summaries",
+    "list_recognition_feed",
     "patch_development",
     "summary_from_row",
 ]
