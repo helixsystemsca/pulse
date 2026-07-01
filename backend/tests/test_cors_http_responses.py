@@ -110,6 +110,67 @@ def test_validation_error_ctx_serializes_to_json() -> None:
     assert "1e40" in text
 
 
+def test_options_preflight_worker_development_includes_ops_origin() -> None:
+    client = TestClient(app)
+    res = client.options(
+        "/api/workers/development",
+        headers={
+            "Origin": OPS_ORIGIN,
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "authorization,content-type",
+        },
+    )
+    assert res.status_code == 200
+    assert res.headers.get("access-control-allow-origin") == OPS_ORIGIN
+
+
+def test_options_preflight_worker_meetings_includes_ops_origin() -> None:
+    client = TestClient(app)
+    res = client.options(
+        "/api/workers/meetings",
+        headers={
+            "Origin": OPS_ORIGIN,
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "authorization,content-type",
+        },
+    )
+    assert res.status_code == 200
+    assert res.headers.get("access-control-allow-origin") == OPS_ORIGIN
+
+
+@pytest.mark.asyncio
+async def test_worker_development_list_not_captured_by_user_id_route(seeded_tenant) -> None:
+    """Regression: `/workers/development` must not match `/workers/{user_id}`."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        res = await client.get(
+            "/api/workers/development?include_inactive=false",
+            headers={
+                **auth_headers(seeded_tenant.manager_token),
+                "Origin": OPS_ORIGIN,
+            },
+        )
+    assert res.status_code == 200, res.text
+    assert res.headers.get("access-control-allow-origin") == OPS_ORIGIN
+    body = res.json()
+    assert "items" in body
+
+
+@pytest.mark.asyncio
+async def test_worker_meetings_list_not_captured_by_user_id_route(seeded_tenant) -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        res = await client.get(
+            "/api/workers/meetings?status=upcoming",
+            headers={
+                **auth_headers(seeded_tenant.manager_token),
+                "Origin": OPS_ORIGIN,
+            },
+        )
+    assert res.status_code == 200, res.text
+    assert res.headers.get("access-control-allow-origin") == OPS_ORIGIN
+    body = res.json()
+    assert "items" in body
+
+
 def test_unauthenticated_get_still_returns_cors_headers() -> None:
     client = TestClient(app)
     res = client.get(
