@@ -25,6 +25,7 @@ function QuadrantCell({
   draggingUserId,
   dropHighlight,
   onDropHighlight,
+  onDraggingChange,
 }: {
   quadrant: DevelopmentQuadrant;
   employees: WorkerDevelopmentSummary[];
@@ -34,6 +35,7 @@ function QuadrantCell({
   draggingUserId: string | null;
   dropHighlight: DevelopmentQuadrant | null;
   onDropHighlight: (quadrant: DevelopmentQuadrant | null) => void;
+  onDraggingChange: (userId: string | null) => void;
 }) {
   const meta = QUADRANT_META[quadrant];
   const isDropTarget = dropHighlight === quadrant;
@@ -93,12 +95,12 @@ function QuadrantCell({
                 e.preventDefault();
                 return;
               }
-              setDraggingUserId(emp.user_id);
+              onDraggingChange(emp.user_id);
               e.dataTransfer.setData(DRAG_USER_MIME, emp.user_id);
               e.dataTransfer.setData("application/x-pulse-development-from-quadrant", emp.development_quadrant);
               e.dataTransfer.effectAllowed = "move";
             }}
-            onDragEnd={() => setDraggingUserId(null)}
+            onDragEnd={() => onDraggingChange(null)}
             onClick={() => onSelect(emp.user_id)}
           />
         ))}
@@ -185,6 +187,7 @@ export function TeamPerformanceMatrix({
                 draggingUserId={draggingUserId}
                 dropHighlight={dropHighlight}
                 onDropHighlight={setDropHighlight}
+                onDraggingChange={setDraggingUserId}
               />
             </div>
           ))}
