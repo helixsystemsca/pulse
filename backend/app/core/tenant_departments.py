@@ -17,12 +17,16 @@ _SLUG_RE = re.compile(r"^[a-z][a-z0-9_-]{0,63}$")
 
 DEFAULT_TENANT_DEPARTMENTS: list[tuple[str, str]] = [
     ("maintenance", "Maintenance"),
+    ("admin", "Administration"),
+]
+
+# Panorama / club-style departments — add via Team Management when needed.
+PANORAMA_TENANT_DEPARTMENTS: list[tuple[str, str]] = [
     ("communications", "Communications"),
     ("reception", "Reception"),
     ("aquatics", "Aquatics"),
     ("fitness", "Fitness"),
     ("racquets", "Racquets"),
-    ("admin", "Administration"),
 ]
 
 

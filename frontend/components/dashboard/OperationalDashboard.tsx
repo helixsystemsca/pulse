@@ -55,7 +55,8 @@ import {
 } from "@/lib/dashboard/workforce-site-certs";
 import { WorkforceSiteCertifications } from "@/components/dashboard/widgets/ops/WorkforceSiteCertifications";
 import { WorkforceTimeOffMonth } from "@/components/dashboard/widgets/ops/WorkforceTimeOffMonth";
-import { WORKFORCE_TIME_OFF_DEMO, type WorkforceTimeOffEntry } from "@/lib/dashboard/workforce-time-off";
+import { buildWorkforceTimeOffThisMonth, type WorkforceTimeOffEntry } from "@/lib/dashboard/workforce-time-off";
+import { useScheduleStore } from "@/lib/schedule/schedule-store";
 import {
   addWorkspaceWidget,
   allWorkspaceWidgetIds,
@@ -647,7 +648,7 @@ function demoModel(): DashboardViewModel {
         { id: "pool", label: "Pool Operator", status: "covered", holderNames: [] },
         { id: "fa", label: "First Aid", status: "covered", holderNames: [] },
       ],
-      timeOffThisMonth: WORKFORCE_TIME_OFF_DEMO,
+      timeOffThisMonth: [],
     },
     workRequests: {
       kpi: { pendingApproval: 2, inProgress: 4, overdueAny: 1, total: 12 },
@@ -1097,7 +1098,11 @@ function buildLiveModel(
         [...onSite, ...onShiftNow].map((b) => b.id),
         scheduledIdsOnCalendar,
       ),
-      timeOffThisMonth: WORKFORCE_TIME_OFF_DEMO,
+      timeOffThisMonth: buildWorkforceTimeOffThisMonth(
+        workers,
+        useScheduleStore.getState().timeOffBlocks,
+        getServerDate(),
+      ),
     },
     workRequests: {
       awaitingCount: unassigned || openItems.filter((i) => i.status === "open").length,

@@ -36,6 +36,7 @@ GLOBAL_SYSTEM_FEATURES: tuple[str, ...] = (
     "comms_indesign_pipeline",
     "comms_campaign_planner",
     "operational_improvements",
+    "roadmap",
 )
 
 _LEGACY_FEATURE_ALIASES: dict[str, tuple[str, ...]] = {

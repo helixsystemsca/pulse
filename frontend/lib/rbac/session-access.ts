@@ -3,7 +3,8 @@
  * `contract_features` (or `contract_enabled_features` for company admins) + `rbac_permissions`.
  * Sidebar/module visibility uses `enabled_features` (matrix-derived, plus overlays) via `isUserFeatureEnabled`.
  */
-import { PLATFORM_DEPARTMENTS, PLATFORM_DEPARTMENT_SLUGS } from "@/config/platform/departments";
+import { isDepartmentRouteInTenantWorkspace } from "@/lib/rbac/tenant-department-workspace";
+import { PLATFORM_DEPARTMENT_SLUGS } from "@/config/platform/departments";
 import type { PulseAuthSession } from "@/lib/pulse-session";
 import {
   getLegacyPlatformRouteAlias,
@@ -35,6 +36,8 @@ type NavGate =
       requireAllContractModules?: boolean;
       /** When set, user must have every permission listed (takes precedence over `rbacAnyOf`). */
       rbacAllOf?: readonly string[];
+      /** Department-owned route — must be configured in tenant_departments. */
+      departmentSlug?: string;
     };
 
 function normalizeHref(href: string): string {
@@ -103,7 +106,7 @@ function classicNavGate(href: string): NavGate {
     const feature = legacy?.feature ?? master?.feature;
     const rbac = legacy?.rbacAnyOf ?? master?.rbacAnyOf;
     if (!feature || !rbac) return { kind: "deny" };
-    return { kind: "module", companyModules: [feature], rbacAnyOf: [...rbac] };
+    return { kind: "module", companyModules: [feature], rbacAnyOf: [...rbac], departmentSlug: slug };
   }
   if (h === "/overview/project" || h.startsWith("/overview/project/")) {
     return {
@@ -128,6 +131,7 @@ function classicNavGate(href: string): NavGate {
       kind: "module",
       companyModules: ["dashboard"],
       rbacAnyOf: [`dashboard.dept.${slug}.view`, "dashboard.view"],
+      departmentSlug: slug,
     };
   }
   if (h.startsWith("/kiosk/inventory-scanner")) {
@@ -285,6 +289,9 @@ export function canAccessClassicNavHref(session: PulseAuthSession | null, href: 
     ? tenantHasEveryCompanyModule(session, gate.companyModules)
     : tenantHasAnyCompanyModule(session, gate.companyModules);
   if (!modsOk) return false;
+  if (gate.kind === "module" && gate.departmentSlug && !isDepartmentRouteInTenantWorkspace(session, gate.departmentSlug)) {
+    return false;
+  }
   if (gate.rbacAllOf?.length) {
     return gate.rbacAllOf.every((k) => hasRbacPermission(session, k));
   }

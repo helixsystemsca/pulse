@@ -239,6 +239,7 @@ export function ProjectsApp() {
   const [editOpen, setEditOpen] = useState(false);
   const [editFor, setEditFor] = useState<ProjectRow | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [roadmapToastYear, setRoadmapToastYear] = useState<number | null>(null);
   const { phase: projectSubmitPhase, run: runProjectSubmit } = useAsyncSubmitPhase();
   const projectSubmitPending = projectSubmitPhase === "loading" || projectSubmitPhase === "success";
   const [completingId, setCompletingId] = useState<string | null>(null);
@@ -354,7 +355,10 @@ export function ProjectsApp() {
 
   useEffect(() => {
     if (!toast) return;
-    const t = window.setTimeout(() => setToast(null), 3500);
+    const t = window.setTimeout(() => {
+      setToast(null);
+      setRoadmapToastYear(null);
+    }, 5000);
     return () => window.clearTimeout(t);
   }, [toast]);
 
@@ -530,7 +534,9 @@ export function ProjectsApp() {
         staffing_priority: formStaffingPriority,
       });
       setRows((prev) => (prev ? [created, ...prev] : prev));
-      setToast("Project created.");
+      const y = Number(formStart.slice(0, 4));
+      setRoadmapToastYear(Number.isFinite(y) ? y : null);
+      setToast("Project created — it appears on the Roadmap for its date range.");
       });
       setCreateOpen(false);
       setFormName("");
@@ -685,10 +691,17 @@ export function ProjectsApp() {
     <div className="space-y-6">
       <PageHeader
         title="Projects"
-        description="Operational initiatives, tasks, and workforce-ready skill matching."
+        description="Operational initiatives, tasks, and workforce-ready skill matching. Every project with dates appears on the Roadmap."
         icon={FolderKanban}
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/roadmap"
+              className={cn(SECONDARY_BTN, "inline-flex items-center gap-2 no-underline")}
+            >
+              <CalendarRange className="h-4 w-4" aria-hidden />
+              Roadmap
+            </Link>
             <button type="button" className={SECONDARY_BTN} onClick={() => setCreateCategoryOpen(true)}>
               <span className="inline-flex items-center gap-2">
                 <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />
@@ -727,7 +740,15 @@ export function ProjectsApp() {
           className="fixed bottom-6 left-1/2 z-50 max-w-md -translate-x-1/2 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-900 shadow-lg dark:border-emerald-500/35 dark:bg-emerald-950/95 dark:text-emerald-100"
           role="status"
         >
-          {toast}
+          <p>{toast}</p>
+          {roadmapToastYear ? (
+            <Link
+              href={`/roadmap?year=${roadmapToastYear}`}
+              className="mt-1 inline-block text-sm font-semibold text-emerald-800 underline dark:text-emerald-200"
+            >
+              View on Roadmap →
+            </Link>
+          ) : null}
         </div>
       ) : null}
 
@@ -739,7 +760,11 @@ export function ProjectsApp() {
           {rows.length === 0 ? (
             <HintCallout>
               <strong className="font-semibold text-pulse-navy dark:text-slate-100">Projects organize work.</strong> Create
-              a project, add tasks with priorities and required skills, then match workers from roster profiles.
+              a project here and it shows on the{" "}
+              <Link href="/roadmap" className="font-medium text-[#2B4C7E] underline dark:text-ds-primary">
+                Roadmap
+              </Link>{" "}
+              timeline, or quick-add placeholders from Roadmap first and flesh them out here later.
             </HintCallout>
           ) : null}
           <p className="text-sm text-pulse-muted">
@@ -788,6 +813,11 @@ export function ProjectsApp() {
                           <div className="flex items-start justify-between gap-2">
                             <p className="min-w-0 flex-1 font-headline text-base font-semibold leading-snug text-pulse-navy dark:text-slate-100">
                               {p.name}
+                              {p.roadmap_stub ? (
+                                <span className="ml-2 inline-flex rounded bg-amber-500/15 px-1.5 py-0.5 align-middle text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
+                                  Roadmap
+                                </span>
+                              ) : null}
                             </p>
                             {canConfigureOrg ? (
                               <button

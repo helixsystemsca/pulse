@@ -215,6 +215,20 @@ export const RBAC_PERMISSION_CATALOG: readonly RbacPermissionMeta[] = [
     category: "Operations",
   },
   { key: "monitoring.view", label: "View monitoring", description: "Live operations and monitoring views.", module: "monitoring", category: "Operations" },
+  {
+    key: "roadmap.view",
+    label: "View roadmap",
+    description: "Strategic portfolio timeline and milestones.",
+    module: "roadmap",
+    category: "Planning",
+  },
+  {
+    key: "roadmap.manage",
+    label: "Manage roadmap",
+    description: "Create, edit, and drag strategic roadmap initiatives.",
+    module: "roadmap",
+    category: "Planning",
+  },
   { key: "projects.view", label: "View projects", description: "Project list and project dashboards.", module: "projects", category: "Operations" },
   {
     key: "projects.pm.view",

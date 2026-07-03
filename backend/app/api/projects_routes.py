@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Annotated, Optional
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -67,6 +67,7 @@ from app.schemas.projects import (
     ProjectOut,
     ProjectOutWithProgress,
     ProjectPatch,
+    RoadmapStubBatchCreateIn,
     ProjectActivityCreateNoteIn,
     ProjectActivityOut,
     ProjectTemplateCreateIn,
@@ -205,6 +206,7 @@ def _project_out(p: PulseProject) -> ProjectOut:
         staffing_priority=str(getattr(p, "staffing_priority", "normal") or "normal"),
         blackout_windows=getattr(p, "blackout_windows", None),
         department_slug=getattr(p, "department_slug", None),
+        roadmap_stub=bool(getattr(p, "roadmap_stub", False)),
         created_at=p.created_at,
         updated_at=p.updated_at,
     )
@@ -693,6 +695,16 @@ async def list_projects(
     return out
 
 
+def _stub_dates_for_index(index: int, year: int) -> tuple[date, date]:
+    """Stagger ~3-month windows across the year for bulk quick-add."""
+    start_month = index % 12
+    start = date(year, start_month + 1, 1)
+    end = start + timedelta(days=89)
+    if end.year > year:
+        end = date(year, 12, 31)
+    return start, end
+
+
 @router.post("/projects", response_model=ProjectOut, status_code=status.HTTP_201_CREATED)
 async def create_project(
     db: Db,
@@ -702,6 +714,9 @@ async def create_project(
 ) -> ProjectOut:
     if body.end_date < body.start_date:
         raise HTTPException(status_code=400, detail="end_date must be on or after start_date")
+    is_stub = bool(getattr(body, "roadmap_stub", False))
+    if is_stub and (body.template_id or "").strip():
+        raise HTTPException(status_code=400, detail="Templates cannot be used with roadmap_stub placeholders")
     owner_id = (body.owner_user_id or "").strip() or None
     if owner_id and not await proj_svc.user_in_company(db, cid, owner_id):
         raise HTTPException(status_code=400, detail="Owner not in organization")
@@ -739,21 +754,23 @@ async def create_project(
         category_id=cat_id,
         start_date=body.start_date,
         end_date=body.end_date,
-        status=proj_svc.parse_project_status(body.status or "active"),
+        status=proj_svc.parse_project_status("future" if is_stub else (body.status or "active")),
         repopulation_frequency=(getattr(body, "repopulation_frequency", None) or "").strip() or None,
         goal=getattr(template, "default_goal", None) if template else None,
         notes=getattr(template, "default_notes", None) if template else None,
         success_definition=getattr(template, "default_success_definition", None) if template else None,
-        show_on_schedule=bool(getattr(body, "show_on_schedule", True)),
+        show_on_schedule=False if is_stub else bool(getattr(body, "show_on_schedule", True)),
         overlay_color=(getattr(body, "overlay_color", None) or "").strip() or None,
         operational_impact_level=str(getattr(body, "operational_impact_level", None) or "medium"),
         staffing_priority=str(getattr(body, "staffing_priority", None) or "normal"),
         blackout_windows=_serialize_blackout_windows(getattr(body, "blackout_windows", None)),
         department_slug=project_dept,
+        roadmap_stub=is_stub,
     )
     db.add(p)
     await db.flush()
-    await seed_default_notification_rules(db, project_id=str(p.id), company_id=cid)
+    if not is_stub:
+        await seed_default_notification_rules(db, project_id=str(p.id), company_id=cid)
     if template and template_tasks:
         for tt in template_tasks:
             row = PulseProjectTask(
@@ -778,6 +795,82 @@ async def create_project(
         c = await db.get(PulseCategory, str(p.category_id))
         if c and str(c.company_id) == cid:
             out.category = _category_out(c)
+    return out
+
+
+@router.post("/projects/roadmap-stubs", response_model=list[ProjectOutWithProgress], status_code=status.HTTP_201_CREATED)
+async def create_roadmap_stubs(
+    db: Db,
+    cid: CompanyId,
+    actor: Annotated[User, Depends(require_tenant_user)],
+    body: RoadmapStubBatchCreateIn,
+) -> list[ProjectOutWithProgress]:
+    """Bulk lightweight initiatives for the strategic roadmap (no tasks, no notifications)."""
+    year = body.year or datetime.now(timezone.utc).year
+    actor_hr = await db.get(PulseWorkerHR, str(actor.id))
+    project_dept = await resolve_schedule_department_slug(db, cid, explicit=None, hr=actor_hr)
+    created: list[PulseProject] = []
+    for i, item in enumerate(body.items):
+        name = item.name.strip()
+        if not name:
+            continue
+        if item.start_date and item.end_date:
+            start, end = item.start_date, item.end_date
+        elif item.start_date:
+            start = item.start_date
+            end = start + timedelta(days=89)
+        else:
+            start, end = _stub_dates_for_index(i, year)
+        if end < start:
+            raise HTTPException(status_code=400, detail=f"end_date before start_date for {name!r}")
+        cat_id = (item.category_id or "").strip() or None
+        if cat_id:
+            c = await db.get(PulseCategory, cat_id)
+            if not c or str(c.company_id) != cid:
+                raise HTTPException(status_code=400, detail="Category not found")
+        p = PulseProject(
+            company_id=cid,
+            name=name,
+            description=None,
+            owner_user_id=None,
+            created_by_user_id=str(actor.id),
+            category_id=cat_id,
+            start_date=start,
+            end_date=end,
+            status=proj_svc.parse_project_status("future"),
+            show_on_schedule=False,
+            overlay_color=(item.overlay_color or "").strip() or None,
+            operational_impact_level="medium",
+            staffing_priority="normal",
+            department_slug=project_dept,
+            roadmap_stub=True,
+        )
+        db.add(p)
+        created.append(p)
+    await db.flush()
+    await db.commit()
+    out: list[ProjectOutWithProgress] = []
+    cat_ids = {str(p.category_id) for p in created if p.category_id}
+    cats: dict[str, PulseCategory] = {}
+    if cat_ids:
+        cq = await db.execute(select(PulseCategory).where(PulseCategory.id.in_(cat_ids)))
+        cats = {str(c.id): c for c in cq.scalars().all()}
+    for p in created:
+        await db.refresh(p)
+        base = _project_out(p)
+        if p.category_id and str(p.category_id) in cats:
+            base.category = _category_out(cats[str(p.category_id)])
+        data = base.model_dump(exclude={"health_status"})
+        out.append(
+            ProjectOutWithProgress(
+                **data,
+                task_total=0,
+                task_completed=0,
+                progress_pct=0,
+                assignee_user_ids=[],
+                health_status="On Track",
+            )
+        )
     return out
 
 

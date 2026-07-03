@@ -1,0 +1,82 @@
+{
+  "deck": {
+    "id": "bcferries_project_coordinator",
+    "title": "BC Ferries Project Coordinator",
+    "organization": "BC Ferries",
+    "position": "Project Coordinator",
+    "description": "Interview preparation for capital and operational project coordination in a marine transportation environment.",
+    "estimatedQuestions": 30,
+    "version": 1
+  },
+  "cards": [
+    {
+      "id": 1,
+      "category": "Behavioral",
+      "difficulty": "Medium",
+      "question": "Tell us about a complex project you coordinated with multiple stakeholders and tight deadlines.",
+      "whatTheyAreEvaluating": [
+        "Project Coordination",
+        "Stakeholder Management",
+        "Organization",
+        "Resilience"
+      ],
+      "answerFramework": [
+        "Scope, timeline, and why coordination mattered",
+        "Tools and rituals (status meetings, RAID log, milestones)",
+        "How you handled a surprise constraint"
+      ],
+      "star": {
+        "situation": "Multi-vendor or cross-department initiative affecting terminal operations.",
+        "task": "Keep schedule, budget visibility, and communications aligned.",
+        "action": "Built integrated plan, tracked risks, escalated early on slip.",
+        "result": "Delivered on time or with agreed change control; stakeholders informed throughout."
+      },
+      "keywords": ["RAID", "milestones", "change control", "marine operations"],
+      "bestStory": "Terminal upgrade or vessel-related project where downtime had revenue impact—you coordinated trades, IT, and operations.",
+      "watchFor": [
+        "Taking sole credit for team outcomes",
+        "No mention of documentation or follow-through"
+      ],
+      "panelNotes": {
+        "whatGoodSoundsLike": [
+          "Calm coordinator who connects technical and business views",
+          "Comfortable in regulated, safety-critical environment"
+        ],
+        "scoreFocus": ["Coordination", "Communication"]
+      }
+    },
+    {
+      "id": 2,
+      "category": "Technical",
+      "difficulty": "Hard",
+      "question": "How would you handle a supplier delay that threatens a critical project milestone?",
+      "whatTheyAreEvaluating": [
+        "Problem Solving",
+        "Risk Management",
+        "Negotiation",
+        "Escalation Judgment"
+      ],
+      "answerFramework": [
+        "Assess impact on critical path and operations",
+        "Options: alternate supplier, scope swap, schedule recovery",
+        "Escalation path and communication to sponsors"
+      ],
+      "star": {
+        "situation": "Key equipment delivery slip on refit or terminal project.",
+        "task": "Protect milestone without hiding bad news.",
+        "action": "Quantified delay, proposed mitigation, negotiated partial delivery or re-sequence.",
+        "result": "Minimized operational impact; execs had decision-ready options."
+      },
+      "keywords": ["critical path", "mitigation", "vendor management", "transparency"],
+      "bestStory": "Supplier missed steel or electrical lead time—you re-sequenced work packages and kept crews productive.",
+      "watchFor": ["Hope-based planning", "Delaying escalation"],
+      "panelNotes": {
+        "whatGoodSoundsLike": [
+          "Fact-based options with trade-offs",
+          "Understands cost of schedule slip in ferry context"
+        ],
+        "scoreFocus": ["Judgment", "Risk Management"]
+      }
+    }
+  ]
+}

@@ -1,9 +1,13 @@
 "use client";
 
+import type { DragEvent } from "react";
+import { useState } from "react";
 import type { DevelopmentQuadrant, WorkerDevelopmentSummary } from "@/lib/team-management/development-types";
 import { QUADRANT_META } from "@/lib/team-management/development-types";
 import { DevelopmentEmployeeChip } from "@/components/team-management/performance/components/DevelopmentEmployeeAvatar";
 import { cn } from "@/lib/cn";
+
+const DRAG_USER_MIME = "application/x-pulse-development-user-id";
 
 const MATRIX_GRID: { quadrant: DevelopmentQuadrant; gridArea: string }[] = [
   { quadrant: "C", gridArea: "top-left" },
@@ -16,19 +20,53 @@ function QuadrantCell({
   quadrant,
   employees,
   onSelect,
+  onMoveEmployee,
+  dragEnabled,
+  draggingUserId,
+  dropHighlight,
+  onDropHighlight,
 }: {
   quadrant: DevelopmentQuadrant;
   employees: WorkerDevelopmentSummary[];
   onSelect: (userId: string) => void;
+  onMoveEmployee?: (userId: string, toQuadrant: DevelopmentQuadrant) => void;
+  dragEnabled: boolean;
+  draggingUserId: string | null;
+  dropHighlight: DevelopmentQuadrant | null;
+  onDropHighlight: (quadrant: DevelopmentQuadrant | null) => void;
 }) {
   const meta = QUADRANT_META[quadrant];
+  const isDropTarget = dropHighlight === quadrant;
+
+  const onDragOver = (e: DragEvent<HTMLDivElement>) => {
+    if (!dragEnabled || !onMoveEmployee) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    onDropHighlight(quadrant);
+  };
+
+  const onDrop = (e: DragEvent<HTMLDivElement>) => {
+    if (!dragEnabled || !onMoveEmployee) return;
+    e.preventDefault();
+    onDropHighlight(null);
+    const userId = e.dataTransfer.getData(DRAG_USER_MIME);
+    if (!userId) return;
+    const fromQuadrant = e.dataTransfer.getData("application/x-pulse-development-from-quadrant") as DevelopmentQuadrant;
+    if (fromQuadrant === quadrant) return;
+    onMoveEmployee(userId, quadrant);
+  };
+
   return (
     <div
       className={cn(
-        "flex min-h-[10rem] flex-col rounded-xl border p-3 sm:min-h-[12rem] sm:p-4",
+        "flex min-h-[10rem] flex-col rounded-xl border p-3 transition-shadow sm:min-h-[12rem] sm:p-4",
         meta.bgClass,
         meta.borderClass,
+        isDropTarget && "ring-2 ring-[var(--ds-accent)] ring-offset-2 ring-offset-ds-bg",
       )}
+      onDragOver={onDragOver}
+      onDragLeave={() => onDropHighlight(null)}
+      onDrop={onDrop}
     >
       <div className="mb-2 flex items-start justify-between gap-2">
         <div>
@@ -48,6 +86,19 @@ function QuadrantCell({
             fullName={emp.full_name}
             email={emp.email}
             jobTitle={emp.job_title}
+            draggable={dragEnabled}
+            isDragging={draggingUserId === emp.user_id}
+            onDragStart={(e) => {
+              if (!dragEnabled) {
+                e.preventDefault();
+                return;
+              }
+              setDraggingUserId(emp.user_id);
+              e.dataTransfer.setData(DRAG_USER_MIME, emp.user_id);
+              e.dataTransfer.setData("application/x-pulse-development-from-quadrant", emp.development_quadrant);
+              e.dataTransfer.effectAllowed = "move";
+            }}
+            onDragEnd={() => setDraggingUserId(null)}
             onClick={() => onSelect(emp.user_id)}
           />
         ))}
@@ -59,12 +110,20 @@ function QuadrantCell({
 export function TeamPerformanceMatrix({
   items,
   onSelectEmployee,
+  onMoveEmployee,
   lastUpdatedAt,
+  moveDisabled = false,
 }: {
   items: WorkerDevelopmentSummary[];
   onSelectEmployee: (userId: string) => void;
+  onMoveEmployee?: (userId: string, toQuadrant: DevelopmentQuadrant) => void;
   lastUpdatedAt?: string | null;
+  moveDisabled?: boolean;
 }) {
+  const [draggingUserId, setDraggingUserId] = useState<string | null>(null);
+  const [dropHighlight, setDropHighlight] = useState<DevelopmentQuadrant | null>(null);
+  const dragEnabled = Boolean(onMoveEmployee) && !moveDisabled;
+
   const byQuadrant = (q: DevelopmentQuadrant) =>
     items.filter((i) => i.is_active && i.development_quadrant === q);
 
@@ -81,6 +140,9 @@ export function TeamPerformanceMatrix({
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 className="text-sm font-bold text-ds-foreground">Team Performance Matrix</h2>
+          {dragEnabled ? (
+            <p className="mt-0.5 text-[11px] text-ds-muted">Drag employees between quadrants to update placement.</p>
+          ) : null}
           {updatedLabel ? (
             <p className="mt-0.5 text-[11px] text-ds-muted">Last updated {updatedLabel}</p>
           ) : null}
@@ -118,6 +180,11 @@ export function TeamPerformanceMatrix({
                 quadrant={quadrant}
                 employees={byQuadrant(quadrant)}
                 onSelect={onSelectEmployee}
+                onMoveEmployee={onMoveEmployee}
+                dragEnabled={dragEnabled}
+                draggingUserId={draggingUserId}
+                dropHighlight={dropHighlight}
+                onDropHighlight={setDropHighlight}
               />
             </div>
           ))}

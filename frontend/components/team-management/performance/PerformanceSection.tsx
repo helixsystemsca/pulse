@@ -9,7 +9,9 @@ import { TeamPerformanceMatrix } from "@/components/team-management/performance/
 import { TeamMemberDevelopmentCard } from "@/components/team-management/performance/components/TeamMemberDevelopmentCard";
 import { Employee360Profile } from "@/components/team-management/employee-profile";
 import type { WorkerDevelopmentSummary } from "@/lib/team-management/development-types";
+import type { DevelopmentQuadrant } from "@/lib/team-management/development-types";
 import { useTeamEmployees } from "@/lib/team-management/hooks/useTeamEmployees";
+import { patchWorkerDevelopment } from "@/lib/workerDevelopmentService";
 import { cn } from "@/lib/cn";
 
 const PAGE_SIZE = 8;
@@ -21,11 +23,19 @@ export function PerformanceSection() {
   const [page, setPage] = useState(1);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [quadrantOverrides, setQuadrantOverrides] = useState<Record<string, DevelopmentQuadrant>>({});
+  const [movingUserId, setMovingUserId] = useState<string | null>(null);
+  const [moveError, setMoveError] = useState<string | null>(null);
 
   const items = useMemo(
     () =>
-      [...developmentByUserId.values()].filter((i) => i.is_active) as WorkerDevelopmentSummary[],
-    [developmentByUserId],
+      [...developmentByUserId.values()]
+        .filter((i) => i.is_active)
+        .map((row) => {
+          const override = quadrantOverrides[row.user_id];
+          return override ? { ...row, development_quadrant: override } : row;
+        }) as WorkerDevelopmentSummary[],
+    [developmentByUserId, quadrantOverrides],
   );
 
   const filtered = useMemo(() => {
@@ -58,6 +68,40 @@ export function PerformanceSection() {
     await reload();
   }, [reload]);
 
+  const onMoveEmployee = useCallback(
+    async (userId: string, toQuadrant: DevelopmentQuadrant) => {
+      const current = developmentByUserId.get(userId);
+      if (!current || current.development_quadrant === toQuadrant) return;
+
+      setMoveError(null);
+      setMovingUserId(userId);
+      setQuadrantOverrides((prev) => ({ ...prev, [userId]: toQuadrant }));
+
+      try {
+        await patchWorkerDevelopment(userId, {
+          development_quadrant: toQuadrant,
+          confirm_plan_overwrite: true,
+        });
+        setQuadrantOverrides((prev) => {
+          const next = { ...prev };
+          delete next[userId];
+          return next;
+        });
+        await reload();
+      } catch (e) {
+        setQuadrantOverrides((prev) => {
+          const next = { ...prev };
+          delete next[userId];
+          return next;
+        });
+        setMoveError(e instanceof Error ? e.message : "Failed to update quadrant");
+      } finally {
+        setMovingUserId(null);
+      }
+    },
+    [developmentByUserId, reload],
+  );
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -78,7 +122,10 @@ export function PerformanceSection() {
               items={items}
               lastUpdatedAt={lastUpdatedAt}
               onSelectEmployee={openProfile}
+              onMoveEmployee={(userId, quadrant) => void onMoveEmployee(userId, quadrant)}
+              moveDisabled={movingUserId != null}
             />
+            {moveError ? <p className="text-sm text-ds-danger">{moveError}</p> : null}
 
             <section aria-label="Team members">
               <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

@@ -1,0 +1,112 @@
+{
+  "deck": {
+    "id": "facilities_manager",
+    "title": "Facilities Manager",
+    "organization": "General — Recreation & Civic Facilities",
+    "position": "Facilities Manager",
+    "description": "Broad facilities management interview deck applicable to recreation centres, arenas, and civic buildings.",
+    "estimatedQuestions": 40,
+    "version": 1
+  },
+  "cards": [
+    {
+      "id": 1,
+      "category": "Leadership",
+      "difficulty": "Medium",
+      "question": "How do you balance preventive maintenance with reactive breakdowns in a busy recreation facility?",
+      "whatTheyAreEvaluating": [
+        "Asset Management",
+        "Planning",
+        "Operational Judgment",
+        "Budget Awareness"
+      ],
+      "answerFramework": [
+        "Describe PM program basics (HVAC, ice plant, pools, life safety)",
+        "How you protect PM when emergencies hit",
+        "Metrics you track (backlog, MTBF, energy, complaints)"
+      ],
+      "star": {
+        "situation": "High-use arena or aquatics centre with aging assets.",
+        "task": "Sustain reliability without unplanned closures.",
+        "action": "PM calendar, condition assessments, contractor strategy, after-hours plan.",
+        "result": "Fewer emergency shutdowns; predictable capital planning input."
+      },
+      "keywords": ["preventive maintenance", "asset lifecycle", "reliability", "CMMS"],
+      "bestStory": "Ice plant or pool system where PM investment avoided a costly mid-season failure.",
+      "watchFor": ["Only reactive firefighting", "Ignoring capital planning"],
+      "panelNotes": {
+        "whatGoodSoundsLike": [
+          "Systems thinker who protects PM under pressure",
+          "Speaks to user experience and safety"
+        ],
+        "scoreFocus": ["Asset Management", "Planning"]
+      }
+    },
+    {
+      "id": 2,
+      "category": "People",
+      "difficulty": "Hard",
+      "question": "Tell us about a difficult performance conversation with a long-tenured staff member.",
+      "whatTheyAreEvaluating": [
+        "People Leadership",
+        "Accountability",
+        "Emotional Intelligence",
+        "Fairness"
+      ],
+      "answerFramework": [
+        "Specific behaviour gap tied to standards",
+        "Private, documented conversation with clear expectations",
+        "Support offered and follow-up timeline"
+      ],
+      "star": {
+        "situation": "Tenured operator resisting new procedure or slipping attendance/quality.",
+        "task": "Address issue while preserving team trust.",
+        "action": "Fact-based discussion, listened, agreed plan, HR consulted as needed.",
+        "result": "Improved performance or dignified separation; team saw consistent standards."
+      },
+      "keywords": ["coaching", "documentation", "psychological safety", "standards"],
+      "bestStory": "Custodial or maintenance lead resistant to new chemical handling protocol—you turned it into training success.",
+      "watchFor": ["Public criticism", "Avoidance of the conversation"],
+      "panelNotes": {
+        "whatGoodSoundsLike": [
+          "Respectful but clear",
+          "Understands union and HR context where applicable"
+        ],
+        "scoreFocus": ["People Leadership", "Integrity"]
+      }
+    },
+    {
+      "id": 3,
+      "category": "Scenario",
+      "difficulty": "Medium",
+      "question": "A member of the public reports a strong chemical smell near the pool deck during peak hours. What do you do?",
+      "whatTheyAreEvaluating": [
+        "Emergency Response",
+        "Public Safety",
+        "Communication",
+        "Calm Under Pressure"
+      ],
+      "answerFramework": [
+        "Immediate life safety actions (evacuate area if needed, notify aquatics lead)",
+        "Investigate source with qualified staff; don't guess",
+        "Communicate with front desk and management; document incident"
+      ],
+      "star": {
+        "situation": "Busy Saturday swim; smell causes concern at deck and viewing area.",
+        "task": "Protect patrons while minimizing panic and unnecessary full closure.",
+        "action": "Isolate area, verify ventilation and chemical feed, test if qualified, brief management.",
+        "result": "Safe resolution; clear patron communication; incident log and follow-up inspection."
+      },
+      "keywords": ["aquatics safety", "ventilation", "incident response", "patron communication"],
+      "bestStory": "Similar real event where you coordinated aquatics, maintenance, and front desk messaging calmly.",
+      "watchFor": ["Downplaying patron concern", "Untrained staff handling chemicals"],
+      "panelNotes": {
+        "whatGoodSoundsLike": [
+          "Safety-first sequencing",
+          "Coordinated communication under public visibility"
+        ],
+        "scoreFocus": ["Public Safety", "Judgment"]
+      }
+    }
+  ]
+}

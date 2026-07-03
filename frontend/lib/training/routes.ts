@@ -29,6 +29,8 @@ export const TRAINING_ROUTES = {
   flashcards: "/training/flashcards",
   /** Manager deck library (import, export, duplicate). */
   flashcardDecks: "/training/flashcards/decks",
+  /** JSON-driven job interview preparation decks. */
+  interviews: "/training/interviews",
 } as const;
 
 /** Sub-views under Training → Compliance → Workforce. */
@@ -90,6 +92,10 @@ export function trainingFlashcardSectionStudyHref(courseId: string, sectionId: s
 
 export function trainingFlashcardStatisticsHref(courseId: string): string {
   return `${trainingFlashcardCourseHref(courseId)}/statistics`;
+}
+
+export function trainingInterviewStudyHref(deckId: string): string {
+  return `${TRAINING_ROUTES.interviews}/${encodeURIComponent(deckId)}`;
 }
 
 /** Course section list (legacy name). */

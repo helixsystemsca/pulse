@@ -31,6 +31,7 @@ describe("tenantSidebarNavItemsForSession", () => {
         contract_features: ["compliance", "comms_advertising_mapper", "schedule"],
         enabled_features: ["logs_inspections", "advertising_mapper"],
         rbac_permissions: ["compliance.view", "arena_advertising.view"],
+        department_workspace_slugs: ["communications", "maintenance", "admin"],
       }),
     );
     const labels = items.map((i) => i.label);
@@ -46,8 +47,23 @@ describe("tenantSidebarNavItemsForSession", () => {
         contract_features: ["dashboard"],
         rbac_permissions: [],
         enabled_features: ["dashboard"],
+        department_workspace_slugs: ["maintenance", "admin"],
       }),
     );
     expect(items.some((i) => i.href === "/overview")).toBe(true);
+  });
+
+  it("hides department dashboards when slug is not configured for tenant", () => {
+    const items = tenantSidebarNavItemsForSession(
+      session({
+        role: "company_admin",
+        contract_features: ["dashboard"],
+        rbac_permissions: ["dashboard.view"],
+        enabled_features: ["dashboard", "dashboard_dept_aquatics", "dashboard_dept_racquets"],
+        department_workspace_slugs: ["maintenance", "admin"],
+      }),
+    );
+    expect(items.some((i) => i.href === "/dashboard/department/aquatics")).toBe(false);
+    expect(items.some((i) => i.href === "/dashboard/department/racquets")).toBe(false);
   });
 });

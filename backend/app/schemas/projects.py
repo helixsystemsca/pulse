@@ -37,6 +37,25 @@ class ProjectCreate(BaseModel):
     department_slug: Optional[str] = Field(
         None, max_length=32, description="Schedule/inventory department slug e.g. communications"
     )
+    roadmap_stub: bool = Field(
+        False,
+        description="Lightweight roadmap placeholder — minimal setup until fleshed out on Projects",
+    )
+
+
+class RoadmapStubItemIn(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    category_id: Optional[str] = None
+    overlay_color: Optional[str] = Field(None, max_length=32)
+
+
+class RoadmapStubBatchCreateIn(BaseModel):
+    """Bulk quick-add for the strategic roadmap (one row per initiative)."""
+
+    year: Optional[int] = Field(None, ge=2000, le=2100, description="Used when dates are omitted")
+    items: list[RoadmapStubItemIn] = Field(..., min_length=1, max_length=50)
 
 
 class ProjectPatch(BaseModel):
@@ -61,6 +80,7 @@ class ProjectPatch(BaseModel):
     staffing_priority: Optional[StaffingPriority] = None
     blackout_windows: Optional[list[ProjectBlackoutWindow]] = None
     department_slug: Optional[str] = Field(None, max_length=32)
+    roadmap_stub: Optional[bool] = None
 
 
 class CategoryOut(BaseModel):
@@ -109,6 +129,7 @@ class ProjectOut(BaseModel):
     staffing_priority: str = "normal"
     blackout_windows: Optional[list[ProjectBlackoutWindow]] = None
     department_slug: Optional[str] = None
+    roadmap_stub: bool = False
     created_at: datetime
     updated_at: datetime
     health_status: str = "On Track"

@@ -5,7 +5,11 @@
 export const TRAINING_MILESTONE_FLASHCARDS_ONLY = true;
 
 /** Sidebar registry keys visible during the flashcards-only milestone. */
-export const TRAINING_MILESTONE_VISIBLE_NAV_KEYS = new Set(["training_root", "training_flashcards"]);
+export const TRAINING_MILESTONE_VISIBLE_NAV_KEYS = new Set([
+  "training_root",
+  "training_flashcards",
+  "training_interviews",
+]);
 
 /** Route prefixes redirected to Flashcards home when milestone is active. */
 export const TRAINING_MILESTONE_HIDDEN_ROUTE_PREFIXES = [
@@ -30,7 +34,8 @@ export const FLASHCARD_CERTIFICATION_HINTS = [
 export function isTrainingRouteHiddenInMilestone(pathname: string): boolean {
   if (!TRAINING_MILESTONE_FLASHCARDS_ONLY) return false;
   const path = pathname.split("?")[0] ?? pathname;
-  if (path === "/training" || path.startsWith("/training/flashcards")) return false;
+  if (path === "/training" || path.startsWith("/training/flashcards") || path.startsWith("/training/interviews"))
+    return false;
   return TRAINING_MILESTONE_HIDDEN_ROUTE_PREFIXES.some(
     (prefix) => path === prefix || path.startsWith(`${prefix}/`),
   );

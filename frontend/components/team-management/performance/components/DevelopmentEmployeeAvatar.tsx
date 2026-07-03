@@ -1,5 +1,6 @@
 "use client";
 
+import type { DragEvent } from "react";
 import { useResolvedAvatarSrc } from "@/lib/useResolvedAvatarSrc";
 import { cn } from "@/lib/cn";
 import { displayName } from "@/lib/team-management/development-types";
@@ -52,19 +53,34 @@ export function DevelopmentEmployeeChip({
   email,
   jobTitle,
   onClick,
+  draggable = false,
+  onDragStart,
+  onDragEnd,
+  isDragging = false,
 }: {
   avatarUrl?: string | null;
   fullName: string | null;
   email: string;
   jobTitle?: string | null;
   onClick?: () => void;
+  draggable?: boolean;
+  onDragStart?: (e: DragEvent<HTMLButtonElement>) => void;
+  onDragEnd?: (e: DragEvent<HTMLButtonElement>) => void;
+  isDragging?: boolean;
 }) {
   const name = displayName({ full_name: fullName, email });
   return (
     <button
       type="button"
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
       onClick={onClick}
-      className="flex min-w-[9rem] max-w-[11rem] flex-col items-center gap-1.5 rounded-xl border border-[color-mix(in_srgb,var(--ds-text-primary)_8%,transparent)] bg-white/80 px-2 py-2 text-center shadow-sm transition hover:border-[color-mix(in_srgb,var(--ds-accent)_35%,transparent)] hover:shadow-md dark:bg-ds-secondary/60"
+      className={cn(
+        "flex min-w-[9rem] max-w-[11rem] flex-col items-center gap-1.5 rounded-xl border border-[color-mix(in_srgb,var(--ds-text-primary)_8%,transparent)] bg-white/80 px-2 py-2 text-center shadow-sm transition hover:border-[color-mix(in_srgb,var(--ds-accent)_35%,transparent)] hover:shadow-md dark:bg-ds-secondary/60",
+        draggable && "cursor-grab active:cursor-grabbing",
+        isDragging && "opacity-50",
+      )}
     >
       <DevelopmentEmployeeAvatar avatarUrl={avatarUrl} fullName={fullName} email={email} size="md" />
       <span className="w-full truncate text-xs font-bold text-ds-foreground">{name}</span>

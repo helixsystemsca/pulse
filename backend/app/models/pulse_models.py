@@ -1176,6 +1176,7 @@ class PulseProject(Base):
     )
     blackout_windows: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)
     department_slug: Mapped[Optional[str]] = mapped_column(String(32), nullable=True, index=True)
+    roadmap_stub: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

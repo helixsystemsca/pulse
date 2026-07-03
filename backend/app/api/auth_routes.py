@@ -437,9 +437,14 @@ async def me(
         must_change_password = verify_password(default_pw, user.hashed_password)
 
     hr_me: PulseWorkerHR | None = None
+    department_workspace_slugs: list[str] = []
     if user.company_id:
+        from app.core.tenant_departments import tenant_department_slug_set
+
         hr_row = await db.execute(select(PulseWorkerHR).where(PulseWorkerHR.user_id == user.id))
         hr_me = hr_row.scalar_one_or_none()
+        allowed = await tenant_department_slug_set(db, str(user.company_id))
+        department_workspace_slugs = sorted(allowed)
 
     extras_raw = getattr(user, "feature_allow_extra", None) or []
     feature_allow_out = [str(x) for x in extras_raw if isinstance(x, str)] if user.company_id else []
@@ -490,7 +495,7 @@ async def me(
         facility_tenant_admin=bool(getattr(user, "facility_tenant_admin", False)),
         role_display_label=tenant_role_display_label(user),
         permissions=perm_out,
-        department_workspace_slugs=[],
+        department_workspace_slugs=department_workspace_slugs,
         hr_department=primary_hr_department_slug_for_auth(hr_me),
         feature_allow_extra=feature_allow_out if user.company_id else None,
         tenant_role_id=tenant_role_out,

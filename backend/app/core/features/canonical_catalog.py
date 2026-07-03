@@ -41,6 +41,7 @@ CANONICAL_PRODUCT_FEATURES: tuple[str, ...] = (
     "pm_planning",
     "work_requests",
     "operational_improvements",
+    "roadmap",
     "procedures",
     "standards_training",
     "standards_certifications",

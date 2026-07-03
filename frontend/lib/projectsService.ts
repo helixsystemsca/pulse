@@ -48,6 +48,8 @@ export type ProjectRow = {
   staffing_priority?: "low" | "normal" | "high" | "critical";
   blackout_windows?: { start_date: string; end_date: string; label?: string | null }[] | null;
   department_slug?: string | null;
+  /** Lightweight roadmap placeholder — not yet set up on Projects. */
+  roadmap_stub?: boolean;
 };
 
 export type TaskRow = {
@@ -241,6 +243,7 @@ export async function patchProject(
     operational_impact_level: "low" | "medium" | "high" | "critical";
     staffing_priority: "low" | "normal" | "high" | "critical";
     blackout_windows: { start_date: string; end_date: string; label?: string | null }[] | null;
+    roadmap_stub: boolean;
   }>,
 ): Promise<ProjectRow> {
   return apiFetch<ProjectRow>(`/api/v1/projects/${id}`, { method: "PATCH", json: patch });
@@ -248,6 +251,22 @@ export async function patchProject(
 
 export async function deleteProject(id: string): Promise<void> {
   await apiFetch<undefined>(`/api/v1/projects/${id}`, { method: "DELETE" });
+}
+
+export type RoadmapStubItem = {
+  name: string;
+  start_date?: string;
+  end_date?: string;
+  category_id?: string;
+  overlay_color?: string;
+};
+
+/** Bulk lightweight roadmap placeholders (no tasks required). */
+export async function createRoadmapStubs(items: RoadmapStubItem[], year?: number): Promise<ProjectRow[]> {
+  return apiFetch<ProjectRow[]>("/api/v1/projects/roadmap-stubs", {
+    method: "POST",
+    json: { items, year },
+  });
 }
 
 export async function createProject(body: {
@@ -265,6 +284,7 @@ export async function createProject(body: {
   operational_impact_level?: "low" | "medium" | "high" | "critical";
   staffing_priority?: "low" | "normal" | "high" | "critical";
   blackout_windows?: { start_date: string; end_date: string; label?: string | null }[] | null;
+  roadmap_stub?: boolean;
 }): Promise<ProjectRow> {
   const row = await apiFetch<Omit<ProjectRow, "task_total" | "task_completed" | "progress_pct" | "assignee_user_ids">>(
     "/api/v1/projects",

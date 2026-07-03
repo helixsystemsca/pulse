@@ -18,7 +18,7 @@ export const PRODUCT_MODULE_PERMISSION_SECTIONS: readonly {
     id: "operations",
     label: "Maintenance & operations",
     description: "Work requests, inspections & logs, inventory, equipment, and projects.",
-    keys: ["work_requests", "operational_improvements", "logs_inspections", "inventory", "inventory_scanner", "equipment", "projects"],
+    keys: ["work_requests", "operational_improvements", "roadmap", "logs_inspections", "inventory", "inventory_scanner", "equipment", "projects"],
   },
   {
     id: "training",
@@ -95,6 +95,7 @@ export const MODULE_LABEL: Record<CanonicalFeatureKey, string> = {
   pm_planning: "PM planning (legacy)",
   work_requests: "Work Requests",
   operational_improvements: "Operational Improvements",
+  roadmap: "Roadmap",
   procedures: "Procedures",
   standards_training: "Training · Overview & learning hub",
   standards_certifications: "Training · Certifications",

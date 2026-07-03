@@ -18,6 +18,7 @@ import {
 } from "@/lib/features/pm-project-management";
 import { isTenantFeatureOnContract, isUserFeatureEnabled } from "@/lib/features/tenant-features";
 import type { PulseAuthSession } from "@/lib/pulse-session";
+import { passesTenantDepartmentWorkspaceGate } from "@/lib/rbac/tenant-department-workspace";
 
 function hasRbacPermission(session: PulseAuthSession | null, permissionKey: string): boolean {
   const snap = readAccessSnapshot(session);
@@ -164,6 +165,13 @@ export function explainMasterFeatureVisibility(
       reason: `Module "${feature.feature}" is not licensed on the tenant contract for this session (contract_features).`,
     };
   }
+  if (!passesTenantDepartmentWorkspaceGate(session, feature)) {
+    const slug = feature.ownershipDepartment ?? feature.platformDepartmentSlug ?? feature.key;
+    return {
+      visible: false,
+      reason: `Department "${slug}" is not configured for this organization (tenant_departments).`,
+    };
+  }
   if (isTenantFullAdminSession(session)) {
     return { visible: true };
   }
@@ -228,6 +236,7 @@ export function isMasterFeatureVisibleForSession(
   if (!session) return false;
   if (session.is_system_admin || session.role === "system_admin") return true;
   if (!isTenantFeatureOnContract(session, feature.feature)) return false;
+  if (!passesTenantDepartmentWorkspaceGate(session, feature)) return false;
   if (isTenantFullAdminSession(session)) return true;
   const snap = readAccessSnapshot(session);
   const featureOk = snap ? snapshotHasFeature(snap, feature.feature) : isUserFeatureEnabled(session, feature.feature);
