@@ -1,37 +1,37 @@
-.interview-scene {
-  perspective: 1200px;
-  touch-action: pan-y;
-}
-
-.interview-inner {
-  position: relative;
-  width: 100%;
-  min-height: 360px;
-  transform-style: preserve-3d;
-  transition: transform 0.55s cubic-bezier(0.34, 1.15, 0.48, 1);
-}
-
-.interview-inner.is-flipped {
-  transform: rotateY(180deg);
-}
-
-.interview-face {
-  position: absolute;
-  inset: 0;
+.interview-card-shell {
   display: flex;
   flex-direction: column;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
   border-radius: 1rem;
   border: 1px solid var(--ds-border, #e2e8f0);
   background: var(--ds-card, #fff);
-  padding: 1.5rem 1.25rem;
   box-shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
+  max-height: min(28rem, calc(100dvh - 20rem));
   overflow-y: auto;
+  padding: 1rem 1.125rem;
 }
 
-.interview-face-back {
-  transform: rotateY(180deg);
+@media (min-width: 640px) {
+  .interview-card-shell {
+    padding: 1.25rem 1.5rem;
+    max-height: min(32rem, calc(100dvh - 18rem));
+  }
+}
+
+.interview-study-layout {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 1024px) {
+  .interview-study-layout {
+    grid-template-columns: minmax(14rem, 18rem) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+.interview-question-list {
+  max-height: min(36rem, calc(100dvh - 12rem));
+  overflow-y: auto;
 }
 
 .interview-mock-timer {
@@ -39,15 +39,17 @@
   letter-spacing: 0.04em;
 }
 
-@media (min-width: 640px) {
-  .interview-face {
-    padding: 2rem 1.75rem;
-    min-height: 400px;
-  }
+.interview-star-row {
+  padding: 0.5rem 0.625rem;
+}
+
+.interview-star-row dd {
+  font-size: 0.8125rem;
+  line-height: 1.45;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .interview-inner {
-    transition-duration: 0.05s;
+  .interview-card-shell {
+    scroll-behavior: auto;
   }
 }

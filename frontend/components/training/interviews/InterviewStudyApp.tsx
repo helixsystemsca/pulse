@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -12,6 +13,7 @@ import {
   Timer,
 } from "lucide-react";
 import { InterviewCardView } from "@/components/training/interviews/InterviewCardView";
+import { InterviewQuestionList } from "@/components/training/interviews/InterviewQuestionList";
 import { InterviewToolbar } from "@/components/training/interviews/InterviewToolbar";
 import {
   filterInterviewCards,
@@ -20,14 +22,14 @@ import {
   uniqueInterviewCategories,
   uniqueInterviewDifficulties,
 } from "@/lib/training/interviews/filters";
-import { loadInterviewDeckById } from "@/lib/training/interviews/loader";
+import { loadInterviewDeckById, resolveDeckId } from "@/lib/training/interviews/loader";
 import {
   readInterviewDeckProgress,
   saveInterviewStudyIndex,
   toggleInterviewFavorite,
   toggleInterviewMastered,
 } from "@/lib/training/interviews/progress";
-import { TRAINING_ROUTES } from "@/lib/training/routes";
+import { TRAINING_ROUTES, trainingInterviewStudyHref } from "@/lib/training/routes";
 import type {
   InterviewCard,
   InterviewCardFilters,
@@ -57,18 +59,26 @@ function formatElapsed(seconds: number): string {
 }
 
 export function InterviewStudyApp({ deckId }: Props) {
+  const router = useRouter();
+  const storageDeckId = resolveDeckId(deckId);
   const [document, setDocument] = useState<InterviewDeckDocument | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<InterviewStudyMode>("study");
   const [filters, setFilters] = useState<InterviewCardFilters>(DEFAULT_FILTERS);
   const [shuffled, setShuffled] = useState(false);
-  const [progress, setProgress] = useState<InterviewDeckProgress>(() => readInterviewDeckProgress(deckId));
+  const [progress, setProgress] = useState<InterviewDeckProgress>(() => readInterviewDeckProgress(storageDeckId));
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [mockRevealed, setMockRevealed] = useState(false);
   const [mockSeconds, setMockSeconds] = useState(0);
   const [shuffleSeed, setShuffleSeed] = useState(0);
+
+  useEffect(() => {
+    if (storageDeckId !== deckId) {
+      router.replace(trainingInterviewStudyHref(storageDeckId));
+    }
+  }, [deckId, router, storageDeckId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -79,7 +89,7 @@ export function InterviewStudyApp({ deckId }: Props) {
         const { document: doc } = await loadInterviewDeckById(deckId);
         if (cancelled) return;
         setDocument(doc);
-        const saved = readInterviewDeckProgress(deckId);
+        const saved = readInterviewDeckProgress(storageDeckId);
         setProgress(saved);
         setIndex(Math.min(saved.lastIndex, Math.max(0, doc.cards.length - 1)));
       } catch (e) {
@@ -91,7 +101,7 @@ export function InterviewStudyApp({ deckId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [deckId]);
+  }, [deckId, storageDeckId]);
 
   const baseCards = document?.cards ?? [];
 
@@ -126,9 +136,17 @@ export function InterviewStudyApp({ deckId }: Props) {
       const clamped = Math.max(0, Math.min(studyCards.length - 1, next));
       setIndex(clamped);
       resetCardState();
-      setProgress(saveInterviewStudyIndex(deckId, clamped));
+      setProgress(saveInterviewStudyIndex(storageDeckId, clamped));
     },
-    [deckId, resetCardState, studyCards.length],
+    [storageDeckId, resetCardState, studyCards.length],
+  );
+
+  const goToCardId = useCallback(
+    (cardId: number) => {
+      const i = studyCards.findIndex((c) => c.id === cardId);
+      if (i >= 0) goTo(i);
+    },
+    [goTo, studyCards],
   );
 
   useEffect(() => {
@@ -164,15 +182,15 @@ export function InterviewStudyApp({ deckId }: Props) {
         }
       } else if (e.key.toLowerCase() === "f") {
         e.preventDefault();
-        setProgress(toggleInterviewFavorite(deckId, card.id));
+        setProgress(toggleInterviewFavorite(storageDeckId, card.id));
       } else if (e.key.toLowerCase() === "m") {
         e.preventDefault();
-        setProgress(toggleInterviewMastered(deckId, card.id));
+        setProgress(toggleInterviewMastered(storageDeckId, card.id));
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [card, deckId, goTo, index, mockRevealed, mode]);
+  }, [card, goTo, index, mockRevealed, mode, storageDeckId]);
 
   const isFavorite = card ? progress.favorites.includes(card.id) : false;
   const isMastered = card ? progress.mastered.includes(card.id) : false;
@@ -248,28 +266,28 @@ export function InterviewStudyApp({ deckId }: Props) {
           No cards match your filters.
         </div>
       ) : (
-        <>
-          <div className="flex items-center justify-between gap-2 text-sm text-ds-muted">
-            <span>
-              Card {index + 1} of {studyCards.length}
-            </span>
-            {mode === "mock" ? (
-              <span className="interview-mock-timer inline-flex items-center gap-1.5 font-semibold text-ds-foreground">
-                <Timer className="h-4 w-4" aria-hidden />
-                {formatElapsed(mockSeconds)}
-              </span>
-            ) : null}
-          </div>
+        <div className="interview-study-layout">
+          <InterviewQuestionList
+            cards={studyCards}
+            activeId={card?.id ?? null}
+            favorites={progress.favorites}
+            mastered={progress.mastered}
+            onSelect={goToCardId}
+          />
 
-          <button
-            type="button"
-            className="w-full text-left"
-            onClick={() => {
-              if (mode === "mock" && !mockRevealed) return;
-              setFlipped((f) => !f);
-            }}
-            aria-label="Flip card"
-          >
+          <div className="flex min-w-0 flex-col gap-3">
+            <div className="flex items-center justify-between gap-2 text-sm text-ds-muted">
+              <span>
+                Card {index + 1} of {studyCards.length}
+              </span>
+              {mode === "mock" ? (
+                <span className="interview-mock-timer inline-flex items-center gap-1.5 font-semibold text-ds-foreground">
+                  <Timer className="h-4 w-4" aria-hidden />
+                  {formatElapsed(mockSeconds)}
+                </span>
+              ) : null}
+            </div>
+
             {card ? (
               <InterviewCardView
                 card={card}
@@ -278,71 +296,79 @@ export function InterviewStudyApp({ deckId }: Props) {
                 flipped={flipped}
               />
             ) : null}
-          </button>
 
-          {mode === "mock" && !mockRevealed ? (
-            <button
-              type="button"
-              className="w-full rounded-xl bg-ds-primary px-4 py-3 text-sm font-semibold text-white hover:opacity-90"
-              onClick={() => setMockRevealed(true)}
-            >
-              Reveal answer
-            </button>
-          ) : null}
-
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex gap-2">
+            {mode === "mock" && !mockRevealed ? (
               <button
                 type="button"
-                disabled={index <= 0}
-                onClick={() => goTo(index - 1)}
-                className="inline-flex items-center gap-1 rounded-lg border border-ds-border px-3 py-2 text-sm font-medium disabled:opacity-40"
+                className="w-full rounded-xl bg-ds-primary px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90"
+                onClick={() => setMockRevealed(true)}
               >
-                <ChevronLeft className="h-4 w-4" />
-                Previous
+                Reveal answer
               </button>
+            ) : mode !== "mock" ? (
               <button
                 type="button"
-                disabled={index >= studyCards.length - 1}
-                onClick={() => goTo(index + 1)}
-                className="inline-flex items-center gap-1 rounded-lg border border-ds-border px-3 py-2 text-sm font-medium disabled:opacity-40"
+                className="w-full rounded-lg border border-ds-border px-4 py-2 text-sm font-medium hover:bg-ds-muted/15"
+                onClick={() => setFlipped((f) => !f)}
               >
-                Next
-                <ChevronRight className="h-4 w-4" />
+                {flipped ? "Hide answer" : "Flip — show answer"}
               </button>
-            </div>
-            {card ? (
+            ) : null}
+
+            <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-3 border-t border-ds-border bg-ds-bg/95 py-3 backdrop-blur-sm">
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() => setProgress(toggleInterviewFavorite(deckId, card.id))}
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium",
-                    isFavorite
-                      ? "border-amber-400 bg-amber-500/10 text-amber-800 dark:text-amber-300"
-                      : "border-ds-border",
-                  )}
+                  disabled={index <= 0}
+                  onClick={() => goTo(index - 1)}
+                  className="inline-flex items-center gap-1 rounded-lg border border-ds-border px-3 py-2 text-sm font-medium disabled:opacity-40"
                 >
-                  <Star className={cn("h-4 w-4", isFavorite && "fill-current")} />
-                  Favorite
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous
                 </button>
                 <button
                   type="button"
-                  onClick={() => setProgress(toggleInterviewMastered(deckId, card.id))}
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium",
-                    isMastered
-                      ? "border-emerald-500 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300"
-                      : "border-ds-border",
-                  )}
+                  disabled={index >= studyCards.length - 1}
+                  onClick={() => goTo(index + 1)}
+                  className="inline-flex items-center gap-1 rounded-lg border border-ds-border px-3 py-2 text-sm font-medium disabled:opacity-40"
                 >
-                  <CheckCircle2 className="h-4 w-4" />
-                  Mastered
+                  Next
+                  <ChevronRight className="h-4 w-4" />
                 </button>
               </div>
-            ) : null}
+              {card ? (
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setProgress(toggleInterviewFavorite(storageDeckId, card.id))}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium",
+                      isFavorite
+                        ? "border-amber-400 bg-amber-500/10 text-amber-800 dark:text-amber-300"
+                        : "border-ds-border",
+                    )}
+                  >
+                    <Star className={cn("h-4 w-4", isFavorite && "fill-current")} />
+                    Favorite
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setProgress(toggleInterviewMastered(storageDeckId, card.id))}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium",
+                      isMastered
+                        ? "border-emerald-500 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300"
+                        : "border-ds-border",
+                    )}
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    Mastered
+                  </button>
+                </div>
+              ) : null}
+            </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

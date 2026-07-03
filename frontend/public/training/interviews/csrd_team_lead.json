@@ -1,0 +1,450 @@
+{
+  "deck": "CSRD Team Lead - Facilities Interview",
+  "organization": "Columbia Shuswap Regional District",
+  "position": "Team Lead, Facilities",
+  "description": "Complete interview preparation deck — 40 questions",
+  "estimatedQuestions": 40,
+  "version": 1,
+  "cards": [
+    {
+      "id": 1,
+      "category": "Introduction",
+      "question": "Tell us about yourself.",
+      "star": {
+        "situation": "I've spent the last 15 years building my career in maintenance and operations. I started in residential and commercial electrical, then expanded into healthcare, recreation and oil and gas. My first decade was focused on becoming technically strong and earning trust through reliability, work ethic and consistently delivering quality results.",
+        "task": "As I gained experience, I wanted to contribute beyond technical work by improving operations, leading projects and helping teams perform at a higher level.",
+        "action": "Over the last 3-4 years I've naturally transitioned into leadership opportunities where I've owned projects, improved workflows, built systems, coordinated stakeholders and become someone people rely on to solve problems. I enjoy creating processes that make work safer and more efficient while supporting the people doing the work.",
+        "result": "Today I bring both strong technical credibility and an operations mindset. I'm looking for an opportunity like CSRD where I can continue growing as a leader, contribute to the community and help build a strong facilities team for the long term."
+      }
+    },
+    {
+      "id": 2,
+      "category": "Career",
+      "question": "Walk us through your resume.",
+      "star": {
+        "situation": "My career has progressed through several industries, each teaching me something different about facilities and maintenance.",
+        "task": "Each move was about broadening my experience rather than simply changing jobs.",
+        "action": "I began in residential and commercial electrical where I developed strong technical fundamentals. I then moved into healthcare, where reliability, customer service and safety were critical. Recreation taught me how facilities directly impact the public and the importance of balancing operational needs with customer experience. Oil and gas further strengthened my planning, safety culture and ability to work in high-risk environments. Throughout that journey I gradually took on more responsibility leading work, improving systems and coordinating projects.",
+        "result": "Those experiences have given me a diverse perspective that I believe prepares me well to lead a municipal facilities team with a focus on safety, planning and continuous improvement."
+      }
+    },
+    {
+      "id": 3,
+      "category": "Motivation",
+      "question": "Why do you want to work for CSRD?",
+      "star": {
+        "situation": "At this stage of my career I'm looking for more than just another maintenance position.",
+        "task": "I want to build a long-term career where I can continue growing as a leader while making a meaningful impact in the community.",
+        "action": "CSRD stands out because of its commitment to public service, its variety of facilities and the opportunity to lead people while improving operations. I also have fond memories of using facilities like these growing up, so there's a personal connection to giving back to the community.",
+        "result": "For me this isn't simply a job change. It's an opportunity to put down roots, invest in an organization long term and contribute to facilities that people depend on every day."
+      }
+    },
+    {
+      "id": 4,
+      "category": "Fit",
+      "question": "Why should we hire you?",
+      "star": {
+        "situation": "You're looking for someone who can lead people while ensuring facilities operate safely and effectively.",
+        "task": "My goal is to bring both technical experience and leadership capability to the role.",
+        "action": "I have 15 years of maintenance experience across several industries, strong safety habits, experience leading projects and improving systems, and I naturally build relationships with staff, contractors, management and the public. I enjoy removing obstacles for teams and creating processes that help people succeed.",
+        "result": "I believe my combination of technical knowledge, leadership mindset, communication skills and genuine interest in serving the community would allow me to contribute immediately while continuing to grow within CSRD."
+      }
+    },
+    {
+      "id": 5,
+      "category": "Career",
+      "question": "Why are you leaving your current position?",
+      "star": {
+        "situation": "I've appreciated every opportunity I've had because each role has helped develop my technical and leadership abilities.",
+        "task": "I'm now looking for a role that better aligns with where I want my career to go over the next decade.",
+        "action": "Rather than continuing to focus primarily on technical work, I want to contribute more through leadership, planning, continuous improvement and supporting teams. I also value being part of an organization where I can establish long-term roots and continue developing professionally.",
+        "result": "CSRD offers the opportunity to combine my technical background with leadership responsibilities while serving the community, which is exactly the direction I want my career to take."
+      }
+    },
+    {
+      "id": 6,
+      "category": "Fit",
+      "question": "What makes you the best fit for this position?",
+      "star": {
+        "situation": "This role requires someone who understands maintenance but can also lead people and improve operations.",
+        "task": "My focus has been on developing both technical expertise and leadership capability.",
+        "action": "I've built credibility through years of hands-on maintenance experience while gradually taking on larger responsibilities leading projects, improving systems and coordinating teams. I'm comfortable learning new software, solving operational problems and adapting my communication style depending on who I'm working with.",
+        "result": "I believe that balance of technical credibility, leadership, adaptability and continuous improvement makes me well suited for this position."
+      }
+    },
+    {
+      "id": 7,
+      "category": "Career",
+      "question": "Where do you see yourself in five years?",
+      "star": {
+        "situation": "I'm looking for stability and long-term growth rather than constantly changing organizations.",
+        "task": "My goal is to become a trusted leader who adds value to the organization every year.",
+        "action": "I plan to continue developing my knowledge in leadership, facilities management and asset management while building strong relationships within the organization. I want to mentor staff, improve systems and contribute to long-term operational planning.",
+        "result": "In five years I'd like to be someone the organization trusts to take on larger responsibilities while continuing to support the success of both the team and the community."
+      }
+    },
+    {
+      "id": 8,
+      "category": "Strengths",
+      "question": "What are your greatest strengths?",
+      "star": {
+        "situation": "Throughout my career I've received opportunities because people trusted me to deliver results.",
+        "task": "I've worked hard to develop strengths that go beyond technical ability.",
+        "action": "I'd say my biggest strengths are building relationships, systems thinking, adaptability and reliability. I enjoy understanding how different parts of an organization connect and looking for ways to improve processes rather than repeatedly solving the same problems. I also communicate well with different stakeholders, from tradespeople and contractors to management and members of the public.",
+        "result": "Those strengths have allowed me to move beyond being just a tradesperson into someone who helps improve operations and support teams."
+      }
+    },
+    {
+      "id": 9,
+      "category": "Self Reflection",
+      "question": "What is your biggest weakness?",
+      "star": {
+        "situation": "Earlier in my career I took a lot of pride in being the person who could solve every problem.",
+        "task": "As I moved into leadership, I realized that approach wasn't sustainable because a team can't grow if the leader does everything themselves.",
+        "action": "I've worked on improving my delegation by creating clearer expectations, documenting processes and trusting people to do the work. Instead of stepping in immediately, I spend more time coaching and supporting team members so they can succeed independently.",
+        "result": "Today I still have high standards, but I measure success less by what I personally accomplish and more by what the team is able to accomplish together."
+      }
+    },
+    {
+      "id": 10,
+      "category": "Motivation",
+      "question": "What motivates you?",
+      "star": {
+        "situation": "I've found that what motivates me has changed over the course of my career.",
+        "task": "Early on I was motivated by becoming technically proficient. Today I'm motivated by making a broader impact.",
+        "action": "I enjoy improving systems, helping people succeed and solving problems that make the organization operate more effectively. I also take pride in knowing that well-maintained public facilities have a direct impact on the community and the people who use them.",
+        "result": "The opportunity to build a strong team, improve operations and contribute to an organization like CSRD is what motivates me most at this stage of my career."
+      }
+    },
+    {
+      "id": 11,
+      "category": "Leadership",
+      "question": "Describe your leadership style.",
+      "star": {
+        "situation": "Throughout my career I've had opportunities to lead projects and crews in environments ranging from healthcare and recreation to oil and gas.",
+        "task": "I've developed a leadership style that focuses on helping the team succeed rather than simply directing the work.",
+        "action": "I believe my role is to set clear expectations, remove obstacles, provide the right tools and training, and create an environment where people can do their best work. I adapt my approach depending on the individual because everyone is motivated differently. I also believe in holding people accountable while treating them with respect.",
+        "result": "I've found that when people feel supported, trusted and understand what's expected of them, they're more engaged, produce better work and take greater ownership of the outcome."
+      }
+    },
+    {
+      "id": 12,
+      "category": "Leadership",
+      "question": "Tell us about a time you led a team.",
+      "star": {
+        "situation": "In several of my previous roles I was responsible for coordinating work involving multiple trades, contractors and stakeholders to complete maintenance activities and projects safely.",
+        "task": "My responsibility was to keep everyone aligned while ensuring work was completed safely, efficiently and with minimal disruption.",
+        "action": "I focused on communicating priorities clearly, making sure everyone understood their role, checking in regularly, adjusting plans as conditions changed and helping remove obstacles when they came up.",
+        "result": "The work was completed safely, communication remained strong and the team stayed focused on the shared objective instead of becoming distracted by changing priorities."
+      }
+    },
+    {
+      "id": 13,
+      "category": "Leadership",
+      "question": "Tell us about a time you coached or mentored someone.",
+      "star": {
+        "situation": "Throughout my career I've worked alongside apprentices and newer employees who were still building confidence.",
+        "task": "Rather than simply showing them how to complete a task, I wanted them to understand why we were doing it a certain way.",
+        "action": "I spent time explaining the reasoning behind decisions, encouraged questions and gradually allowed them to take on more responsibility while remaining available for support.",
+        "result": "Over time they became more confident, more independent and required less direct supervision, which ultimately strengthened the team."
+      }
+    },
+    {
+      "id": 14,
+      "category": "Conflict",
+      "question": "Tell us about a conflict with a coworker.",
+      "star": {
+        "situation": "I've been fortunate to work with strong teams throughout most of my career, so major conflict has been relatively uncommon.",
+        "task": "Whenever disagreements have come up, my goal has been to resolve the issue while maintaining a positive working relationship.",
+        "action": "I focus on staying calm, listening to understand both perspectives, separating facts from emotions and working toward a solution that supports the team and the organization rather than individual opinions.",
+        "result": "Most conflicts were resolved quickly because everyone felt heard, expectations were clarified and we were able to move forward professionally."
+      }
+    },
+    {
+      "id": 15,
+      "category": "Conflict",
+      "question": "How would you handle conflict between two employees?",
+      "star": {
+        "situation": "Although I haven't had to formally manage conflict between direct reports, I've worked in environments where teamwork was critical.",
+        "task": "If two employees were in conflict, my responsibility would be to resolve the issue while protecting the team dynamic.",
+        "action": "I'd speak with each person individually to understand their perspective, bring them together for a respectful discussion, focus on facts rather than personalities, establish clear expectations and follow up afterward to ensure the issue stayed resolved.",
+        "result": "My objective would be to rebuild trust, improve communication and prevent the conflict from affecting the rest of the team."
+      }
+    },
+    {
+      "id": 16,
+      "category": "Communication",
+      "question": "Describe a difficult conversation you've had.",
+      "star": {
+        "situation": "Maintenance often requires conversations about safety, quality or missed expectations that aren't always easy.",
+        "task": "My responsibility has always been to address issues respectfully while maintaining accountability.",
+        "action": "I approach those conversations privately, remain calm, focus on observable facts, explain why the issue matters and work with the individual to develop a solution rather than simply criticizing them.",
+        "result": "I've found that people respond much better when they understand the reason behind the feedback and know you're genuinely invested in helping them improve."
+      }
+    },
+    {
+      "id": 17,
+      "category": "Leadership",
+      "question": "Tell us about delegation.",
+      "star": {
+        "situation": "Delegation has been one of the biggest areas of growth in my leadership journey.",
+        "task": "Earlier in my career I often felt responsible for personally solving every problem because I wanted the work completed to a high standard.",
+        "action": "As I took on more leadership responsibilities, I realized that wasn't sustainable. I started focusing more on creating clear procedures, setting expectations, providing support and trusting people to do the work while remaining available for guidance.",
+        "result": "Today I see delegation as developing people rather than simply assigning work. It allows the team to grow while giving me the capacity to focus on planning and improving operations."
+      }
+    },
+    {
+      "id": 18,
+      "category": "Leadership",
+      "question": "How do you build trust with your team?",
+      "star": {
+        "situation": "Trust has been an important part of every successful team I've worked on.",
+        "task": "I believe trust has to be earned through consistent actions rather than titles.",
+        "action": "I build trust by following through on commitments, communicating honestly, treating everyone with respect, listening to concerns and being willing to work alongside the team when needed. I also make sure expectations are clear so people know they're being treated fairly.",
+        "result": "When trust is established, communication improves, problems are identified earlier and people become much more willing to take ownership of their work."
+      }
+    },
+    {
+      "id": 19,
+      "category": "Leadership",
+      "question": "How do you motivate employees?",
+      "star": {
+        "situation": "I've learned that motivation isn't the same for every individual.",
+        "task": "As a leader, my responsibility is to create an environment where people can be successful and take pride in their work.",
+        "action": "I focus on recognizing good work, involving people in solving problems, providing opportunities to learn, removing unnecessary obstacles and making sure they understand how their work contributes to the bigger picture.",
+        "result": "People are generally more engaged when they feel valued, understand the purpose behind their work and know their contributions make a difference."
+      }
+    },
+    {
+      "id": 20,
+      "category": "Performance Management",
+      "question": "How would you deal with an underperforming employee?",
+      "star": {
+        "situation": "Every team eventually has someone who isn't meeting expectations, and it's important to address it early.",
+        "task": "My responsibility would be to understand the root cause before jumping to conclusions.",
+        "action": "I'd begin with a respectful one-on-one conversation to understand whether the issue is related to training, workload, communication, personal challenges or performance. Together we'd establish clear expectations, develop an improvement plan, provide the necessary support and schedule follow-up meetings to review progress.",
+        "result": "My goal would always be to help the employee succeed first. If performance still didn't improve despite support and clear expectations, I would document the process and follow organizational policies while maintaining fairness and professionalism."
+      }
+    },
+    {
+      "id": 21,
+      "category": "Operations",
+      "question": "Tell us about a time you had to manage multiple competing priorities.",
+      "star": {
+        "situation": "Working in facility maintenance, especially in healthcare and recreation, there were many days where reactive maintenance, scheduled preventative maintenance, contractor coordination and customer requests all competed for attention.",
+        "task": "My responsibility was to ensure critical work was completed without losing sight of longer-term priorities or impacting customer service.",
+        "action": "I started by assessing each task based on safety, operational impact and urgency. I communicated changes with stakeholders, adjusted schedules when necessary, delegated work where appropriate and continued to reassess priorities throughout the day as new issues arose.",
+        "result": "Critical issues were addressed quickly while planned work continued to move forward. Clear communication helped manage expectations, reduced frustration and ensured resources were focused where they created the most value."
+      }
+    },
+    {
+      "id": 22,
+      "category": "Continuous Improvement",
+      "question": "Tell us about a process you improved.",
+      "star": {
+        "situation": "Throughout my career I've noticed that many recurring problems weren't caused by people—they were caused by inconsistent systems or missing information.",
+        "task": "Rather than repeatedly fixing the same issues, I wanted to improve the underlying process.",
+        "action": "That mindset eventually led me to begin developing Helix, an operations platform focused on organizing information, improving communication, documenting procedures and making it easier to plan maintenance and projects. Even on a smaller scale, I've consistently standardized documentation, organized workflows and looked for ways to reduce wasted effort.",
+        "result": "The biggest improvement wasn't just efficiency—it was consistency. Better systems reduce mistakes, improve communication and allow teams to spend more time solving meaningful problems instead of searching for information."
+      }
+    },
+    {
+      "id": 23,
+      "category": "Projects",
+      "question": "Tell us about a project you're proud of.",
+      "star": {
+        "situation": "One of the projects I'm most proud of has been developing Helix during my own time after identifying common operational challenges across multiple organizations.",
+        "task": "My goal was to build a platform that would centralize procedures, inspections, work management, inventory and operational knowledge into one system.",
+        "action": "I researched operational workflows, designed the platform, learned new software tools and continuously refined the concept based on real maintenance challenges I had experienced throughout my career.",
+        "result": "Although it's still evolving, the project demonstrates how I approach problems. Rather than accepting inefficient processes, I'm motivated to build long-term solutions that improve operations and help teams succeed."
+      }
+    },
+    {
+      "id": 24,
+      "category": "Technology",
+      "question": "Tell us about technology you've implemented.",
+      "star": {
+        "situation": "I've always been comfortable learning new technology, particularly when it can improve operational efficiency.",
+        "task": "When existing tools didn't fully meet operational needs, I wanted to create something that better supported maintenance teams.",
+        "action": "I taught myself new software platforms, explored different technologies and began building Helix to manage procedures, projects, inspections and operational information. Throughout my career I've also adapted quickly to new CMMS platforms and software with minimal training.",
+        "result": "Technology has become one of my strengths because I focus on how it supports people rather than simply implementing software. My goal is always to simplify work, improve communication and provide better information for decision making."
+      }
+    },
+    {
+      "id": 25,
+      "category": "Maintenance Systems",
+      "question": "Describe your experience with CMMS systems.",
+      "star": {
+        "situation": "I've worked with several maintenance management systems throughout my career in different industries.",
+        "task": "Each organization relied on accurate work orders, maintenance history and asset information to plan work effectively.",
+        "action": "I've used systems such as eMaint, Archibus and RFAM while also gaining experience understanding how maintenance data supports planning and decision making. More recently I've been applying those lessons while designing Helix with a focus on usability and operational value.",
+        "result": "Although every system is different, I've found the principles remain the same: accurate information, preventative maintenance, planning and continuous improvement."
+      }
+    },
+    {
+      "id": 26,
+      "category": "Preventive Maintenance",
+      "question": "What is preventive maintenance and why is it important?",
+      "star": {
+        "situation": "Across healthcare, recreation and industrial environments, equipment reliability directly affects operations, safety and customer experience.",
+        "task": "The objective of preventative maintenance is to reduce failures before they occur.",
+        "action": "I believe effective preventative maintenance starts with understanding critical assets, scheduling work proactively, documenting findings, tracking trends and making adjustments based on equipment condition and operational history.",
+        "result": "When preventative maintenance is done well, organizations experience fewer unexpected failures, safer workplaces, lower lifecycle costs and more reliable service for customers and the community."
+      }
+    },
+    {
+      "id": 27,
+      "category": "Asset Management",
+      "question": "What does asset management mean to you?",
+      "star": {
+        "situation": "As I've progressed into leadership, I've become increasingly interested in how organizations manage assets over their entire lifecycle.",
+        "task": "Rather than simply repairing equipment when it fails, I wanted to better understand long-term planning and decision making.",
+        "action": "I've started formal asset management training while applying those principles in my own thinking. To me, asset management means balancing risk, cost, performance and service levels throughout the life of an asset while using good information to make proactive decisions.",
+        "result": "That mindset supports more sustainable operations, better budgeting, improved reliability and ultimately better service for the public."
+      }
+    },
+    {
+      "id": 28,
+      "category": "Contractor Management",
+      "question": "Tell us about managing contractors.",
+      "star": {
+        "situation": "Throughout my career I've worked alongside contractors on maintenance activities and projects in several industries.",
+        "task": "My role has been to ensure work was completed safely, met quality expectations and aligned with operational requirements.",
+        "action": "I focus on establishing clear expectations, communicating scope, coordinating schedules, confirming safety requirements and maintaining open communication throughout the project. I also believe in treating contractors as partners while still holding them accountable to agreed standards.",
+        "result": "That approach helps reduce misunderstandings, improves safety and contributes to projects being completed efficiently and professionally."
+      }
+    },
+    {
+      "id": 29,
+      "category": "Financial",
+      "question": "Describe your budgeting experience.",
+      "star": {
+        "situation": "While I haven't directly managed departmental budgets, I've consistently worked in environments where cost awareness was important.",
+        "task": "My responsibility has been to make sound decisions regarding materials, purchasing and resource utilization while supporting operational goals.",
+        "action": "I've been involved in obtaining quotes, planning material requirements, considering lifecycle costs and ensuring resources were used responsibly. I also recognize that maintenance decisions often have significant financial implications beyond the immediate repair.",
+        "result": "Although formal budgeting is an area I'd like to continue developing, I'm comfortable learning financial processes and understand the importance of balancing operational needs with responsible stewardship of public resources."
+      }
+    },
+    {
+      "id": 30,
+      "category": "Safety",
+      "question": "Tell us about your approach to safety.",
+      "star": {
+        "situation": "Working in healthcare, recreation and especially oil and gas reinforced that safety isn't a checklist—it's a culture.",
+        "task": "My responsibility has always been to ensure every member of the team, contractors and the public return home safely at the end of the day.",
+        "action": "I approach every task using the Hierarchy of Controls, beginning with eliminating hazards where possible before relying on administrative controls or PPE. I encourage open communication, proper planning, hazard assessments and speaking up whenever something doesn't feel right. I also believe leaders set the standard by consistently modeling safe behaviours.",
+        "result": "That mindset creates an environment where safety becomes part of everyday decision making rather than something people think about only during formal meetings. Strong safety cultures also lead to better teamwork, higher quality work and more reliable operations."
+      }
+    },
+    {
+      "id": 31,
+      "category": "Behavioral",
+      "question": "Tell us about your biggest failure.",
+      "star": {
+        "situation": "Earlier in my career I believed being a strong employee meant being the person who solved every problem myself.",
+        "task": "As I started taking on leadership responsibilities, I realized that approach wasn't sustainable because it limited the growth of the people around me.",
+        "action": "I consciously shifted my focus from being the one with all the answers to creating systems, documenting procedures, coaching others and trusting the team to take ownership of their work.",
+        "result": "That experience changed how I define success. Today I measure my effectiveness by how successful the team is rather than by how many problems I personally solve."
+      }
+    },
+    {
+      "id": 32,
+      "category": "Behavioral",
+      "question": "Tell us about your biggest success.",
+      "star": {
+        "situation": "Looking back over my career, I'm most proud of the progression from being a tradesperson to becoming someone trusted to lead projects and improve operations.",
+        "task": "I wanted to contribute more than just technical skills and become someone who could create lasting value for an organization.",
+        "action": "I consistently volunteered for additional responsibility, improved workflows, developed systems, built strong relationships with stakeholders and invested in learning leadership, project management and asset management.",
+        "result": "That growth has allowed me to become a more well-rounded professional who combines technical credibility with leadership and strategic thinking, which is the direction I want to continue developing."
+      }
+    },
+    {
+      "id": 33,
+      "category": "Emergency Response",
+      "question": "Tell us about responding to an emergency.",
+      "star": {
+        "situation": "Working in healthcare, recreation and industrial environments, unexpected equipment failures and urgent maintenance issues are part of the job.",
+        "task": "The priority during any emergency is protecting people first while restoring operations as safely and efficiently as possible.",
+        "action": "My approach is to stay calm, assess the risks, secure the area if necessary, communicate with the appropriate stakeholders, prioritize immediate actions and coordinate available resources. Once the situation is stabilized, I focus on identifying the root cause and preventing recurrence.",
+        "result": "I've found that remaining calm and following a structured process helps teams respond effectively while maintaining confidence and minimizing disruption."
+      }
+    },
+    {
+      "id": 34,
+      "category": "Customer Service",
+      "question": "Tell us about dealing with a difficult customer.",
+      "star": {
+        "situation": "Working in recreation and healthcare, I regularly interacted with members of the public whose expectations didn't always align with operational realities.",
+        "task": "My responsibility was to resolve concerns professionally while maintaining safety and operational requirements.",
+        "action": "I listened carefully to understand the concern, acknowledged their perspective, explained the reasoning behind our decisions in plain language and focused on finding a practical solution whenever possible.",
+        "result": "Even when I couldn't provide exactly what someone wanted, taking the time to communicate respectfully usually resulted in a positive outcome and maintained trust in the organization."
+      }
+    },
+    {
+      "id": 35,
+      "category": "Communication",
+      "question": "How do you communicate with the public and different stakeholders?",
+      "star": {
+        "situation": "Throughout my career I've worked with tradespeople, contractors, management, healthcare staff, recreation staff and members of the public.",
+        "task": "Each group has different priorities, so effective communication means adapting your message without changing the facts.",
+        "action": "I focus on listening first, understanding what matters to the person I'm speaking with and communicating clearly without unnecessary technical language. I believe transparency and honesty build trust, especially when expectations need to be managed.",
+        "result": "That approach has allowed me to build strong working relationships across different departments and with people from a wide range of backgrounds."
+      }
+    },
+    {
+      "id": 36,
+      "category": "Change Management",
+      "question": "Tell us about handling organizational change.",
+      "star": {
+        "situation": "Every organization I've worked for has gone through changes in priorities, systems or processes.",
+        "task": "My role has been to adapt quickly while helping others understand the reason behind the change.",
+        "action": "Rather than resisting change, I try to understand its purpose, communicate openly, gather feedback and look for opportunities to improve the implementation. I also recognize that people adapt at different speeds, so patience and communication are important.",
+        "result": "I've learned that successful change is less about the new process itself and more about helping people understand why it's happening and supporting them through the transition."
+      }
+    },
+    {
+      "id": 37,
+      "category": "Behavioral",
+      "question": "Tell us about a mistake you learned from.",
+      "star": {
+        "situation": "Early in my career I sometimes focused so heavily on completing the immediate task that I didn't spend enough time considering how to improve the overall process.",
+        "task": "As I gained experience, I realized solving the same problem repeatedly wasn't creating long-term value.",
+        "action": "I began documenting procedures, standardizing workflows and asking why problems were occurring instead of simply fixing the symptoms. That systems-thinking approach eventually influenced projects like Helix.",
+        "result": "The biggest lesson was that improving the system often has a much greater impact than solving an individual problem."
+      }
+    },
+    {
+      "id": 38,
+      "category": "Behavioral",
+      "question": "How do you handle stress and pressure?",
+      "star": {
+        "situation": "Maintenance environments can become stressful when multiple issues happen at the same time or when operations are affected.",
+        "task": "My responsibility is to make good decisions without allowing stress to negatively impact the team.",
+        "action": "I stay calm, prioritize based on safety and operational impact, communicate openly with stakeholders, delegate where appropriate and avoid making emotional decisions. Breaking large problems into manageable steps helps maintain focus.",
+        "result": "I've found that a calm leader helps the entire team remain focused, which leads to better decisions and more effective problem solving."
+      }
+    },
+    {
+      "id": 39,
+      "category": "Closing",
+      "question": "Why should we choose you over another candidate?",
+      "star": {
+        "situation": "Every candidate will bring different experiences and strengths to the role.",
+        "task": "My objective is to demonstrate the unique value I can bring to CSRD.",
+        "action": "I offer a combination of 15 years of diverse maintenance experience, technical credibility as a Red Seal Electrician, leadership experience, strong communication skills, systems thinking and a genuine passion for continuous improvement. I'm equally comfortable discussing technical issues with tradespeople or strategic priorities with management, and I'm committed to building a long-term career serving the community.",
+        "result": "I believe that balance of technical knowledge, leadership potential and commitment to public service would allow me to contribute immediately while continuing to grow within CSRD."
+      }
+    },
+    {
+      "id": 40,
+      "category": "Closing",
+      "question": "What questions do you have for us?",
+      "star": {
+        "situation": "At the end of an interview I like to understand how I can be successful if selected.",
+        "task": "My goal is to learn more about the organization's expectations and demonstrate genuine interest in the role.",
+        "action": "I would ask questions such as: What does success look like after six months? What are the biggest challenges facing the facilities team today? What qualities have made previous Team Leads successful? What opportunities exist for professional development and continuous improvement within CSRD?",
+        "result": "Those questions help me understand how I can contribute effectively while also demonstrating that I'm thinking beyond simply getting the job and focusing on long-term success."
+      }
+    }
+  ]
+}
