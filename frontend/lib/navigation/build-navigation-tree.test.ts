@@ -133,6 +133,7 @@ describe("buildNavigationTree", () => {
         contract_features: ["dashboard"],
         enabled_features: ["dashboard_dept_communications"],
         rbac_permissions: ["dashboard.dept.communications.view"],
+        department_workspace_slugs: ["communications"],
       }),
     );
     const commsKeys =
@@ -144,6 +145,7 @@ describe("buildNavigationTree", () => {
     const tree = buildNavigationTree(
       session({
         hr_department: "communications",
+        department_workspace_slugs: ["communications"],
         contract_features: ["comms_advertising_mapper", "comms_indesign_pipeline"],
         enabled_features: ["advertising_mapper", "xplor_indesign"],
         rbac_permissions: ["arena_advertising.view", "xplor_indesign.view"],
@@ -168,6 +170,7 @@ describe("buildNavigationTree", () => {
     const tree = buildNavigationTree(
       session({
         hr_department: "communications",
+        department_workspace_slugs: ["communications"],
         contract_features: ["dashboard", "team_management", "team_insights"],
         enabled_features: ["dashboard_dept_communications", "team_management", "team_insights"],
         rbac_permissions: [

@@ -68,6 +68,7 @@ describe("canAccessClassicNavHref", () => {
 
   it("allows communications modules when contract uses legacy keys", () => {
     const s = session({
+      department_workspace_slugs: ["communications"],
       contract_features: ["comms_advertising_mapper", "comms_indesign_pipeline"],
       enabled_features: ["advertising_mapper", "xplor_indesign"],
       rbac_permissions: ["arena_advertising.view", "xplor_indesign.view"],
@@ -102,6 +103,7 @@ describe("tenantSidebarNavItemsForLiveApp", () => {
   it("includes arena advertising when registry and route gate both pass", () => {
     const items = tenantSidebarNavItemsForLiveApp(
       session({
+        department_workspace_slugs: ["communications"],
         contract_features: ["comms_advertising_mapper", "schedule"],
         enabled_features: ["advertising_mapper", "schedule"],
         rbac_permissions: ["arena_advertising.view", "schedule.view"],

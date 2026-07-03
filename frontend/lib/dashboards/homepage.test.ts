@@ -48,6 +48,7 @@ describe("resolveAssignedDashboardHomepage", () => {
         session({
           role: "worker",
           hr_department: "communications",
+          department_workspace_slugs: ["communications"],
           contract_features: ["dashboard"],
           enabled_features: ["dashboard_dept_communications", "dashboard_operations"],
           rbac_permissions: ["dashboard.dept.communications.view", "dashboard.operations.view"],

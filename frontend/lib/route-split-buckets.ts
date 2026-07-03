@@ -36,6 +36,7 @@ export const PRODUCT_PATH_PREFIXES = [
   "/operations",
   "/live-map",
   "/projects",
+  "/roadmap",
   "/planning",
   "/project-management",
   "/pm",
