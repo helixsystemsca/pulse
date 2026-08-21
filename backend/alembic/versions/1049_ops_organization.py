@@ -25,38 +25,34 @@ def upgrade() -> None:
     conn = op.get_bind()
 
     # Extend ops_people for Person Matrix / org chart
-    person_cols = [
-        ("reports_to_person_id", sa.Column("reports_to_person_id", UUID(as_uuid=False), nullable=True)),
-        ("role_label", sa.Column("role_label", sa.String(255), nullable=True)),
-        ("training", sa.Column("training", JSONB(), nullable=False, server_default=_EMPTY)),
-        ("strengths", sa.Column("strengths", sa.Text(), nullable=True)),
-        ("development_opportunities", sa.Column("development_opportunities", sa.Text(), nullable=True)),
-        ("current_priorities", sa.Column("current_priorities", sa.Text(), nullable=True)),
-        ("projects_notes", sa.Column("projects_notes", sa.Text(), nullable=True)),
-        ("important_relationships", sa.Column("important_relationships", sa.Text(), nullable=True)),
-        ("need_from_me", sa.Column("need_from_me", sa.Text(), nullable=True)),
-        ("need_from_them", sa.Column("need_from_them", sa.Text(), nullable=True)),
-        ("decision_authority", sa.Column("decision_authority", sa.Text(), nullable=True)),
-        ("communication_preference", sa.Column("communication_preference", sa.String(128), nullable=True)),
-        ("team_name", sa.Column("team_name", sa.String(128), nullable=True)),
-        ("sort_order", sa.Column("sort_order", sa.Integer(), nullable=False, server_default="0")),
-    ]
-    for name, col in person_cols:
-        if not ah.column_exists(conn, "ops_people", name):
-            op.add_column("ops_people", col)
+    for col in [
+        sa.Column("reports_to_person_id", UUID(as_uuid=False), nullable=True),
+        sa.Column("role_label", sa.String(255), nullable=True),
+        sa.Column("training", JSONB(), nullable=False, server_default=_EMPTY),
+        sa.Column("strengths", sa.Text(), nullable=True),
+        sa.Column("development_opportunities", sa.Text(), nullable=True),
+        sa.Column("current_priorities", sa.Text(), nullable=True),
+        sa.Column("projects_notes", sa.Text(), nullable=True),
+        sa.Column("important_relationships", sa.Text(), nullable=True),
+        sa.Column("need_from_me", sa.Text(), nullable=True),
+        sa.Column("need_from_them", sa.Text(), nullable=True),
+        sa.Column("decision_authority", sa.Text(), nullable=True),
+        sa.Column("communication_preference", sa.String(128), nullable=True),
+        sa.Column("team_name", sa.String(128), nullable=True),
+        sa.Column("sort_order", sa.Integer(), nullable=False, server_default="0"),
+    ]:
+        ah.safe_add_column(op, conn, "ops_people", col)
 
-    if not ah.constraint_exists(conn, "fk_ops_people_reports_to"):
-        try:
-            op.create_foreign_key(
-                "fk_ops_people_reports_to",
-                "ops_people",
-                "ops_people",
-                ["reports_to_person_id"],
-                ["id"],
-                ondelete="SET NULL",
-            )
-        except Exception:
-            ah.skip("fk_ops_people_reports_to", cause="create_failed")
+    ah.safe_create_foreign_key(
+        op,
+        conn,
+        "fk_ops_people_reports_to",
+        "ops_people",
+        "ops_people",
+        ["reports_to_person_id"],
+        ["id"],
+        ondelete="SET NULL",
+    )
 
     ah.safe_create_index(op, conn, "ix_ops_people_reports_to_person_id", "ops_people", ["reports_to_person_id"])
 
@@ -162,8 +158,7 @@ def downgrade() -> None:
         ah.safe_drop_table(op, conn, table)
 
     ah.safe_drop_index(op, conn, "ix_ops_people_reports_to_person_id", "ops_people")
-    if ah.constraint_exists(conn, "fk_ops_people_reports_to"):
-        op.drop_constraint("fk_ops_people_reports_to", "ops_people", type_="foreignkey")
+    ah.safe_drop_constraint(op, conn, "fk_ops_people_reports_to", "ops_people", type_="foreignkey")
     for col in [
         "sort_order",
         "team_name",
@@ -180,5 +175,4 @@ def downgrade() -> None:
         "role_label",
         "reports_to_person_id",
     ]:
-        if ah.column_exists(conn, "ops_people", col):
-            op.drop_column("ops_people", col)
+        ah.safe_drop_column(op, conn, "ops_people", col)
