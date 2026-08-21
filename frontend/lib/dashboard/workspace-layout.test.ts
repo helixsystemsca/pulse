@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   addWorkspaceWidget,
   defaultWorkspaceLayout,
+  ensurePinnedWorkspaceWidgets,
   migrateGridLayoutToWorkspace,
+  REC_OPS_AUTHORITY_WIDGET_ID,
+  REC_OPS_CHECKLISTS_WIDGET_ID,
+  REC_OPS_KNOWLEDGE_GAPS_WIDGET_ID,
+  REC_OPS_TEAM_RISKS_WIDGET_ID,
   sanitizeWorkspaceLayout,
   widgetZoneClass,
   workspaceSlotHeightPx,
@@ -60,8 +65,55 @@ describe("workspace-layout", () => {
     expect(next.right.some((s) => s.id === "pool_readings")).toBe(true);
   });
 
-  it("includes recreation ops on the default board", () => {
-    expect(defaultWorkspaceLayout().right.some((s) => s.id === "recreation_ops")).toBe(true);
+  it("includes individual recreation ops widgets on the default board", () => {
+    const rightIds = defaultWorkspaceLayout().right.map((s) => s.id);
+    expect(rightIds).toEqual(
+      expect.arrayContaining([
+        REC_OPS_CHECKLISTS_WIDGET_ID,
+        REC_OPS_KNOWLEDGE_GAPS_WIDGET_ID,
+        REC_OPS_TEAM_RISKS_WIDGET_ID,
+        REC_OPS_AUTHORITY_WIDGET_ID,
+      ]),
+    );
+    expect(rightIds).not.toContain("recreation_ops");
+  });
+
+  it("expands the legacy combined recreation ops widget into feature widgets", () => {
+    const clean = sanitizeWorkspaceLayout(
+      {
+        left: [],
+        hero: [],
+        right: [{ id: "recreation_ops", heightTier: "medium" }],
+      },
+      new Set([
+        REC_OPS_CHECKLISTS_WIDGET_ID,
+        REC_OPS_KNOWLEDGE_GAPS_WIDGET_ID,
+        REC_OPS_TEAM_RISKS_WIDGET_ID,
+        REC_OPS_AUTHORITY_WIDGET_ID,
+      ]),
+    );
+    expect(clean.right.map((s) => s.id)).toEqual([
+      REC_OPS_CHECKLISTS_WIDGET_ID,
+      REC_OPS_KNOWLEDGE_GAPS_WIDGET_ID,
+      REC_OPS_TEAM_RISKS_WIDGET_ID,
+      REC_OPS_AUTHORITY_WIDGET_ID,
+    ]);
+  });
+
+  it("does not pin recreation ops widgets after they are removed", () => {
+    const ids = new Set([
+      "important_dates",
+      REC_OPS_CHECKLISTS_WIDGET_ID,
+      REC_OPS_KNOWLEDGE_GAPS_WIDGET_ID,
+      REC_OPS_TEAM_RISKS_WIDGET_ID,
+      REC_OPS_AUTHORITY_WIDGET_ID,
+    ]);
+    const saved = sanitizeWorkspaceLayout(
+      { left: [], hero: [], right: [{ id: "important_dates", heightTier: "medium" }] },
+      ids,
+    );
+    const pinned = ensurePinnedWorkspaceWidgets(saved, ids);
+    expect(pinned.right.map((s) => s.id)).toEqual(["important_dates"]);
   });
 
   it("locks slot height to tier px (optional edit toolbar)", () => {

@@ -17,7 +17,7 @@ export function recreationOpsNotificationItems(dash: OpsCommandDashboard): Opera
       severity: "critical",
       priority: "critical",
       title: `${dash.checklist_overdue} overdue checklist item${dash.checklist_overdue === 1 ? "" : "s"}`,
-      subtitle: "Recreation Ops · Checklists",
+      subtitle: "My Role · Checklists",
       eventAtMs: at(),
     });
   }
@@ -27,7 +27,7 @@ export function recreationOpsNotificationItems(dash: OpsCommandDashboard): Opera
       severity: "warning",
       priority: "high",
       title: `${dash.checklist_due_today} checklist item${dash.checklist_due_today === 1 ? "" : "s"} due today`,
-      subtitle: "Recreation Ops · Checklists",
+      subtitle: "My Role · Checklists",
       eventAtMs: at(),
     });
   }
@@ -37,7 +37,7 @@ export function recreationOpsNotificationItems(dash: OpsCommandDashboard): Opera
       severity: "warning",
       priority: "high",
       title: `${dash.knowledge_gaps_high} high-priority knowledge gap${dash.knowledge_gaps_high === 1 ? "" : "s"}`,
-      subtitle: "Recreation Ops · Knowledge gaps",
+      subtitle: "My Role · Knowledge gaps",
       eventAtMs: at(),
     });
   } else if (dash.knowledge_gaps_open > 0) {
@@ -46,7 +46,7 @@ export function recreationOpsNotificationItems(dash: OpsCommandDashboard): Opera
       severity: "warning",
       priority: "medium",
       title: `${dash.knowledge_gaps_open} open knowledge gap${dash.knowledge_gaps_open === 1 ? "" : "s"}`,
-      subtitle: "Recreation Ops · Knowledge gaps",
+      subtitle: "My Role · Knowledge gaps",
       eventAtMs: at(),
     });
   }
@@ -56,7 +56,7 @@ export function recreationOpsNotificationItems(dash: OpsCommandDashboard): Opera
       severity: "warning",
       priority: "low",
       title: "Complete your operating profile",
-      subtitle: "Recreation Ops · My Profile",
+      subtitle: "My Role · My Profile",
       eventAtMs: at(),
     });
   }
@@ -66,7 +66,7 @@ export function recreationOpsNotificationItems(dash: OpsCommandDashboard): Opera
       severity: "warning",
       priority: "medium",
       title: `${dash.authority_unknown} authority row${dash.authority_unknown === 1 ? "" : "s"} to confirm`,
-      subtitle: "Recreation Ops · My Profile",
+      subtitle: "My Role · My Profile",
       eventAtMs: at(),
     });
   }
@@ -76,7 +76,7 @@ export function recreationOpsNotificationItems(dash: OpsCommandDashboard): Opera
       severity: "warning",
       priority: "high",
       title: `${dash.open_team_risks} open team risk${dash.open_team_risks === 1 ? "" : "s"}`,
-      subtitle: "Recreation Ops · Team development",
+      subtitle: "My Role · Team development",
       eventAtMs: at(),
     });
   }
@@ -86,7 +86,7 @@ export function recreationOpsNotificationItems(dash: OpsCommandDashboard): Opera
       severity: "warning",
       priority: "high",
       title: `${dash.emergency_readiness_gaps} emergency readiness gap${dash.emergency_readiness_gaps === 1 ? "" : "s"}`,
-      subtitle: "Recreation Ops · Emergency",
+      subtitle: "My Role · Emergency",
       eventAtMs: at(),
     });
   }

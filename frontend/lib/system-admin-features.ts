@@ -35,7 +35,7 @@ export const SYSTEM_ADMIN_FEATURE_LABELS: Record<string, string> = {
   monitoring: "Monitoring",
   projects: "Projects",
   roadmap: "Roadmap",
-  recreation_ops: "Recreation Ops",
+  recreation_ops: "My Role",
   work_requests: "Work Requests",
   operational_improvements: "Operational Improvements",
   procedures: "Procedures",

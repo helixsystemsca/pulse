@@ -231,17 +231,17 @@ export const RBAC_PERMISSION_CATALOG: readonly RbacPermissionMeta[] = [
   },
   {
     key: "recreation_ops.view",
-    label: "View recreation ops",
+    label: "View My Role",
     description: "Open knowledge base, meetings, people, contractors, regulations, facilities, notes, and contacts.",
     module: "recreation_ops",
-    category: "Recreation Ops",
+    category: "My Role",
   },
   {
     key: "recreation_ops.manage",
-    label: "Manage recreation ops",
-    description: "Create and update recreation operations foundation records and relationships.",
+    label: "Manage My Role",
+    description: "Create and update My Role records and relationships.",
     module: "recreation_ops",
-    category: "Recreation Ops",
+    category: "My Role",
   },
   { key: "projects.view", label: "View projects", description: "Project list and project dashboards.", module: "projects", category: "Operations" },
   {

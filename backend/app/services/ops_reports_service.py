@@ -125,7 +125,7 @@ def _footer(canvas, doc, *, subtitle: str) -> None:
 def _build_pdf(story: list[Any], *, title: str, company_name: str) -> bytes:
     buf = BytesIO()
     generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    subtitle = f"{company_name} · Recreation Ops · {title} · {generated}"
+    subtitle = f"{company_name} · My Role · {title} · {generated}"
 
     def _on_page(canvas, doc):
         _footer(canvas, doc, subtitle=subtitle)
@@ -395,7 +395,7 @@ async def build_binder_pdf(
         wanted = list(BINDER_SECTIONS)
 
     story: list[Any] = [
-        _p("Recreation Operations Binder", st["title"]),
+        _p("My Role Binder", st["title"]),
         _p(
             f"{co}\nPersonal operating manual · Generated {date.today().isoformat()}",
             st["muted"],
@@ -488,7 +488,7 @@ async def build_standalone_pdf(
             _p(co, st["muted"]),
             Spacer(1, 10),
             _p(profile.display_name or "Coordinator", st["card"]),
-            _p(profile.position or "Recreation Operations", st["card"]),
+            _p(profile.position or "My Role", st["card"]),
             Spacer(1, 12),
             _p("Readiness snapshot", st["h2"]),
             _p(

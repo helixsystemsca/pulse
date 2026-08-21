@@ -309,7 +309,7 @@ export function OpsModuleApp({ entityType }: Props) {
         <Icon className="mx-auto h-10 w-10 text-ds-muted" />
         <h1 className="mt-4 text-lg font-semibold text-ds-foreground">{mod.label}</h1>
         <p className="mt-2 text-sm text-ds-muted">
-          Enable <strong>Recreation Ops</strong> on the tenant contract and grant recreation_ops permissions to use this
+          Enable <strong>My Role</strong> on the tenant contract and grant My Role permissions to use this
           module.
         </p>
       </div>

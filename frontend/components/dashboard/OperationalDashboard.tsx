@@ -66,6 +66,10 @@ import {
   migrateGridLayoutToWorkspace,
   ensurePinnedWorkspaceWidgets,
   parseWorkspaceLayout,
+  REC_OPS_AUTHORITY_WIDGET_ID,
+  REC_OPS_CHECKLISTS_WIDGET_ID,
+  REC_OPS_KNOWLEDGE_GAPS_WIDGET_ID,
+  REC_OPS_TEAM_RISKS_WIDGET_ID,
   removeWorkspaceWidget,
   sanitizeWorkspaceLayout,
   widgetZoneClass,
@@ -83,7 +87,12 @@ import { Co2MonitoringOpsWidget } from "@/components/dashboard/widgets/ops/Co2Mo
 import { PoolReadingsOpsWidget } from "@/components/dashboard/widgets/ops/PoolReadingsOpsWidget";
 import { FacilityScheduleOpsWidget } from "@/components/dashboard/widgets/ops/FacilityScheduleOpsWidget";
 import { RoutineAssignmentsOpsWidget } from "@/components/dashboard/widgets/ops/RoutineAssignmentsOpsWidget";
-import { RecreationOpsWidget } from "@/components/dashboard/widgets/ops/RecreationOpsWidget";
+import {
+  RecOpsAuthorityWidget,
+  RecOpsChecklistsWidget,
+  RecOpsKnowledgeGapsWidget,
+  RecOpsTeamRisksWidget,
+} from "@/components/dashboard/widgets/ops/RecreationOpsWidgets";
 import { DASHBOARD_TOUR_TARGET_BY_WIDGET } from "@/lib/onboarding/tour-steps";
 import { isTenantFeatureOnContract, isUserFeatureEnabled } from "@/lib/features/tenant-features";
 import { fetchCommandDashboard } from "@/lib/recreation/commandService";
@@ -118,7 +127,10 @@ const OPS_WIDGET_CONTRACT: Record<string, readonly string[]> = {
   important_dates: ["dashboard"],
   low_inventory: ["inventory"],
   pool_readings: ["monitoring"],
-  recreation_ops: ["recreation_ops"],
+  [REC_OPS_CHECKLISTS_WIDGET_ID]: ["recreation_ops"],
+  [REC_OPS_KNOWLEDGE_GAPS_WIDGET_ID]: ["recreation_ops"],
+  [REC_OPS_TEAM_RISKS_WIDGET_ID]: ["recreation_ops"],
+  [REC_OPS_AUTHORITY_WIDGET_ID]: ["recreation_ops"],
 };
 
 function opsWidgetAllowed(session: PulseAuthSession | null, widgetId: string): boolean {
@@ -1401,12 +1413,41 @@ function DashboardBody({
           <LowInventoryOpsWidget model={model} layoutContext={ctx ?? null} />
         ),
       },
-      recreation_ops: {
-        title: "Recreation Ops",
+      [REC_OPS_CHECKLISTS_WIDGET_ID]: {
+        title: "Checklists",
+        accent: "none" as const,
+        shellJumpHref: pulseAppHref("/recreation/checklists"),
+        shellJumpLabel: "Open checklists",
+        render: (ctx?: DashboardWidgetRenderContext) => (
+          <RecOpsChecklistsWidget layoutContext={ctx ?? null} />
+        ),
+      },
+      [REC_OPS_KNOWLEDGE_GAPS_WIDGET_ID]: {
+        title: "Knowledge gaps",
+        accent: "none" as const,
+        shellJumpHref: pulseAppHref("/recreation/knowledge-gaps"),
+        shellJumpLabel: "Open knowledge gaps",
+        render: (ctx?: DashboardWidgetRenderContext) => (
+          <RecOpsKnowledgeGapsWidget layoutContext={ctx ?? null} />
+        ),
+      },
+      [REC_OPS_TEAM_RISKS_WIDGET_ID]: {
+        title: "Team risks",
+        accent: "none" as const,
+        shellJumpHref: pulseAppHref("/recreation/team-development"),
+        shellJumpLabel: "Open team development",
+        render: (ctx?: DashboardWidgetRenderContext) => (
+          <RecOpsTeamRisksWidget layoutContext={ctx ?? null} />
+        ),
+      },
+      [REC_OPS_AUTHORITY_WIDGET_ID]: {
+        title: "Authority",
         accent: "none" as const,
         shellJumpHref: pulseAppHref("/recreation/me"),
-        shellJumpLabel: "Open Recreation Ops",
-        render: () => <RecreationOpsWidget />,
+        shellJumpLabel: "Open profile",
+        render: (ctx?: DashboardWidgetRenderContext) => (
+          <RecOpsAuthorityWidget layoutContext={ctx ?? null} />
+        ),
       },
       co2_monitoring: {
         title: "CO₂ monitoring",

@@ -62,12 +62,27 @@ export function allowedColumnForWidget(widgetId: string): WorkspaceColumnId | "l
   return "left-or-right";
 }
 
+export const REC_OPS_CHECKLISTS_WIDGET_ID = "rec_ops_checklists";
+export const REC_OPS_KNOWLEDGE_GAPS_WIDGET_ID = "rec_ops_knowledge_gaps";
+export const REC_OPS_TEAM_RISKS_WIDGET_ID = "rec_ops_team_risks";
+export const REC_OPS_AUTHORITY_WIDGET_ID = "rec_ops_authority";
+
+export const REC_OPS_WIDGET_SLOTS: WorkspaceWidgetSlot[] = [
+  { id: REC_OPS_CHECKLISTS_WIDGET_ID, heightTier: "medium" },
+  { id: REC_OPS_KNOWLEDGE_GAPS_WIDGET_ID, heightTier: "medium" },
+  { id: REC_OPS_TEAM_RISKS_WIDGET_ID, heightTier: "compact" },
+  { id: REC_OPS_AUTHORITY_WIDGET_ID, heightTier: "compact" },
+];
+
+const LEGACY_COMBINED_REC_OPS_WIDGET_ID = "recreation_ops";
+
 export function defaultHeightTier(widgetId: string): WidgetHeightTier {
   if (widgetId === "facility_schedule") return "tall";
   if (HERO_WIDGET_IDS.has(widgetId)) return "expanded";
   if (widgetId === WORK_REQUESTS_WIDGET_ID || widgetId === "co2_monitoring") return "compact";
   if (widgetId === "pool_readings") return "tall";
-  if (widgetId === "recreation_ops") return "medium";
+  if (widgetId === REC_OPS_TEAM_RISKS_WIDGET_ID || widgetId === REC_OPS_AUTHORITY_WIDGET_ID) return "compact";
+  if (widgetId === REC_OPS_CHECKLISTS_WIDGET_ID || widgetId === REC_OPS_KNOWLEDGE_GAPS_WIDGET_ID) return "medium";
   return "medium";
 }
 
@@ -86,7 +101,7 @@ export function defaultWorkspaceLayout(): WorkspaceLayout {
     right: [
       { id: "important_dates", heightTier: "medium" },
       { id: "low_inventory", heightTier: "medium" },
-      { id: "recreation_ops", heightTier: "medium" },
+      ...REC_OPS_WIDGET_SLOTS.map((s) => ({ ...s })),
     ],
   };
 }
@@ -176,10 +191,27 @@ export function migrateGridLayoutToWorkspace(items: LayoutItem[]): WorkspaceLayo
   };
 }
 
+function expandLegacyRecreationOps(slots: WorkspaceWidgetSlot[]): WorkspaceWidgetSlot[] {
+  const out: WorkspaceWidgetSlot[] = [];
+  for (const slot of slots) {
+    if (slot?.id === LEGACY_COMBINED_REC_OPS_WIDGET_ID) {
+      out.push(...REC_OPS_WIDGET_SLOTS.map((s) => ({ ...s })));
+      continue;
+    }
+    out.push(slot);
+  }
+  return out;
+}
+
 export function sanitizeWorkspaceLayout(
   layout: WorkspaceLayout,
   validWidgetIds: Set<string>,
 ): WorkspaceLayout {
+  layout = {
+    left: expandLegacyRecreationOps(layout.left),
+    hero: expandLegacyRecreationOps(layout.hero),
+    right: expandLegacyRecreationOps(layout.right),
+  };
   const seen = new Set<string>();
   const heroRelocated: WorkspaceWidgetSlot[] = [];
 
@@ -242,7 +274,7 @@ export function mergeMissingDefaults(
 }
 
 /** Always attach these when the tenant has them unlocked (even if a saved layout omitted them). */
-const PINNED_EDGE_WIDGETS: WorkspaceWidgetSlot[] = [{ id: "recreation_ops", heightTier: "medium" }];
+const PINNED_EDGE_WIDGETS: WorkspaceWidgetSlot[] = [];
 
 export function ensurePinnedWorkspaceWidgets(
   layout: WorkspaceLayout,

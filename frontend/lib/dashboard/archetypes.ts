@@ -150,7 +150,25 @@ const WIDGET_ARCHETYPE_MAP: Record<string, WidgetArchetypeDefinition> = {
     defaultFootprint: logicalToAtomic({ lw: 4, lh: 3 }),
     snapStrategy: "footprint",
   },
-  recreation_ops: {
+  rec_ops_checklists: {
+    archetype: "elastic",
+    footprints: ELASTIC_ATOMIC_FOOTPRINTS,
+    defaultFootprint: logicalToAtomic({ lw: 2, lh: 3 }),
+    snapStrategy: "footprint",
+  },
+  rec_ops_knowledge_gaps: {
+    archetype: "elastic",
+    footprints: ELASTIC_ATOMIC_FOOTPRINTS,
+    defaultFootprint: logicalToAtomic({ lw: 2, lh: 3 }),
+    snapStrategy: "footprint",
+  },
+  rec_ops_team_risks: {
+    archetype: "elastic",
+    footprints: ELASTIC_ATOMIC_FOOTPRINTS,
+    defaultFootprint: logicalToAtomic({ lw: 2, lh: 3 }),
+    snapStrategy: "footprint",
+  },
+  rec_ops_authority: {
     archetype: "elastic",
     footprints: ELASTIC_ATOMIC_FOOTPRINTS,
     defaultFootprint: logicalToAtomic({ lw: 2, lh: 3 }),

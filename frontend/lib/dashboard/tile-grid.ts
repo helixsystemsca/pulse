@@ -53,7 +53,10 @@ export const DEFAULT_WIDGET_TILE_FOOTPRINTS: Record<string, AtomicTileFootprint>
   facility_schedule: defaultFootprintForWidget("facility_schedule"),
   routine_assignments: defaultFootprintForWidget("routine_assignments"),
   pool_readings: defaultFootprintForWidget("pool_readings"),
-  recreation_ops: defaultFootprintForWidget("recreation_ops"),
+  rec_ops_checklists: defaultFootprintForWidget("rec_ops_checklists"),
+  rec_ops_knowledge_gaps: defaultFootprintForWidget("rec_ops_knowledge_gaps"),
+  rec_ops_team_risks: defaultFootprintForWidget("rec_ops_team_risks"),
+  rec_ops_authority: defaultFootprintForWidget("rec_ops_authority"),
 };
 
 function quantizeSpan(value: number, unit: number, min: number, max: number): number {

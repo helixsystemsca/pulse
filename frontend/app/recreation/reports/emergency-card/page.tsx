@@ -49,7 +49,7 @@ export default function EmergencyCardPrintPage() {
         <article className="rounded-xl border-2 border-slate-900 p-6 print:rounded-none print:border print:p-4">
           <header className="border-b-2 border-slate-900 pb-3 text-center">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-600">
-              Recreation Operations
+              My Role
             </p>
             <h1 className="mt-1 text-2xl font-bold tracking-tight">EMERGENCY CARD</h1>
             <p className="mt-2 text-sm text-slate-600">

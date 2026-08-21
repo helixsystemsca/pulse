@@ -60,8 +60,8 @@ RBAC_PERMISSION_SEED: tuple[tuple[str, str], ...] = (
     ("operational_improvements.manage", "Manage operational improvements"),
     ("roadmap.view", "View strategic roadmap"),
     ("roadmap.manage", "Manage strategic roadmap"),
-    ("recreation_ops.view", "View recreation operations foundation modules"),
-    ("recreation_ops.manage", "Manage recreation operations foundation modules"),
+    ("recreation_ops.view", "View My Role"),
+    ("recreation_ops.manage", "Manage My Role"),
 )
 
 # Legacy `company_features` / `GLOBAL_SYSTEM_FEATURES` name → flat RBAC keys (bridge until grants-only).
