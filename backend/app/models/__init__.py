@@ -11,6 +11,7 @@ from app.models.automation_engine import (
     AutomationStateTracking,
 )
 from app.models.device_hub import AutomationBleDevice, AutomationGateway, AutomationUnknownDevice
+from app.models.base import Base
 from app.models.ops_foundation_models import (
     OpsContact,
     OpsContractor,
@@ -249,4 +250,25 @@ __all__ = [
     "TrainingRecord",
     "TrainingKnowledgeEdge",
     "TrainingImportBatch",
+    "OpsContact",
+    "OpsContractor",
+    "OpsEntityLink",
+    "OpsFacility",
+    "OpsKnowledgeArticle",
+    "OpsMeeting",
+    "OpsPerson",
+    "OpsQuickNote",
+    "OpsRegulation",
+    "OpsRevision",
+    "OpsAuthorityMatrixRow",
+    "OpsChecklistInstance",
+    "OpsChecklistItem",
+    "OpsChecklistTemplate",
+    "OpsDevelopmentPlan",
+    "OpsKnowledgeGap",
+    "OpsPersonalProfile",
+    "OpsRoleResponsibility",
+    "OpsSkill",
+    "OpsSkillRating",
+    "OpsTeamRisk",
 ]
