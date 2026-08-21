@@ -1,5 +1,6 @@
 """Liveness / readiness for load balancers and orchestration (see docs/LAUNCH_READINESS.md)."""
 
+import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Response, status
@@ -9,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 
 router = APIRouter(tags=["health"])
+_log = logging.getLogger("pulse.health")
 
 
 @router.get("/health")
@@ -27,6 +29,7 @@ async def health_ready(
     try:
         await db.execute(text("SELECT 1"))
     except Exception:
+        _log.exception("health/ready database check failed")
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
         return {"status": "not_ready", "database": "error"}
     return {"status": "ready", "database": "ok"}

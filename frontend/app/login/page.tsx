@@ -104,6 +104,8 @@ export default function LoginPage() {
         if (!result.ok) {
           if (result.reason === "api_config") {
             setFormError("Server URL is not configured. Set NEXT_PUBLIC_API_URL or use demo mode.");
+          } else if (result.reason === "server_unavailable") {
+            setFormError("Can't reach the sign-in service right now. Try again in a minute.");
           } else {
             setFormError("Invalid credentials. Check your email and password.");
           }

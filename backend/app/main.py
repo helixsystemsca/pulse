@@ -16,6 +16,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import InterfaceError, OperationalError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from slowapi import _rate_limit_exceeded_handler
@@ -100,6 +101,7 @@ from app.api.routines_routes import router as routines_router
 from app.api.training_routes import router as training_router
 from app.api.training_platform_routes import router as training_platform_router
 from app.core.bootstrap import ensure_bootstrap_system_admin
+from app.core.bootstrap_vernon_recreation_ops import ensure_vernon_recreation_ops
 from app.core.rbac.catalog_sync import sync_rbac_catalog_permissions
 from app.core.config import get_settings
 from app.core.database import AsyncSessionLocal
@@ -109,6 +111,7 @@ from app.middleware.demo_viewer_guard import DemoViewerGuardMiddleware
 from app.middleware.require_https import RequireHttpsMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.middleware.request_context import RequestContextMiddleware
+from app.middleware.cors_helpers import apply_cors_headers
 from app.core.security.startup_validation import log_security_startup_summary
 from app.modules.pulse.router import router as pulse_router
 from app.modules.registry import register_modules
@@ -170,6 +173,14 @@ async def lifespan(app: FastAPI):
     except Exception:
         _startup_log.exception("STARTUP STEP 2: bootstrap system admin failed")
         raise
+
+    _startup_log.info("STARTUP STEP 2b: City of Vernon recreation ops")
+    try:
+        async with AsyncSessionLocal() as db:
+            await ensure_vernon_recreation_ops(db)
+        _startup_log.info("STARTUP STEP 2b: City of Vernon recreation ops complete")
+    except Exception:
+        _startup_log.exception("STARTUP STEP 2b: City of Vernon recreation ops failed")
 
     _startup_log.info("STARTUP STEP 3: security configuration review")
     log_security_startup_summary(settings)
@@ -234,22 +245,27 @@ async def _validation_exception_with_cors(
     return JSONResponse(status_code=422, content={"detail": _validation_errors_for_json(exc.errors())})
 
 
+def _json_with_cors(request: Request, *, status_code: int, content: dict[str, Any]) -> JSONResponse:
+    """FastAPI's Exception/500 handler runs outside CORSMiddleware — attach ACAO here."""
+    return apply_cors_headers(request, JSONResponse(status_code=status_code, content=content))
+
+
 @app.exception_handler(StarletteHTTPException)
 async def _http_exception_with_cors(request: Request, exc: StarletteHTTPException) -> JSONResponse:
     detail = exc.detail
     if not isinstance(detail, (str, dict, list)):
         detail = str(detail)
-    return JSONResponse(status_code=exc.status_code, content={"detail": detail})
+    return _json_with_cors(request, status_code=exc.status_code, content={"detail": detail})
 
 
 @app.exception_handler(Exception)
 async def _unhandled_exception_with_cors(request: Request, exc: Exception) -> JSONResponse:
-    """Ensure 500 responses are JSON (still wrapped by CORSMiddleware)."""
+    """JSON 500/503 with CORS. FastAPI routes Exception handlers through ServerErrorMiddleware (outside CORS)."""
     if isinstance(exc, StarletteHTTPException):
         detail = exc.detail
         if not isinstance(detail, (str, dict, list)):
             detail = str(detail)
-        return JSONResponse(status_code=exc.status_code, content={"detail": detail})
+        return _json_with_cors(request, status_code=exc.status_code, content={"detail": detail})
     origin = request.headers.get("origin", "")
     _cors_log.exception(
         "Unhandled exception %s %s origin=%s",
@@ -257,7 +273,13 @@ async def _unhandled_exception_with_cors(request: Request, exc: Exception) -> JS
         request.url.path,
         origin[:120] if origin else "(none)",
     )
-    return JSONResponse(status_code=500, content={"detail": "internal_server_error"})
+    if isinstance(exc, (OperationalError, InterfaceError)):
+        return _json_with_cors(
+            request,
+            status_code=503,
+            content={"detail": "database_unavailable"},
+        )
+    return _json_with_cors(request, status_code=500, content={"detail": "internal_server_error"})
 
 # Health checks (no /api prefix — easy for load balancers and platform probes).
 app.include_router(health_router)

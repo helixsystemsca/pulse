@@ -219,3 +219,30 @@ async def test_authenticated_assignments_day_does_not_500(seeded_tenant) -> None
     assert res.status_code == 200, res.text
     assert res.headers.get("access-control-allow-origin") == PANORAMA_ORIGIN
     assert isinstance(res.json(), list)
+
+
+@pytest.mark.asyncio
+async def test_unhandled_exception_handler_includes_ops_cors() -> None:
+    from starlette.requests import Request
+
+    from app.main import _unhandled_exception_with_cors
+
+    request = Request(
+        {
+            "type": "http",
+            "asgi": {"version": "3.0"},
+            "http_version": "1.1",
+            "method": "POST",
+            "scheme": "https",
+            "path": "/api/v1/auth/login",
+            "raw_path": b"/api/v1/auth/login",
+            "query_string": b"",
+            "headers": [(b"origin", OPS_ORIGIN.encode())],
+            "client": ("127.0.0.1", 123),
+            "server": ("test", 80),
+        }
+    )
+    res = await _unhandled_exception_with_cors(request, RuntimeError("boom"))
+    assert res.status_code == 500
+    assert res.headers.get("access-control-allow-origin") == OPS_ORIGIN
+    assert json.loads(res.body) == {"detail": "internal_server_error"}

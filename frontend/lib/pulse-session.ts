@@ -486,18 +486,26 @@ export async function loginWithBackend(
   email: string,
   password: string,
 ): Promise<
-  { ok: true; token: string; user: UserOut } | { ok: false; reason: "invalid_credentials" | "api_config" }
+  { ok: true; token: string; user: UserOut } | { ok: false; reason: "invalid_credentials" | "api_config" | "server_unavailable" }
 > {
   const base = normalizeApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
   if (!base) {
     return { ok: false, reason: "api_config" };
   }
-  const loginRes = await fetch(`${base}/api/v1/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: email.trim(), password }),
-  });
+  let loginRes: Response;
+  try {
+    loginRes = await fetch(`${base}/api/v1/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email.trim(), password }),
+    });
+  } catch {
+    return { ok: false, reason: "server_unavailable" };
+  }
   const loginText = await loginRes.text();
+  if (loginRes.status >= 500) {
+    return { ok: false, reason: "server_unavailable" };
+  }
   if (!loginRes.ok) {
     return { ok: false, reason: "invalid_credentials" };
   }
@@ -508,9 +516,14 @@ export async function loginWithBackend(
     return { ok: false, reason: "api_config" };
   }
   const token = tokenJson.access_token;
-  const meRes = await fetch(`${base}/api/v1/auth/me`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  let meRes: Response;
+  try {
+    meRes = await fetch(`${base}/api/v1/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch {
+    return { ok: false, reason: "server_unavailable" };
+  }
   const meText = await meRes.text();
   if (!meRes.ok) {
     return { ok: false, reason: "invalid_credentials" };

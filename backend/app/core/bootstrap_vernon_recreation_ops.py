@@ -1,0 +1,50 @@
+"""Ensure City of Vernon has Recreation Ops on-contract and Josh is company admin."""
+
+from __future__ import annotations
+
+import logging
+
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.features.recreation_ops_tenants import (
+    RECREATION_OPS_FEATURE,
+    VERNON_ADMIN_EMAILS,
+    recreation_ops_forced_for_company_name,
+)
+from app.core.features.service import FeatureFlagService
+from app.core.user_roles import user_has_any_role
+from app.models.domain import Company, User, UserRole
+
+_log = logging.getLogger("pulse.startup")
+
+
+async def ensure_vernon_recreation_ops(db: AsyncSession) -> None:
+    companies = list((await db.execute(select(Company).where(Company.is_active.is_(True)))).scalars().all())
+    vernon = [c for c in companies if recreation_ops_forced_for_company_name(c.name)]
+    target_ids = {str(c.id) for c in vernon}
+
+    for email in VERNON_ADMIN_EMAILS:
+        row = (
+            await db.execute(select(User).where(func.lower(User.email) == email))
+        ).scalar_one_or_none()
+        if row is None:
+            _log.info("Vernon admin %s not found — skip role pin until the account exists", email)
+            continue
+        if row.company_id:
+            target_ids.add(str(row.company_id))
+        elif vernon:
+            row.company_id = vernon[0].id
+            target_ids.add(str(vernon[0].id))
+        if not user_has_any_role(row, UserRole.company_admin):
+            roles = [str(r) for r in (row.roles or []) if str(r).strip()]
+            if UserRole.company_admin.value not in roles:
+                row.roles = [*roles, UserRole.company_admin.value]
+                _log.info("Pinned %s as company_admin for Recreation Ops", email)
+
+    svc = FeatureFlagService(db)
+    for cid in target_ids:
+        if not await svc.is_enabled(cid, RECREATION_OPS_FEATURE):
+            await svc.set_module(cid, RECREATION_OPS_FEATURE, True)
+            _log.info("Enabled recreation_ops for tenant %s", cid)
+    await db.commit()

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.features.system_catalog import (
@@ -11,7 +11,12 @@ from app.core.features.system_catalog import (
     coerce_legacy_feature_names,
     normalize_enabled_features,
 )
-from app.models.domain import CompanyFeature
+from app.core.features.recreation_ops_tenants import (
+    RECREATION_OPS_FEATURE,
+    VERNON_ADMIN_EMAILS,
+    recreation_ops_forced_for_company_name,
+)
+from app.models.domain import Company, CompanyFeature, User
 
 # When a company has no rows yet, treat product modules as on (pre‑gates behavior).
 _LEGACY_DEFAULT_PRODUCT_FEATURES: tuple[str, ...] = GLOBAL_SYSTEM_FEATURES
@@ -51,11 +56,32 @@ async def company_has_any_feature_row(db: AsyncSession, company_id: str) -> bool
     return q.scalar_one_or_none() is not None
 
 
+async def _company_forces_recreation_ops(db: AsyncSession, company_id: str, company: Company | None) -> bool:
+    if company and recreation_ops_forced_for_company_name(company.name):
+        return True
+    emails = list(VERNON_ADMIN_EMAILS)
+    if not emails:
+        return False
+    q = await db.execute(
+        select(User.id)
+        .where(User.company_id == company_id, func.lower(User.email).in_(emails))
+        .limit(1)
+    )
+    return q.scalar_one_or_none() is not None
+
+
 async def tenant_enabled_feature_names_with_legacy(db: AsyncSession, company_id: str) -> list[str]:
     """Enabled names, or default product modules if the company has never had feature rows."""
+    company = await db.get(Company, company_id)
+    force_ops = await _company_forces_recreation_ops(db, company_id, company)
     if not await company_has_any_feature_row(db, company_id):
-        return list(_LEGACY_DEFAULT_PRODUCT_FEATURES)
-    raw = await list_enabled_names(db, company_id)
-    if raw == [TENANT_EMPTY_FEATURES_MARKER]:
-        return []
-    return coerce_legacy_feature_names(raw)
+        names = list(_LEGACY_DEFAULT_PRODUCT_FEATURES)
+    else:
+        raw = await list_enabled_names(db, company_id)
+        if raw == [TENANT_EMPTY_FEATURES_MARKER]:
+            names = []
+        else:
+            names = coerce_legacy_feature_names(raw)
+    if force_ops and RECREATION_OPS_FEATURE not in names:
+        names = sorted([*names, RECREATION_OPS_FEATURE])
+    return names
