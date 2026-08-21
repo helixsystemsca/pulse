@@ -60,6 +60,10 @@ describe("workspace-layout", () => {
     expect(next.right.some((s) => s.id === "pool_readings")).toBe(true);
   });
 
+  it("includes recreation ops on the default board", () => {
+    expect(defaultWorkspaceLayout().right.some((s) => s.id === "recreation_ops")).toBe(true);
+  });
+
   it("locks slot height to tier px (optional edit toolbar)", () => {
     const slot = { id: "workforce", heightTier: "expanded" as const };
     expect(workspaceSlotHeightPx(slot, false)).toBe(WIDGET_HEIGHT_TIER_MIN_PX.expanded);

@@ -67,6 +67,7 @@ export function defaultHeightTier(widgetId: string): WidgetHeightTier {
   if (HERO_WIDGET_IDS.has(widgetId)) return "expanded";
   if (widgetId === WORK_REQUESTS_WIDGET_ID || widgetId === "co2_monitoring") return "compact";
   if (widgetId === "pool_readings") return "tall";
+  if (widgetId === "recreation_ops") return "medium";
   return "medium";
 }
 
@@ -85,6 +86,7 @@ export function defaultWorkspaceLayout(): WorkspaceLayout {
     right: [
       { id: "important_dates", heightTier: "medium" },
       { id: "low_inventory", heightTier: "medium" },
+      { id: "recreation_ops", heightTier: "medium" },
     ],
   };
 }
@@ -235,6 +237,27 @@ export function mergeMissingDefaults(
       next[col].push({ ...slot });
       present.add(slot.id);
     }
+  }
+  return next;
+}
+
+/** Always attach these when the tenant has them unlocked (even if a saved layout omitted them). */
+const PINNED_EDGE_WIDGETS: WorkspaceWidgetSlot[] = [{ id: "recreation_ops", heightTier: "medium" }];
+
+export function ensurePinnedWorkspaceWidgets(
+  layout: WorkspaceLayout,
+  validWidgetIds: Set<string>,
+): WorkspaceLayout {
+  const present = new Set(allWorkspaceWidgetIds(layout));
+  const next = {
+    left: [...layout.left],
+    hero: [...layout.hero],
+    right: [...layout.right],
+  };
+  for (const slot of PINNED_EDGE_WIDGETS) {
+    if (!validWidgetIds.has(slot.id) || present.has(slot.id)) continue;
+    next.right.push({ ...slot });
+    present.add(slot.id);
   }
   return next;
 }

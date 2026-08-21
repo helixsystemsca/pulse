@@ -2,11 +2,17 @@
 
 import { apiFetch, isApiMode } from "@/lib/api";
 import { canAccessPulseTenantApis, readSession } from "@/lib/pulse-session";
+import { isTenantFeatureOnContract } from "@/lib/features/tenant-features";
 import { getServerNow } from "@/lib/serverTime";
 import {
   buildOperationalNotificationItems,
   type OperationalNotificationItem,
 } from "@/lib/dashboard/operational-notifications";
+import {
+  mergeNotificationItems,
+  recreationOpsNotificationItems,
+} from "@/lib/dashboard/recreation-ops-notifications";
+import { fetchCommandDashboard } from "@/lib/recreation/commandService";
 
 type DashboardPayload = {
   active_workers: number;
@@ -48,13 +54,20 @@ export async function fetchOperationalNotificationsForHeader(): Promise<Operatio
       apiFetch<InventoryItemOut[]>("/api/v1/pulse/inventory/low-stock"),
       apiFetch<ZoneOut[]>("/api/v1/pulse/schedule-facilities"),
     ]);
-    return buildOperationalNotificationItems({
+    const items = buildOperationalNotificationItems({
       dashboard: dash,
       assets: assetList,
       lowStock,
       zones: zoneList,
       nowMs: getServerNow(),
     });
+    if (!isTenantFeatureOnContract(sess, "recreation_ops")) return items;
+    try {
+      const rec = await fetchCommandDashboard();
+      return mergeNotificationItems(items, recreationOpsNotificationItems(rec));
+    } catch {
+      return items;
+    }
   } catch {
     return null;
   }

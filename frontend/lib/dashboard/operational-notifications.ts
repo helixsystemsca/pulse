@@ -205,5 +205,10 @@ export function operationalNotificationHref(a: OperationalNotificationItem): str
   }
   if (id.startsWith("dash-")) return "/overview";
   if (id === "no-active-alerts") return "/overview";
+  if (id === "rec-ops-checklist-overdue" || id === "rec-ops-checklist-today") return "/recreation/checklists";
+  if (id === "rec-ops-gaps-high" || id === "rec-ops-gaps-open") return "/recreation/knowledge-gaps";
+  if (id === "rec-ops-profile" || id === "rec-ops-authority") return "/recreation/me";
+  if (id === "rec-ops-risks") return "/recreation/team-development";
+  if (id === "rec-ops-emergency") return "/recreation/emergency";
   return "/overview";
 }

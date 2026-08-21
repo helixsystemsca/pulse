@@ -64,6 +64,7 @@ import {
   isLegacyGridLayout,
   mergeMissingDefaults,
   migrateGridLayoutToWorkspace,
+  ensurePinnedWorkspaceWidgets,
   parseWorkspaceLayout,
   removeWorkspaceWidget,
   sanitizeWorkspaceLayout,
@@ -82,8 +83,14 @@ import { Co2MonitoringOpsWidget } from "@/components/dashboard/widgets/ops/Co2Mo
 import { PoolReadingsOpsWidget } from "@/components/dashboard/widgets/ops/PoolReadingsOpsWidget";
 import { FacilityScheduleOpsWidget } from "@/components/dashboard/widgets/ops/FacilityScheduleOpsWidget";
 import { RoutineAssignmentsOpsWidget } from "@/components/dashboard/widgets/ops/RoutineAssignmentsOpsWidget";
+import { RecreationOpsWidget } from "@/components/dashboard/widgets/ops/RecreationOpsWidget";
 import { DASHBOARD_TOUR_TARGET_BY_WIDGET } from "@/lib/onboarding/tour-steps";
-import { isUserFeatureEnabled } from "@/lib/features/tenant-features";
+import { isTenantFeatureOnContract, isUserFeatureEnabled } from "@/lib/features/tenant-features";
+import { fetchCommandDashboard } from "@/lib/recreation/commandService";
+import {
+  mergeNotificationItems,
+  recreationOpsNotificationItems,
+} from "@/lib/dashboard/recreation-ops-notifications";
 import { fetchDashboardBootstrap } from "@/lib/pulse/dashboard-bootstrap";
 import { primePulseReferenceFromBootstrap } from "@/lib/pulse/pulse-reference-data";
 import { fetchWorkRequestKpiSummary } from "@/lib/work-requests/kpi-summary";
@@ -111,6 +118,7 @@ const OPS_WIDGET_CONTRACT: Record<string, readonly string[]> = {
   important_dates: ["dashboard"],
   low_inventory: ["inventory"],
   pool_readings: ["monitoring"],
+  recreation_ops: ["recreation_ops"],
 };
 
 function opsWidgetAllowed(session: PulseAuthSession | null, widgetId: string): boolean {
@@ -1393,6 +1401,13 @@ function DashboardBody({
           <LowInventoryOpsWidget model={model} layoutContext={ctx ?? null} />
         ),
       },
+      recreation_ops: {
+        title: "Recreation Ops",
+        accent: "none" as const,
+        shellJumpHref: pulseAppHref("/recreation/me"),
+        shellJumpLabel: "Open Recreation Ops",
+        render: () => <RecreationOpsWidget />,
+      },
       co2_monitoring: {
         title: "CO₂ monitoring",
         accent: "none" as const,
@@ -1499,6 +1514,7 @@ function DashboardBody({
 
       let merged = sanitizeWorkspaceLayout(nextLayout, validIds);
       merged = mergeMissingDefaults(merged, validIds, !loadedFromStorage);
+      merged = ensurePinnedWorkspaceWidgets(merged, validIds);
 
       if (cancelled) return;
       setLayout(merged);
@@ -2105,9 +2121,19 @@ export function OperationalDashboard({
         bannerNote: null,
         workRequests: { ...model.workRequests, kpi: wrKpi },
       };
-      readyPayload = notificationCountsFromAlerts(withWelcome.alerts);
+      let alerts = withWelcome.alerts;
+      const recSess = tokenOverride ? null : readSession();
+      if (recSess && isTenantFeatureOnContract(recSess, "recreation_ops")) {
+        try {
+          const rec = await fetchCommandDashboard();
+          alerts = mergeNotificationItems(alerts, recreationOpsNotificationItems(rec));
+        } catch {
+          /* Rec Ops is optional on this board */
+        }
+      }
+      readyPayload = notificationCountsFromAlerts(alerts);
       setLiveModel(withWelcome);
-      useOperationalNotificationsStore.getState().setItems(withWelcome.alerts);
+      useOperationalNotificationsStore.getState().setItems(alerts);
     } catch (err) {
       if (isPulseAuthTeardown()) {
         setError(null);

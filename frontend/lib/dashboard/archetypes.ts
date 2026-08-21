@@ -150,6 +150,12 @@ const WIDGET_ARCHETYPE_MAP: Record<string, WidgetArchetypeDefinition> = {
     defaultFootprint: logicalToAtomic({ lw: 4, lh: 3 }),
     snapStrategy: "footprint",
   },
+  recreation_ops: {
+    archetype: "elastic",
+    footprints: ELASTIC_ATOMIC_FOOTPRINTS,
+    defaultFootprint: logicalToAtomic({ lw: 2, lh: 3 }),
+    snapStrategy: "footprint",
+  },
 };
 
 export function getWidgetArchetype(widgetId: string): WidgetArchetypeDefinition {
