@@ -53,6 +53,8 @@ from app.api.pm_coord_routes import router as pm_coord_router
 from app.api.project_summary_routes import router as project_summary_router
 from app.api.operational_improvements_routes import router as operational_improvements_router
 from app.api.roadmap_routes import router as roadmap_router
+from app.api.ops_command_routes import router as ops_command_router
+from app.api.ops_foundation_routes import router as ops_foundation_router
 from app.api.planning_ideas_routes import router as planning_ideas_router
 from app.api.projects_routes import router as projects_router
 from app.api.projects_routes import tasks_router as projects_tasks_router
@@ -367,6 +369,9 @@ app.include_router(worker_profile_router, prefix="/api/v1")
 app.include_router(planning_ideas_router, prefix="/api/v1")
 app.include_router(operational_improvements_router, prefix="/api/v1")
 app.include_router(roadmap_router, prefix="/api/v1")
+# Command center before foundation so /recreation-ops/command is not captured as entity_type
+app.include_router(ops_command_router, prefix="/api/v1")
+app.include_router(ops_foundation_router, prefix="/api/v1")
 app.include_router(projects_router, prefix="/api/v1")
 app.include_router(project_summary_router, prefix="/api/v1")
 app.include_router(projects_tasks_router, prefix="/api/v1")

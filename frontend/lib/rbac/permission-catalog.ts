@@ -229,6 +229,20 @@ export const RBAC_PERMISSION_CATALOG: readonly RbacPermissionMeta[] = [
     module: "roadmap",
     category: "Planning",
   },
+  {
+    key: "recreation_ops.view",
+    label: "View recreation ops",
+    description: "Open knowledge base, meetings, people, contractors, regulations, facilities, notes, and contacts.",
+    module: "recreation_ops",
+    category: "Recreation Ops",
+  },
+  {
+    key: "recreation_ops.manage",
+    label: "Manage recreation ops",
+    description: "Create and update recreation operations foundation records and relationships.",
+    module: "recreation_ops",
+    category: "Recreation Ops",
+  },
   { key: "projects.view", label: "View projects", description: "Project list and project dashboards.", module: "projects", category: "Operations" },
   {
     key: "projects.pm.view",

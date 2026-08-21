@@ -41,6 +41,7 @@ export const CANONICAL_PRODUCT_FEATURES = [
   "work_requests",
   "operational_improvements",
   "roadmap",
+  "recreation_ops",
   "procedures",
   "standards_training",
   "standards_certifications",

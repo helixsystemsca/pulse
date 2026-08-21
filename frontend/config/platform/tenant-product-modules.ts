@@ -21,6 +21,12 @@ export const PRODUCT_MODULE_PERMISSION_SECTIONS: readonly {
     keys: ["work_requests", "operational_improvements", "roadmap", "logs_inspections", "inventory", "inventory_scanner", "equipment", "projects"],
   },
   {
+    id: "recreation_ops",
+    label: "Recreation Ops",
+    description: "Personal operating system for knowledge, meetings, people, contractors, regulations, facilities, notes, and contacts.",
+    keys: ["recreation_ops"],
+  },
+  {
     id: "training",
     label: "Training",
     description: "Sidebar Training domain — overview, learning, compliance matrix, certifications, and procedures.",
@@ -96,6 +102,7 @@ export const MODULE_LABEL: Record<CanonicalFeatureKey, string> = {
   work_requests: "Work Requests",
   operational_improvements: "Operational Improvements",
   roadmap: "Roadmap",
+  recreation_ops: "Recreation Ops",
   procedures: "Procedures",
   standards_training: "Training · Overview & learning hub",
   standards_certifications: "Training · Certifications",
