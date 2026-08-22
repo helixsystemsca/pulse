@@ -9,6 +9,8 @@ from __future__ import annotations
 VERNON_COMPANY_NAME_MARKERS: tuple[str, ...] = ("city of vernon",)
 VERNON_ADMIN_EMAILS: frozenset[str] = frozenset({"josh@vernon.ca"})
 RECREATION_OPS_FEATURE = "recreation_ops"
+DAILY_PLANNER_FEATURE = "daily_planner"
+VERNON_PINNED_FEATURES: tuple[str, ...] = (RECREATION_OPS_FEATURE, DAILY_PLANNER_FEATURE)
 
 
 def recreation_ops_forced_for_company_name(name: str | None) -> bool:

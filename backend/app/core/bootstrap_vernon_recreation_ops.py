@@ -8,8 +8,8 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.features.recreation_ops_tenants import (
-    RECREATION_OPS_FEATURE,
     VERNON_ADMIN_EMAILS,
+    VERNON_PINNED_FEATURES,
     recreation_ops_forced_for_company_name,
 )
 from app.core.features.service import FeatureFlagService
@@ -44,7 +44,8 @@ async def ensure_vernon_recreation_ops(db: AsyncSession) -> None:
 
     svc = FeatureFlagService(db)
     for cid in target_ids:
-        if not await svc.is_enabled(cid, RECREATION_OPS_FEATURE):
-            await svc.set_module(cid, RECREATION_OPS_FEATURE, True)
-            _log.info("Enabled recreation_ops for tenant %s", cid)
+        for feat in VERNON_PINNED_FEATURES:
+            if not await svc.is_enabled(cid, feat):
+                await svc.set_module(cid, feat, True)
+                _log.info("Enabled %s for tenant %s", feat, cid)
     await db.commit()

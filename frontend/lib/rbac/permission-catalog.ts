@@ -243,6 +243,20 @@ export const RBAC_PERMISSION_CATALOG: readonly RbacPermissionMeta[] = [
     module: "recreation_ops",
     category: "My Role",
   },
+  {
+    key: "daily_planner.view",
+    label: "View Daily Operations Planner",
+    description: "Open the daily operating rhythm, inbox, and planner analytics.",
+    module: "daily_planner",
+    category: "My Role",
+  },
+  {
+    key: "daily_planner.manage",
+    label: "Manage Daily Operations Planner",
+    description: "Create tasks, generate the day, override the schedule, and record interruptions.",
+    module: "daily_planner",
+    category: "My Role",
+  },
   { key: "projects.view", label: "View projects", description: "Project list and project dashboards.", module: "projects", category: "Operations" },
   {
     key: "projects.pm.view",

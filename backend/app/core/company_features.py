@@ -12,8 +12,8 @@ from app.core.features.system_catalog import (
     normalize_enabled_features,
 )
 from app.core.features.recreation_ops_tenants import (
-    RECREATION_OPS_FEATURE,
     VERNON_ADMIN_EMAILS,
+    VERNON_PINNED_FEATURES,
     recreation_ops_forced_for_company_name,
 )
 from app.models.domain import Company, CompanyFeature, User
@@ -82,6 +82,8 @@ async def tenant_enabled_feature_names_with_legacy(db: AsyncSession, company_id:
             names = []
         else:
             names = coerce_legacy_feature_names(raw)
-    if force_ops and RECREATION_OPS_FEATURE not in names:
-        names = sorted([*names, RECREATION_OPS_FEATURE])
+    if force_ops:
+        for feat in VERNON_PINNED_FEATURES:
+            if feat not in names:
+                names = sorted([*names, feat])
     return names

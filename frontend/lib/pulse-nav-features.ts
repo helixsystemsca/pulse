@@ -63,6 +63,7 @@ export function featureKeyForTenantNavHref(href: string): string | undefined {
   if (href === "/zones-devices" || href.startsWith("/zones-devices")) return "zones_devices";
   if (href === "/devices" || href.startsWith("/devices")) return "zones_devices";
   if (href === "/zones" || href.startsWith("/zones")) return "zones_devices";
+  if (href === "/planner" || href.startsWith("/planner/")) return "daily_planner";
   if (href === "/live-map" || href.startsWith("/live-map")) return "live_map";
   return undefined;
 }

@@ -23,8 +23,8 @@ export const PRODUCT_MODULE_PERMISSION_SECTIONS: readonly {
   {
     id: "recreation_ops",
     label: "My Role",
-    description: "Personal operating system for knowledge, meetings, people, contractors, regulations, facilities, notes, and contacts.",
-    keys: ["recreation_ops"],
+    description: "Personal operating system: daily planner, knowledge, meetings, people, contractors, regulations, facilities, notes, and contacts.",
+    keys: ["recreation_ops", "daily_planner"],
   },
   {
     id: "training",
@@ -103,6 +103,7 @@ export const MODULE_LABEL: Record<CanonicalFeatureKey, string> = {
   operational_improvements: "Operational Improvements",
   roadmap: "Roadmap",
   recreation_ops: "My Role",
+  daily_planner: "Daily Operations Planner",
   procedures: "Procedures",
   standards_training: "Training · Overview & learning hub",
   standards_certifications: "Training · Certifications",

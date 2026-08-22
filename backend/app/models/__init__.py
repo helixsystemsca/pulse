@@ -37,6 +37,19 @@ from app.models.ops_command_models import (
     OpsSkillRating,
     OpsTeamRisk,
 )
+from app.models.planner_models import (
+    PlannerBlocker,
+    PlannerCalendarEvent,
+    PlannerCategory,
+    PlannerDailyMetrics,
+    PlannerInterruption,
+    PlannerRoutineBlock,
+    PlannerScheduleBlock,
+    PlannerSettings,
+    PlannerTask,
+    PlannerTaskHistory,
+    PlannerTimeEntry,
+)
 from app.models.rbac_models import (
     RbacAuditEvent,
     RbacCatalogPermission,
@@ -271,4 +284,15 @@ __all__ = [
     "OpsSkill",
     "OpsSkillRating",
     "OpsTeamRisk",
+    "PlannerBlocker",
+    "PlannerCalendarEvent",
+    "PlannerCategory",
+    "PlannerDailyMetrics",
+    "PlannerInterruption",
+    "PlannerRoutineBlock",
+    "PlannerScheduleBlock",
+    "PlannerSettings",
+    "PlannerTask",
+    "PlannerTaskHistory",
+    "PlannerTimeEntry",
 ]

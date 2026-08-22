@@ -76,6 +76,16 @@ describe("canAccessClassicNavHref", () => {
     expect(canAccessClassicNavHref(s, "/drawings?workspace=advertising")).toBe(true);
     expect(canAccessClassicNavHref(s, "/communications/indesign-pipeline")).toBe(true);
   });
+
+  it("allows daily planner when the contract and RBAC are present", () => {
+    const s = session({
+      contract_features: ["daily_planner"],
+      enabled_features: ["daily_planner"],
+      rbac_permissions: ["daily_planner.view"],
+    });
+    expect(canAccessClassicNavHref(s, "/planner")).toBe(true);
+    expect(canAccessClassicNavHref(s, "/planner/inbox")).toBe(true);
+  });
 });
 
 describe("tenantSidebarNavItemsForLiveApp — training flashcards milestone", () => {
