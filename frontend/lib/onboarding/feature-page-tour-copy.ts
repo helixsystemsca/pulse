@@ -5,6 +5,7 @@
 export type FeaturePageTourCopy = {
   welcomeSubtitle?: string;
   headerDescription?: string;
+  actionsDescription?: string;
   toolbarDescription?: string;
   workspaceDescription?: string;
   /** When true, tour includes a toolbar step (skipped automatically if the anchor is missing). */
@@ -12,8 +13,21 @@ export type FeaturePageTourCopy = {
 };
 
 const FEATURE_PAGE_TOUR_COPY: Partial<Record<string, FeaturePageTourCopy>> = {
+  daily_planner: {
+    welcomeSubtitle:
+      "We'll highlight each control on Today: the hour calendar, sidebar cards, and the buttons that reshape the day.",
+  },
+  daily_planner_inbox: {
+    welcomeSubtitle: "Capture work here first. We'll show the form, the list, and how items get onto Today.",
+  },
+  daily_planner_routine: {
+    welcomeSubtitle: "This is the default day shape. We'll walk hours, category targets, and named routine blocks.",
+  },
+  daily_planner_analytics: {
+    welcomeSubtitle: "A record of where time went. We'll show the range, the metrics, and how to export.",
+  },
   projects: {
-    welcomeSubtitle: "A quick walkthrough of the Projects hub—filters, actions, and your project list.",
+    welcomeSubtitle: "A walkthrough of the Projects hub—title, actions, filters, then the project list.",
     headerDescription:
       "The page title and primary actions live here—create projects, add categories, and jump into delivery work.",
     toolbarDescription:
@@ -139,7 +153,7 @@ export function featurePageTourCopy(featureKey: string, label: string): FeatureP
   const custom = FEATURE_PAGE_TOUR_COPY[featureKey];
   if (custom) return custom;
   return {
-    welcomeSubtitle: `A quick tour of the ${label} page—tools and main workspace.`,
+    welcomeSubtitle: `We'll walk through each part of ${label}—header, actions, then the workspace.`,
     workspaceDescription: DEFAULT_WORKSPACE,
   };
 }

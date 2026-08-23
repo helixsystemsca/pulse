@@ -19,6 +19,7 @@ export function standardFeatureTourSteps(
   label: string,
   options?: {
     headerDescription?: string;
+    actionsDescription?: string;
     workspaceDescription?: string;
     toolbarDescription?: string;
     includeToolbar?: boolean;
@@ -28,7 +29,24 @@ export function standardFeatureTourSteps(
     options?.workspaceDescription ??
     options?.headerDescription ??
     "This is the main work area—lists, boards, charts, and editors update here as you work.";
-  const steps: TourStep[] = [];
+  const steps: TourStep[] = [
+    {
+      target: '[data-tour="feature-header"]',
+      title: `${label} — what this page is`,
+      description:
+        options?.headerDescription ??
+        `You are on ${label}. The title and short description tell you what this screen is for before you touch anything.`,
+      placement: "bottom",
+    },
+    {
+      target: '[data-tour="feature-actions"]',
+      title: "Page actions",
+      description:
+        options?.actionsDescription ??
+        `Buttons on the right run the main jobs for ${label}—create, export, settings, and similar. Missing buttons are skipped.`,
+      placement: "left",
+    },
+  ];
   if (options?.includeToolbar) {
     steps.push({
       target: '[data-tour="feature-toolbar"]',
@@ -41,7 +59,7 @@ export function standardFeatureTourSteps(
   }
   steps.push({
     target: '[data-tour="feature-workspace"]',
-    title: label,
+    title: "Main workspace",
     description: workspaceDescription,
     placement: "top",
   });

@@ -2,7 +2,10 @@ import type { NavigationTreeDomain, NavigationTreeItem } from "@/lib/navigation/
 import { isPulseNavActive } from "@/lib/pulse-nav-active";
 import { featurePageTourCopy } from "@/lib/onboarding/feature-page-tour-copy";
 import type { ProductTourDef } from "@/lib/onboarding/tour-registry";
-import { INVENTORY_TOUR_STEPS } from "@/lib/onboarding/tour-steps/inventory";
+import {
+  CUSTOM_FEATURE_TOUR_STEPS,
+  customFeatureTourId,
+} from "@/lib/onboarding/feature-page-tour-steps";
 import { standardFeatureTourSteps } from "@/lib/onboarding/tour-steps/shared";
 
 /** Tour ids for per-page feature walkthroughs (not domain flyout recaps). */
@@ -18,24 +21,25 @@ export function isFeaturePageTourCandidate(item: NavigationTreeItem): boolean {
 
 export function buildFeaturePageTour(item: NavigationTreeItem): ProductTourDef {
   const copy = featurePageTourCopy(item.key, item.label);
+  const customSteps = CUSTOM_FEATURE_TOUR_STEPS[item.key];
   const steps =
-    item.key === "inventory"
-      ? INVENTORY_TOUR_STEPS
-      : standardFeatureTourSteps(item.label, {
-          headerDescription: copy.headerDescription,
-          workspaceDescription: copy.workspaceDescription,
-          toolbarDescription: copy.toolbarDescription,
-          includeToolbar: copy.includeToolbar,
-        });
+    customSteps ??
+    standardFeatureTourSteps(item.label, {
+      headerDescription: copy.headerDescription,
+      actionsDescription: copy.actionsDescription,
+      workspaceDescription: copy.workspaceDescription,
+      toolbarDescription: copy.toolbarDescription,
+      includeToolbar: copy.includeToolbar,
+    });
 
   return {
-    id: featurePageTourId(item.key),
+    id: customFeatureTourId(item.key, featurePageTourId(item.key)),
     paths: [item.href],
     pathPrefix: true,
     welcomeTitle: item.label,
     welcomeSubtitle:
       copy.welcomeSubtitle ??
-      `See how the ${item.label} page is laid out—where actions live and where day-to-day work happens.`,
+      `We'll walk through each control on ${item.label}—not the whole page in one step.`,
     steps,
   };
 }

@@ -116,7 +116,7 @@ export default function PlannerInboxPage() {
         <PlannerChrome />
         {error ? <p className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p> : null}
 
-        <section className="rounded-xl border border-dashed border-ds-border bg-ds-card p-4">
+        <section data-tour="planner-email" className="rounded-xl border border-dashed border-ds-border bg-ds-card p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">Potential tasks from email</p>
           <p className="mt-1 text-sm text-ds-muted">
             Email connectors are not connected. Suggestions will appear here for review — never auto-created.
@@ -124,7 +124,7 @@ export default function PlannerInboxPage() {
           </p>
         </section>
 
-        <form onSubmit={onCreate} className="grid gap-3 rounded-xl border border-ds-border bg-ds-card p-4 md:grid-cols-2">
+        <form onSubmit={onCreate} data-tour="planner-capture" className="grid gap-3 rounded-xl border border-ds-border bg-ds-card p-4 md:grid-cols-2">
           <label className="md:col-span-2">
             <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-ds-muted">Task name</span>
             <input className={inputClass} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Develop pool shutdown SOP" />
@@ -221,7 +221,7 @@ export default function PlannerInboxPage() {
           </select>
         </div>
 
-        <ul className="space-y-2">
+        <ul data-tour="planner-task-list" className="space-y-2">
           {tasks.map((t) => (
             <li key={t.id} className="rounded-xl border border-ds-border bg-ds-card p-3">
               <div className="flex flex-wrap items-start justify-between gap-2">

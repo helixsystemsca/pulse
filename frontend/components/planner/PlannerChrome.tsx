@@ -13,7 +13,7 @@ const LINKS = [
 export function PlannerChrome() {
   const pathname = usePathname();
   return (
-    <nav className="mb-4 flex flex-wrap gap-2 border-b border-ds-border pb-3">
+    <nav data-tour="planner-tabs" className="mb-4 flex flex-wrap gap-2 border-b border-ds-border pb-3">
       {LINKS.map((l) => {
         const active = l.href === "/planner" ? pathname === "/planner" : pathname.startsWith(l.href);
         return (

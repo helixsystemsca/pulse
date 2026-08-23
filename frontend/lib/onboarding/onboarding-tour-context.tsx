@@ -139,10 +139,7 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
     hasProductTour(pathname, navigationTree) && !isInventoryScannerOnlySession(session);
   const tourId = activeTour?.id ?? null;
   const showsCompletionScreen = Boolean(activeTour?.showCompletionScreen);
-  const steps = useMemo(
-    () => (activeTour?.steps ?? []).filter((s) => s.target !== '[data-tour="feature-header"]'),
-    [activeTour?.steps],
-  );
+  const steps = useMemo(() => activeTour?.steps ?? [], [activeTour?.steps]);
 
   const [mounted, setMounted] = useState(false);
   const [toursHydrated, setToursHydrated] = useState(false);

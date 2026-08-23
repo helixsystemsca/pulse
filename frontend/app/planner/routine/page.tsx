@@ -67,7 +67,7 @@ export default function PlannerRoutinePage() {
         {error ? <p className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p> : null}
 
         {settings ? (
-          <section className="rounded-xl border border-ds-border bg-ds-card p-4">
+          <section data-tour="planner-hours" className="rounded-xl border border-ds-border bg-ds-card p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">Working hours</p>
             <div className="mt-2 grid max-w-lg grid-cols-2 gap-3">
               <label>
@@ -98,7 +98,7 @@ export default function PlannerRoutinePage() {
               Adaptive duration estimates (optional — uses completed actuals)
             </label>
             <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-ds-muted">Category targets (%)</p>
-            <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            <div data-tour="planner-targets" className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {cats.map((c) => (
                 <label key={c.id} className="flex items-center justify-between gap-2 rounded-lg border border-ds-border px-2 py-1">
                   <span className="text-sm" style={{ color: c.color }}>
@@ -118,7 +118,7 @@ export default function PlannerRoutinePage() {
           </section>
         ) : null}
 
-        <section className="space-y-3">
+        <section data-tour="planner-routine-list" className="space-y-3">
           {rows.map((r) => (
             <div key={r.id} className="grid gap-2 rounded-xl border border-ds-border bg-ds-card p-3 md:grid-cols-6">
               <input className={`${inputClass} md:col-span-2`} value={r.name} onBlur={() => void patchRoutine(r.id, { name: r.name })} onChange={(e) => setRows((all) => all.map((x) => (x.id === r.id ? { ...x, name: e.target.value } : x)))} />

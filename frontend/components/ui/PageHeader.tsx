@@ -25,7 +25,7 @@ export function PageHeader({
   return (
     <div id="page-header" className={`space-y-4 ${className}`.trim()}>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex min-w-0 gap-3 sm:gap-4">
+        <div data-tour="feature-header" className="flex min-w-0 gap-3 sm:gap-4">
           <span
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-ds-border bg-ds-secondary text-ds-accent shadow-[var(--ds-shadow-card)]"
             aria-hidden
@@ -43,7 +43,11 @@ export function PageHeader({
             ) : null}
           </div>
         </div>
-        {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
+        {actions ? (
+          <div data-tour="feature-actions" className="flex shrink-0 flex-wrap items-center gap-2">
+            {actions}
+          </div>
+        ) : null}
       </div>
       {divider ? <hr className="app-page-divider" /> : null}
     </div>

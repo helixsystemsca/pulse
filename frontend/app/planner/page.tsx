@@ -151,16 +151,16 @@ export default function PlannerTodayPage() {
         icon={CalendarDays}
         actions={
           <div className="flex flex-wrap gap-2">
-            <button type="button" className={btnGhost} disabled={busy} onClick={() => setSettingsOpen(true)}>
+            <button type="button" className={btnGhost} disabled={busy} data-tour="planner-settings" onClick={() => setSettingsOpen(true)}>
               <span className="inline-flex items-center gap-1">
                 <Settings className="h-4 w-4" />
                 Settings
               </span>
             </button>
-            <button type="button" className={btnDanger} disabled={busy} onClick={() => setEmergencyOpen(true)}>
+            <button type="button" className={btnDanger} disabled={busy} data-tour="planner-emergency" onClick={() => setEmergencyOpen(true)}>
               Emergency / Interruption
             </button>
-            <button type="button" className={btnGhost} disabled={busy} onClick={() => void run(() => generateDay(date))}>
+            <button type="button" className={btnGhost} disabled={busy} data-tour="planner-reset" onClick={() => void run(() => generateDay(date))}>
               Reset hour template
             </button>
           </div>
@@ -173,7 +173,7 @@ export default function PlannerTodayPage() {
         ) : null}
 
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
+          <div data-tour="planner-date">
             <p className="text-xs font-medium uppercase tracking-wide text-ds-muted">Today</p>
             <div className="mt-1 flex items-center gap-2">
               <button type="button" className={btnGhost} onClick={() => setDate(shiftIsoDate(date, -1))}>
@@ -188,7 +188,7 @@ export default function PlannerTodayPage() {
               {day?.day_label} · {hhmm(day?.work_start)}–{hhmm(day?.work_end)} · {day?.completion_pct ?? 0}% complete
             </p>
           </div>
-          <form onSubmit={onQuickAdd} className="flex min-w-[16rem] flex-1 flex-wrap items-end gap-2">
+          <form onSubmit={onQuickAdd} data-tour="planner-quick-add" className="flex min-w-[16rem] flex-1 flex-wrap items-end gap-2">
             <label className="min-w-[12rem] flex-1">
               <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-ds-muted">Add into a gap</span>
               <input
@@ -233,6 +233,7 @@ export default function PlannerTodayPage() {
         ) : (
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(18rem,0.7fr)]">
             <div className="space-y-3">
+              <div data-tour="planner-calendar">
               <DayCalendar
                 date={date}
                 workStart={day.work_start}
@@ -257,6 +258,7 @@ export default function PlannerTodayPage() {
                 onPatch={(id, body) => run(() => patchBlock(id, body))}
                 onDelete={(id) => run(() => deleteBlock(id))}
               />
+              </div>
 
               {day.now?.task_id ? (
                 <section className="rounded-xl border border-ds-border bg-ds-card p-4">
@@ -281,7 +283,7 @@ export default function PlannerTodayPage() {
             </div>
 
             <aside className="space-y-3">
-              <section className="rounded-xl border border-ds-border bg-ds-card p-4">
+              <section data-tour="planner-now" className="rounded-xl border border-ds-border bg-ds-card p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">Now</p>
                 {day.now ? (
                   <div className="mt-2">
@@ -298,7 +300,7 @@ export default function PlannerTodayPage() {
                 )}
               </section>
 
-              <section className="rounded-xl border border-ds-border bg-ds-card p-4">
+              <section data-tour="planner-next" className="rounded-xl border border-ds-border bg-ds-card p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">Next</p>
                 {day.next ? (
                   <div className="mt-2">
@@ -312,7 +314,7 @@ export default function PlannerTodayPage() {
                 )}
               </section>
 
-              <section className="rounded-xl border border-amber-300 bg-amber-50 p-4 dark:bg-amber-950/20">
+              <section data-tour="planner-at-risk" className="rounded-xl border border-amber-300 bg-amber-50 p-4 dark:bg-amber-950/20">
                 <p className="text-xs font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-200">At risk of not getting done</p>
                 {day.at_risk.length === 0 ? (
                   <p className="mt-2 text-sm text-ds-muted">Nothing overdue or repeatedly deferred.</p>
@@ -332,7 +334,7 @@ export default function PlannerTodayPage() {
                 )}
               </section>
 
-              <section className="rounded-xl border border-ds-border bg-ds-card p-4">
+              <section data-tour="planner-meeting" className="rounded-xl border border-ds-border bg-ds-card p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">Add meeting (internal calendar)</p>
                 <p className="mt-1 text-xs text-ds-muted">Needs an open gap. Condense blocks first if the slot is full.</p>
                 <div className="mt-2 space-y-2">
@@ -361,7 +363,7 @@ export default function PlannerTodayPage() {
                 </div>
               </section>
 
-              <section className="rounded-xl border border-ds-border bg-ds-card p-4">
+              <section data-tour="planner-closeout" className="rounded-xl border border-ds-border bg-ds-card p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">Daily review</p>
                 <ul className="mt-2 space-y-1 text-sm text-ds-foreground">
                   <li>Completed: {day.metrics.completed_count}</li>

@@ -36,10 +36,11 @@ describe("buildFeaturePageTour", () => {
     const tour = buildFeaturePageTour(item);
     expect(tour.id).toBe(featurePageTourId("projects"));
     expect(tour.steps.map((s) => s.target)).toEqual([
+      '[data-tour="feature-header"]',
+      '[data-tour="feature-actions"]',
       '[data-tour="feature-toolbar"]',
       '[data-tour="feature-workspace"]',
     ]);
-    expect(tour.steps.some((s) => s.target === '[data-tour="feature-header"]')).toBe(false);
   });
 
   it("resolves nested paths with pathPrefix", () => {
@@ -64,5 +65,21 @@ describe("buildFeaturePageTour", () => {
       '[data-tour="inventory-tour-list"]',
       '[data-tour="inventory-tour-create"]',
     ]);
+  });
+
+  it("builds a control-by-control walkthrough for the daily planner", () => {
+    const tour = buildFeaturePageTour({
+      key: "daily_planner",
+      href: "/planner",
+      label: "Daily Planner",
+      icon: "calendar",
+      navDomain: "My Role",
+      navGroup: "Planner",
+      navOrder: 1,
+    });
+    expect(tour.id).toBe("feature-daily_planner-walkthrough");
+    expect(tour.steps.length).toBeGreaterThan(6);
+    expect(tour.steps.map((s) => s.target)).toContain('[data-tour="planner-calendar"]');
+    expect(tour.welcomeSubtitle.toLowerCase()).toContain("calendar");
   });
 });

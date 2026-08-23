@@ -55,7 +55,7 @@ export default function PlannerAnalyticsPage() {
         description="Where time went — not a productivity score. Insights are generated only from stored planner data."
         icon={Activity}
         actions={
-          <div className="flex flex-wrap gap-2">
+          <div data-tour="planner-range" className="flex flex-wrap gap-2">
             {(["week", "month", "quarter", "year"] as const).map((r) => (
               <button key={r} type="button" className={range === r ? "rounded-lg bg-ds-primary px-3 py-1.5 text-sm text-white" : btnGhost} onClick={() => setRange(r)}>
                 {r}
@@ -76,6 +76,7 @@ export default function PlannerAnalyticsPage() {
           <>
             <p className="text-sm text-ds-muted">{data.range_label}</p>
 
+            <div data-tour="planner-metrics" className="space-y-6">
             <section>
               <h2 className="text-sm font-semibold uppercase tracking-wide text-ds-muted">Productivity</h2>
               <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -148,7 +149,9 @@ export default function PlannerAnalyticsPage() {
               )}
             </section>
 
-            <section className="rounded-xl border border-ds-border bg-ds-card p-4">
+            </div>
+
+            <section data-tour="planner-insights" className="rounded-xl border border-ds-border bg-ds-card p-4">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-ds-muted">Management insights</h2>
               {data.insights.length === 0 ? (
                 <p className="mt-2 text-sm text-ds-muted">No insights yet — they appear once the planner has stored completions, delays, or interruptions.</p>

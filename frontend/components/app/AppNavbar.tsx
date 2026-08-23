@@ -31,6 +31,7 @@ import { cn } from "@/lib/cn";
 import { isApiMode } from "@/lib/api";
 import { fetchFeedbackUnreadCount } from "@/lib/feedbackApi";
 import { useSidebarState } from "@/components/app/SidebarState";
+import { OnboardingTourRestartButton } from "@/components/onboarding/OnboardingTour";
 
 const FEEDBACK_HEADER_TIP_DISMISSED_KEY = "pulse_feedback_header_tip_dismissed_v1";
 function IconBadgeCount({ count }: { count: number }) {
@@ -247,6 +248,7 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
             ) : null
           ) : (
             <>
+              <OnboardingTourRestartButton />
               {showWorkerPasswordBadge ? (
                 <Link
                   href={pulseApp.to("/dashboard/profile-settings")}
