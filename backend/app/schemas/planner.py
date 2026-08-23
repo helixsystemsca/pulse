@@ -19,6 +19,12 @@ class PlannerCategoryOut(BaseModel):
     active: bool
 
 
+class PlannerCategoryPatchIn(BaseModel):
+    name: Optional[str] = None
+    color: Optional[str] = None
+    active: Optional[bool] = None
+
+
 class PlannerSettingsOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -250,6 +256,22 @@ class PlannerMoveIn(BaseModel):
     start_time: time
     end_time: Optional[time] = None
     reason: str = "personal_manual"
+
+
+class PlannerBlockCreateIn(BaseModel):
+    date: Optional[date] = None
+    start_time: time
+    end_time: time
+    title: str = "Open"
+    category_id: Optional[str] = None
+    block_type: str = "open"
+
+
+class PlannerBlockPatchIn(BaseModel):
+    start_time: Optional[time] = None
+    end_time: Optional[time] = None
+    title: Optional[str] = None
+    category_id: Optional[str] = None
 
 
 class PlannerCloseoutIn(BaseModel):

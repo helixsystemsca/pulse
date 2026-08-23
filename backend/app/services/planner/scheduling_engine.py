@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import Iterable
 
-from app.services.planner.constants import DEFAULT_WEIGHTS, PRIORITY_RANK
+from app.services.planner.constants import DEFAULT_WEIGHTS, HOUR_SLOT_MINUTES, PRIORITY_RANK, SNAP_MINUTES
 
 
 def hhmm_to_minutes(value: str) -> int:
@@ -22,6 +22,55 @@ def hhmm_to_minutes(value: str) -> int:
 def minutes_to_hhmm(total: int) -> str:
     total = max(0, min(24 * 60 - 1, int(total)))
     return f"{total // 60:02d}:{total % 60:02d}"
+
+
+def snap_minutes(total: int, snap: int = SNAP_MINUTES) -> int:
+    return int(round(int(total) / snap) * snap)
+
+
+def hour_template_slots(
+    work_start_min: int,
+    work_end_min: int,
+    *,
+    slot_minutes: int = HOUR_SLOT_MINUTES,
+    snap: int = SNAP_MINUTES,
+    occupied: list[tuple[int, int]] | None = None,
+) -> list[tuple[int, int]]:
+    """Fill the work window with ``slot_minutes`` blocks, skipping occupied ranges.
+
+    Leftover free time of at least ``snap`` minutes becomes its own shorter block
+    so a condensed day can still host extra items.
+    """
+    start = snap_minutes(work_start_min, snap)
+    end = snap_minutes(work_end_min, snap)
+    if end <= start:
+        return []
+    free = subtract_intervals([(start, end)], list(occupied or []))
+    out: list[tuple[int, int]] = []
+    for a, b in free:
+        cursor = a
+        while cursor + snap <= b:
+            nxt = min(cursor + slot_minutes, b)
+            if nxt - cursor < snap:
+                break
+            out.append((cursor, nxt))
+            cursor = nxt
+    return out
+
+
+def free_gaps(
+    work_start_min: int,
+    work_end_min: int,
+    occupied: list[tuple[int, int]] | None = None,
+    *,
+    min_minutes: int = SNAP_MINUTES,
+    snap: int = SNAP_MINUTES,
+) -> list[tuple[int, int]]:
+    start = snap_minutes(work_start_min, snap)
+    end = snap_minutes(work_end_min, snap)
+    if end <= start:
+        return []
+    return [(a, b) for a, b in subtract_intervals([(start, end)], list(occupied or [])) if b - a >= min_minutes]
 
 
 def subtract_intervals(
@@ -106,7 +155,7 @@ class Displacement:
 
 @dataclass
 class EngineConfig:
-    work_start_min: int = 6 * 60
+    work_start_min: int = 8 * 60 + 30
     work_end_min: int = 16 * 60 + 30
     category_targets: dict[str, float] = field(default_factory=dict)
     weights: dict[str, int] = field(default_factory=lambda: dict(DEFAULT_WEIGHTS))

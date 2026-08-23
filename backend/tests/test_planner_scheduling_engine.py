@@ -11,7 +11,10 @@ from app.services.planner.scheduling_engine import (
     at_risk_tasks,
     build_day,
     current_and_next,
+    free_gaps,
+    hour_template_slots,
     score_task,
+    snap_minutes,
     subtract_intervals,
 )
 
@@ -143,3 +146,33 @@ def test_at_risk_includes_overdue_and_repeated() -> None:
     assert "1" in ids
     assert "2" in ids
     assert "3" not in ids
+
+
+def test_hour_template_fills_eight_hour_slots() -> None:
+    slots = hour_template_slots(8 * 60 + 30, 16 * 60 + 30)
+    assert len(slots) == 8
+    assert slots[0] == (8 * 60 + 30, 9 * 60 + 30)
+    assert slots[-1] == (15 * 60 + 30, 16 * 60 + 30)
+    assert all(end - start == 60 for start, end in slots)
+
+
+def test_hour_template_skips_occupied_and_keeps_short_remainder() -> None:
+    occupied = [(10 * 60 + 30, 11 * 60)]
+    slots = hour_template_slots(8 * 60 + 30, 16 * 60 + 30, occupied=occupied)
+    assert (10 * 60 + 30, 11 * 60) not in slots
+    assert (9 * 60 + 30, 10 * 60 + 30) in slots
+    assert (11 * 60, 12 * 60) in slots
+
+
+def test_free_gaps_appear_after_condensing() -> None:
+    work_start, work_end = 8 * 60 + 30, 16 * 60 + 30
+    occupied = [(work_start, work_start + 45), (work_start + 45, work_start + 90)]
+    gaps = free_gaps(work_start, work_end, occupied)
+    assert gaps
+    assert gaps[0][0] == work_start + 90
+    assert gaps[0][1] - gaps[0][0] >= 15
+
+
+def test_snap_minutes_to_quarter_hour() -> None:
+    assert snap_minutes(8 * 60 + 37) == 8 * 60 + 30
+    assert snap_minutes(8 * 60 + 38) == 8 * 60 + 45

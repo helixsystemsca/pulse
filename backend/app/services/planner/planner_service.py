@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import uuid
 from datetime import date, datetime, time, timedelta
 from typing import Any, Optional
@@ -35,6 +36,7 @@ from app.services.planner.constants import (
     DELAY_REASONS,
     HEALTHY_DELAY_REASONS,
     SEED_CATEGORIES,
+    SNAP_MINUTES,
 )
 from app.services.planner.scheduling_engine import (
     EngineConfig,
@@ -45,11 +47,14 @@ from app.services.planner.scheduling_engine import (
     at_risk_tasks,
     build_day,
     current_and_next,
+    hour_template_slots,
     minutes_to_hhmm,
+    snap_minutes,
     weekday_offset,
 )
 
 TZ_NAME = "America/Vancouver"
+_COLOR_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
 
 
 def _tz() -> ZoneInfo:
@@ -91,6 +96,18 @@ def _minutes_of(t: time) -> int:
 def _time_from_min(total: int) -> time:
     hhmm = minutes_to_hhmm(total)
     return _time_from_hhmm(hhmm)
+
+
+class PlannerConflict(ValueError):
+    """The requested block times collide with another block or working hours."""
+
+
+def _snap_time(value: time) -> time:
+    return _time_from_min(snap_minutes(_minutes_of(value)))
+
+
+def _ranges_overlap(a0: int, a1: int, b0: int, b1: int) -> bool:
+    return a0 < b1 and b0 < a1
 
 
 class InternalCalendarProvider:
@@ -205,6 +222,16 @@ async def ensure_defaults(db: AsyncSession, company_id: str, user_id: str) -> No
         )
         await db.execute(stmt)
         await db.flush()
+        settings = (
+            await db.execute(
+                select(PlannerSettings).where(
+                    PlannerSettings.company_id == company_id, PlannerSettings.user_id == user_id
+                )
+            )
+        ).scalar_one_or_none()
+    if settings and _as_hhmm(settings.work_start) == "06:00" and _as_hhmm(settings.work_end) == "16:30":
+        settings.work_start = _time_from_hhmm(DEFAULT_WORK_START)
+        await db.flush()
 
     routines = (
         await db.execute(
@@ -301,7 +328,7 @@ def serialize_block(
         "category_color": cat.color if cat else None,
         "priority": task.priority if task else None,
         "estimated_minutes": task.estimated_minutes if task else None,
-        "source_type": task.source_type if task else ("calendar" if row.block_type == "meeting" else "routine"),
+        "source_type": task.source_type if task else (row.block_type or "open"),
         "delay_count": task.delay_count if task else 0,
         "delay_reason": latest_delay.get(str(row.task_id)) if row.task_id else None,
     }
@@ -346,7 +373,10 @@ async def patch_settings(
     row = await get_settings(db, company_id, user_id)
     for key in ("work_start", "work_end", "category_targets", "scheduler_weights", "adaptive_scheduling", "timezone"):
         if key in body and body[key] is not None:
-            setattr(row, key, body[key])
+            value = body[key]
+            if key in {"work_start", "work_end"} and isinstance(value, time):
+                value = _snap_time(value)
+            setattr(row, key, value)
     await db.flush()
     return row
 
@@ -354,6 +384,29 @@ async def patch_settings(
 async def list_categories(db: AsyncSession, company_id: str, user_id: str) -> list[PlannerCategory]:
     await ensure_defaults(db, company_id, user_id)
     return await _categories(db, company_id)
+
+
+async def patch_category(
+    db: AsyncSession, company_id: str, user_id: str, category_id: str, body: dict[str, Any]
+) -> PlannerCategory:
+    await ensure_defaults(db, company_id, user_id)
+    row = await db.get(PlannerCategory, category_id)
+    if not row or row.company_id != company_id:
+        raise ValueError("Category not found")
+    if "name" in body and body["name"] is not None:
+        name = str(body["name"]).strip()
+        if not name:
+            raise PlannerConflict("Category name is required")
+        row.name = name[:128]
+    if "color" in body and body["color"] is not None:
+        color = str(body["color"]).strip()
+        if not _COLOR_RE.match(color):
+            raise PlannerConflict("Color must be a hex value like #0ea5e9")
+        row.color = color
+    if "active" in body and body["active"] is not None:
+        row.active = bool(body["active"])
+    await db.flush()
+    return row
 
 
 async def list_routines(db: AsyncSession, company_id: str, user_id: str) -> list[PlannerRoutineBlock]:
@@ -584,7 +637,6 @@ async def complete_task(db: AsyncSession, company_id: str, user_id: str, task_id
     if not row.started_at:
         row.started_at = row.completed_at
     await db.flush()
-    await generate_schedule(db, company_id, user_id, _today())
     return row
 
 
@@ -657,6 +709,62 @@ async def _adaptive_durations(db: AsyncSession, company_id: str, user_id: str, e
         if slug and vals:
             out[slug] = round(sum(vals) / len(vals))
     return out
+
+
+def _keep_on_template_reset(block: PlannerScheduleBlock) -> bool:
+    if block.status in {"in_progress", "complete"}:
+        return True
+    if block.block_type in {"meeting", "interruption"}:
+        return True
+    return bool(block.locked)
+
+
+async def generate_hour_template(
+    db: AsyncSession,
+    company_id: str,
+    user_id: str,
+    day: date | None = None,
+    *,
+    reset: bool = False,
+) -> list[PlannerScheduleBlock]:
+    await ensure_defaults(db, company_id, user_id)
+    day = _parse_date(day)
+    settings = await get_settings(db, company_id, user_id)
+    existing = await _day_blocks(db, company_id, user_id, day)
+    if existing and not reset:
+        return existing
+
+    for block in existing:
+        if _keep_on_template_reset(block):
+            continue
+        await db.delete(block)
+    await db.flush()
+
+    kept = await _day_blocks(db, company_id, user_id, day)
+    occupied = [(_minutes_of(b.start_time), _minutes_of(b.end_time)) for b in kept]
+    slots = hour_template_slots(
+        _minutes_of(settings.work_start),
+        _minutes_of(settings.work_end),
+        occupied=occupied,
+    )
+    for start_min, end_min in slots:
+        db.add(
+            PlannerScheduleBlock(
+                company_id=company_id,
+                user_id=user_id,
+                date=day,
+                start_time=_time_from_min(start_min),
+                end_time=_time_from_min(end_min),
+                title="Open",
+                block_type="open",
+                locked=False,
+                generated_by_scheduler=True,
+                status="scheduled",
+            )
+        )
+    await db.flush()
+    await persist_daily_metrics(db, company_id, user_id, day)
+    return await _day_blocks(db, company_id, user_id, day)
 
 
 async def generate_schedule(
@@ -875,7 +983,7 @@ async def get_day(
     day = _parse_date(day)
     blocks = await _day_blocks(db, company_id, user_id, day)
     if generate_if_empty and not blocks:
-        blocks = await generate_schedule(db, company_id, user_id, day)
+        blocks = await generate_hour_template(db, company_id, user_id, day)
     settings = await get_settings(db, company_id, user_id)
     cats = _cat_map(await _categories(db, company_id))
     task_ids = [str(b.task_id) for b in blocks if b.task_id]
@@ -1140,7 +1248,6 @@ async def end_interruption(
             paused.status = "in_progress"
             await _open_time_entry(db, company_id, user_id, str(paused.id))
     await db.flush()
-    await generate_schedule(db, company_id, user_id, _today())
     return row
 
 
@@ -1161,8 +1268,162 @@ async def defer_task(
         )
     )
     await db.flush()
-    await generate_schedule(db, company_id, user_id, _today())
     return row
+
+
+async def _occupied_ranges(
+    db: AsyncSession,
+    company_id: str,
+    user_id: str,
+    day: date,
+    exclude_id: str | None = None,
+) -> list[tuple[int, int]]:
+    out: list[tuple[int, int]] = []
+    for block in await _day_blocks(db, company_id, user_id, day):
+        if exclude_id and str(block.id) == exclude_id:
+            continue
+        out.append((_minutes_of(block.start_time), _minutes_of(block.end_time)))
+    return out
+
+
+def _validated_range(
+    start: time,
+    end: time,
+    occupied: list[tuple[int, int]],
+    work_start: time,
+    work_end: time,
+) -> tuple[int, int]:
+    start_min = snap_minutes(_minutes_of(start))
+    end_min = snap_minutes(_minutes_of(end))
+    work_a = snap_minutes(_minutes_of(work_start))
+    work_b = snap_minutes(_minutes_of(work_end))
+    if end_min - start_min < SNAP_MINUTES:
+        raise PlannerConflict("Blocks must be at least 15 minutes")
+    if start_min < work_a or end_min > work_b:
+        raise PlannerConflict("Block must stay inside working hours")
+    for other_start, other_end in occupied:
+        if _ranges_overlap(start_min, end_min, other_start, other_end):
+            raise PlannerConflict("Block overlaps another block")
+    return start_min, end_min
+
+
+async def serialize_block_payload(
+    db: AsyncSession, company_id: str, user_id: str, row: PlannerScheduleBlock
+) -> dict[str, Any]:
+    cats = _cat_map(await _categories(db, company_id))
+    tasks: dict[str, PlannerTask] = {}
+    if row.task_id:
+        task = await db.get(PlannerTask, row.task_id)
+        if task:
+            tasks[str(task.id)] = task
+    delays = await _latest_delays(db, company_id, [str(row.task_id)] if row.task_id else [])
+    return serialize_block(row, cats, tasks, delays)
+
+
+async def create_block(
+    db: AsyncSession, company_id: str, user_id: str, body: dict[str, Any]
+) -> PlannerScheduleBlock:
+    await ensure_defaults(db, company_id, user_id)
+    settings = await get_settings(db, company_id, user_id)
+    day = _parse_date(body.get("date"))
+    start = body.get("start_time")
+    end = body.get("end_time")
+    if not isinstance(start, time) or not isinstance(end, time):
+        raise PlannerConflict("start_time and end_time are required")
+    start_min, end_min = _validated_range(
+        start,
+        end,
+        await _occupied_ranges(db, company_id, user_id, day),
+        settings.work_start,
+        settings.work_end,
+    )
+    category_id = body.get("category_id")
+    if category_id:
+        cat = await db.get(PlannerCategory, category_id)
+        if not cat or cat.company_id != company_id:
+            raise ValueError("Category not found")
+    block_type = str(body.get("block_type") or "open")
+    if block_type not in {"open", "task", "meeting"}:
+        block_type = "open"
+    title = str(body.get("title") or "Open").strip() or "Open"
+    row = PlannerScheduleBlock(
+        company_id=company_id,
+        user_id=user_id,
+        date=day,
+        start_time=_time_from_min(start_min),
+        end_time=_time_from_min(end_min),
+        title=title[:512],
+        block_type=block_type,
+        category_id=category_id,
+        calendar_event_id=body.get("calendar_event_id"),
+        task_id=body.get("task_id"),
+        locked=block_type == "meeting",
+        generated_by_scheduler=False,
+        status="scheduled",
+    )
+    db.add(row)
+    await db.flush()
+    return row
+
+
+async def patch_block(
+    db: AsyncSession, company_id: str, user_id: str, block_id: str, body: dict[str, Any]
+) -> PlannerScheduleBlock:
+    row = await db.get(PlannerScheduleBlock, block_id)
+    if not row or row.company_id != company_id or row.user_id != user_id:
+        raise ValueError("Block not found")
+    settings = await get_settings(db, company_id, user_id)
+    start = body["start_time"] if "start_time" in body and body["start_time"] is not None else row.start_time
+    end = body["end_time"] if "end_time" in body and body["end_time"] is not None else row.end_time
+    if "start_time" in body or "end_time" in body:
+        start_min, end_min = _validated_range(
+            start,
+            end,
+            await _occupied_ranges(db, company_id, user_id, row.date, exclude_id=str(row.id)),
+            settings.work_start,
+            settings.work_end,
+        )
+        row.start_time = _time_from_min(start_min)
+        row.end_time = _time_from_min(end_min)
+        row.generated_by_scheduler = False
+    if "title" in body and body["title"] is not None:
+        title = str(body["title"]).strip() or "Open"
+        row.title = title[:512]
+        row.generated_by_scheduler = False
+    if "category_id" in body:
+        category_id = body["category_id"]
+        if category_id:
+            cat = await db.get(PlannerCategory, category_id)
+            if not cat or cat.company_id != company_id:
+                raise ValueError("Category not found")
+            row.category_id = str(cat.id)
+        else:
+            row.category_id = None
+        row.generated_by_scheduler = False
+    await db.flush()
+    return row
+
+
+async def delete_block(db: AsyncSession, company_id: str, user_id: str, block_id: str) -> None:
+    row = await db.get(PlannerScheduleBlock, block_id)
+    if row and row.company_id == company_id and row.user_id == user_id:
+        await db.delete(row)
+        await db.flush()
+
+
+async def delete_blocks_for_event(
+    db: AsyncSession, company_id: str, user_id: str, event_id: str
+) -> None:
+    q = await db.execute(
+        select(PlannerScheduleBlock).where(
+            PlannerScheduleBlock.company_id == company_id,
+            PlannerScheduleBlock.user_id == user_id,
+            PlannerScheduleBlock.calendar_event_id == event_id,
+        )
+    )
+    for row in q.scalars().all():
+        await db.delete(row)
+    await db.flush()
 
 
 async def move_block(
@@ -1177,13 +1438,21 @@ async def move_block(
     row = await db.get(PlannerScheduleBlock, block_id)
     if not row or row.company_id != company_id or row.user_id != user_id:
         raise ValueError("Block not found")
+    settings = await get_settings(db, company_id, user_id)
+    duration = max(SNAP_MINUTES, _minutes_of(row.end_time) - _minutes_of(row.start_time))
+    resolved_end = end or _time_from_min(_minutes_of(start) + duration)
+    start_min, end_min = _validated_range(
+        start,
+        resolved_end,
+        await _occupied_ranges(db, company_id, user_id, row.date, exclude_id=str(row.id)),
+        settings.work_start,
+        settings.work_end,
+    )
     prev = row.start_time
-    duration = _minutes_of(row.end_time) - _minutes_of(row.start_time)
-    row.start_time = start
-    row.end_time = end or _time_from_min(_minutes_of(start) + max(5, duration))
+    row.start_time = _time_from_min(start_min)
+    row.end_time = _time_from_min(end_min)
     row.generated_by_scheduler = False
-    row.locked = True
-    if row.task_id:
+    if row.task_id and reason and reason != "personal_manual":
         task = await db.get(PlannerTask, row.task_id)
         if task:
             task.delay_count = int(task.delay_count or 0) + 1

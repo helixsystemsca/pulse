@@ -188,6 +188,13 @@ export async function fetchCategories(): Promise<PlannerCategory[]> {
   return apiFetch<PlannerCategory[]>(`${BASE}/categories`);
 }
 
+export async function patchCategory(
+  id: string,
+  body: Partial<Pick<PlannerCategory, "name" | "color" | "active">>,
+): Promise<PlannerCategory> {
+  return apiFetch<PlannerCategory>(`${BASE}/categories/${id}`, { method: "PATCH", json: body });
+}
+
 export async function fetchSettings(): Promise<PlannerSettings> {
   return apiFetch<PlannerSettings>(`${BASE}/settings`);
 }
@@ -272,8 +279,30 @@ export async function closeoutDay(notes: string, date?: string): Promise<Record<
   return apiFetch(`${BASE}/day/closeout${suffix}`, { method: "POST", json: { notes } });
 }
 
-export async function moveBlock(id: string, start_time: string, reason = "personal_manual"): Promise<void> {
-  await apiFetch(`${BASE}/blocks/${id}/move`, { method: "POST", json: { start_time, reason } });
+export async function moveBlock(id: string, start_time: string, end_time?: string, reason = "personal_manual"): Promise<void> {
+  await apiFetch(`${BASE}/blocks/${id}/move`, { method: "POST", json: { start_time, end_time, reason } });
+}
+
+export async function createBlock(body: {
+  date?: string;
+  start_time: string;
+  end_time: string;
+  title?: string;
+  category_id?: string | null;
+  block_type?: string;
+}): Promise<PlannerBlock> {
+  return apiFetch<PlannerBlock>(`${BASE}/blocks`, { method: "POST", json: body });
+}
+
+export async function patchBlock(
+  id: string,
+  body: { start_time?: string; end_time?: string; title?: string; category_id?: string | null },
+): Promise<PlannerBlock> {
+  return apiFetch<PlannerBlock>(`${BASE}/blocks/${id}`, { method: "PATCH", json: body });
+}
+
+export async function deleteBlock(id: string): Promise<void> {
+  await apiFetch(`${BASE}/blocks/${id}`, { method: "DELETE" });
 }
 
 export async function lockBlock(id: string, locked = true): Promise<void> {

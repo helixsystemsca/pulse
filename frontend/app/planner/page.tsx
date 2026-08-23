@@ -1,33 +1,39 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarDays } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { CalendarDays, Settings } from "lucide-react";
 import { PageBody } from "@/components/ui/PageBody";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { DayCalendar } from "@/components/planner/DayCalendar";
 import { PlannerChrome } from "@/components/planner/PlannerChrome";
+import { PlannerSettingsModal } from "@/components/planner/PlannerSettingsModal";
+import { clockFromMinutes, freeGaps, minutesFromClock } from "@/lib/planner/dayCalendar";
 import {
   DELAY_REASON_LABELS,
-  acceptDay,
   closeoutDay,
   completeTask,
+  createBlock,
   createCalendarEvent,
-  createTask,
   deferTask,
+  deleteBlock,
   endInterruption,
   fetchCategories,
   fetchDay,
+  fetchSettings,
   generateDay,
   hhmm,
   isoDate,
-  lockBlock,
   moveBlock,
+  patchBlock,
+  patchCategory,
+  patchSettings,
   shiftIsoDate,
   startInterruption,
   startTask,
   stopTask,
-  type PlannerBlock,
   type PlannerCategory,
   type PlannerDay,
+  type PlannerSettings,
 } from "@/lib/planner/plannerService";
 
 const inputClass =
@@ -39,16 +45,6 @@ const btnGhost =
 const btnDanger =
   "rounded-lg border border-red-400 bg-red-50 px-3 py-2 text-sm font-medium text-red-800 hover:bg-red-100 dark:bg-red-950/40 dark:text-red-200";
 
-function statusLabel(block: PlannerBlock, nowId: string | null, nextId: string | null): string {
-  if (block.block_type === "meeting") return "Calendar";
-  if (block.block_type === "interruption") return "Emergency";
-  if (block.status === "complete") return "Complete";
-  if (block.status === "in_progress" || block.id === nowId) return "In Progress";
-  if (block.id === nextId) return "Next";
-  if (block.block_type === "open") return "Open";
-  return "Scheduled";
-}
-
 function minsLabel(n: number): string {
   const h = Math.floor(n / 60);
   const m = n % 60;
@@ -57,15 +53,29 @@ function minsLabel(n: number): string {
   return `${m} min`;
 }
 
+function firstGap(day: PlannerDay): { start: string; end: string } | null {
+  const start = minutesFromClock(day.work_start);
+  const end = minutesFromClock(day.work_end);
+  const occupied = day.timeline.map((block) => ({
+    start: minutesFromClock(block.start_time),
+    end: minutesFromClock(block.end_time),
+  }));
+  const gap = freeGaps(start, end, occupied)[0];
+  if (!gap) return null;
+  return { start: clockFromMinutes(gap.start), end: clockFromMinutes(Math.min(gap.end, gap.start + 60)) };
+}
+
 export default function PlannerTodayPage() {
   const [date, setDate] = useState(isoDate(new Date()));
   const [day, setDay] = useState<PlannerDay | null>(null);
   const [cats, setCats] = useState<PlannerCategory[]>([]);
+  const [settings, setSettings] = useState<PlannerSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [quick, setQuick] = useState("");
   const [quickCat, setQuickCat] = useState("");
   const [busy, setBusy] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [emergencyOpen, setEmergencyOpen] = useState(false);
   const [emReason, setEmReason] = useState("emergency");
   const [emNotes, setEmNotes] = useState("");
@@ -77,12 +87,12 @@ export default function PlannerTodayPage() {
   const [deferReason, setDeferReason] = useState("personal_manual");
 
   const reload = useCallback(async () => {
-    setLoading(true);
     setError(null);
     try {
-      const [d, c] = await Promise.all([fetchDay(date), fetchCategories()]);
+      const [d, c, s] = await Promise.all([fetchDay(date), fetchCategories(), fetchSettings()]);
       setDay(d);
       setCats(c);
+      setSettings(s);
       setQuickCat((prev) => prev || c[0]?.id || "");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load planner");
@@ -92,13 +102,12 @@ export default function PlannerTodayPage() {
   }, [date]);
 
   useEffect(() => {
+    setLoading(true);
     void reload();
   }, [reload]);
 
   const nowId = day?.now?.id ?? null;
   const nextId = day?.next?.id ?? null;
-
-  const atRiskIds = useMemo(() => new Set(day?.at_risk.map((t) => t.id) ?? []), [day]);
 
   async function run(fn: () => Promise<unknown>) {
     setBusy(true);
@@ -116,35 +125,43 @@ export default function PlannerTodayPage() {
   async function onQuickAdd(e: React.FormEvent) {
     e.preventDefault();
     const title = quick.trim();
-    if (!title) return;
+    if (!title || !day) return;
+    const gap = firstGap(day);
+    if (!gap) {
+      setError("Condense existing blocks to free a 15-minute gap, then add a new block.");
+      return;
+    }
     await run(async () => {
-      await createTask({ title, category_id: quickCat || undefined, estimated_minutes: 30, priority: "medium" });
-      await generateDay(date);
+      await createBlock({
+        date,
+        start_time: gap.start,
+        end_time: gap.end,
+        title,
+        category_id: quickCat || null,
+      });
       setQuick("");
     });
-  }
-
-  async function onDropBlock(target: PlannerBlock, draggedId: string) {
-    if (draggedId === target.id) return;
-    await run(() => moveBlock(draggedId, hhmm(target.start_time)));
   }
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Daily Operations Planner"
-        description="The system plans the day. You stay in control."
+        description="8:30–4:30 hour template. Drag and resize in 15-minute steps."
         icon={CalendarDays}
         actions={
           <div className="flex flex-wrap gap-2">
+            <button type="button" className={btnGhost} disabled={busy} onClick={() => setSettingsOpen(true)}>
+              <span className="inline-flex items-center gap-1">
+                <Settings className="h-4 w-4" />
+                Settings
+              </span>
+            </button>
             <button type="button" className={btnDanger} disabled={busy} onClick={() => setEmergencyOpen(true)}>
               Emergency / Interruption
             </button>
             <button type="button" className={btnGhost} disabled={busy} onClick={() => void run(() => generateDay(date))}>
-              Regenerate
-            </button>
-            <button type="button" className={btnGhost} disabled={busy} onClick={() => void run(() => acceptDay(date))}>
-              Accept schedule
+              Reset hour template
             </button>
           </div>
         }
@@ -173,7 +190,7 @@ export default function PlannerTodayPage() {
           </div>
           <form onSubmit={onQuickAdd} className="flex min-w-[16rem] flex-1 flex-wrap items-end gap-2">
             <label className="min-w-[12rem] flex-1">
-              <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-ds-muted">Capture</span>
+              <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-ds-muted">Add into a gap</span>
               <input
                 className={inputClass}
                 placeholder="Review ammonia plant inspection report"
@@ -214,118 +231,73 @@ export default function PlannerTodayPage() {
         {loading || !day ? (
           <p className="text-sm text-ds-muted">Loading…</p>
         ) : (
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(18rem,0.8fr)]">
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(18rem,0.7fr)]">
             <div className="space-y-3">
-              <section className="rounded-xl border border-ds-border bg-ds-card p-4 shadow-[var(--ds-shadow-card)]">
+              <DayCalendar
+                date={date}
+                workStart={day.work_start}
+                workEnd={day.work_end}
+                blocks={day.timeline}
+                categories={cats}
+                nowId={nowId}
+                nextId={nextId}
+                disabled={busy}
+                onMove={(id, start, end) => run(() => moveBlock(id, start, end))}
+                onAdd={(start, end, title, categoryId) =>
+                  run(() =>
+                    createBlock({
+                      date,
+                      start_time: start,
+                      end_time: end,
+                      title,
+                      category_id: categoryId,
+                    }),
+                  )
+                }
+                onPatch={(id, body) => run(() => patchBlock(id, body))}
+                onDelete={(id) => run(() => deleteBlock(id))}
+              />
+
+              {day.now?.task_id ? (
+                <section className="rounded-xl border border-ds-border bg-ds-card p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">Current task</p>
+                  <p className="mt-1 font-medium text-ds-foreground">{day.now.title}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button type="button" className={btnPrimary} disabled={busy} onClick={() => void run(() => startTask(day.now!.task_id!))}>
+                      Start task
+                    </button>
+                    <button type="button" className={btnGhost} disabled={busy} onClick={() => void run(() => stopTask(day.now!.task_id!))}>
+                      Stop timer
+                    </button>
+                    <button type="button" className={btnGhost} disabled={busy} onClick={() => void run(() => completeTask(day.now!.task_id!))}>
+                      Complete
+                    </button>
+                    <button type="button" className={btnGhost} disabled={busy} onClick={() => setDeferId(day.now!.task_id)}>
+                      Defer
+                    </button>
+                  </div>
+                </section>
+              ) : null}
+            </div>
+
+            <aside className="space-y-3">
+              <section className="rounded-xl border border-ds-border bg-ds-card p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">Now</p>
                 {day.now ? (
                   <div className="mt-2">
                     <p className="text-xs uppercase tracking-wide" style={{ color: day.now.category_color ?? undefined }}>
                       {day.now.category_name ?? day.now.block_type}
                     </p>
-                    <h2 className="text-xl font-semibold text-ds-foreground">{day.now.title}</h2>
-                    <p className="mt-1 text-sm text-ds-muted">
+                    <p className="font-medium text-ds-foreground">{day.now.title}</p>
+                    <p className="text-sm text-ds-muted">
                       {hhmm(day.now.start_time)}–{hhmm(day.now.end_time)}
-                      {day.now.priority ? ` · ${day.now.priority}` : ""}
-                      {day.now.delay_count ? ` · delayed ${day.now.delay_count}×` : ""}
                     </p>
-                    {day.now.task_id ? (
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <button type="button" className={btnPrimary} disabled={busy} onClick={() => void run(() => startTask(day.now!.task_id!))}>
-                          Start task
-                        </button>
-                        <button type="button" className={btnGhost} disabled={busy} onClick={() => void run(() => stopTask(day.now!.task_id!))}>
-                          Stop timer
-                        </button>
-                        <button type="button" className={btnGhost} disabled={busy} onClick={() => void run(() => completeTask(day.now!.task_id!))}>
-                          Complete
-                        </button>
-                        <button type="button" className={btnGhost} disabled={busy} onClick={() => setDeferId(day.now!.task_id)}>
-                          Defer
-                        </button>
-                      </div>
-                    ) : null}
                   </div>
                 ) : (
-                  <p className="mt-2 text-sm text-ds-muted">Nothing scheduled for this moment. Capture work or regenerate the day.</p>
+                  <p className="mt-2 text-sm text-ds-muted">Nothing in this slot right now.</p>
                 )}
               </section>
 
-              <section className="rounded-xl border border-ds-border bg-ds-card p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">Timeline</p>
-                <ol className="mt-3 space-y-2">
-                  {day.timeline.map((b) => {
-                    const isNow = b.id === nowId;
-                    const isNext = b.id === nextId;
-                    const atRisk = Boolean(b.task_id && atRiskIds.has(b.task_id));
-                    return (
-                      <li
-                        key={b.id}
-                        draggable={b.block_type === "task"}
-                        onDragStart={(e) => e.dataTransfer.setData("text/plain", b.id)}
-                        onDragOver={(e) => e.preventDefault()}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          const id = e.dataTransfer.getData("text/plain");
-                          if (id) void onDropBlock(b, id);
-                        }}
-                        className={`rounded-lg border px-3 py-2 ${
-                          b.block_type === "meeting"
-                            ? "border-slate-400 bg-slate-100 dark:bg-slate-900/50"
-                            : b.block_type === "interruption"
-                              ? "border-red-400 bg-red-50 dark:bg-red-950/30"
-                              : isNow
-                                ? "border-ds-primary bg-ds-secondary"
-                                : "border-ds-border bg-ds-bg"
-                        }`}
-                      >
-                        <div className="flex flex-wrap items-start justify-between gap-2">
-                          <div>
-                            <p className="text-xs font-medium text-ds-muted">
-                              {hhmm(b.start_time)}–{hhmm(b.end_time)}
-                            </p>
-                            <p className="text-[11px] uppercase tracking-wide" style={{ color: b.category_color ?? undefined }}>
-                              {b.category_name ?? b.block_type}
-                            </p>
-                            <p className="font-medium text-ds-foreground">{b.title}</p>
-                            <p className="text-xs text-ds-muted">
-                              {b.priority ? `${b.priority} · ` : ""}
-                              {b.estimated_minutes ? `${b.estimated_minutes} min · ` : ""}
-                              {b.source_type ?? "routine"}
-                              {b.delay_count ? ` · delayed ${b.delay_count}×` : ""}
-                              {b.delay_reason ? ` (${DELAY_REASON_LABELS[b.delay_reason] ?? b.delay_reason})` : ""}
-                              {atRisk ? " · at risk" : ""}
-                            </p>
-                          </div>
-                          <div className="flex flex-col items-end gap-1">
-                            <span className="rounded-full border border-ds-border px-2 py-0.5 text-[11px] uppercase tracking-wide text-ds-muted">
-                              {statusLabel(b, nowId, nextId)}
-                            </span>
-                            {b.task_id ? (
-                              <div className="flex flex-wrap justify-end gap-1">
-                                {isNext || isNow ? (
-                                  <button type="button" className={btnGhost} disabled={busy} onClick={() => void run(() => startTask(b.task_id!))}>
-                                    Start
-                                  </button>
-                                ) : null}
-                                <button type="button" className={btnGhost} disabled={busy} onClick={() => void run(() => completeTask(b.task_id!))}>
-                                  Done
-                                </button>
-                                <button type="button" className={btnGhost} disabled={busy} onClick={() => void run(() => lockBlock(b.id, !b.locked))}>
-                                  {b.locked ? "Unlock" : "Lock"}
-                                </button>
-                              </div>
-                            ) : null}
-                          </div>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ol>
-              </section>
-            </div>
-
-            <aside className="space-y-3">
               <section className="rounded-xl border border-ds-border bg-ds-card p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">Next</p>
                 {day.next ? (
@@ -362,12 +334,12 @@ export default function PlannerTodayPage() {
 
               <section className="rounded-xl border border-ds-border bg-ds-card p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">Add meeting (internal calendar)</p>
-                <p className="mt-1 text-xs text-ds-muted">Outlook/Google connectors are not connected. This uses the internal provider.</p>
+                <p className="mt-1 text-xs text-ds-muted">Needs an open gap. Condense blocks first if the slot is full.</p>
                 <div className="mt-2 space-y-2">
                   <input className={inputClass} placeholder="Capital projects meeting" value={meetingTitle} onChange={(e) => setMeetingTitle(e.target.value)} />
                   <div className="grid grid-cols-2 gap-2">
-                    <input className={inputClass} type="time" value={meetingStart} onChange={(e) => setMeetingStart(e.target.value)} />
-                    <input className={inputClass} type="time" value={meetingEnd} onChange={(e) => setMeetingEnd(e.target.value)} />
+                    <input className={inputClass} type="time" step={900} value={meetingStart} onChange={(e) => setMeetingStart(e.target.value)} />
+                    <input className={inputClass} type="time" step={900} value={meetingEnd} onChange={(e) => setMeetingEnd(e.target.value)} />
                   </div>
                   <button
                     type="button"
@@ -400,18 +372,6 @@ export default function PlannerTodayPage() {
                   <li>Meetings: {minsLabel(day.metrics.meeting_minutes)}</li>
                   <li>Strategic/improvement: {minsLabel(day.metrics.strategic_minutes)}</li>
                 </ul>
-                <p className="mt-3 text-xs font-medium uppercase tracking-wide text-ds-muted">Why work was delayed</p>
-                {Object.keys(day.metrics.delay_reasons || {}).length === 0 ? (
-                  <p className="text-sm text-ds-muted">No delays recorded today.</p>
-                ) : (
-                  <ul className="mt-1 text-sm">
-                    {Object.entries(day.metrics.delay_reasons).map(([k, v]) => (
-                      <li key={k}>
-                        {DELAY_REASON_LABELS[k] ?? k}: {v}
-                      </li>
-                    ))}
-                  </ul>
-                )}
                 <textarea
                   className={`${inputClass} mt-3`}
                   rows={2}
@@ -427,11 +387,31 @@ export default function PlannerTodayPage() {
           </div>
         )}
 
+        <PlannerSettingsModal
+          open={settingsOpen}
+          settings={settings}
+          categories={cats}
+          busy={busy}
+          onClose={() => setSettingsOpen(false)}
+          onSaveHours={(workStart, workEnd) =>
+            run(async () => {
+              const updated = await patchSettings({ work_start: workStart, work_end: workEnd });
+              setSettings(updated);
+            })
+          }
+          onSaveColor={(categoryId, color) =>
+            run(async () => {
+              const updated = await patchCategory(categoryId, { color });
+              setCats((prev) => prev.map((cat) => (cat.id === updated.id ? updated : cat)));
+            })
+          }
+        />
+
         {emergencyOpen ? (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
             <div className="w-full max-w-md rounded-xl border border-ds-border bg-ds-card p-4 shadow-xl">
               <h3 className="text-lg font-semibold">Emergency / Interruption</h3>
-              <p className="mt-1 text-sm text-ds-muted">Pauses the current task, records the interruption, then rebuilds the rest of the day when you resume.</p>
+              <p className="mt-1 text-sm text-ds-muted">Pauses the current task and records the interruption.</p>
               <label className="mt-3 block text-xs font-medium uppercase tracking-wide text-ds-muted">Reason</label>
               <select className={inputClass} value={emReason} onChange={(e) => setEmReason(e.target.value)}>
                 {Object.entries(DELAY_REASON_LABELS).map(([k, v]) => (

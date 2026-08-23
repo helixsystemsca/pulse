@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
-from typing import Annotated, Any, Optional
+from typing import Annotated, Any, NoReturn, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,10 +12,13 @@ from app.api.deps import get_db, require_any_rbac, require_tenant_user
 from app.models.domain import User
 from app.schemas.planner import (
     PlannerAnalyticsOut,
+    PlannerBlockCreateIn,
     PlannerBlockerIn,
+    PlannerBlockPatchIn,
     PlannerCalendarEventIn,
     PlannerCalendarEventOut,
     PlannerCategoryOut,
+    PlannerCategoryPatchIn,
     PlannerCloseoutIn,
     PlannerDayOut,
     PlannerDeferIn,
@@ -26,6 +29,7 @@ from app.schemas.planner import (
     PlannerRoutineIn,
     PlannerRoutineOut,
     PlannerRoutinePatchIn,
+    PlannerScheduleBlockOut,
     PlannerSettingsOut,
     PlannerSettingsPatchIn,
     PlannerTaskIn,
@@ -51,6 +55,12 @@ def _cid(actor: User) -> str:
 
 def _uid(actor: User) -> str:
     return str(actor.id)
+
+
+def _raise_planner(exc: Exception) -> NoReturn:
+    if isinstance(exc, svc.PlannerConflict):
+        raise HTTPException(409, str(exc)) from exc
+    raise HTTPException(404, str(exc)) from exc
 
 
 def _task_out(row: Any, cats: dict) -> PlannerTaskOut:
@@ -90,6 +100,20 @@ async def categories(db: Db, actor: Actor, _: Reader) -> list[PlannerCategoryOut
     rows = await svc.list_categories(db, _cid(actor), _uid(actor))
     await db.commit()
     return [PlannerCategoryOut.model_validate(r) for r in rows]
+
+
+@router.patch("/categories/{category_id}", response_model=PlannerCategoryOut)
+async def patch_category(
+    category_id: str, body: PlannerCategoryPatchIn, db: Db, actor: Actor, _: Editor
+) -> PlannerCategoryOut:
+    try:
+        row = await svc.patch_category(
+            db, _cid(actor), _uid(actor), category_id, body.model_dump(exclude_unset=True)
+        )
+    except (ValueError, svc.PlannerConflict) as e:
+        _raise_planner(e)
+    await db.commit()
+    return PlannerCategoryOut.model_validate(row)
 
 
 @router.get("/settings", response_model=PlannerSettingsOut)
@@ -287,7 +311,7 @@ async def generate_day(
     date_value: Optional[date] = Query(None, alias="date"),
 ) -> PlannerDayOut:
     cid, uid = _cid(actor), _uid(actor)
-    await svc.generate_schedule(db, cid, uid, date_value)
+    await svc.generate_hour_template(db, cid, uid, date_value, reset=True)
     data = await svc.get_day(db, cid, uid, date_value, generate_if_empty=False)
     payload = PlannerDayOut.model_validate(data)
     await db.commit()
@@ -330,12 +354,47 @@ async def closeout(
     }
 
 
+@router.post("/blocks", response_model=PlannerScheduleBlockOut)
+async def create_block(body: PlannerBlockCreateIn, db: Db, actor: Actor, _: Editor) -> PlannerScheduleBlockOut:
+    cid, uid = _cid(actor), _uid(actor)
+    try:
+        row = await svc.create_block(db, cid, uid, body.model_dump())
+        payload = await svc.serialize_block_payload(db, cid, uid, row)
+    except (ValueError, svc.PlannerConflict) as e:
+        _raise_planner(e)
+        raise
+    await db.commit()
+    return PlannerScheduleBlockOut.model_validate(payload)
+
+
+@router.patch("/blocks/{block_id}", response_model=PlannerScheduleBlockOut)
+async def patch_block(
+    block_id: str, body: PlannerBlockPatchIn, db: Db, actor: Actor, _: Editor
+) -> PlannerScheduleBlockOut:
+    cid, uid = _cid(actor), _uid(actor)
+    try:
+        row = await svc.patch_block(db, cid, uid, block_id, body.model_dump(exclude_unset=True))
+        payload = await svc.serialize_block_payload(db, cid, uid, row)
+    except (ValueError, svc.PlannerConflict) as e:
+        _raise_planner(e)
+        raise
+    await db.commit()
+    return PlannerScheduleBlockOut.model_validate(payload)
+
+
+@router.delete("/blocks/{block_id}", status_code=204)
+async def delete_block(block_id: str, db: Db, actor: Actor, _: Editor) -> Response:
+    await svc.delete_block(db, _cid(actor), _uid(actor), block_id)
+    await db.commit()
+    return Response(status_code=204)
+
+
 @router.post("/blocks/{block_id}/move")
 async def move_block(block_id: str, body: PlannerMoveIn, db: Db, actor: Actor, _: Editor) -> dict[str, str]:
     try:
         await svc.move_block(db, _cid(actor), _uid(actor), block_id, body.start_time, body.end_time, body.reason)
-    except ValueError as e:
-        raise HTTPException(404, str(e)) from e
+    except (ValueError, svc.PlannerConflict) as e:
+        _raise_planner(e)
     await db.commit()
     return {"ok": "true"}
 
@@ -381,7 +440,27 @@ async def create_event(
     ev = await provider.create_event(body.title, body.start_at, body.end_at)
     if body.notes:
         await provider.update_event(ev.id, notes=body.notes)
-    await svc.generate_schedule(db, _cid(actor), _uid(actor), body.start_at.date())
+    start_at = ev.start_at
+    end_at = ev.end_at
+    local_s = start_at.astimezone(svc._tz()) if start_at.tzinfo else start_at.replace(tzinfo=svc._tz())
+    local_e = end_at.astimezone(svc._tz()) if end_at.tzinfo else end_at.replace(tzinfo=svc._tz())
+    try:
+        await svc.create_block(
+            db,
+            _cid(actor),
+            _uid(actor),
+            {
+                "date": local_s.date(),
+                "start_time": local_s.replace(second=0, microsecond=0).time(),
+                "end_time": local_e.replace(second=0, microsecond=0).time(),
+                "title": body.title,
+                "block_type": "meeting",
+                "calendar_event_id": ev.id,
+            },
+        )
+    except (ValueError, svc.PlannerConflict) as e:
+        _raise_planner(e)
+        raise
     await db.commit()
     return PlannerCalendarEventOut(
         id=ev.id, provider=ev.provider, title=ev.title, start_at=ev.start_at, end_at=ev.end_at, notes=body.notes
@@ -391,8 +470,9 @@ async def create_event(
 @router.delete("/calendar/events/{event_id}", status_code=204)
 async def delete_event(event_id: str, db: Db, actor: Actor, _: Editor) -> Response:
     provider = svc.InternalCalendarProvider(db, _cid(actor), _uid(actor))
+    cid, uid = _cid(actor), _uid(actor)
+    await svc.delete_blocks_for_event(db, cid, uid, event_id)
     await provider.delete_event(event_id)
-    await svc.generate_schedule(db, _cid(actor), _uid(actor), svc._today())
     await db.commit()
     return Response(status_code=204)
 

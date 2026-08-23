@@ -31,15 +31,12 @@ DEFAULT_CATEGORY_TARGETS: dict[str, float] = {
     "strategic": 0.05,
 }
 
-DEFAULT_ROUTINE: tuple[tuple[str, str, str, str, bool, bool, int], ...] = (
-    # name, category slug, start, end, protected, flexible, priority
-    ("Email / Communications", "communications", "06:00", "06:30", True, False, 80),
-    ("SOP / Procedures", "sops", "06:30", "07:30", True, False, 80),
-    ("Asset Management", "asset_management", "07:30", "08:30", True, False, 80),
-)
+DEFAULT_ROUTINE: tuple[tuple[str, str, str, str, bool, bool, int], ...] = ()
 
-DEFAULT_WORK_START = "06:00"
+DEFAULT_WORK_START = "08:30"
 DEFAULT_WORK_END = "16:30"
+SNAP_MINUTES = 15
+HOUR_SLOT_MINUTES = 60
 
 PRIORITY_RANK = {"critical": 4, "high": 3, "medium": 2, "low": 1}
 
