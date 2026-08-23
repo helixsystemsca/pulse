@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import uuid
 from datetime import date, datetime, time, timedelta
 from typing import Any, Optional
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy import or_, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.planner_models import (
@@ -50,7 +53,10 @@ TZ_NAME = "America/Vancouver"
 
 
 def _tz() -> ZoneInfo:
-    return ZoneInfo(TZ_NAME)
+    try:
+        return ZoneInfo(TZ_NAME)
+    except ZoneInfoNotFoundError:
+        return ZoneInfo("UTC")
 
 
 def _now() -> datetime:
@@ -158,15 +164,19 @@ async def ensure_defaults(db: AsyncSession, company_id: str, user_id: str) -> No
     cats = await _categories(db, company_id)
     if not cats:
         for i, (slug, name, color) in enumerate(SEED_CATEGORIES):
-            db.add(
-                PlannerCategory(
+            stmt = (
+                pg_insert(PlannerCategory)
+                .values(
+                    id=str(uuid.uuid4()),
                     company_id=company_id,
                     slug=slug,
                     name=name,
                     color=color,
                     sort_order=i,
                 )
+                .on_conflict_do_nothing(constraint="uq_planner_categories_company_slug")
             )
+            await db.execute(stmt)
         await db.flush()
         cats = await _categories(db, company_id)
     by_slug = {c.slug: c for c in cats}
@@ -179,8 +189,10 @@ async def ensure_defaults(db: AsyncSession, company_id: str, user_id: str) -> No
         )
     ).scalar_one_or_none()
     if not settings:
-        db.add(
-            PlannerSettings(
+        stmt = (
+            pg_insert(PlannerSettings)
+            .values(
+                id=str(uuid.uuid4()),
                 company_id=company_id,
                 user_id=user_id,
                 work_start=_time_from_hhmm(DEFAULT_WORK_START),
@@ -189,7 +201,9 @@ async def ensure_defaults(db: AsyncSession, company_id: str, user_id: str) -> No
                 scheduler_weights=dict(DEFAULT_WEIGHTS),
                 timezone=TZ_NAME,
             )
+            .on_conflict_do_nothing(constraint="uq_planner_settings_user")
         )
+        await db.execute(stmt)
         await db.flush()
 
     routines = (
@@ -293,6 +307,18 @@ def serialize_block(
     }
 
 
+def serialize_interruption(row: PlannerInterruption) -> dict[str, Any]:
+    return {
+        "id": str(row.id),
+        "reason": row.reason,
+        "notes": row.notes,
+        "start_time": row.start_time,
+        "end_time": row.end_time,
+        "duration_minutes": row.duration_minutes,
+        "paused_task_id": str(row.paused_task_id) if row.paused_task_id else None,
+    }
+
+
 async def get_settings(db: AsyncSession, company_id: str, user_id: str) -> PlannerSettings:
     await ensure_defaults(db, company_id, user_id)
     row = (
@@ -301,7 +327,16 @@ async def get_settings(db: AsyncSession, company_id: str, user_id: str) -> Plann
                 PlannerSettings.company_id == company_id, PlannerSettings.user_id == user_id
             )
         )
-    ).scalar_one()
+    ).scalar_one_or_none()
+    if row is None:
+        await ensure_defaults(db, company_id, user_id)
+        row = (
+            await db.execute(
+                select(PlannerSettings).where(
+                    PlannerSettings.company_id == company_id, PlannerSettings.user_id == user_id
+                )
+            )
+        ).scalar_one()
     return row
 
 
@@ -910,7 +945,7 @@ async def get_day(
         "next": nxt_out,
         "at_risk": [serialize_task(t, cats) for t in risk_rows],
         "timeline": timeline,
-        "open_interruption": open_int,
+        "open_interruption": serialize_interruption(open_int) if open_int else None,
         "metrics": {
             "completed_count": metrics.completed_count if metrics else 0,
             "scheduled_count": metrics.scheduled_count if metrics else 0,
@@ -989,8 +1024,21 @@ async def persist_daily_metrics(
         )
     ).scalar_one_or_none()
     if not row:
-        row = PlannerDailyMetrics(company_id=company_id, user_id=user_id, date=day)
-        db.add(row)
+        try:
+            async with db.begin_nested():
+                row = PlannerDailyMetrics(company_id=company_id, user_id=user_id, date=day)
+                db.add(row)
+                await db.flush()
+        except IntegrityError:
+            row = (
+                await db.execute(
+                    select(PlannerDailyMetrics).where(
+                        PlannerDailyMetrics.company_id == company_id,
+                        PlannerDailyMetrics.user_id == user_id,
+                        PlannerDailyMetrics.date == day,
+                    )
+                )
+            ).scalar_one()
     row.completed_count = completed
     row.scheduled_count = scheduled
     row.delayed_count = len(hist)

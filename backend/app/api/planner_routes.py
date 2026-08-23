@@ -274,8 +274,9 @@ async def get_day(
     date_value: Optional[date] = Query(None, alias="date"),
 ) -> PlannerDayOut:
     data = await svc.get_day(db, _cid(actor), _uid(actor), date_value)
+    payload = PlannerDayOut.model_validate(data)
     await db.commit()
-    return PlannerDayOut.model_validate(data)
+    return payload
 
 
 @router.post("/day/generate", response_model=PlannerDayOut)
@@ -288,8 +289,9 @@ async def generate_day(
     cid, uid = _cid(actor), _uid(actor)
     await svc.generate_schedule(db, cid, uid, date_value)
     data = await svc.get_day(db, cid, uid, date_value, generate_if_empty=False)
+    payload = PlannerDayOut.model_validate(data)
     await db.commit()
-    return PlannerDayOut.model_validate(data)
+    return payload
 
 
 @router.post("/day/accept")
