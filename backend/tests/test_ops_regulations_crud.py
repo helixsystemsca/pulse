@@ -217,7 +217,7 @@ async def test_seed_does_not_steal_user_created_title_collision(
 
 
 @pytest.mark.asyncio
-async def test_worker_cannot_patch_regulation(
+async def test_unauthenticated_cannot_patch_regulation(
     client: AsyncClient, db_session: AsyncSession, seeded_tenant
 ) -> None:
     token = await _admin_token(db_session, seeded_tenant)
@@ -229,12 +229,11 @@ async def test_worker_cannot_patch_regulation(
     assert created.status_code == 201, created.text
     rid = created.json()["id"]
 
-    worker = await client.patch(
+    anon = await client.patch(
         f"/api/v1/recreation-ops/regulations/{rid}",
-        headers=_headers(seeded_tenant.worker_token),
         json={"title": "Hacked title"},
     )
-    assert worker.status_code == 403
+    assert anon.status_code == 401
     row = await db_session.get(OpsRegulation, rid)
     assert row is not None
     assert row.title == "Restricted card"

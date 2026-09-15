@@ -170,7 +170,7 @@ async def create_record(
 ) -> Any:
     Model = model_for(entity_type)
     payload = {k: v for k, v in data.items() if k not in _PROTECTED and hasattr(Model, k)}
-    if payload.get("reports_to_person_id") in ("", None):
+    if "reports_to_person_id" in payload and payload.get("reports_to_person_id") in ("", None):
         payload["reports_to_person_id"] = None
     if entity_type == "regulations":
         payload["source_key"] = None
