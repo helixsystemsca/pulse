@@ -1,21 +1,34 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { MessageSquare } from "lucide-react";
 import { PageBody } from "@/components/ui/PageBody";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { askCopilot, askCopilotQuery, listCopilotPrompts, type OpsCopilotAnswer, type OpsCopilotPrompt } from "@/lib/recreation/copilotService";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
+import { usePulseAuth } from "@/hooks/usePulseAuth";
+import { resolveAuthorizedNavItems } from "@/lib/navigation/build-navigation-tree";
+import { matchCopilotPromptId, routeOpsAsk } from "@/lib/search/ops-ask-router";
+import { opsAskShortcutLabel } from "@/lib/search/ops-ask-hotkey";
 
-export default function OpsCopilotPage() {
+function OpsCopilotInner() {
+  const search = useSearchParams();
+  const promptParam = search.get("prompt");
+  const { session } = usePulseAuth();
   const [prompts, setPrompts] = useState<OpsCopilotPrompt[]>([]);
   const [answer, setAnswer] = useState<OpsCopilotAnswer | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [asking, setAsking] = useState(false);
-  const [query, setQuery] = useState("");
+  const [typed, setTyped] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [shortcut, setShortcut] = useState("Ctrl+K");
+
+  useEffect(() => {
+    setShortcut(opsAskShortcutLabel());
+  }, []);
 
   useEffect(() => {
     void listCopilotPrompts()
@@ -37,8 +50,8 @@ export default function OpsCopilotPage() {
     }
   }, []);
 
-  const onAskQuery = useCallback(async () => {
-    const q = query.trim();
+  const onAskQuery = useCallback(async (raw: string) => {
+    const q = raw.trim();
     if (!q) return;
     setAsking(true);
     setError(null);
@@ -50,15 +63,39 @@ export default function OpsCopilotPage() {
     } finally {
       setAsking(false);
     }
-  }, [query]);
+  }, []);
+
+  useEffect(() => {
+    if (!promptParam || loading) return;
+    void onAsk(promptParam);
+  }, [promptParam, loading, onAsk]);
+
+  const navHints = useMemo(
+    () => resolveAuthorizedNavItems(session).map((i) => ({ label: i.label, href: i.href })),
+    [session],
+  );
+  const dest = useMemo(
+    () => (typed.trim() ? routeOpsAsk(typed, session, navHints) : null),
+    [typed, session, navHints],
+  );
 
   const chips = useMemo(() => prompts, [prompts]);
+
+  function submitTyped(e: FormEvent) {
+    e.preventDefault();
+    const id = matchCopilotPromptId(typed) ?? dest?.copilotPromptId;
+    if (id) {
+      void onAsk(id);
+      return;
+    }
+    if (typed.trim()) void onAskQuery(typed);
+  }
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Ops Copilot"
-        description="Ask or pick a starter question. Answers cite Pulse records and Codes & Guidance cards — not an LLM and not a legal determination."
+        description="Ask or pick a starter. Answers cite Pulse records and Codes & Guidance cards — not an LLM and not a legal determination. Press Search / Ask in the header (or the keyboard shortcut) from any page to find where to go."
         icon={MessageSquare}
       />
       <PageBody>
@@ -67,36 +104,50 @@ export default function OpsCopilotPage() {
         ) : null}
         {loading ? <p className="text-sm text-ds-muted">Loading prompts…</p> : null}
 
-        <form
-          className="flex flex-col gap-2 sm:flex-row"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void onAskQuery();
-          }}
-        >
+        <form onSubmit={submitTyped} className="mb-4 flex flex-col gap-2 sm:flex-row">
+          <label className="sr-only" htmlFor="ops-copilot-ask">
+            Ask in plain language
+          </label>
           <input
+            id="ops-copilot-ask"
             type="search"
-            className="min-w-0 flex-1 rounded-lg border border-ds-border bg-ds-bg px-3 py-2.5 text-base sm:text-sm"
-            placeholder="Ask: chief engineer responsibilities, interior health pool code, building code…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            value={typed}
+            onChange={(e) => setTyped(e.target.value)}
+            placeholder={`Ask: chief engineer, pool code, building code, or press ${shortcut} anywhere`}
+            className="min-w-0 flex-1 rounded-lg border border-ds-border bg-ds-card px-3 py-2 text-sm text-ds-foreground"
             aria-label="Ask or search"
           />
           <button
             type="submit"
-            disabled={asking || !query.trim()}
-            className="rounded-lg bg-ds-primary px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+            disabled={asking || !typed.trim()}
+            className="rounded-lg bg-ds-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
           >
             Ask
           </button>
         </form>
-        <p className="text-xs text-ds-muted">
+        <p className="mb-4 text-xs text-ds-muted">
           Regulatory questions open{" "}
           <Link href="/recreation/regulations" className="text-ds-primary hover:underline">
             Codes & Guidance
           </Link>
           . Internal SOPs stay labelled as internal.
         </p>
+
+        {dest?.matched ? (
+          <div className="mb-4 rounded-xl border border-ds-border bg-ds-card p-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-ds-muted">Where to go</p>
+            <ul className="mt-2 space-y-1 text-sm">
+              {dest.results.map((r) => (
+                <li key={r.id}>
+                  <Link href={r.href} className="font-medium text-[#2B4C7E] hover:underline">
+                    {r.title}
+                  </Link>
+                  <span className="text-ds-muted"> — {r.why}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
 
         <div className="flex flex-wrap gap-2">
           {chips.map((p) => (
@@ -145,9 +196,26 @@ export default function OpsCopilotPage() {
             <p className="text-xs text-amber-800">{answer.disclaimer}</p>
           </article>
         ) : (
-          <p className="mt-6 text-sm text-ds-muted">Ask a question or choose a starter. Results stay in-app and update as you fill in records.</p>
+          <p className="mt-6 text-sm text-ds-muted">
+            Ask a question or choose a starter. Navigation help is also in the header Ask / Search control. Results stay
+            in-app and update as you fill in records.
+          </p>
         )}
       </PageBody>
     </div>
+  );
+}
+
+export default function OpsCopilotPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[40vh] items-center justify-center">
+          <p className="text-sm text-ds-muted">Loading Ops Copilot…</p>
+        </div>
+      }
+    >
+      <OpsCopilotInner />
+    </Suspense>
   );
 }

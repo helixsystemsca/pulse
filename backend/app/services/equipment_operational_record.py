@@ -13,7 +13,7 @@ from app.models.domain import FacilityEquipment, QrResource, Zone
 from app.models.ops_foundation_models import OpsContact, OpsFacility, OpsKnowledgeArticle
 from app.models.pm_models import PmTask
 from app.models.pulse_models import PulseProcedure, PulseWorkRequest
-from app.services.qr_resource_service import build_qr_url
+from app.services.qr_resource_service import _uuid_pk, build_qr_url
 
 
 def _now() -> datetime:
@@ -184,7 +184,10 @@ async def equipment_operational_record(
     *,
     guest: bool = False,
 ) -> Optional[dict[str, Any]]:
-    eq = await db.get(FacilityEquipment, equipment_id)
+    pk = _uuid_pk(equipment_id)
+    if not pk:
+        return None
+    eq = await db.get(FacilityEquipment, pk)
     if eq is None or eq.company_id != company_id:
         return None
     zone = await db.get(Zone, eq.zone_id) if eq.zone_id else None

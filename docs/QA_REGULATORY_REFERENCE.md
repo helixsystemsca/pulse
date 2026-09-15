@@ -21,18 +21,19 @@ Solo Recreation Operations Coordinator check after deploy. Reference only — no
 
 ## Ask / Search
 12. **My Role → Intelligence → Ops Copilot**.
-13. Type `chief engineer responsibilities` → Ask. Citations include Codes & Guidance.
-14. Starter chips: “Chief engineer…”, “OH&S / WorkSafeBC…”, “BC Building Code…”, “Interior Health / pool…”, “Refrigeration plant / TSBC…”.
-15. Open a citation into the matching library card.
+13. Type `chief engineer responsibilities` → Ask. Citations include Codes & Guidance. “Where to go” should list the library.
+14. Header **Search / Ask** (or Ctrl/⌘K): same wording should deep-link to Codes & Guidance.
+15. Starter chips: “Chief engineer…”, “OH&S / WorkSafeBC…”, “BC Building Code…”, “Interior Health / pool…”, “Refrigeration plant / TSBC…”.
+16. Open a citation into the matching library card.
 
 ## Internal vs official
-16. Ammonia emergency card points at **internal** Pulse SOP / Emergency hub **and** WorkSafeBC/TSBC pages. Internal records stay labelled internal.
-17. Classification on Building Code / Pool Regulation is **Law/Regulation**; CSA Z614 is **Industry standard**; Fire Services Bylaw is **Municipal policy**.
+17. Ammonia emergency card points at **internal** Pulse SOP / Emergency hub **and** WorkSafeBC/TSBC pages. Internal records stay labelled internal.
+18. Classification on Building Code / Pool Regulation is **Law/Regulation**; CSA Z614 is **Industry standard**; Fire Services Bylaw is **Municipal policy**.
 
 ## Mobile
-18. Phone or narrow browser: chips scroll horizontally, cards stack, reading pane is usable, official link is tappable.
+19. Phone or narrow browser: chips scroll horizontally, cards stack, reading pane is usable, official link is tappable.
 
 ## Optional admin
-19. Company admin can **New card** / **Edit card**. Do not paste copyrighted code. Leave verification as Unverified until you confirm the URL.
+20. Company admin can **New card** / **Edit card**. Do not paste copyrighted code. Leave verification as Unverified until you confirm the URL.
 
 If a public URL 404s, keep the organization name, mark verification **Unverified** or **Needs municipal confirmation**, and note how to find the page.

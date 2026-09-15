@@ -1,8 +1,6 @@
-import { InterviewStudyApp } from "@/components/training/interviews/InterviewStudyApp";
+import { redirect } from "next/navigation";
+import { TRAINING_ROUTES } from "@/lib/training/routes";
 
-type Props = { params: Promise<{ deckId: string }> };
-
-export default async function TrainingInterviewDeckPage({ params }: Props) {
-  const { deckId } = await params;
-  return <InterviewStudyApp deckId={deckId} />;
+export default function TrainingInterviewDeckPage() {
+  redirect(TRAINING_ROUTES.flashcards);
 }

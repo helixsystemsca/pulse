@@ -18,7 +18,7 @@ import {
   Wrench,
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/pulse/Card";
 import { HintCallout } from "@/components/ui/HintCallout";
@@ -79,6 +79,8 @@ function statusBadge(status: string): string {
 
 export function EquipmentApp() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const qParam = searchParams.get("q");
   const { can } = usePermissions();
   const canViewEquipment = can("equipment.view") || can("equipment.manage");
   const canMutate = can("equipment.manage");
@@ -104,6 +106,12 @@ export function EquipmentApp() {
     "name",
   );
   const [order, setOrder] = useState<"asc" | "desc">("asc");
+
+  useEffect(() => {
+    if (!qParam?.trim()) return;
+    setSearch(qParam.trim());
+    setTab("list");
+  }, [qParam]);
 
   const listColumns = useMemo(
     () =>

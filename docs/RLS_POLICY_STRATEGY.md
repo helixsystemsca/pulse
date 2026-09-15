@@ -10,10 +10,10 @@ Each authenticated API request sets transaction-local GUCs:
 
 | GUC | Values | Set by |
 |-----|--------|--------|
-| `pulse.company_id` | UUID string or empty | `apply_pulse_rls_context_for_user()` in `get_current_user` |
+| `pulse.company_id` | UUID string or empty | `apply_pulse_rls_context_for_user()` in `get_current_user` **and** `FeatureGateMiddleware` (own `AsyncSessionLocal` session — must set GUCs before `FeatureFlagService` reads `companies` / `company_features`) |
 | `pulse.is_system_admin` | `true` / `false` | Same; `true` for `system_admin` users |
 
-Unauthenticated auth (`POST /auth/login`, Microsoft OAuth lookup, invite/reset tokens, refresh/logout) calls `apply_pulse_rls_auth_bootstrap_context()` first (`is_system_admin=true`) so FORCE RLS + `pulse_app` can see the user row, then `apply_pulse_rls_context_for_auth_write()` immediately before `audit_logs` / `login_events` INSERT (production failure was `ProgrammingError` on `INSERT INTO audit_logs`, not only the email SELECT). Identified users then get `apply_pulse_rls_context_for_login_user()`. Internal cron jobs call `apply_pulse_rls_system_context()` after secret verification.
+Unauthenticated auth (`POST /auth/login`, Microsoft OAuth lookup, invite/reset tokens, refresh/logout) calls `apply_pulse_rls_auth_bootstrap_context()` first (`is_system_admin=true`) so FORCE RLS + `pulse_app` can see the user row, then `apply_pulse_rls_context_for_auth_write()` immediately before `audit_logs` / `login_events` INSERT (production failure was `ProgrammingError` on `INSERT INTO audit_logs`, not only the email SELECT). Identified users then get `apply_pulse_rls_context_for_login_user()`. Internal cron jobs call `apply_pulse_rls_system_context()` after secret verification. Feature-gated module routes (`/api/v1/recreation-ops`, `/api/v1/equipment`, `/api/inventory`, …) run `apply_feature_gate_rls_context()` on the middleware session before the flag lookup.
 
 Do not weaken `users` policies to `USING (true)`. Runtime stays on `pulse_app`; Alembic/DDL stays on `MIGRATION_DATABASE_URL`.
 

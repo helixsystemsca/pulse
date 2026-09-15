@@ -2,7 +2,7 @@
 
 from app.core.qr_guest_access import guest_may_perform, is_guest_read_only_enabled, redact_guest_payload
 from app.core.qr_resource_types import destination_for, normalize_resource_type
-from app.services.qr_resource_service import generate_qr_token
+from app.services.qr_resource_service import _uuid_pk, generate_qr_token
 
 
 def test_generate_qr_token_unique() -> None:
@@ -42,3 +42,9 @@ def test_redact_guest_payload() -> None:
     assert out["name"] == "Pump"
     assert "unit_cost" not in out
     assert "vendor" not in out
+
+
+def test_uuid_pk_rejects_non_uuid() -> None:
+    assert _uuid_pk("not-a-uuid") is None
+    assert _uuid_pk("") is None
+    assert _uuid_pk("11111111-1111-1111-1111-111111111111") == "11111111-1111-1111-1111-111111111111"

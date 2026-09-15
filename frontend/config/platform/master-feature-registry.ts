@@ -775,7 +775,7 @@ export const MASTER_FEATURES: readonly MasterFeatureDef[] = [
       "standards.training.overview.view",
       "procedures.view",
     ],
-    navVisible: true,
+    navVisible: false,
     sortOrder: 301,
     navDomain: "Training",
     navGroup: "Training",
