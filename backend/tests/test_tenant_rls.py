@@ -74,7 +74,7 @@ async def test_pulse_rls_policy_functions_exist(db_session):
     """Migration 1021/1051 helpers deny rows when tenant GUC is unset."""
     fn = (
         await db_session.execute(
-            text("SELECT pulse_rls_tenant_visible(:cid::uuid)"),
+            text("SELECT pulse_rls_tenant_visible(CAST(:cid AS uuid))"),
             {"cid": _TENANT_A},
         )
     ).scalar()
@@ -86,13 +86,13 @@ async def test_pulse_rls_helpers_respect_tenant_and_admin_gucs(db_session):
     await apply_pulse_rls_context(db_session, company_id=_TENANT_A, is_system_admin=False)
     own = (
         await db_session.execute(
-            text("SELECT pulse_rls_tenant_visible(:cid::uuid)"),
+            text("SELECT pulse_rls_tenant_visible(CAST(:cid AS uuid))"),
             {"cid": _TENANT_A},
         )
     ).scalar()
     other = (
         await db_session.execute(
-            text("SELECT pulse_rls_tenant_visible(:cid::uuid)"),
+            text("SELECT pulse_rls_tenant_visible(CAST(:cid AS uuid))"),
             {"cid": _TENANT_B},
         )
     ).scalar()
@@ -102,7 +102,7 @@ async def test_pulse_rls_helpers_respect_tenant_and_admin_gucs(db_session):
     await apply_pulse_rls_system_context(db_session)
     admin_other = (
         await db_session.execute(
-            text("SELECT pulse_rls_tenant_visible(:cid::uuid)"),
+            text("SELECT pulse_rls_tenant_visible(CAST(:cid AS uuid))"),
             {"cid": _TENANT_B},
         )
     ).scalar()
@@ -303,12 +303,8 @@ async def test_non_superuser_role_cannot_see_other_tenant_or_alembic(
     await db_session.execute(text(f"CREATE ROLE {role} NOLOGIN NOBYPASSRLS NOSUPERUSER"))
     try:
         await db_session.execute(text(f"GRANT USAGE ON SCHEMA public TO {role}"))
-        await db_session.execute(
-            text(
-                f"GRANT SELECT ON companies, alembic_version, ops_people, "
-                f"user_refresh_sessions TO {role}"
-            )
-        )
+        for tbl in ("companies", "alembic_version", "ops_people", "user_refresh_sessions"):
+            await db_session.execute(text(f"GRANT SELECT ON TABLE {tbl} TO {role}"))
         await db_session.execute(text(f"SET ROLE {role}"))
         try:
             await apply_pulse_rls_context(
@@ -342,6 +338,9 @@ async def test_non_superuser_role_cannot_see_other_tenant_or_alembic(
             await db_session.execute(text("RESET ROLE"))
     finally:
         await db_session.execute(text("RESET ROLE"))
+        await db_session.execute(text(f"REVOKE ALL ON SCHEMA public FROM {role}"))
+        for tbl in ("companies", "alembic_version", "ops_people", "user_refresh_sessions"):
+            await db_session.execute(text(f"REVOKE ALL ON TABLE {tbl} FROM {role}"))
         await db_session.execute(text(f"DROP ROLE IF EXISTS {role}"))
 
 

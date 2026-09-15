@@ -242,9 +242,17 @@ def _create_crud_policies(conn, table: str, names: dict[str, str], using_expr: s
     conn.execute(text(f'CREATE POLICY {_quote(names["delete"])} ON {q} FOR DELETE USING ({using_expr})'))
 
 
-def _apply_crud(conn, table: str, using_expr: str, *, prefix: str = "pulse_rls", check_expr: str | None = None) -> None:
+def _apply_crud(
+    conn,
+    table: str,
+    using_expr: str,
+    *,
+    prefix: str = "pulse_rls",
+    check_expr: str | None = None,
+    replace: bool = False,
+) -> None:
     names = _policy_names(table, prefix)
-    if _has_named_policy(conn, table, names["select"]):
+    if not replace and _has_named_policy(conn, table, names["select"]):
         return
     _enable_rls(conn, table, force=True)
     _drop_policies(conn, table, names)
@@ -317,19 +325,8 @@ def upgrade() -> None:
             conn,
             "companies",
             "public.pulse_rls_is_system_admin() OR id = public.pulse_rls_company_id()",
+            replace=True,
         )
-
-    if _table_exists(conn, "ops_checklist_templates"):
-        _apply_crud(
-            conn,
-            "ops_checklist_templates",
-            _CHECKLIST_TEMPLATE_SELECT,
-            check_expr=_CHECKLIST_TEMPLATE_WRITE,
-        )
-
-    for table, expr in _CHILD_POLICIES.items():
-        if _table_exists(conn, table):
-            _apply_crud(conn, table, expr, prefix="pulse_rls_child")
 
     skip_company_id = {"ops_checklist_templates"}
     for table, nullable in _tables_with_company_id(conn):
@@ -337,6 +334,20 @@ def upgrade() -> None:
             continue
         fn = "pulse_rls_tenant_visible_nullable" if nullable else "pulse_rls_tenant_visible"
         _apply_crud(conn, table, f"public.{fn}(company_id)")
+
+    # Override generic company_id policy: system seed templates (NULL company_id) stay readable.
+    if _table_exists(conn, "ops_checklist_templates"):
+        _apply_crud(
+            conn,
+            "ops_checklist_templates",
+            _CHECKLIST_TEMPLATE_SELECT,
+            check_expr=_CHECKLIST_TEMPLATE_WRITE,
+            replace=True,
+        )
+
+    for table, expr in _CHILD_POLICIES.items():
+        if _table_exists(conn, table):
+            _apply_crud(conn, table, expr, prefix="pulse_rls_child", replace=True)
 
     if _table_exists(conn, "alembic_version"):
         # App role must not read/write migration history. Table owner (migrations)
