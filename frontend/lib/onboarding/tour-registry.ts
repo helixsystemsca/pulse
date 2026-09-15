@@ -67,6 +67,17 @@ export function resolveProductTour(
   const navItem = findNavItemForPathname(navigationTree, normalized);
   if (!navItem) return null;
 
+  const isProcedureLibrary =
+    normalized === "/training/learning/library" || normalized.startsWith("/training/learning/library/");
+  if (navItem.key === "training_learning" && isProcedureLibrary) {
+    return buildFeaturePageTour({
+      ...navItem,
+      key: "procedures",
+      label: "Procedures",
+      href: "/training/learning/library",
+    });
+  }
+
   return buildFeaturePageTour(navItem);
 }
 

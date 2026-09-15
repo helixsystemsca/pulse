@@ -363,6 +363,11 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
     const step = steps[currentStep];
     if (!step) return;
 
+    if (!stepCanStart(step)) {
+      advanceFromMissing(currentStep);
+      return;
+    }
+
     let cancelled = false;
     let attempts = 0;
     const maxAttempts = 25;

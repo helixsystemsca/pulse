@@ -33,7 +33,13 @@ const FEATURE_PAGE_TOUR_COPY: Partial<Record<string, FeaturePageTourCopy>> = {
     welcomeSubtitle: "KPI tiles first, then the alerts that block a shift.",
   },
   training_learning: {
-    welcomeSubtitle: "Assigned learning, then the procedure library — create, filter, and open an SOP.",
+    welcomeSubtitle: "Assigned learning first, then the Procedure library tab — that screen has its own SOP walkthrough.",
+  },
+  procedures: {
+    welcomeSubtitle: "Create an SOP, assign it, filter the catalog, then open a card.",
+  },
+  standards_procedures: {
+    welcomeSubtitle: "Create an SOP, assign it, filter the catalog, then open a card.",
   },
   training_compliance: {
     welcomeSubtitle: "Compliance views, KPI tiles, then the qualification matrix.",

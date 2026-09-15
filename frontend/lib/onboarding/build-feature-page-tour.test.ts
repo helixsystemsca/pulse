@@ -91,13 +91,14 @@ describe("buildFeaturePageTour", () => {
     ["logs_inspections", "/dashboard/compliance", "inspections-tour-new-sheet"],
     ["ops_regulations", "/recreation/regulations", "regulations-tour-search"],
     ["training_overview", "/training/overview", "training-overview-kpis"],
-    ["training_learning", "/training/learning", "procedures-tour-create"],
+    ["training_learning", "/training/learning", "training-learning-tab-library"],
+    ["procedures", "/training/learning/library", "procedures-tour-create"],
     ["training_compliance", "/training/compliance", "training-compliance-matrix"],
     ["ops_me", "/recreation/me", "ops-me-tour-tabs"],
   ] as const)("walks %s feature-by-feature with real control targets", (key, href, expectedTarget) => {
     const tour = buildFeaturePageTour(navItem({ key, href, label: key }));
     expect(tour.id).toBe(`feature-${key}-walkthrough`);
-    expect(tour.steps.length).toBeGreaterThanOrEqual(4);
+    expect(tour.steps.length).toBeGreaterThanOrEqual(3);
     expect(tour.steps.map((s) => s.target)).toContain(`[data-tour="${expectedTarget}"]`);
     expect(tour.steps.every((s) => s.target !== '[data-tour="feature-workspace"]')).toBe(true);
   });
@@ -117,6 +118,7 @@ describe("CUSTOM_FEATURE_TOUR_STEPS", () => {
         "training_overview",
         "training_learning",
         "training_compliance",
+        "procedures",
       ]),
     );
   });
@@ -128,5 +130,35 @@ describe("resolveProductTour", () => {
     expect(tour?.id).toBe("dashboard-overview-walkthrough");
     expect(tour?.steps.map((s) => s.target)).toContain('[data-tour="ops-ask"]');
     expect(tour?.steps.map((s) => s.title).join(" ")).not.toMatch(/Widget System/i);
+  });
+
+  it("walks the procedure library as its own control-by-control tour", () => {
+    const tree: NavigationTreeDomain[] = [
+      {
+        domain: "Training",
+        label: "Training",
+        icon: "folder-kanban",
+        groups: [
+          {
+            group: "Learning",
+            items: [
+              navItem({
+                key: "training_learning",
+                href: "/training/learning",
+                label: "Learning",
+              }),
+            ],
+          },
+        ],
+      },
+    ];
+    const tour = resolveProductTour("/training/learning/library", tree);
+    expect(tour?.id).toBe("feature-procedures-walkthrough");
+    expect(tour?.steps.map((s) => s.target)).toEqual([
+      '[data-tour="procedures-tour-create"]',
+      '[data-tour="procedures-tour-assign"]',
+      '[data-tour="procedures-tour-filter"]',
+      '[data-tour="procedures-tour-list"]',
+    ]);
   });
 });

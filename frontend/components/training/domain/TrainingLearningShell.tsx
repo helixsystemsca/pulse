@@ -107,6 +107,7 @@ export function TrainingLearningShell({ section }: { section: string }) {
                     key={t.id}
                     href={href}
                     className={cn(uiTabLink, isActive ? uiTabLinkActive : uiTabLinkIdle)}
+                    data-tour={t.id === "library" ? "training-learning-tab-library" : undefined}
                   >
                     <Icon className={uiIconInTab} aria-hidden />
                     {t.label}
@@ -143,6 +144,7 @@ export function TrainingLearningShell({ section }: { section: string }) {
                 key={t.id}
                 href={href}
                 className={cn(uiTabLink, isActive ? uiTabLinkActive : uiTabLinkIdle)}
+                data-tour={t.id === "library" ? "training-learning-tab-library" : undefined}
               >
                 <Icon className={uiIconInTab} aria-hidden />
                 {t.label}
