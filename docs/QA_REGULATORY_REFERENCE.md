@@ -33,7 +33,10 @@ Solo Recreation Operations Coordinator check after deploy. Reference only — no
 ## Mobile
 19. Phone or narrow browser: chips scroll horizontally, cards stack, reading pane is usable, official link is tappable.
 
-## Optional admin
-20. Company admin can **New card** / **Edit card**. Do not paste copyrighted code. Leave verification as Unverified until you confirm the URL.
+## Edit / create / archive (Josh — company admin)
+20. Open any card → **Edit**. Change title, summary, category, classification, applicability, official source, Pulse pointers, keywords. **Save changes**. Refresh the page — edits remain.
+21. **New card**: add a local guidance document (classification Internal note or Guidance). It appears in search/filters and in header Search / Ask after reload.
+22. **Archive** a card with confirm. It leaves the active library; **Show archived** + **Restore** brings it back. Starter seed must not recreate an archived or edited starter card after an API restart.
+23. Do not paste copyrighted code. Leave verification as Unverified until you confirm the URL.
 
 If a public URL 404s, keep the organization name, mark verification **Unverified** or **Needs municipal confirmation**, and note how to find the page.

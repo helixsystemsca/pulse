@@ -13,7 +13,7 @@ const FLYOUT_ITEM_DESCRIPTIONS: Partial<Record<string, string>> = {
   projects: "Operational projects, tasks, and workforce skill matching.",
   project_management: "PM timelines, dependencies, and cross-project delivery.",
   standards_routines: "Routine templates, daily assignments, and shift handoffs.",
-  ops_regulations: "Official public codes and guidance cards — not legal advice.",
+  ops_regulations: "Editable codes and guidance cards with official public sources — not legal advice.",
   ops_copilot: "Ask what’s overdue, who is qualified, or look up Codes & Guidance.",
   messaging: "Operational inbox and administrator product feedback.",
   training_overview: "Training KPIs—certifications, expirations, and compliance risk.",

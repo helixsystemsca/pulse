@@ -408,7 +408,11 @@ async def _library_cards(
     for row in rows:
         tags = row.tags if isinstance(row.tags, list) else []
         seed_hit = any(seed_tag_for(k) in tags or k in tags for k in wanted) if wanted else False
-        hay = f"{row.title} {row.summary or ''} {row.topic_category} {row.classification} {row.authority}".lower()
+        hay = (
+            f"{row.title} {row.summary or ''} {row.applicability or ''} {row.topic_category} "
+            f"{row.classification} {row.authority} {row.official_source_name or ''} "
+            f"{row.regulation_name or ''}"
+        ).lower()
         text_hit = bool(q) and all(tok in hay for tok in q.split() if len(tok) > 3)
         if wanted:
             if seed_hit or text_hit:

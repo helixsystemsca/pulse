@@ -145,10 +145,10 @@ const FEATURE_PAGE_TOUR_COPY: Partial<Record<string, FeaturePageTourCopy>> = {
     workspaceDescription: "Configure tenant-wide options—the sections on this page group related admin controls.",
   },
   ops_regulations: {
-    welcomeSubtitle: "Codes & Guidance is a reference library—cards point to official public pages, not legal advice.",
-    headerDescription: "Search and filter by topic. Each card shows classification (law vs guidance vs internal) and an official source link.",
+    welcomeSubtitle: "Codes & Guidance is an editable reference library—cards point to official public pages, not legal advice.",
+    headerDescription: "Search and filter by topic. Company admins can add a card or open one to edit every field, the same way Procedures work.",
     toolbarDescription: "The disclaimer stays visible so summaries are never mistaken for a legal determination.",
-    workspaceDescription: "Open a card to read applicability, the official URL, verification status, and Pulse pointers (SOPs, PMs, contractors).",
+    workspaceDescription: "Open a card to read or edit applicability, official URL, verification, Pulse pointers, then save. Archive hides a card without deleting it.",
     includeToolbar: true,
   },
 };
