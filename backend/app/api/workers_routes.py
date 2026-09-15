@@ -1100,6 +1100,14 @@ async def list_workers(
     return WorkerListOut(items=items)
 
 
+@router.get("/certification-expiry")
+async def worker_certification_expiry(db: Db, _: RosterPageUser, cid: CompanyId) -> dict[str, Any]:
+    """In-app 30/60/90-day certification expiry (no email)."""
+    from app.services.certification_expiry_service import certification_expiry_summary
+
+    return await certification_expiry_summary(db, cid)
+
+
 @router.get("/compliance-summary", response_model=WorkersComplianceSummaryOut)
 async def roster_compliance_summary(db: Db, _: RosterPageUser, cid: CompanyId) -> WorkersComplianceSummaryOut:
     """Tenant-wide worker compliance rollup (must not be captured by `/{user_id}`)."""

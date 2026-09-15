@@ -70,6 +70,9 @@ export type OpsChecklistInstance = {
   template_id: string | null;
   progress_pct: number;
   items: OpsChecklistItem[];
+  incomplete_items?: Array<{ id: string; title: string; section: string }>;
+  facility_id?: string | null;
+  season_year?: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -125,6 +128,10 @@ export type OpsCommandDashboard = {
   pm_coord_risks: number;
   overdue_work_requests: number;
   roadmap_with_budget: number;
+  certs_expired?: number;
+  certs_expiring_30?: number;
+  certs_expiring_90?: number;
+  contractor_attention?: number;
   intelligence_items: Array<Record<string, unknown>>;
   due_items: Array<Record<string, unknown>>;
   open_gaps: Array<{
@@ -155,6 +162,8 @@ export type OpsIntelligence = {
   planning_risks: Record<string, unknown>;
   budget: Record<string, unknown>;
   maintenance: Record<string, unknown>;
+  certifications?: Record<string, unknown>;
+  contractors?: Record<string, unknown>;
   attention_items: Array<{
     kind: string;
     title: string;
@@ -308,6 +317,8 @@ export async function startChecklist(body: {
   title?: string;
   due_date?: string;
   priority?: string;
+  facility_id?: string | null;
+  season_year?: number | null;
 }): Promise<OpsChecklistInstance> {
   return apiFetch<OpsChecklistInstance>(`${BASE}/checklists`, {
     method: "POST",

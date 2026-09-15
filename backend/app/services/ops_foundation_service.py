@@ -261,4 +261,22 @@ def serialize_record(row: Any, links: Optional[list[OpsEntityLink]] = None) -> d
         }
         for l in (links or [])
     ]
+    if isinstance(row, OpsContractor):
+        from app.services.contractor_compliance import contractor_compliance
+
+        data["compliance"] = contractor_compliance(row)
+    return data
+    data = _row_to_dict(row)
+    data["links"] = [
+        {
+            "id": str(l.id),
+            "from_type": l.from_type,
+            "from_id": str(l.from_id),
+            "to_type": l.to_type,
+            "to_id": str(l.to_id),
+            "link_role": l.link_role,
+            "created_at": l.created_at,
+        }
+        for l in (links or [])
+    ]
     return data

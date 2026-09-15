@@ -765,6 +765,58 @@ async def _maintenance_attention(db: AsyncSession, company_id: str) -> dict[str,
     }
 
 
+async def _certification_attention(db: AsyncSession, company_id: str) -> dict[str, Any]:
+    from app.services.certification_expiry_service import certification_expiry_summary
+
+    summary = await certification_expiry_summary(db, company_id)
+    counts = summary.get("counts") or {}
+    items = []
+    for row in (summary.get("attention") or [])[:8]:
+        status = str(row.get("status"))
+        items.append(
+            _item(
+                kind="certification",
+                title=f"{row.get('worker_name')}: {row.get('name')}",
+                priority="critical" if status == "expired" else "high" if status == "expiring_30" else "medium",
+                href="/training/compliance/workers?panel=certifications",
+                detail=status.replace("_", " "),
+            )
+        )
+    return {
+        "available": True,
+        "expired": int(counts.get("expired") or 0),
+        "expiring_30": int(counts.get("expiring_30") or 0),
+        "expiring_60": int(counts.get("expiring_60") or 0),
+        "expiring_90": int(counts.get("expiring_90") or 0),
+        "items": items,
+    }
+
+
+async def _contractor_attention(db: AsyncSession, company_id: str) -> dict[str, Any]:
+    from app.models.ops_foundation_models import OpsContractor
+    from app.services.contractor_compliance import contractor_compliance
+
+    rows = list((await db.execute(select(OpsContractor).where(OpsContractor.company_id == company_id))).scalars().all())
+    items = []
+    attention_n = 0
+    for c in rows:
+        pack = contractor_compliance(c)
+        if not pack.get("has_attention"):
+            continue
+        attention_n += 1
+        worst = str(pack.get("overall_status") or "ok")
+        items.append(
+            _item(
+                kind="contractor",
+                title=c.title,
+                priority="critical" if worst == "expired" else "high",
+                href=f"/recreation/contractors?id={c.id}",
+                detail="; ".join(f"{a['label']} {a['status']}" for a in (pack.get("alerts") or [])[:3]),
+            )
+        )
+    return {"available": True, "attention": attention_n, "items": items[:8]}
+
+
 async def gather_intelligence(db: AsyncSession, company_id: str) -> dict[str, Any]:
     assets = await _safe("assets", _assets_attention(db, company_id)) or {
         "available": False,
@@ -835,6 +887,19 @@ async def gather_intelligence(db: AsyncSession, company_id: str) -> dict[str, An
         "open_preventative": 0,
         "items": [],
     }
+    certifications = await _safe("certifications", _certification_attention(db, company_id)) or {
+        "available": False,
+        "expired": 0,
+        "expiring_30": 0,
+        "expiring_60": 0,
+        "expiring_90": 0,
+        "items": [],
+    }
+    contractors = await _safe("contractors", _contractor_attention(db, company_id)) or {
+        "available": False,
+        "attention": 0,
+        "items": [],
+    }
 
     attention_items: list[dict[str, Any]] = []
     for block in (
@@ -848,6 +913,8 @@ async def gather_intelligence(db: AsyncSession, company_id: str) -> dict[str, An
         planning_risks,
         maintenance,
         budget,
+        certifications,
+        contractors,
     ):
         attention_items.extend(block.get("items") or [])
 
@@ -865,6 +932,8 @@ async def gather_intelligence(db: AsyncSession, company_id: str) -> dict[str, An
         "planning_risks": planning_risks,
         "budget": budget,
         "maintenance": maintenance,
+        "certifications": certifications,
+        "contractors": contractors,
         "attention_items": attention_items[:30],
         "totals": {
             "assets_needing_attention": int(assets.get("equipment_pm_overdue") or 0)
@@ -881,5 +950,11 @@ async def gather_intelligence(db: AsyncSession, company_id: str) -> dict[str, An
             "pm_coord_risks": int(planning_risks.get("pm_coord_risks") or 0),
             "overdue_work_requests": int(maintenance.get("overdue_work_requests") or 0),
             "roadmap_with_budget": int(budget.get("roadmap_with_budget") or 0),
+            "certs_expired": int(certifications.get("expired") or 0),
+            "certs_expiring_30": int(certifications.get("expiring_30") or 0),
+            "certs_expiring_90": int(certifications.get("expiring_90") or 0)
+            + int(certifications.get("expiring_60") or 0)
+            + int(certifications.get("expiring_30") or 0),
+            "contractor_attention": int(contractors.get("attention") or 0),
         },
     }

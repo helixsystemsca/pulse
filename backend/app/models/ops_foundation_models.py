@@ -95,6 +95,20 @@ class OpsContractor(OpsRecordBase):
     services_provided: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     emergency_contact: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     preferred_vendor: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    contact_email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    contact_phone: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    insurance_carrier: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    insurance_policy: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    insurance_expiry: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    wcb_account: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    wcb_expiry: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    hourly_rate: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    after_hours_rate: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    tickets: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
+    safety_docs: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
+    agreements: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
+    serviced_assets: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
+    serviced_facilities: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
 
 
 class OpsRegulation(OpsRecordBase):

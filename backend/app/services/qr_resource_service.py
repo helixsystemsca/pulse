@@ -258,6 +258,62 @@ async def create_qr_resource(
     return _serialize(row, linked_label=label)
 
 
+async def get_or_create_resource_qr(
+    db: AsyncSession,
+    company_id: str,
+    user_id: Optional[str],
+    *,
+    name: str,
+    resource_type: str,
+    resource_id: str,
+    guest_access_enabled: bool = True,
+    guest_access_level: str = "read_only",
+) -> dict[str, Any]:
+    existing = (
+        await db.execute(
+            select(QrResource).where(
+                QrResource.company_id == company_id,
+                QrResource.resource_type == resource_type,
+                QrResource.resource_id == resource_id,
+            )
+        )
+    ).scalars().first()
+    if existing:
+        label = await _linked_resource_label(db, company_id, existing.resource_type, existing.resource_id)
+        return _serialize(existing, linked_label=label)
+    return await create_qr_resource(
+        db,
+        company_id,
+        user_id,
+        name=name,
+        description=None,
+        resource_type=resource_type,
+        resource_id=resource_id,
+        guest_access_enabled=guest_access_enabled,
+        guest_access_level=guest_access_level,
+    )
+
+
+async def ensure_equipment_qr(
+    db: AsyncSession,
+    company_id: str,
+    eq: FacilityEquipment,
+    *,
+    user_id: Optional[str] = None,
+    guest_read_only: bool = True,
+) -> dict[str, Any]:
+    return await get_or_create_resource_qr(
+        db,
+        company_id,
+        user_id,
+        name=eq.name,
+        resource_type="equipment",
+        resource_id=str(eq.id),
+        guest_access_enabled=guest_read_only,
+        guest_access_level="read_only" if guest_read_only else "none",
+    )
+
+
 async def patch_qr_resource(
     db: AsyncSession,
     company_id: str,

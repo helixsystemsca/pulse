@@ -159,10 +159,13 @@ class OpsChecklistInstanceOut(BaseModel):
     status: str
     due_date: Optional[date] = None
     notes: Optional[str] = None
+    facility_id: Optional[str] = None
+    season_year: Optional[int] = None
     created_at: datetime
     updated_at: datetime
     items: list[OpsChecklistItemOut] = Field(default_factory=list)
     progress_pct: int = 0
+    incomplete_items: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class OpsChecklistTemplateOut(BaseModel):
@@ -183,6 +186,8 @@ class OpsChecklistStartIn(BaseModel):
     title: Optional[str] = None
     due_date: Optional[date] = None
     priority: str = "medium"
+    facility_id: Optional[str] = None
+    season_year: Optional[int] = None
 
 
 # —— Knowledge gaps ——
@@ -262,6 +267,10 @@ class OpsCommandDashboardOut(BaseModel):
     pm_coord_risks: int = 0
     overdue_work_requests: int = 0
     roadmap_with_budget: int = 0
+    certs_expired: int = 0
+    certs_expiring_30: int = 0
+    certs_expiring_90: int = 0
+    contractor_attention: int = 0
 
 
 class OpsIntelligenceOut(BaseModel):
@@ -275,6 +284,8 @@ class OpsIntelligenceOut(BaseModel):
     planning_risks: dict[str, Any] = Field(default_factory=dict)
     budget: dict[str, Any] = Field(default_factory=dict)
     maintenance: dict[str, Any] = Field(default_factory=dict)
+    certifications: dict[str, Any] = Field(default_factory=dict)
+    contractors: dict[str, Any] = Field(default_factory=dict)
     attention_items: list[dict[str, Any]] = Field(default_factory=list)
     totals: dict[str, int] = Field(default_factory=dict)
 

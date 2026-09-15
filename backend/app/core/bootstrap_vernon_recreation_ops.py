@@ -53,4 +53,13 @@ async def ensure_vernon_recreation_ops(db: AsyncSession) -> None:
             if not await svc.is_enabled(cid, feat):
                 await svc.set_module(cid, feat, True)
                 _log.info("Enabled %s for tenant %s", feat, cid)
+
+    try:
+        from app.core.vernon_starter_seed import seed_vernon_starter_pack
+
+        for cid in target_ids:
+            await seed_vernon_starter_pack(db, cid)
+    except Exception:
+        _log.exception("Vernon starter seed failed for %s", target_ids)
+
     await db.commit()

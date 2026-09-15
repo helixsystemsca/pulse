@@ -3,11 +3,12 @@
 import { QrCode } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { QrPrintSheet } from "@/components/qr/QrPrintSheet";
 import { QrResourceWizard } from "@/components/qr/QrResourceWizard";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import type { QrResourceType } from "@/lib/qr/qr-resource-types";
-import { fetchQrResources } from "@/lib/qr/qrResourceService";
+import { fetchQrResources, type QrResourceRow } from "@/lib/qr/qrResourceService";
 import { pulseAppHref } from "@/lib/pulse-app";
 import { qrScanHref } from "@/lib/qr/qr-scan-url";
 import { buttonVariants } from "@/styles/button-variants";
@@ -28,14 +29,15 @@ export function QrResourceActions({ resourceType, resourceId, defaultName }: Pro
   const canManage = can("qr_codes.manage");
   const canView = can("qr_codes.view") || canManage;
 
-  const [linked, setLinked] = useState<{ id: string; qr_token: string } | null>(null);
+  const [linked, setLinked] = useState<QrResourceRow | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [printOpen, setPrintOpen] = useState(false);
 
   useEffect(() => {
     if (!canView || !apiCompany) return;
     void fetchQrResources(apiCompany, { resource_type: resourceType }).then((rows) => {
-      const match = rows.find((r) => r.resource_id === resourceId);
-      setLinked(match ? { id: match.id, qr_token: match.qr_token } : null);
+      const match = rows.find((r) => r.resource_id === resourceId) ?? null;
+      setLinked(match);
     });
   }, [apiCompany, canView, resourceId, resourceType]);
 
@@ -44,10 +46,15 @@ export function QrResourceActions({ resourceType, resourceId, defaultName }: Pro
   return (
     <div className="flex flex-wrap items-center gap-2">
       {linked ? (
-        <Link href={qrScanHref(linked.qr_token)} className={BTN}>
-          <QrCode className="mr-1.5 inline h-4 w-4" aria-hidden />
-          Open QR
-        </Link>
+        <>
+          <Link href={qrScanHref(linked.qr_token)} className={BTN}>
+            <QrCode className="mr-1.5 inline h-4 w-4" aria-hidden />
+            Open operational record
+          </Link>
+          <button type="button" className={BTN} onClick={() => setPrintOpen((v) => !v)}>
+            {printOpen ? "Hide print / download" : "Print / download QR"}
+          </button>
+        </>
       ) : null}
       {canManage ? (
         <button type="button" className={BTN} onClick={() => setWizardOpen(true)}>
@@ -69,8 +76,16 @@ export function QrResourceActions({ resourceType, resourceId, defaultName }: Pro
           initialResourceType={resourceType}
           initialResourceId={resourceId}
           initialName={defaultName}
-          onSaved={(row) => setLinked({ id: row.id, qr_token: row.qr_token })}
+          onSaved={(row) => {
+            setLinked(row);
+            setPrintOpen(true);
+          }}
         />
+      ) : null}
+      {printOpen && linked ? (
+        <div className="basis-full pt-2">
+          <QrPrintSheet resource={linked} />
+        </div>
       ) : null}
     </div>
   );

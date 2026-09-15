@@ -90,6 +90,35 @@ export function recreationOpsNotificationItems(dash: OpsCommandDashboard): Opera
       eventAtMs: at(),
     });
   }
+  if ((dash.certs_expired ?? 0) > 0) {
+    items.push({
+      id: "rec-ops-certs-expired",
+      severity: "critical",
+      priority: "critical",
+      title: `${dash.certs_expired} certification${dash.certs_expired === 1 ? "" : "s"} expired`,
+      subtitle: "My Role · Certifications (in-app)",
+      eventAtMs: at(),
+    });
+  } else if ((dash.certs_expiring_30 ?? 0) > 0) {
+    items.push({
+      id: "rec-ops-certs-30",
+      severity: "warning",
+      priority: "high",
+      title: `${dash.certs_expiring_30} certification${dash.certs_expiring_30 === 1 ? "" : "s"} expiring within 30 days`,
+      subtitle: "My Role · Certifications (in-app)",
+      eventAtMs: at(),
+    });
+  }
+  if ((dash.contractor_attention ?? 0) > 0) {
+    items.push({
+      id: "rec-ops-contractors",
+      severity: "warning",
+      priority: "high",
+      title: `${dash.contractor_attention} contractor${dash.contractor_attention === 1 ? "" : "s"} with insurance/WCB/ticket attention`,
+      subtitle: "My Role · Contractors",
+      eventAtMs: at(),
+    });
+  }
   return items;
 }
 

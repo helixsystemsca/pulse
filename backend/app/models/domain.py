@@ -433,6 +433,9 @@ class FacilityEquipment(Base):
         nullable=False,
     )
     image_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
+    ops_facility_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("ops_facilities.id", ondelete="SET NULL"), nullable=True, index=True
+    )
 
 
 class EquipmentPart(Base):

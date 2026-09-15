@@ -28,6 +28,15 @@ def test_guest_permissions() -> None:
     assert guest_may_perform("create") is False
 
 
+def test_render_qr_png_and_svg() -> None:
+    from app.services.qr_image_service import render_qr_png, render_qr_svg
+
+    png = render_qr_png("TESTTOKEN01")
+    svg = render_qr_svg("TESTTOKEN01")
+    assert png.startswith(b"\x89PNG")
+    assert b"svg" in svg.lower()
+
+
 def test_redact_guest_payload() -> None:
     out = redact_guest_payload({"name": "Pump", "unit_cost": 12.5, "vendor": "Acme"})
     assert out["name"] == "Pump"

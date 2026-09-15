@@ -50,6 +50,14 @@ import {
   type VehicleInspectionArchivePayload,
 } from "@/components/inspections/VehicleInspectionSheet";
 import { HarnessInspectionSheet } from "@/components/inspections/HarnessInspectionSheet";
+import { InspectionCorrectivePanel } from "@/components/inspections/InspectionCorrectivePanel";
+import {
+  createInspectionRun,
+  listInspectionRuns,
+  resultFromInspectionValue,
+  type InspectionRun,
+} from "@/lib/inspectionsService";
+import { parseClientApiError } from "@/lib/parse-client-api-error";
 
 const TH = "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ds-muted";
 const TD = "px-4 py-3 text-sm text-ds-foreground";
@@ -130,6 +138,21 @@ export function InspectionsLogsApp() {
   const [inspectFill, setInspectFill] = useState<InspectionTemplate | null>(null);
   const [logFill, setLogFill] = useState<LogTemplate | null>(null);
   const [viewEntry, setViewEntry] = useState<EntryRecord | null>(null);
+  const [serverRuns, setServerRuns] = useState<InspectionRun[]>([]);
+  const [lastServerRun, setLastServerRun] = useState<InspectionRun | null>(null);
+  const [persistError, setPersistError] = useState<string | null>(null);
+
+  useEffect(() => {
+    void listInspectionRuns()
+      .then((rows) => {
+        setServerRuns(rows);
+        const open = rows.find((r) => r.open_corrective_count > 0);
+        if (open) setLastServerRun(open);
+      })
+      .catch(() => {
+        /* local-only until API is available */
+      });
+  }, []);
 
   const inspectionEntries = useMemo(
     () => store.entries.filter((e) => e.template_type === "inspection"),
@@ -394,6 +417,28 @@ export function InspectionsLogsApp() {
           </div>
 
           <ScrollReveal className="grid gap-4 md:grid-cols-1 lg:grid-cols-2" y={8}>
+            {persistError ? (
+              <p className="lg:col-span-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">
+                {persistError}
+              </p>
+            ) : null}
+            {lastServerRun ? (
+              <div className="lg:col-span-2">
+                <InspectionCorrectivePanel
+                  run={lastServerRun}
+                  onUpdated={(next) => {
+                    setLastServerRun(next);
+                    setServerRuns((prev) => prev.map((r) => (r.id === next.id ? next : r)));
+                  }}
+                />
+              </div>
+            ) : null}
+            {serverRuns.length ? (
+              <p className="lg:col-span-2 text-xs text-ds-muted">
+                {serverRuns.length} inspection{serverRuns.length === 1 ? "" : "s"} saved to company records (failed
+                items can become work requests).
+              </p>
+            ) : null}
             {showVehicleSheet ? (
             <InspectionQuickInspectionCard
               icon={Truck}
@@ -421,7 +466,7 @@ export function InspectionsLogsApp() {
               meta={
                 <>
                   <StatusBadge variant="neutral">Safety</StatusBadge>
-                  <span>Client-side submit (demo)</span>
+                  <span>Pass/fail + corrective work request</span>
                 </>
               }
               expanded={showHarnessInspection}
@@ -430,9 +475,50 @@ export function InspectionsLogsApp() {
             >
               <HarnessInspectionSheet
                 onSubmit={(payload) => {
-                  // eslint-disable-next-line no-console
-                  console.log("Harness inspection submit", payload);
-                  window.alert("Harness inspection captured (client-side). Ready to wire into Work Items.");
+                  void (async () => {
+                    const items: Array<{
+                      title: string;
+                      result?: string | null;
+                      notes?: string | null;
+                      evidence?: unknown[];
+                      sort_order?: number;
+                    }> = [];
+                    const groups = payload.data.checklist;
+                    let sort = 0;
+                    (["labels", "hardware", "materials"] as const).forEach((g) => {
+                      Object.entries(groups[g]).forEach(([key, val]) => {
+                        items.push({
+                          title: key.replace(/_/g, " "),
+                          result: val === "fail" ? "fail" : val === "pass" ? "pass" : null,
+                          sort_order: sort++,
+                        });
+                      });
+                    });
+                    items.push({
+                      title: "Overall harness condition",
+                      result: payload.data.result === "unacceptable" ? "fail" : "pass",
+                      notes: payload.data.reason || payload.workItemDraft.follow_up_reason,
+                      evidence: payload.workItemDraft.attachments,
+                      sort_order: sort,
+                    });
+                    try {
+                      setPersistError(null);
+                      const run = await createInspectionRun({
+                        title: payload.workItemDraft.title,
+                        template_key: "harness",
+                        template_type: "inspection",
+                        overall_result: payload.data.result,
+                        notes: payload.workItemDraft.description,
+                        evidence: payload.workItemDraft.attachments,
+                        values: payload.data as unknown as Record<string, unknown>,
+                        items,
+                      });
+                      setLastServerRun(run);
+                      setServerRuns((prev) => [run, ...prev]);
+                    } catch (e) {
+                      setPersistError(parseClientApiError(e).message);
+                    }
+                  })();
                 }}
               />
             </InspectionQuickInspectionCard>
@@ -919,6 +1005,36 @@ export function InspectionsLogsApp() {
               user_id: userId,
             });
             setInspectFill(null);
+            void (async () => {
+              const items = inspectFill.checklist_items.map((item, idx) => {
+                const mapped = resultFromInspectionValue(item.response_type, values[item.id]);
+                return {
+                  title: item.label,
+                  result: mapped.result,
+                  notes: mapped.notes,
+                  sort_order: item.order ?? idx,
+                };
+              });
+              try {
+                setPersistError(null);
+                const equipmentId =
+                  typeof values[INSPECTION_ENTRY_EQUIPMENT_ID] === "string"
+                    ? String(values[INSPECTION_ENTRY_EQUIPMENT_ID])
+                    : undefined;
+                const run = await createInspectionRun({
+                  title: inspectFill.name,
+                  template_key: inspectFill.id,
+                  template_type: "inspection",
+                  equipment_id: equipmentId || null,
+                  values,
+                  items,
+                });
+                setLastServerRun(run);
+                setServerRuns((prev) => [run, ...prev]);
+              } catch (e) {
+                setPersistError(parseClientApiError(e).message);
+              }
+            })();
           }}
         />
       ) : null}

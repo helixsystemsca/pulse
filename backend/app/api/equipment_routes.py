@@ -497,6 +497,9 @@ async def create_equipment(
     )
     db.add(row)
     await db.flush()
+    from app.services.qr_resource_service import ensure_equipment_qr
+
+    await ensure_equipment_qr(db, cid, row, user_id=str(user.id), guest_read_only=True)
     zn_val: str | None = None
     if row.zone_id:
         z = await db.get(Zone, row.zone_id)

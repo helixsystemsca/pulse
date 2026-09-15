@@ -104,6 +104,106 @@ SYSTEM_TEMPLATES: list[dict[str, Any]] = [
             {"title": "Q4 — Improve", "items": ["Process improvements delivered", "Team development progress", "Year-2 priorities drafted"]},
         ],
     },
+    {
+        "slug": "arena-freeze-up",
+        "title": "Arena freeze-up / ice plant startup",
+        "description": "Seasonal ice plant startup and freeze-up checklist — internal operations, not a code inspection.",
+        "category": "seasonal",
+        "structure": [
+            {
+                "title": "Safety & access",
+                "items": [
+                    "Confirm plant-room access, lighting, and posted internal emergency card",
+                    "Locate ammonia / plant emergency shutoffs you are trained to use",
+                    "Confirm refrigeration contractor after-hours number is current",
+                    "PPE and leak-detection tools available",
+                ],
+            },
+            {
+                "title": "Ice plant",
+                "items": [
+                    "Walk the plant: unusual noise, vibration, oil, frost, alarms",
+                    "Confirm leak detection is powered and not in fault (internal check)",
+                    "Review last contractor visit and open work requests",
+                    "Record brine / chilled-system observations from a safe location",
+                ],
+            },
+            {
+                "title": "Ice sheet & resurfacer",
+                "items": [
+                    "Ice thickness / freeze-up plan documented for this season",
+                    "Ice resurfacer fluids, blade, and safety devices checked",
+                    "Snow pit / melt pit clear and pumps ready",
+                ],
+            },
+            {
+                "title": "Building",
+                "items": [
+                    "Spectator and player areas ready for ice season",
+                    "AED cabinet checked",
+                    "Power-failure and fire internal procedures reviewed with staff on shift",
+                ],
+            },
+        ],
+    },
+    {
+        "slug": "pool-open",
+        "title": "Pool open / aquatic startup",
+        "description": "Seasonal aquatic startup — circulation, chemistry, and deck emergency equipment. Internal checklist.",
+        "category": "seasonal",
+        "structure": [
+            {
+                "title": "Mechanical",
+                "items": [
+                    "Circulation pumps primed and running without obvious leaks",
+                    "Strainers and filters in service condition",
+                    "Chemical controller powered; probes in place",
+                    "Review open work requests on pumps / controller",
+                ],
+            },
+            {
+                "title": "Water quality",
+                "items": [
+                    "Baseline chemistry recorded against operating targets",
+                    "Fill / makeup water and known leak points checked",
+                    "SDS accessible in the chemical room",
+                ],
+            },
+            {
+                "title": "Deck emergency",
+                "items": [
+                    "AED present and pads in date",
+                    "Spinal board / rescue equipment in place",
+                    "Internal drowning / pool emergency card reviewed",
+                    "Lifeguard certifications on file (expiry blank until staff added)",
+                ],
+            },
+            {
+                "title": "Startup communications",
+                "items": [
+                    "Pool equipment vendor placeholder updated or confirmed",
+                    "Coordinator notified of remaining incomplete items",
+                ],
+            },
+        ],
+    },
+    {
+        "slug": "playground-seasonal",
+        "title": "Playground seasonal review",
+        "description": "Optional seasonal playground walk — surfacing, hardware, drainage, signage. Internal review.",
+        "category": "seasonal",
+        "structure": [
+            {
+                "title": "Site",
+                "items": [
+                    "Surfacing even, drained, and free of standing hazards",
+                    "Hardware tight; no sharp edges or broken parts noted",
+                    "Signage and age labels readable",
+                    "Create work requests for anything that failed this walk",
+                ],
+            }
+        ],
+    },
 ]
 
 
@@ -119,6 +219,20 @@ def _instance_progress(items: list[OpsChecklistItem]) -> int:
 
 
 async def ensure_system_templates(db: AsyncSession) -> None:
+    from sqlalchemy import text
+
+    admin = "true"
+    try:
+        admin = str(
+            (await db.execute(text("SELECT coalesce(current_setting('pulse.is_system_admin', true), '')"))).scalar()
+            or ""
+        )
+    except Exception:
+        admin = ""
+    # Under pulse_app + FORCE RLS, NULL company_id catalog rows need system context.
+    # Skip inserts when the request is a tenant session (`false`); still insert when unset (tests/superuser).
+    if admin.lower() == "false":
+        return
     for tpl in SYSTEM_TEMPLATES:
         existing = (
             await db.execute(
@@ -357,6 +471,8 @@ async def start_checklist(
     title: Optional[str] = None,
     due_date: Optional[date] = None,
     priority: str = "medium",
+    facility_id: Optional[str] = None,
+    season_year: Optional[int] = None,
 ) -> OpsChecklistInstance:
     await ensure_system_templates(db)
     tpl: OpsChecklistTemplate | None = None
@@ -373,16 +489,22 @@ async def start_checklist(
     if not tpl and not title:
         raise ValueError("template_slug, template_id, or title is required")
 
+    instance_title = title or (tpl.title if tpl else "Checklist")
+    if tpl and tpl.category == "seasonal" and season_year:
+        instance_title = f"{tpl.title} — {season_year}"
+
     instance = OpsChecklistInstance(
         company_id=company_id,
         user_id=user_id,
         template_id=str(tpl.id) if tpl else None,
-        title=title or (tpl.title if tpl else "Checklist"),
+        title=instance_title,
         description=tpl.description if tpl else None,
         category=tpl.category if tpl else "personal",
         priority=priority,
         due_date=due_date,
         status="active",
+        facility_id=facility_id,
+        season_year=season_year,
     )
     db.add(instance)
     await db.flush()
@@ -392,13 +514,19 @@ async def start_checklist(
         for sec in tpl.structure or []:
             section_title = sec.get("title") or "General"
             for item in sec.get("items") or []:
+                if isinstance(item, str):
+                    title = item
+                    description = None
+                else:
+                    title = str(item.get("title") or "Item")
+                    description = item.get("description")
                 db.add(
                     OpsChecklistItem(
                         company_id=company_id,
                         instance_id=str(instance.id),
                         section=section_title,
-                        title=item.get("title") or "Item",
-                        description=item.get("description"),
+                        title=title[:512],
+                        description=description,
                         sort_order=sort,
                     )
                 )
@@ -625,8 +753,15 @@ def serialize_instance(row: OpsChecklistInstance) -> dict[str, Any]:
         "status": row.status,
         "due_date": row.due_date,
         "notes": row.notes,
+        "facility_id": str(row.facility_id) if getattr(row, "facility_id", None) else None,
+        "season_year": getattr(row, "season_year", None),
         "created_at": row.created_at,
         "updated_at": row.updated_at,
         "items": items,
         "progress_pct": _instance_progress(items),
+        "incomplete_items": [
+            {"id": str(i.id), "title": i.title, "section": i.section}
+            for i in items
+            if not i.completed
+        ],
     }

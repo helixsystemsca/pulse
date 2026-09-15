@@ -131,6 +131,10 @@ class OpsChecklistInstance(Base):
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="active")
     due_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    facility_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("ops_facilities.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    season_year: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
