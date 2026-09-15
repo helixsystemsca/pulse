@@ -81,6 +81,16 @@ class Settings(BaseSettings):
     )
 
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/ops_intel"
+    #: Owner/superuser URL for Alembic only. Empty = use ``database_url`` (local/dev).
+    #: Render: set ``MIGRATION_DATABASE_URL`` (or ``DATABASE_URL_MIGRATIONS``); never commit the password.
+    migration_database_url: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "MIGRATION_DATABASE_URL",
+            "DATABASE_URL_MIGRATIONS",
+            "migration_database_url",
+        ),
+    )
     secret_key: str = "dev-only-change-in-production"
     #: JWT access token lifetime. Default 62m is slightly above the Pulse UI idle timeout (60m) so active
     #: sessions keep working; raise for longer work blocks (or add refresh tokens). Env: ACCESS_TOKEN_EXPIRE_MINUTES.

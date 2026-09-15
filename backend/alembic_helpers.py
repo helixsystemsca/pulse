@@ -16,12 +16,47 @@ Canonical import (from ``backend/`` on ``sys.path``): ``import alembic_helpers a
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any, Iterable
 
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
 
+# Owner/DDL URL for Alembic. Runtime API keeps using DATABASE_URL (pulse_app).
+_MIGRATION_DATABASE_URL_ENV_KEYS: tuple[str, ...] = (
+    "MIGRATION_DATABASE_URL",
+    "DATABASE_URL_MIGRATIONS",
+)
+
 _log = logging.getLogger("alembic.helpers")
+
+
+def as_sync_psycopg_url(url: str) -> str:
+    """Alembic/SQLAlchemy sync URL: asyncpg → psycopg."""
+    url = (url or "").strip()
+    if "+asyncpg" in url:
+        return url.replace("postgresql+asyncpg", "postgresql+psycopg", 1)
+    return url
+
+
+def resolve_alembic_sync_url(runtime_url: str, *, migration_url: str = "") -> tuple[str, str]:
+    """
+    Prefer an owner/migration URL for DDL; otherwise use the runtime DATABASE_URL.
+
+    Checks ``MIGRATION_DATABASE_URL``, then ``DATABASE_URL_MIGRATIONS``, then
+    ``migration_url`` (Settings / .env), then ``runtime_url``.
+    Returns ``(sync_url, source_label)``. Never log the URL (it may contain a password).
+    """
+    candidates: list[tuple[str, str]] = []
+    for key in _MIGRATION_DATABASE_URL_ENV_KEYS:
+        candidates.append(((os.environ.get(key) or "").strip(), key))
+    extra = (migration_url or "").strip()
+    if extra:
+        candidates.append((extra, "MIGRATION_DATABASE_URL"))
+    for raw, source in candidates:
+        if raw:
+            return as_sync_psycopg_url(raw), source
+    return as_sync_psycopg_url(runtime_url), "DATABASE_URL"
 
 
 def _skip(operation: str, **context: Any) -> None:

@@ -12,8 +12,10 @@ if str(_ALEMBIC_DIR) not in sys.path:
     sys.path.insert(0, str(_ALEMBIC_DIR))
 from version_table import ensure_version_num_width, repair_stored_revision_if_alias  # noqa: E402
 
-from app.core.config import get_settings
-from app.models import Base
+import alembic_helpers as ah  # noqa: E402
+from app.core.config import get_settings  # noqa: E402
+from app.core.security.tenant_rls import apply_pulse_rls_system_context_sync  # noqa: E402
+from app.models import Base  # noqa: E402
 
 config = context.config
 if config.config_file_name is not None:
@@ -23,9 +25,11 @@ target_metadata = Base.metadata
 
 
 def _sync_url() -> str:
-    url = get_settings().database_url
-    if "+asyncpg" in url:
-        return url.replace("postgresql+asyncpg", "postgresql+psycopg")
+    settings = get_settings()
+    url, _source = ah.resolve_alembic_sync_url(
+        settings.database_url,
+        migration_url=settings.migration_database_url,
+    )
     return url
 
 
@@ -49,6 +53,7 @@ def run_migrations_online() -> None:
         poolclass=pool.NullPool,
     )
     with connectable.connect() as connection:
+        apply_pulse_rls_system_context_sync(connection)
         ensure_version_num_width(connection)
         repair_stored_revision_if_alias(connection)
         context.configure(

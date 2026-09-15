@@ -105,6 +105,7 @@ from app.core.bootstrap import ensure_bootstrap_system_admin
 from app.core.bootstrap_vernon_recreation_ops import ensure_vernon_recreation_ops
 from app.core.rbac.catalog_sync import sync_rbac_catalog_permissions
 from app.core.config import get_settings
+from app.core.security.tenant_rls import apply_pulse_rls_system_context
 from app.core.database import AsyncSessionLocal
 from app.limiter import limiter
 from app.middleware.feature_gate import FeatureGateMiddleware
@@ -159,6 +160,7 @@ async def lifespan(app: FastAPI):
     _startup_log.info("STARTUP STEP 1: rbac catalog sync begin")
     try:
         async with AsyncSessionLocal() as db:
+            await apply_pulse_rls_system_context(db)
             await sync_rbac_catalog_permissions(db)
             await db.commit()
         _startup_log.info("STARTUP STEP 1: rbac catalog sync complete")
@@ -169,6 +171,7 @@ async def lifespan(app: FastAPI):
     _startup_log.info("STARTUP STEP 2: bootstrap system admin begin")
     try:
         async with AsyncSessionLocal() as db:
+            await apply_pulse_rls_system_context(db)
             await ensure_bootstrap_system_admin(db)
         _startup_log.info("STARTUP STEP 2: bootstrap system admin complete")
     except Exception:
@@ -178,6 +181,7 @@ async def lifespan(app: FastAPI):
     _startup_log.info("STARTUP STEP 2b: City of Vernon recreation ops")
     try:
         async with AsyncSessionLocal() as db:
+            await apply_pulse_rls_system_context(db)
             await ensure_vernon_recreation_ops(db)
         _startup_log.info("STARTUP STEP 2b: City of Vernon recreation ops complete")
     except Exception:
