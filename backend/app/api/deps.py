@@ -22,7 +22,10 @@ from app.core.features.service import FeatureFlagService
 from app.core.inference.engine import InferenceEngine
 from app.core.permissions.service import PermissionService
 from app.core.rbac.observability import log_rbac_denial
-from app.core.security.tenant_rls import apply_pulse_rls_context_for_user
+from app.core.security.tenant_rls import (
+    apply_pulse_rls_auth_bootstrap_context,
+    apply_pulse_rls_context_for_user,
+)
 from app.core.audit.security_events import record_security_event
 from app.core.security.suspicious_activity import note_suspicious_activity
 from app.core.rbac.registry import assert_known_rbac_keys
@@ -59,6 +62,8 @@ async def get_current_user(
     except (JWTError, KeyError, ValueError):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
+    # Same chicken-and-egg as login: FORCE RLS hides users until GUCs are set.
+    await apply_pulse_rls_auth_bootstrap_context(db)
     q = await db.execute(select(User).where(User.id == payload.sub))
     user = q.scalar_one_or_none()
     if not user or not user.is_active:
