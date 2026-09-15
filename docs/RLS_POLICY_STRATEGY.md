@@ -13,7 +13,9 @@ Each authenticated API request sets transaction-local GUCs:
 | `pulse.company_id` | UUID string or empty | `apply_pulse_rls_context_for_user()` in `get_current_user` |
 | `pulse.is_system_admin` | `true` / `false` | Same; `true` for `system_admin` users |
 
-Internal cron jobs call `apply_pulse_rls_system_context()` (`is_system_admin=true`) after secret verification.
+Unauthenticated auth (`POST /auth/login`, Microsoft OAuth lookup, invite/reset tokens, refresh/logout) calls `apply_pulse_rls_auth_bootstrap_context()` first (`is_system_admin=true`) so FORCE RLS + `pulse_app` can see the user row, then `apply_pulse_rls_context_for_auth_write()` immediately before `audit_logs` / `login_events` INSERT (production failure was `ProgrammingError` on `INSERT INTO audit_logs`, not only the email SELECT). Identified users then get `apply_pulse_rls_context_for_login_user()`. Internal cron jobs call `apply_pulse_rls_system_context()` after secret verification.
+
+Do not weaken `users` policies to `USING (true)`. Runtime stays on `pulse_app`; Alembic/DDL stays on `MIGRATION_DATABASE_URL`.
 
 ## SQL helper functions (migration `1021_tenant_rls`, search_path fixed in `1051_rls_coverage`)
 

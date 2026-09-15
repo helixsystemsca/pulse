@@ -13,6 +13,7 @@ from sqlalchemy import select
 from app.core.auth.security import decode_token
 from app.core.database import AsyncSessionLocal
 from app.core.events.engine import event_engine
+from app.core.security.tenant_rls import apply_pulse_rls_auth_bootstrap_context
 from app.core.events.types import DomainEvent
 from app.core.user_roles import primary_jwt_role, roles_match_token, user_has_any_role
 from app.models.domain import User, UserRole
@@ -74,6 +75,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str | None = None) -> 
         return
 
     async with AsyncSessionLocal() as session:
+        await apply_pulse_rls_auth_bootstrap_context(session)
         q = await session.execute(select(User).where(User.id == user_id))
         user = q.scalar_one_or_none()
         if not user or not user.is_active:

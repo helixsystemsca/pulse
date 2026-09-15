@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timezone
+from unittest.mock import patch
 
 from app.models.domain import InventoryItem
 from app.services.inventory_enterprise.forecasting import effective_low_stock_threshold
@@ -28,8 +29,12 @@ def test_effective_threshold_seasonal_multiplier() -> None:
         seasonal_multipliers={"summer": 1.5},
         event_boosts=[],
     )
-    # June → summer
-    thr = effective_low_stock_threshold(item, policy)
+    june = datetime(2026, 6, 15, tzinfo=timezone.utc)
+    with patch(
+        "app.services.inventory_enterprise.forecasting.datetime"
+    ) as mock_dt:
+        mock_dt.now.return_value = june
+        thr = effective_low_stock_threshold(item, policy)
     assert thr == 15.0
 
 

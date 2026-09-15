@@ -39,6 +39,11 @@ from app.core.security.tenant_auth_policy import (
     microsoft_sso_allowed_for_company,
     password_login_allowed_for_user,
 )
+from app.core.security.tenant_rls import (
+    apply_pulse_rls_auth_bootstrap_context,
+    apply_pulse_rls_context_for_auth_write,
+    apply_pulse_rls_context_for_login_user,
+)
 from app.core.permissions.service import PermissionService
 from app.core.rbac.resolve import effective_rbac_permission_keys
 from app.core.workspace_departments import primary_hr_department_slug_for_auth
@@ -173,6 +178,7 @@ async def _upsert_microsoft_user(
     db: AsyncSession,
     identity: MicrosoftIdentity,
 ) -> tuple[User, bool]:
+    await apply_pulse_rls_auth_bootstrap_context(db)
     q = await db.execute(select(User).where(func.lower(User.email) == identity.email))
     user = q.scalar_one_or_none()
     created = False
@@ -195,11 +201,13 @@ async def _upsert_microsoft_user(
             await db.flush()
         except IntegrityError:
             await db.rollback()
+            await apply_pulse_rls_auth_bootstrap_context(db)
             created = False
             q = await db.execute(select(User).where(func.lower(User.email) == identity.email))
             user = q.scalar_one_or_none()
             if user is None:
                 raise
+    await apply_pulse_rls_context_for_login_user(db, user)
 
     if not user.is_active or user.account_status != UserAccountStatus.active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Account is not active.")
@@ -224,9 +232,13 @@ async def login(
 ) -> Token:
     email_norm = str(body.email).strip().lower()
     now = datetime.now(timezone.utc)
+    # FORCE RLS + pulse_app: empty GUCs hide users AND reject INSERT INTO audit_logs
+    # (production ProgrammingError) / login_events / lockout updates.
+    await apply_pulse_rls_auth_bootstrap_context(db)
     q = await db.execute(select(User).where(func.lower(User.email) == email_norm))
     user = q.scalar_one_or_none()
     if not user or not user.is_active:
+        await apply_pulse_rls_context_for_auth_write(db, None)
         await record_audit(
             db,
             action="auth.login_failed",
@@ -235,6 +247,7 @@ async def login(
         await db.commit()
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     if user.account_status != UserAccountStatus.active:
+        await apply_pulse_rls_context_for_auth_write(db, user)
         await record_audit(
             db,
             action="auth.login_failed",
@@ -244,6 +257,7 @@ async def login(
         )
         await db.commit()
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    await apply_pulse_rls_context_for_login_user(db, user)
     company = None
     if user.company_id:
         company = await db.get(Company, user.company_id)
@@ -259,6 +273,7 @@ async def login(
         )
     if not verify_password(body.password, user.hashed_password):
         apply_failed_login_lockout(user, settings, now)
+        await apply_pulse_rls_context_for_auth_write(db, user)
         await record_audit(
             db,
             action="auth.login_failed",
@@ -273,6 +288,7 @@ async def login(
     clear_login_lockout(user)
     user.last_login = now
     user.last_active_at = now
+    await apply_pulse_rls_context_for_auth_write(db, user)
     await record_audit(
         db,
         action="auth.login",
@@ -282,6 +298,7 @@ async def login(
     )
     await log_login_event(db, request, user, login_method="password")
     out = await _issue_token_pair(db, request, user)
+    await apply_pulse_rls_context_for_auth_write(db, user)
     await db.commit()
     return out
 
@@ -311,6 +328,7 @@ async def microsoft_oauth_login(
     user.mfa_enrolled_at = now
     user.last_login = now
     user.last_active_at = now
+    await apply_pulse_rls_context_for_auth_write(db, user)
     await record_audit(
         db,
         action="auth.microsoft_login",
@@ -325,6 +343,7 @@ async def microsoft_oauth_login(
     )
     await log_login_event(db, request, user, login_method="microsoft")
     out = await _issue_token_pair(db, request, user)
+    await apply_pulse_rls_context_for_auth_write(db, user)
     await db.commit()
     return out
 
@@ -518,6 +537,7 @@ async def exit_impersonation(
     if not imp_id:
         raise HTTPException(status_code=400, detail="Missing impersonator")
 
+    await apply_pulse_rls_auth_bootstrap_context(db)
     q = await db.execute(select(User).where(User.id == imp_id))
     admin = q.scalar_one_or_none()
     if not admin or not admin.is_active:
@@ -552,6 +572,7 @@ async def accept_invite(
 ) -> Token:
     th = hash_system_token(body.token)
     now = datetime.now(timezone.utc)
+    await apply_pulse_rls_auth_bootstrap_context(db)
     tq = await db.execute(
         select(Invite).where(
             Invite.token_hash == th,
@@ -612,6 +633,7 @@ async def accept_employee_invite(
 ) -> Token:
     th = hash_system_token(body.token)
     now = datetime.now(timezone.utc)
+    await apply_pulse_rls_auth_bootstrap_context(db)
     tq = await db.execute(
         select(User).where(
             User.invite_token_hash == th,
@@ -624,6 +646,7 @@ async def accept_employee_invite(
     if not user or not user.company_id:
         raise HTTPException(status_code=400, detail="Invalid or expired invite")
 
+    await apply_pulse_rls_context_for_login_user(db, user)
     co = await db.get(Company, user.company_id)
     if not co or not co.is_active:
         raise HTTPException(status_code=400, detail="Organization not available")
@@ -662,6 +685,8 @@ async def confirm_password_reset(
 ) -> Token:
     th = hash_system_token(body.token)
     now = datetime.now(timezone.utc)
+    # Token + user lookup and system_logs write need platform GUCs under FORCE RLS.
+    await apply_pulse_rls_auth_bootstrap_context(db)
     tq = await db.execute(
         select(SystemSecureToken).where(
             SystemSecureToken.token_hash == th,
@@ -707,6 +732,7 @@ async def refresh_access_token(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Refresh tokens are not enabled (AUTH_SESSION_MODE=bearer)",
         )
+    await apply_pulse_rls_auth_bootstrap_context(db)
     rotated = await rotate_refresh_session(
         db,
         body.refresh_token,
@@ -748,6 +774,7 @@ async def logout(
         return {"status": "ok", "detail": "refresh_not_enabled"}
     if not (body.refresh_token or "").strip():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="refresh_token required")
+    await apply_pulse_rls_auth_bootstrap_context(db)
     ok = await revoke_refresh_token(db, body.refresh_token or "")
     await record_security_event(
         db,

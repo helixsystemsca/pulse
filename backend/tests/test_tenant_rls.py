@@ -10,7 +10,9 @@ import pytest
 from sqlalchemy import text
 
 from app.core.security.tenant_rls import (
+    apply_pulse_rls_auth_bootstrap_context,
     apply_pulse_rls_context,
+    apply_pulse_rls_context_for_login_user,
     apply_pulse_rls_system_context,
 )
 
@@ -67,6 +69,41 @@ async def test_pulse_rls_system_admin_context(db_session):
         )
     ).one()
     assert row[0] == "true"
+
+
+@pytest.mark.asyncio
+async def test_pulse_rls_auth_bootstrap_context(db_session):
+    await apply_pulse_rls_auth_bootstrap_context(db_session)
+    row = (
+        await db_session.execute(
+            text(
+                "SELECT current_setting('pulse.company_id', true), "
+                "current_setting('pulse.is_system_admin', true)"
+            )
+        )
+    ).one()
+    assert row[0] in ("", None)
+    assert row[1] == "true"
+
+
+@pytest.mark.asyncio
+async def test_pulse_rls_login_user_context_scopes_tenant(db_session, seeded_tenant):
+    from app.models.domain import User
+
+    worker = await db_session.get(User, seeded_tenant.worker_id)
+    assert worker is not None
+    await apply_pulse_rls_auth_bootstrap_context(db_session)
+    await apply_pulse_rls_context_for_login_user(db_session, worker)
+    row = (
+        await db_session.execute(
+            text(
+                "SELECT current_setting('pulse.company_id', true), "
+                "current_setting('pulse.is_system_admin', true)"
+            )
+        )
+    ).one()
+    assert row[0] == seeded_tenant.company_id
+    assert row[1] == "false"
 
 
 @pytest.mark.asyncio
