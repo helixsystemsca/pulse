@@ -9,7 +9,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { PLATFORM_DEFAULT_LOGO_SRC } from "@/lib/branding/platform-defaults";
+import { usePulseAuth } from "@/hooks/usePulseAuth";
+import { resolveAuthModalBrand } from "@/lib/branding/auth-brand";
 import { cn } from "@/lib/cn";
 import {
   dispatchWelcomeOverlayClosed,
@@ -123,6 +124,7 @@ export function WelcomeLoaderModal({
   storageKey = PULSE_WELCOME_SESSION_KEY,
   onWelcomeComplete,
 }: WelcomeLoaderModalProps) {
+  const { session } = usePulseAuth();
   const dismissedOnMount = isWelcomeOverlayDismissed(storageKey);
   const [hydrated, setHydrated] = useState(false);
   const [skipEntirely, setSkipEntirely] = useState(dismissedOnMount);
@@ -235,6 +237,12 @@ export function WelcomeLoaderModal({
   const first = firstNameOnly(userName);
   const welcomeLine = `${timeOfDayGreeting()}, ${first}`;
   const welcomeSub = "You’re all set to jump back in.";
+  const brand = resolveAuthModalBrand({
+    hostname: window.location.hostname,
+    companyName: session?.company?.name,
+    logoUrl: session?.company?.logo_url,
+  });
+  const vernonMark = brand.kind === "vernon";
 
   void criticalCount;
   void warningCount;
@@ -276,13 +284,19 @@ export function WelcomeLoaderModal({
                   phase === "loading" ? "pb-[3.25rem] sm:pb-14" : "pb-7 sm:pb-8",
                 ].join(" ")}
               >
-                <div className="relative mx-auto h-[9.3rem] w-[9.3rem] sm:h-[9.9rem] sm:w-[9.9rem]">
+                <div
+                  className={
+                    vernonMark
+                      ? "relative mx-auto h-[5.25rem] w-[min(18rem,calc(100vw-6rem))] sm:h-[5.75rem] sm:w-[20rem]"
+                      : "relative mx-auto h-[9.3rem] w-[9.3rem] sm:h-[9.9rem] sm:w-[9.9rem]"
+                  }
+                >
                   <Image
-                    src={PLATFORM_DEFAULT_LOGO_SRC}
-                    alt=""
+                    src={brand.cinematicSrc}
+                    alt={brand.cinematicAlt}
                     fill
                     priority
-                    sizes="(max-width: 640px) 158px, 173px"
+                    sizes={vernonMark ? "(max-width: 640px) 288px, 320px" : "(max-width: 640px) 158px, 173px"}
                     className="object-contain object-center"
                   />
                 </div>

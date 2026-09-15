@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { getApiBaseUrl } from "@/lib/api";
+import { isDirectDisplayLogoUrl } from "@/lib/branding/logo-src";
 import { readSession } from "@/lib/pulse-session";
 
 /**
- * Public https URLs are returned as-is; API-relative paths use an authenticated blob URL
- * (same pattern as `CompanyLogo`).
+ * Public https URLs and same-origin `/images/…` paths are returned as-is;
+ * API-relative paths use an authenticated blob URL (same pattern as `CompanyLogo`).
  */
 export function useAuthenticatedAssetSrc(url: string | null | undefined): string | null {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
@@ -27,7 +28,7 @@ export function useAuthenticatedAssetSrc(url: string | null | undefined): string
       });
       return;
     }
-    if (url.startsWith("http://") || url.startsWith("https://")) {
+    if (isDirectDisplayLogoUrl(url)) {
       setBlobUrl((prev) => {
         if (prev) URL.revokeObjectURL(prev);
         return null;
@@ -74,6 +75,6 @@ export function useAuthenticatedAssetSrc(url: string | null | undefined): string
   }, [url, authEpoch]);
 
   if (!url) return null;
-  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  if (isDirectDisplayLogoUrl(url)) return url;
   return blobUrl;
 }

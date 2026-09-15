@@ -7,6 +7,7 @@
 import { useAuthenticatedAssetSrc } from "@/hooks/useAuthenticatedAssetSrc";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { PLATFORM_DEFAULT_LOGO_SRC } from "@/lib/branding/platform-defaults";
+import { isDirectDisplayLogoUrl, trimLogoUrl } from "@/lib/branding/logo-src";
 import { cn } from "@/lib/cn";
 
 type Props = {
@@ -17,14 +18,13 @@ type Props = {
 
 export function TenantBrandMark({ className = "", logoUrl, companyName }: Props) {
   const { session } = usePulseAuth();
-  const tenantLogoUrl = (logoUrl ?? session?.company?.logo_url ?? "").trim() || null;
+  const tenantLogoUrl = trimLogoUrl(logoUrl ?? session?.company?.logo_url);
   const alt = (companyName ?? session?.company?.name ?? "Organization").trim() || "Organization";
-  const apiBlob = useAuthenticatedAssetSrc(tenantLogoUrl);
-  const external =
-    tenantLogoUrl?.startsWith("http://") || tenantLogoUrl?.startsWith("https://") ? tenantLogoUrl : null;
-  const waitingApiBlob = Boolean(tenantLogoUrl?.startsWith("/api") && !apiBlob);
+  const direct = tenantLogoUrl && isDirectDisplayLogoUrl(tenantLogoUrl) ? tenantLogoUrl : null;
+  const apiBlob = useAuthenticatedAssetSrc(direct ? null : tenantLogoUrl);
+  const waitingApiBlob = Boolean(tenantLogoUrl && !direct && tenantLogoUrl.startsWith("/api") && !apiBlob);
 
-  const displaySrc = external ?? apiBlob ?? (waitingApiBlob ? null : PLATFORM_DEFAULT_LOGO_SRC);
+  const displaySrc = direct ?? apiBlob ?? (waitingApiBlob ? null : PLATFORM_DEFAULT_LOGO_SRC);
 
   if (!displaySrc) {
     return (
@@ -36,7 +36,7 @@ export function TenantBrandMark({ className = "", logoUrl, companyName }: Props)
   }
 
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- tenant https URL or authenticated blob
+    // eslint-disable-next-line @next/next/no-img-element -- tenant https URL, static public path, or authenticated blob
     <img src={displaySrc} alt={alt} className={cn("object-contain object-left", className)} />
   );
 }

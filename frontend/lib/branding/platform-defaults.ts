@@ -3,3 +3,11 @@ export const PLATFORM_DEFAULT_LOGO_SRC = "/images/helix_cropped_tight.png";
 
 /** Legacy Panorama asset — prefer {@link PLATFORM_DEFAULT_LOGO_SRC} for new surfaces. */
 export const LEGACY_PANORAMA_LOGO_SRC = "/images/panoramalogo2.png";
+
+/**
+ * City of Vernon recreation-ops tenant mark (official vernon.ca artwork).
+ * Used as tenant branding on the Vernon app host — not Helix marketing.
+ */
+export const CITY_OF_VERNON_LOGO_SRC = "/images/city-of-vernon-logo.png";
+
+export const CITY_OF_VERNON_LOGO_ALT = "City of Vernon";

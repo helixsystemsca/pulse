@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Bell, ChevronDown, Image as ImageIcon, KeyRound, LogOut, Megaphone, Menu, MessageSquare, Settings, X } from "lucide-react";
 import { AppHeaderWordmark } from "@/components/branding/AppHeaderWordmark";
+import { CompanyLogo } from "@/components/branding/CompanyLogo";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { OperationalNotificationsModal } from "@/components/app/OperationalNotificationsModal";
@@ -229,7 +230,15 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
             className="inline-flex min-w-0 items-center whitespace-nowrap leading-none"
             aria-label={session?.company ? `${session.company.name} home` : "Helix home"}
           >
-            <AppHeaderWordmark company={session?.company} />
+            {session?.company?.logo_url?.trim() ? (
+              <CompanyLogo
+                logoUrl={session.company.logo_url}
+                companyName={session.company.name}
+                variant="chrome"
+              />
+            ) : (
+              <AppHeaderWordmark company={session?.company} />
+            )}
           </Link>
         </div>
 

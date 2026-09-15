@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.features.recreation_ops_tenants import (
     VERNON_ADMIN_EMAILS,
     VERNON_PINNED_FEATURES,
+    apply_vernon_default_logo,
     recreation_ops_forced_for_company_name,
 )
 from app.core.features.service import FeatureFlagService
@@ -23,6 +24,10 @@ async def ensure_vernon_recreation_ops(db: AsyncSession) -> None:
     companies = list((await db.execute(select(Company).where(Company.is_active.is_(True)))).scalars().all())
     vernon = [c for c in companies if recreation_ops_forced_for_company_name(c.name)]
     target_ids = {str(c.id) for c in vernon}
+
+    for company in vernon:
+        if apply_vernon_default_logo(company):
+            _log.info("Set City of Vernon default logo_url for tenant %s", company.id)
 
     for email in VERNON_ADMIN_EMAILS:
         row = (
