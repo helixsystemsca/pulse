@@ -14,6 +14,21 @@ from tests.conftest import auth_headers
 PANORAMA_ORIGIN = "https://panorama.helixsystems.ca"
 OPS_ORIGIN = "https://ops.helixsystems.ca"
 PPS_ORIGIN = "https://pps.helixsystems.ca"
+VERNON_ORIGIN = "https://vernon.helixsystems.ca"
+
+
+def test_options_preflight_includes_vernon_origin() -> None:
+    client = TestClient(app)
+    res = client.options(
+        "/api/workers",
+        headers={
+            "Origin": VERNON_ORIGIN,
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "authorization,content-type",
+        },
+    )
+    assert res.status_code == 200
+    assert res.headers.get("access-control-allow-origin") == VERNON_ORIGIN
 
 
 def test_profile_avatar_preflight_includes_ops_origin() -> None:

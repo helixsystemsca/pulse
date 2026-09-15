@@ -1,13 +1,17 @@
 /**
- * Hostnames that serve the Panorama / Pulse app directly (e.g. `/` → `/login`), without the marketing shell.
+ * Hostnames that serve the Pulse app directly (e.g. `/` → `/login`), without the marketing shell.
  * Keep in sync with `middleware.ts`.
  *
+ * Default product host is `vernon.helixsystems.ca`. Legacy panorama/pulse/ops/pps hosts stay in the
+ * list so existing bookmarks keep working until operators remove them from DNS.
+ *
  * - Set `PULSE_APP_HOSTNAMES` (comma-separated) to override this list entirely.
- * - If unset, defaults include both legacy `pulse.*` and `panorama.*`, plus the host from
+ * - If unset, defaults include vernon plus legacy hosts, and the host from
  *   `NEXT_PUBLIC_PULSE_APP_URL` so a single env update keeps middleware + login layout aligned.
  */
 
 const DEFAULT_PULSE_APP_HOSTS = [
+  "vernon.helixsystems.ca",
   "panorama.helixsystems.ca",
   "pulse.helixsystems.ca",
   "ops.helixsystems.ca",

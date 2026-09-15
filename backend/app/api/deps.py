@@ -230,9 +230,33 @@ async def require_training_matrix_access(user: Annotated[User, Depends(get_curre
     return user
 
 
-async def require_pm_features_user(user: Annotated[User, Depends(get_current_company_user)]) -> User:
-    """Internal PM coordination APIs (`/api/v1/pm-coord/*`). Gated by user flag, not tenant role."""
-    if not bool(getattr(user, "can_use_pm_features", False)):
+async def user_can_use_pm_features(
+    db: AsyncSession,
+    user: User,
+    *,
+    rbac_keys: list[str] | None = None,
+) -> bool:
+    """Same gate as `/auth/me` `can_use_pm_features`: DB flag OR PM RBAC (`projects.pm.view` / `*`)."""
+    if bool(getattr(user, "can_use_pm_features", False)):
+        return True
+    keys = rbac_keys
+    if keys is None:
+        contract_feats, eff_feats, _, _ = await contract_and_effective_features_for_me(db, user)
+        keys = await effective_rbac_permission_keys(
+            db,
+            user,
+            contract_feature_names=contract_feats,
+            effective_feature_names=eff_feats,
+        )
+    return "*" in keys or "projects.pm.view" in keys
+
+
+async def require_pm_features_user(
+    user: Annotated[User, Depends(get_current_company_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> User:
+    """Internal PM coordination APIs (`/api/v1/pm-coord/*`). Same gate as `/auth/me` `can_use_pm_features`."""
+    if not await user_can_use_pm_features(db, user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="pm_features_disabled",

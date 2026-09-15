@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any, Optional
 from urllib.parse import quote
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, status
 from sqlalchemy import delete, func, or_, select
@@ -91,7 +91,7 @@ from app.models.pulse_models import (
     PulseWorkRequest,
     PulseWorkRequestStatus,
 )
-from app.modules.compliance.service import effective_status, repeat_offender_user_ids
+from app.modules.compliance.service import effective_status, repeat_offender_user_ids, summarize as summarize_compliance
 from app.modules.pulse import service as pulse_svc
 from app.api.onboarding_preferences_routes import clear_onboarding_tour_completed
 from app.schemas.onboarding_preferences import (
@@ -103,6 +103,7 @@ from app.schemas.training import WorkerTrainingOut as WorkerTrainingBundleOut
 from app.schemas.pulse_workers import (
     WorkerCertificationOut,
     WorkerComplianceSummaryOut,
+    WorkersComplianceSummaryOut,
     WorkerCreateIn,
     WorkerCreateResultOut,
     WorkerDetailOut,
@@ -334,6 +335,10 @@ async def _roster_user_in_company_any_status(db: AsyncSession, cid: str, user_id
     `include_inactive=true`, so invited/deactivated rows could appear in the UI while DELETE
     incorrectly returned 404.
     """
+    try:
+        UUID(str(user_id))
+    except (ValueError, TypeError, AttributeError):
+        return None
     row = await db.execute(select(User).where(User.id == user_id, User.company_id == cid))
     u = row.scalar_one_or_none()
     if not u or not set(u.roles) & _ROSTER_ROLE_VALUES:
@@ -1093,6 +1098,42 @@ async def list_workers(
             )
         )
     return WorkerListOut(items=items)
+
+
+@router.get("/compliance-summary", response_model=WorkersComplianceSummaryOut)
+async def roster_compliance_summary(db: Db, _: RosterPageUser, cid: CompanyId) -> WorkersComplianceSummaryOut:
+    """Tenant-wide worker compliance rollup (must not be captured by `/{user_id}`)."""
+    now = datetime.now(timezone.utc)
+    data = await summarize_compliance(db, cid, now)
+    roster_vals = [r.value for r in _ROSTER_ROLES]
+    count_q = await db.execute(
+        select(func.count())
+        .select_from(User)
+        .where(
+            User.company_id == cid,
+            User.is_active.is_(True),
+            User.roles.overlap(pg_array(roster_vals)),
+        )
+    )
+    worker_count = int(count_q.scalar_one() or 0)
+    flagged_q = await db.execute(
+        select(func.count())
+        .select_from(ComplianceRecord)
+        .where(
+            ComplianceRecord.company_id == cid,
+            ComplianceRecord.flagged.is_(True),
+        )
+    )
+    flagged_count = int(flagged_q.scalar_one() or 0)
+    repeat_ids = await repeat_offender_user_ids(db, cid, now)
+    return WorkersComplianceSummaryOut(
+        compliance_rate_pct=float(data["compliance_rate"]),
+        missed_acknowledgments=int(data["missed_count"]),
+        repeat_offender_count=len(repeat_ids),
+        flagged_count=flagged_count,
+        worker_count=worker_count,
+        active_monitors=int(data.get("active_monitors") or 0),
+    )
 
 
 @router.get("/{user_id}/training", response_model=WorkerTrainingBundleOut)

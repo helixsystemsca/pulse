@@ -31,7 +31,7 @@ Backend (FastAPI):
 2. Enable the provider.
 3. Enter the Azure app registration client ID and client secret.
 4. Add the app callback URL to **Authentication > URL Configuration > Redirect URLs**:
-   - Production example: `https://panorama.helixsystems.ca/auth/callback`
+   - Production example: `https://vernon.helixsystems.ca/auth/callback`
    - Local example: `http://localhost:3000/auth/callback`
 5. Set the site URL to the deployed app origin.
 

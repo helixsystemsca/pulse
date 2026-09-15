@@ -9,7 +9,12 @@ import hashlib
 from datetime import date, timedelta
 from typing import Any, Optional
 
+from app.core.config import get_settings
 from app.services.project_summary.metrics import project_seed_int
+
+
+def _use_mock_operational_data() -> bool:
+    return bool(get_settings().use_mock_data)
 
 
 class TaskServiceStub:
@@ -17,6 +22,8 @@ class TaskServiceStub:
 
     def get_tasks_by_project(self, project_id: str | int) -> list[dict[str, Any]]:
         """Raw task rows: enough for scope, schedule, and resource rollups."""
+        if not _use_mock_operational_data():
+            return []
         pid = project_seed_int(project_id)
         n = 8 + (pid % 7)
         base = date(2025, 1, 1) + timedelta(days=pid % 90)
@@ -48,6 +55,8 @@ class LogServiceStub:
     """Stand-in for activity / comms / time logs."""
 
     def get_communication_rollups(self, project_id: str | int) -> dict[str, Any]:
+        if not _use_mock_operational_data():
+            return {"update_count": 0, "avg_response_time_hours": None}
         pid = project_seed_int(project_id)
         return {
             "update_count": 15 + (pid % 18),
@@ -55,6 +64,8 @@ class LogServiceStub:
         }
 
     def get_hours_logged_by_user(self, project_id: str | int) -> dict[str, float]:
+        if not _use_mock_operational_data():
+            return {}
         seed = project_seed_int(project_id)
         users = [f"user-{i}" for i in range(4)]
         out: dict[str, float] = {}
@@ -68,6 +79,8 @@ class InspectionServiceStub:
     """Stand-in for inspection / QA APIs."""
 
     def get_inspection_rollups(self, project_id: str | int) -> dict[str, Any]:
+        if not _use_mock_operational_data():
+            return {"passed": 0, "failed": 0, "rework_events": 0}
         pid = project_seed_int(project_id)
         failed = pid % 4
         return {

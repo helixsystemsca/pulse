@@ -20,8 +20,9 @@ STANDARD_LOCAL_DEV_ORIGINS: tuple[str, ...] = (
     "http://127.0.0.1:5173",
 )
 
-# Hosted Pulse / Panorama SPA origins merged when env CORS is incomplete (misconfigured Render, etc.).
+# Hosted Pulse SPA origins merged when env CORS is incomplete (misconfigured Render, etc.).
 _PULSE_HOSTED_FRONTEND_ORIGINS: tuple[str, ...] = (
+    "https://vernon.helixsystems.ca",
     "https://panorama.helixsystems.ca",
     "https://panorama.helixsystems.co",
     "https://app.helixsystems.ca",
@@ -30,7 +31,7 @@ _PULSE_HOSTED_FRONTEND_ORIGINS: tuple[str, ...] = (
     "https://www.helixsystems.ca",
 )
 _DEFAULT_PRODUCTION_FRONTEND_ORIGIN = _PULSE_HOSTED_FRONTEND_ORIGINS[0]
-# When CORS_ORIGIN_REGEX is unset, allow any Helix tenant SPA subdomain (ops, panorama, pps, …).
+# When CORS_ORIGIN_REGEX is unset, allow any Helix tenant SPA subdomain (vernon, ops, panorama, pps, …).
 _DEFAULT_HELIX_CORS_ORIGIN_REGEX = r"^https://([a-z0-9-]+\.)?helixsystems\.ca$"
 
 
@@ -290,10 +291,10 @@ class Settings(BaseSettings):
         default="info@helixsystems.ca",
         validation_alias=AliasChoices("EMAIL_TO_INFO", "email_to_info"),
     )
-    #: Base URL for links in emails (invite/reset). Must be the **Panorama / Pulse web app** (browser Origin), not the API host.
-    #: Paths are ignored when merging into CORS; only scheme + host are used. Set to `https://panorama.helixsystems.ca` when using that host.
+    #: Base URL for links in emails (invite/reset). Must be the **Pulse web app** (browser Origin), not the API host.
+    #: Paths are ignored when merging into CORS; only scheme + host are used. Set to `https://vernon.helixsystems.ca`.
     pulse_app_public_url: str = Field(
-        default="https://panorama.helixsystems.ca",
+        default="https://vernon.helixsystems.ca",
         validation_alias=AliasChoices("PULSE_APP_PUBLIC_URL", "pulse_app_public_url"),
     )
     #: When set, unknown `gateway_id` on POST /api/gateway/register creates a row under this company.
@@ -332,7 +333,8 @@ class Settings(BaseSettings):
         default="https://api.xplorrecreation.example",
         validation_alias=AliasChoices("XPLOR_BASE_URL", "xplor_base_url"),
     )
-    use_mock_data: bool = Field(default=True, validation_alias=AliasChoices("USE_MOCK_DATA", "use_mock_data"))
+    #: Demo / local-only mock payloads (Xplor schedule rink programs, project-summary stubs). Off in production.
+    use_mock_data: bool = Field(default=False, validation_alias=AliasChoices("USE_MOCK_DATA", "use_mock_data"))
     # Cache TTL for schedule pulls (seconds).
     schedule_cache_ttl_seconds: int = Field(
         default=45,
@@ -421,7 +423,7 @@ class Settings(BaseSettings):
                 if host.endswith(".onrender.com") or host.endswith(".railway.app") or host.endswith(".fly.dev"):
                     _log.warning(
                         "PULSE_APP_PUBLIC_URL resolves to %r — this often points at a PaaS **API** host. "
-                        "Browsers send the **SPA** Origin (e.g. https://panorama.helixsystems.ca). "
+                        "Browsers send the **SPA** Origin (e.g. https://vernon.helixsystems.ca). "
                         "That SPA origin is always merged in production; still set PULSE_APP_PUBLIC_URL to the SPA "
                         "for correct email links.",
                         pulse_o,
@@ -436,7 +438,7 @@ class Settings(BaseSettings):
                 seen.add(o)
                 out.append(o)
 
-        # Primary hosted Pulse / Panorama SPA — merged in every environment so a deployed API without
+        # Primary hosted Pulse SPA — merged in every environment so a deployed API without
         # ENVIRONMENT=production (common on Render) still accepts browser traffic from the real SPA.
         for origin in _PULSE_HOSTED_FRONTEND_ORIGINS:
             if origin not in seen:
