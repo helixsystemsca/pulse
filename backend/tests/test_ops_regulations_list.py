@@ -13,9 +13,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth.security import create_access_token
-from app.core.company_features import sync_enabled_features
 from app.core.features.cache import clear_all
-from app.core.features.system_catalog import GLOBAL_SYSTEM_FEATURES
 from app.core.security.tenant_rls import apply_pulse_rls_context
 from app.models.domain import User, UserRole
 from app.models.ops_foundation_models import OpsEntityLink, OpsFacility, OpsRegulation
@@ -50,6 +48,9 @@ async def _pulse_app_style_role(db_session: AsyncSession):
 
 
 async def _admin_token(db_session: AsyncSession, seeded_tenant) -> str:
+    from app.core.company_features import sync_enabled_features
+    from app.core.features.system_catalog import GLOBAL_SYSTEM_FEATURES
+
     await sync_enabled_features(db_session, seeded_tenant.company_id, list(GLOBAL_SYSTEM_FEATURES))
     admin = await db_session.get(User, seeded_tenant.manager_id)
     assert admin is not None
