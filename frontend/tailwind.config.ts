@@ -123,13 +123,18 @@ const config: Config = {
         "stealth-card": "0 1px 3px rgba(0, 0, 0, 0.22), 0 2px 10px rgba(0, 0, 0, 0.18)",
       },
       keyframes: {
-        "welcome-ocean": {
-          from: { transform: "translateX(0)" },
-          to: { transform: "translateX(-50%)" },
+        "welcome-logo-pulse": {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.78" },
+        },
+        "welcome-progress-sheen": {
+          from: { transform: "translateX(-130%)" },
+          to: { transform: "translateX(280%)" },
         },
       },
       animation: {
-        "welcome-ocean": "welcome-ocean 4.25s linear infinite",
+        "welcome-logo-pulse": "welcome-logo-pulse 2.6s ease-in-out infinite",
+        "welcome-progress-sheen": "welcome-progress-sheen 1.65s ease-in-out infinite",
       },
     },
   },
