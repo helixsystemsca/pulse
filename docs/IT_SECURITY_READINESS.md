@@ -81,7 +81,7 @@ Policies use the existing helpers `pulse_rls_tenant_visible` / `pulse_rls_tenant
    - `DATABASE_RLS_CONTEXT_ENABLED=true` (default; GUC per request)
    - `DATABASE_RLS_ENFORCED=true` (startup warns if the URL still uses `postgres` / `supabase_admin`)
 5. **Re-check Supabase advisors** — target **zero** `rls_disabled_in_public`. Paste [`scripts/sql/verify_rls_coverage.sql`](../scripts/sql/verify_rls_coverage.sql) in the SQL editor.
-6. **Smoke-test** a tenant login and a second tenant: each must see only own ops/planner/roadmap/company row. System admin still sees all.
+6. **Smoke-test** a tenant login and a second tenant: each must see only own ops/planner/roadmap/company row. System admin still sees all. Password `POST /api/v1/auth/login` must succeed as `pulse_app` (auth bootstrap sets system GUCs for the email lookup, then tenant GUCs for lockout / `login_events` / audit). `/health/ready` being 200 is not enough — that probe does not touch `users`. Keep Render `DATABASE_URL` on `pulse_app` and `MIGRATION_DATABASE_URL` on the owner; do not revert runtime to superuser.
 
 Migrations continue to run as owner (may bypass RLS). Runtime must not.
 
