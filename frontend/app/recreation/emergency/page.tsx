@@ -29,9 +29,9 @@ const HUB_LINKS = [
     description: "Ask what’s overdue, who is qualified for ice plant work, or ammonia / pool emergency procedures — answers cite Pulse records.",
   },
   {
-    title: "Regulations",
+    title: "Codes & Guidance",
     href: "/recreation/regulations",
-    description: "Technical Safety BC, WorkSafeBC, fire code references that constrain emergency action.",
+    description: "Regulatory reference library — official public sources for TSBC, WorkSafeBC, Interior Health, and building/fire codes. Not a legal determination.",
   },
 ];
 

@@ -6,7 +6,7 @@ Tenant-scoped. Safe to re-run. Does not create fake staff or fake schedules.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Optional
 from uuid import uuid4
 
@@ -14,8 +14,15 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.features.recreation_ops_tenants import VERNON_ADMIN_EMAILS
+from app.core.regulatory_reference_catalog import (
+    DISCLAIMER as REG_DISCLAIMER,
+    LIBRARY_TAG,
+    REFERENCE_CARDS,
+    SEED_TAG as REG_SEED_TAG,
+    seed_tag_for,
+)
 from app.models.domain import FacilityEquipment, FacilityEquipmentStatus, User, Zone
-from app.models.ops_foundation_models import OpsContractor, OpsFacility, OpsKnowledgeArticle
+from app.models.ops_foundation_models import OpsContractor, OpsFacility, OpsKnowledgeArticle, OpsRegulation
 from app.models.pm_models import PmTask
 from app.models.pulse_models import PulseProcedure, PulseWorkerCertification
 from app.models.training_platform_models import TrainingCertification
@@ -190,6 +197,104 @@ async def _ensure_procedure(db: AsyncSession, company_id: str, spec: dict[str, A
             is_active=True,
             published_at=_utcnow(),
             revision_notes=INTERNAL_NOTE,
+        )
+    )
+
+
+def _parse_seed_date(raw: str | None) -> date | None:
+    if not raw:
+        return None
+    try:
+        return date.fromisoformat(raw[:10])
+    except ValueError:
+        return None
+
+
+async def _lookup_procedure_href(db: AsyncSession, company_id: str, title: str) -> Optional[str]:
+    row = (
+        await db.execute(
+            select(PulseProcedure).where(PulseProcedure.company_id == company_id, PulseProcedure.title == title)
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        return None
+    return f"/training/learning/library?procedure={row.id}"
+
+
+async def _lookup_knowledge_href(db: AsyncSession, company_id: str, title: str) -> Optional[str]:
+    row = await _get_by_title(db, OpsKnowledgeArticle, company_id, title)
+    if row is None:
+        return None
+    return f"/recreation/knowledge?id={row.id}"
+
+
+async def _resolve_pulse_pointers(db: AsyncSession, company_id: str, pointers: list[Any]) -> list[dict[str, str]]:
+    out: list[dict[str, str]] = []
+    for raw in pointers or []:
+        if not isinstance(raw, dict):
+            continue
+        label = str(raw.get("label") or "").strip()
+        href = str(raw.get("href") or "").strip()
+        match_title = str(raw.get("match_title") or "").strip()
+        match_kind = str(raw.get("match_kind") or "").strip()
+        if match_title and match_kind == "procedure":
+            resolved = await _lookup_procedure_href(db, company_id, match_title)
+            if resolved:
+                href = resolved
+            elif not href:
+                href = "/standards/procedures"
+        elif match_title and match_kind == "knowledge":
+            resolved = await _lookup_knowledge_href(db, company_id, match_title)
+            if resolved:
+                href = resolved
+            elif not href:
+                href = "/recreation/knowledge"
+        if label and href:
+            out.append({"label": label, "href": href})
+    return out
+
+
+async def _ensure_regulation(db: AsyncSession, company_id: str, spec: dict[str, Any]) -> None:
+    """Idempotent by seed-key tag, then title. Does not overwrite Josh's edits."""
+    key = spec["key"]
+    seed_key = seed_tag_for(key)
+    existing_rows = list(
+        (await db.execute(select(OpsRegulation).where(OpsRegulation.company_id == company_id))).scalars().all()
+    )
+    for row in existing_rows:
+        tags = row.tags if isinstance(row.tags, list) else []
+        if seed_key in tags or key in tags:
+            return
+        if row.title == spec["title"]:
+            return
+    pointers = await _resolve_pulse_pointers(db, company_id, spec.get("pulse_pointers") or [])
+    extra = list(spec.get("extra_sources") or [])
+    db.add(
+        OpsRegulation(
+            id=str(uuid4()),
+            company_id=company_id,
+            title=spec["title"],
+            description=spec.get("summary"),
+            status="active",
+            tags=[REG_SEED_TAG, LIBRARY_TAG, seed_key, spec.get("topic_category") or "Other"],
+            notes=REG_DISCLAIMER,
+            authority=spec.get("authority") or spec.get("official_source_name") or "",
+            regulation_name=spec.get("regulation_name"),
+            summary=spec.get("summary"),
+            requirements=(
+                "See the official source linked on this card. Pulse does not reproduce "
+                "copyrighted code or standard text, and this summary is not a legal determination."
+            ),
+            inspection_frequency=None,
+            external_references=extra,
+            topic_category=spec.get("topic_category") or "Other",
+            applicability=spec.get("applicability"),
+            classification=spec.get("classification") or "Regulator guidance",
+            official_source_name=spec.get("official_source_name"),
+            official_source_url=spec.get("official_source_url"),
+            verification_status=spec.get("verification_status") or "Unverified",
+            review_date=_parse_seed_date(spec.get("review_date")),
+            pulse_pointers=pointers,
         )
     )
 
@@ -576,6 +681,10 @@ async def seed_vernon_starter_pack(db: AsyncSession, company_id: str) -> dict[st
     for spec in PROCEDURES:
         await _ensure_procedure(db, company_id, spec)
     created["emergency"] = len(EMERGENCY_ARTICLES)
+
+    for spec in REFERENCE_CARDS:
+        await _ensure_regulation(db, company_id, spec)
+    created["regulatory_reference"] = len(REFERENCE_CARDS)
 
     await _ensure_contractor(
         db,

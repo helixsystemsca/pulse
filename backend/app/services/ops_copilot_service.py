@@ -12,7 +12,7 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.domain import FacilityEquipment, User
-from app.models.ops_foundation_models import OpsContractor, OpsFacility, OpsKnowledgeArticle
+from app.models.ops_foundation_models import OpsContractor, OpsFacility, OpsKnowledgeArticle, OpsRegulation
 from app.models.pm_models import PmTask
 from app.models.pulse_models import PulseProcedure, PulseWorkRequest, PulseWorkerCertification
 from app.services.certification_expiry_service import certification_expiry_summary
@@ -68,6 +68,36 @@ PROMPT_LIBRARY: list[dict[str, str]] = [
         "label": "Critical assets without current PMs",
         "prompt": "Which critical assets have no current preventive maintenance?",
         "hint": "Equipment with no PM task, or overdue PMs.",
+    },
+    {
+        "id": "chief-engineer",
+        "label": "Chief engineer / plant operator responsibilities",
+        "prompt": "What are chief engineer responsibilities for a refrigeration plant?",
+        "hint": "Codes & Guidance library — TSBC / Power Engineers regulation pointers, not legal advice.",
+    },
+    {
+        "id": "ohs-worksafebc",
+        "label": "OH&S / WorkSafeBC for rec facilities",
+        "prompt": "What WorkSafeBC OH&S guidance applies to recreation facilities?",
+        "hint": "Codes & Guidance — public WorkSafeBC pages.",
+    },
+    {
+        "id": "building-code",
+        "label": "BC Building Code — where to look it up",
+        "prompt": "How does the BC Building Code apply and where do I look it up?",
+        "hint": "Official provincial BC Codes pages — Pulse does not paste code text.",
+    },
+    {
+        "id": "interior-health-pools",
+        "label": "Interior Health / pool requirements",
+        "prompt": "What Interior Health pool code or aquatic requirements should I look at?",
+        "hint": "IH recreational water pages and the B.C. Pool Regulation on BC Laws.",
+    },
+    {
+        "id": "refrigeration-plant",
+        "label": "Refrigeration plant / TSBC requirements",
+        "prompt": "What are refrigeration plant requirements (Technical Safety BC)?",
+        "hint": "TSBC public notices for plant supervision, ammonia in ice rinks, and permits.",
     },
 ]
 
@@ -357,6 +387,87 @@ async def _assets_without_pms(db: AsyncSession, company_id: str) -> tuple[str, l
     return _lines_and_cites(parts)
 
 
+async def _library_cards(
+    db: AsyncSession,
+    company_id: str,
+    *,
+    query: Optional[str] = None,
+    keys: Optional[tuple[str, ...]] = None,
+) -> tuple[str, list[dict[str, Any]]]:
+    from app.core.regulatory_reference_catalog import DISCLAIMER, LIBRARY_HREF, seed_tag_for
+    from app.services.ops_ask_router import format_library_answer, route_ops_ask
+
+    parts: list[tuple[str, Optional[dict[str, Any]]]] = []
+    route = route_ops_ask(query or " ".join(keys or ()))
+    wanted = set(keys or ()) | set(route.get("card_keys") or [])
+    rows = list(
+        (await db.execute(select(OpsRegulation).where(OpsRegulation.company_id == company_id, OpsRegulation.status == "active"))).scalars().all()
+    )
+    matched: list[OpsRegulation] = []
+    q = (query or "").lower()
+    for row in rows:
+        tags = row.tags if isinstance(row.tags, list) else []
+        seed_hit = any(seed_tag_for(k) in tags or k in tags for k in wanted) if wanted else False
+        hay = f"{row.title} {row.summary or ''} {row.topic_category} {row.classification} {row.authority}".lower()
+        text_hit = bool(q) and all(tok in hay for tok in q.split() if len(tok) > 3)
+        if wanted:
+            if seed_hit or text_hit:
+                matched.append(row)
+        elif q:
+            if text_hit:
+                matched.append(row)
+        else:
+            matched.append(row)
+    if not matched and wanted:
+        # Fall back to catalog text when the tenant has not been seeded yet.
+        parts.append((format_library_answer(route), _cite(title="Codes & Guidance", href=LIBRARY_HREF, kind="regulatory_reference")))
+        return _lines_and_cites(parts)
+
+    if not matched:
+        parts.append(
+            (
+                "No matching Codes & Guidance cards in this tenant yet. Open the library to browse categories.",
+                _cite(title="Codes & Guidance", href=LIBRARY_HREF, kind="regulatory_reference"),
+            )
+        )
+        return _lines_and_cites(parts)
+
+    parts.append(
+        (
+            "Reference cards from Codes & Guidance. These summaries are not legal advice.",
+            _cite(title="Codes & Guidance library", href=LIBRARY_HREF, kind="regulatory_reference"),
+        )
+    )
+    for row in matched[:8]:
+        source = row.official_source_name or row.authority or "Official source"
+        url = row.official_source_url or ""
+        lines = f"{row.title} [{row.classification}]. {row.summary or ''}".strip()
+        if url:
+            lines += f" Official source: {source} — {url}"
+        parts.append(
+            (
+                lines,
+                _cite(
+                    title=row.title,
+                    href=f"{LIBRARY_HREF}?id={row.id}",
+                    kind="regulatory_reference",
+                    detail=row.classification,
+                ),
+            )
+        )
+    parts.append((DISCLAIMER, None))
+    return _lines_and_cites(parts)
+
+
+REG_PROMPT_TO_QUERY: dict[str, str] = {
+    "chief-engineer": "chief engineer responsibilities",
+    "ohs-worksafebc": "oh&s worksafebc",
+    "building-code": "building code",
+    "interior-health-pools": "interior health pool code",
+    "refrigeration-plant": "refrigeration plant requirements",
+}
+
+
 async def answer_prompt(db: AsyncSession, company_id: str, prompt_id: str) -> dict[str, Any]:
     spec = next((p for p in PROMPT_LIBRARY if p["id"] == prompt_id), None)
     if spec is None:
@@ -370,14 +481,22 @@ async def answer_prompt(db: AsyncSession, company_id: str, prompt_id: str) -> di
         answer, cites = await _qualified_ammonia(db, company_id)
     elif prompt_id == "ammonia-release":
         answer, cites = await _procedure_search(db, company_id, ("ammonia", "ice plant", "refrigerat"))
+        extra_a, extra_c = await _library_cards(db, company_id, query="ammonia emergency")
+        answer = f"{answer}\n\n{extra_a}"
+        cites = cites + extra_c
     elif prompt_id == "pool-emergency":
         answer, cites = await _procedure_search(db, company_id, ("drown", "pool emergency", "water quality", "chemical spill"))
+        extra_a, extra_c = await _library_cards(db, company_id, query="interior health pool code")
+        answer = f"{answer}\n\n{extra_a}"
+        cites = cites + extra_c
     elif prompt_id == "certs-this-month":
         answer, cites = await _certs_month(db, company_id)
     elif prompt_id == "contractor-insurance":
         answer, cites = await _contractor_status(db, company_id)
     elif prompt_id == "assets-without-pms":
         answer, cites = await _assets_without_pms(db, company_id)
+    elif prompt_id in REG_PROMPT_TO_QUERY:
+        answer, cites = await _library_cards(db, company_id, query=REG_PROMPT_TO_QUERY[prompt_id])
     else:
         intel = await gather_intelligence(db, company_id)
         items = intel.get("attention_items") or []
@@ -389,11 +508,42 @@ async def answer_prompt(db: AsyncSession, company_id: str, prompt_id: str) -> di
             for i in items[:12]
         ]
 
+    disclaimer = (
+        "Answers cite Pulse internal records and, when relevant, Codes & Guidance cards. "
+        "Internal procedures are not regulatory citations. Library cards are reference pointers, not legal advice."
+    )
     return {
         "prompt_id": prompt_id,
         "label": spec["label"],
         "prompt": spec["prompt"],
         "answer": answer,
         "citations": cites,
-        "disclaimer": "Answers cite Pulse internal records. Internal procedures are not regulatory citations.",
+        "disclaimer": disclaimer,
+    }
+
+
+async def answer_query(db: AsyncSession, company_id: str, query: str) -> dict[str, Any]:
+    """Free-text OpsAsk: regulatory library first, then known Copilot prompts."""
+    from app.services.ops_ask_router import route_ops_ask
+
+    route = route_ops_ask(query)
+    copilot_id = route.get("copilot_prompt_id")
+    if copilot_id and not route.get("card_keys"):
+        return await answer_prompt(db, company_id, copilot_id)
+
+    answer, cites = await _library_cards(db, company_id, query=query)
+    if copilot_id and copilot_id not in ("ammonia-release", "pool-emergency") and copilot_id not in REG_PROMPT_TO_QUERY:
+        extra = await answer_prompt(db, company_id, copilot_id)
+        answer = f"{answer}\n\nRelated ops records:\n{extra.get('answer')}"
+        cites = cites + list(extra.get("citations") or [])
+
+    return {
+        "prompt_id": copilot_id or "ops-ask",
+        "label": query.strip()[:80] or "Ask",
+        "prompt": query,
+        "answer": answer,
+        "citations": cites,
+        "disclaimer": route.get("disclaimer") or "",
+        "library_href": route.get("library_href"),
+        "intents": route.get("intents") or [],
     }

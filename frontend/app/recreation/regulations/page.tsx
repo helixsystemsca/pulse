@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { OpsModuleApp } from "@/components/recreation/OpsModuleApp";
+import { RegulatoryReferenceApp } from "@/components/recreation/RegulatoryReferenceApp";
 import { isApiMode } from "@/lib/api";
 import { navigateToPulseLogin } from "@/lib/pulse-app";
 import { readSession } from "@/lib/pulse-session";
@@ -21,5 +21,5 @@ export default function Page() {
       <div className="flex min-h-[40vh] items-center justify-center text-sm text-ds-muted">Loading…</div>
     );
   }
-  return <OpsModuleApp entityType="regulations" />;
+  return <RegulatoryReferenceApp />;
 }

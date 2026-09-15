@@ -566,7 +566,7 @@ export const MASTER_FEATURES: readonly MasterFeatureDef[] = [
   },
   {
     key: "ops_regulations",
-    label: "Regulations",
+    label: "Codes & Guidance",
     icon: "scroll-text",
     route: "/recreation/regulations",
     feature: "recreation_ops",

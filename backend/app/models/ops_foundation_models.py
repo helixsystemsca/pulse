@@ -120,6 +120,14 @@ class OpsRegulation(OpsRecordBase):
     requirements: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     inspection_frequency: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     external_references: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
+    topic_category: Mapped[str] = mapped_column(String(64), nullable=False, default="Other")
+    applicability: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    classification: Mapped[str] = mapped_column(String(64), nullable=False, default="Regulator guidance")
+    official_source_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    official_source_url: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
+    verification_status: Mapped[str] = mapped_column(String(64), nullable=False, default="Unverified")
+    review_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    pulse_pointers: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
 
 
 class OpsFacility(OpsRecordBase):

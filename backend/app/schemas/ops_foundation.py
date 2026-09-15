@@ -261,6 +261,14 @@ class OpsRegulationOut(OpsRecordBaseOut):
     requirements: Optional[str] = None
     inspection_frequency: Optional[str] = None
     external_references: list[Any] = Field(default_factory=list)
+    topic_category: str = "Other"
+    applicability: Optional[str] = None
+    classification: str = "Regulator guidance"
+    official_source_name: Optional[str] = None
+    official_source_url: Optional[str] = None
+    verification_status: str = "Unverified"
+    review_date: Optional[date] = None
+    pulse_pointers: list[Any] = Field(default_factory=list)
 
 
 class OpsRegulationCreateIn(OpsRecordBaseIn):
@@ -270,6 +278,14 @@ class OpsRegulationCreateIn(OpsRecordBaseIn):
     requirements: Optional[str] = None
     inspection_frequency: Optional[str] = None
     external_references: list[Any] = Field(default_factory=list)
+    topic_category: str = Field(default="Other", max_length=64)
+    applicability: Optional[str] = None
+    classification: str = Field(default="Regulator guidance", max_length=64)
+    official_source_name: Optional[str] = None
+    official_source_url: Optional[str] = None
+    verification_status: str = Field(default="Unverified", max_length=64)
+    review_date: Optional[date] = None
+    pulse_pointers: list[Any] = Field(default_factory=list)
 
 
 class OpsRegulationPatchIn(OpsRecordBasePatch):
@@ -279,6 +295,14 @@ class OpsRegulationPatchIn(OpsRecordBasePatch):
     requirements: Optional[str] = None
     inspection_frequency: Optional[str] = None
     external_references: Optional[list[Any]] = None
+    topic_category: Optional[str] = Field(None, max_length=64)
+    applicability: Optional[str] = None
+    classification: Optional[str] = Field(None, max_length=64)
+    official_source_name: Optional[str] = None
+    official_source_url: Optional[str] = None
+    verification_status: Optional[str] = Field(None, max_length=64)
+    review_date: Optional[date] = None
+    pulse_pointers: Optional[list[Any]] = None
 
 
 # —— Facilities ——

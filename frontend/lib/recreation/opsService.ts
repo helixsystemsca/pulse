@@ -44,12 +44,13 @@ function base(entityType: OpsEntityType): string {
 
 export async function listOpsRecords(
   entityType: OpsEntityType,
-  params?: { q?: string; status?: string; tag?: string },
+  params?: { q?: string; status?: string; tag?: string; category?: string },
 ): Promise<OpsRecord[]> {
   const qs = new URLSearchParams();
   if (params?.q) qs.set("q", params.q);
   if (params?.status) qs.set("status", params.status);
   if (params?.tag) qs.set("tag", params.tag);
+  if (params?.category) qs.set("category", params.category);
   const suffix = qs.toString() ? `?${qs}` : "";
   return apiFetch<OpsRecord[]>(`${base(entityType)}${suffix}`);
 }

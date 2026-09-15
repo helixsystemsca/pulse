@@ -76,11 +76,14 @@ async def list_records(
     q: Optional[str] = None,
     status: Optional[str] = None,
     tag: Optional[str] = None,
+    category: Optional[str] = None,
 ) -> list[Any]:
     Model = model_for(entity_type)
     stmt = select(Model).where(Model.company_id == company_id)
     if status:
         stmt = stmt.where(Model.status == status)
+    if category and hasattr(Model, "topic_category"):
+        stmt = stmt.where(Model.topic_category == category.strip())
     if q and q.strip():
         like = f"%{q.strip()}%"
         clauses = [Model.title.ilike(like)]
@@ -94,6 +97,18 @@ async def list_records(
             clauses.append(Model.category.ilike(like))
         if hasattr(Model, "authority"):
             clauses.append(Model.authority.ilike(like))
+        if hasattr(Model, "summary"):
+            clauses.append(Model.summary.ilike(like))
+        if hasattr(Model, "topic_category"):
+            clauses.append(Model.topic_category.ilike(like))
+        if hasattr(Model, "classification"):
+            clauses.append(Model.classification.ilike(like))
+        if hasattr(Model, "official_source_name"):
+            clauses.append(Model.official_source_name.ilike(like))
+        if hasattr(Model, "applicability"):
+            clauses.append(Model.applicability.ilike(like))
+        if hasattr(Model, "regulation_name"):
+            clauses.append(Model.regulation_name.ilike(like))
         if hasattr(Model, "trade"):
             clauses.append(Model.trade.ilike(like))
         if hasattr(Model, "organization"):

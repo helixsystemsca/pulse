@@ -109,17 +109,24 @@ async def list_copilot_prompts(_: Reader) -> dict[str, Any]:
 
 
 class OpsCopilotAskIn(BaseModel):
-    prompt_id: str = Field(..., min_length=1, max_length=64)
+    prompt_id: Optional[str] = Field(None, min_length=1, max_length=64)
+    query: Optional[str] = Field(None, max_length=400)
 
 
 @router.post("/copilot/ask")
 async def ask_copilot(body: OpsCopilotAskIn, db: Db, cid: CompanyId, _: Reader) -> dict[str, Any]:
-    from app.services.ops_copilot_service import answer_prompt
+    from app.services.ops_copilot_service import answer_prompt, answer_query
 
+    prompt_id = (body.prompt_id or "").strip()
+    query = (body.query or "").strip()
     try:
-        return await answer_prompt(db, cid, body.prompt_id)
+        if prompt_id:
+            return await answer_prompt(db, cid, prompt_id)
+        if query:
+            return await answer_query(db, cid, query)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    raise HTTPException(status_code=400, detail="Provide prompt_id or query")
 
 
 class OpsBinderExportIn(BaseModel):
