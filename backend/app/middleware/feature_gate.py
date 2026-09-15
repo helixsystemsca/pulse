@@ -8,6 +8,8 @@ from __future__ import annotations
 import logging
 
 from fastapi.responses import JSONResponse
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.types import ASGIApp
@@ -16,9 +18,34 @@ from app.core.auth.security import decode_token
 from app.core.database import AsyncSessionLocal
 from app.core.features.paths import required_feature_for_path
 from app.core.features.service import FeatureFlagService
+from app.core.security.tenant_rls import (
+    apply_pulse_rls_auth_bootstrap_context,
+    apply_pulse_rls_context,
+    apply_pulse_rls_context_for_user,
+)
 from app.middleware.cors_helpers import apply_cors_headers
+from app.models.domain import User
 
 logger = logging.getLogger(__name__)
+
+
+async def apply_feature_gate_rls_context(session: AsyncSession, payload: dict, company_id: str) -> None:
+    """
+    FeatureFlagService reads ``companies`` / ``company_features``. Those tables use FORCE RLS.
+
+    ``FeatureGateMiddleware`` opens its own session (not ``get_db``), so it must set the same
+    ``pulse.company_id`` / ``pulse.is_system_admin`` GUCs as ``get_current_user`` or
+    ``_frozen_enabled`` sees an empty tenant and returns ``feature_disabled``.
+    """
+    await apply_pulse_rls_auth_bootstrap_context(session)
+    sub = payload.get("sub")
+    user = None
+    if sub:
+        user = (await session.execute(select(User).where(User.id == str(sub)))).scalar_one_or_none()
+    if user is not None:
+        await apply_pulse_rls_context_for_user(session, user)
+        return
+    await apply_pulse_rls_context(session, company_id=company_id, is_system_admin=False)
 
 
 class FeatureGateMiddleware(BaseHTTPMiddleware):
@@ -57,6 +84,7 @@ class FeatureGateMiddleware(BaseHTTPMiddleware):
 
         try:
             async with AsyncSessionLocal() as session:
+                await apply_feature_gate_rls_context(session, payload, company_id)
                 svc = FeatureFlagService(session)
                 if not await svc.any_enabled(company_id, keys):
                     return self._json(
