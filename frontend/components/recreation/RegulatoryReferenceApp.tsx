@@ -389,11 +389,28 @@ export function RegulatoryReferenceApp() {
                     <Loader2 className="h-4 w-4 animate-spin" /> Loading library…
                   </p>
                 ) : libraryRows.length === 0 ? (
-                  <p className="rounded-xl border border-ds-border bg-ds-card p-6 text-sm text-ds-muted">
-                    {showArchived
-                      ? "No archived cards."
-                      : "No matching cards. Try another category or keyword, or add a new card."}
-                  </p>
+                  <div className="rounded-xl border border-ds-border bg-ds-card p-6 text-sm text-ds-muted">
+                    {rows.length === 0 ? (
+                      <>
+                        <p className="font-medium text-ds-foreground">No guidance documents yet</p>
+                        <p className="mt-2">
+                          Add cards as you learn — a title, plain-language summary, official source, and whether it is
+                          Law, Guidance, or Internal. Pulse does not paste code text and does not decide legal
+                          requirements.
+                        </p>
+                        {canEdit ? (
+                          <button type="button" className={cn(HEADER_BTN, "mt-4")} onClick={startCreate}>
+                            <Plus className="h-4 w-4" />
+                            Add guidance document
+                          </button>
+                        ) : null}
+                      </>
+                    ) : showArchived ? (
+                      <p>No archived cards.</p>
+                    ) : (
+                      <p>No matching cards. Try another category or keyword, or add a new card.</p>
+                    )}
+                  </div>
                 ) : (
                   <ul className="grid gap-3 sm:grid-cols-2">
                     {libraryRows.map((row) => (

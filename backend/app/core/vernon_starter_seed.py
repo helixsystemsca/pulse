@@ -641,7 +641,11 @@ PROCEDURES = [
 
 
 async def seed_regulatory_reference_cards(db: AsyncSession, company_id: str) -> None:
-    """Idempotent Codes & Guidance starter cards. Safe to re-run; skips user-modified rows."""
+    """Optional catalog insert. Not called from startup — Josh prefers manual entry.
+
+    Safe to re-run in tests or a one-off script: upserts untouched source_key rows only;
+    never clobbers user-modified or archived cards.
+    """
     for spec in REFERENCE_CARDS:
         await _ensure_regulation(db, company_id, spec)
     await db.flush()
@@ -732,8 +736,9 @@ async def seed_vernon_starter_pack(db: AsyncSession, company_id: str) -> dict[st
         await _ensure_procedure(db, company_id, spec)
     created["emergency"] = len(EMERGENCY_ARTICLES)
 
-    await seed_regulatory_reference_cards(db, company_id)
-    created["regulatory_reference"] = len(REFERENCE_CARDS)
+    # Codes & Guidance is manual-entry (Josh adds cards as he learns). Do not
+    # auto-insert the catalog on startup/restart. Existing tenant rows stay.
+    created["regulatory_reference"] = 0
 
     await _ensure_contractor(
         db,

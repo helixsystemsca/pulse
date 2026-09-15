@@ -395,7 +395,7 @@ async def _library_cards(
     keys: Optional[tuple[str, ...]] = None,
 ) -> tuple[str, list[dict[str, Any]]]:
     from app.core.regulatory_reference_catalog import DISCLAIMER, LIBRARY_HREF, seed_tag_for
-    from app.services.ops_ask_router import format_library_answer, route_ops_ask
+    from app.services.ops_ask_router import route_ops_ask
 
     parts: list[tuple[str, Optional[dict[str, Any]]]] = []
     route = route_ops_ask(query or " ".join(keys or ()))
@@ -423,8 +423,14 @@ async def _library_cards(
         else:
             matched.append(row)
     if not matched and wanted:
-        # Fall back to catalog text when the tenant has not been seeded yet.
-        parts.append((format_library_answer(route), _cite(title="Codes & Guidance", href=LIBRARY_HREF, kind="regulatory_reference")))
+        parts.append(
+            (
+                "No matching Codes & Guidance cards in this tenant yet. "
+                f"Open {LIBRARY_HREF} to add a document as you confirm the official source. "
+                "Pulse will not invent a legal requirement.",
+                _cite(title="Codes & Guidance", href=LIBRARY_HREF, kind="regulatory_reference"),
+            )
+        )
         return _lines_and_cites(parts)
 
     if not matched:
