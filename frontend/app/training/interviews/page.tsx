@@ -1,5 +1,6 @@
-import { InterviewDeckPicker } from "@/components/training/interviews/InterviewDeckPicker";
+import { redirect } from "next/navigation";
+import { TRAINING_ROUTES } from "@/lib/training/routes";
 
 export default function TrainingInterviewsPage() {
-  return <InterviewDeckPicker />;
+  redirect(TRAINING_ROUTES.flashcards);
 }

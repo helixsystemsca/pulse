@@ -8,13 +8,13 @@ export const TRAINING_MILESTONE_FLASHCARDS_ONLY = true;
 export const TRAINING_MILESTONE_VISIBLE_NAV_KEYS = new Set([
   "training_root",
   "training_flashcards",
-  "training_interviews",
 ]);
 
 /** Route prefixes redirected to Flashcards home when milestone is active. Compliance stays reachable. */
 export const TRAINING_MILESTONE_HIDDEN_ROUTE_PREFIXES = [
   "/training/overview",
   "/training/learning",
+  "/training/interviews",
 ] as const;
 
 /** Certification / program names recognized for flashcard study decks. */
@@ -33,7 +33,7 @@ export const FLASHCARD_CERTIFICATION_HINTS = [
 export function isTrainingRouteHiddenInMilestone(pathname: string): boolean {
   if (!TRAINING_MILESTONE_FLASHCARDS_ONLY) return false;
   const path = pathname.split("?")[0] ?? pathname;
-  if (path === "/training" || path.startsWith("/training/flashcards") || path.startsWith("/training/interviews"))
+  if (path === "/training" || path.startsWith("/training/flashcards"))
     return false;
   return TRAINING_MILESTONE_HIDDEN_ROUTE_PREFIXES.some(
     (prefix) => path === prefix || path.startsWith(`${prefix}/`),

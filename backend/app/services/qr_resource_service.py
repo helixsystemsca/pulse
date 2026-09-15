@@ -6,7 +6,7 @@ import secrets
 import string
 from datetime import datetime, timezone
 from typing import Any, Optional
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi import HTTPException
 from sqlalchemy import or_, select
@@ -53,29 +53,48 @@ async def _existing_tokens(db: AsyncSession, company_id: str) -> set[str]:
     return {row[0] for row in q.all() if row[0]}
 
 
+def _uuid_pk(value: str | None) -> Optional[str]:
+    """Return a UUID string, or None. Invalid PKs must not hit UUID columns (aborts the txn)."""
+    if not value:
+        return None
+    try:
+        return str(UUID(str(value)))
+    except (ValueError, TypeError, AttributeError):
+        return None
+
+
 async def _linked_resource_label(
     db: AsyncSession,
     company_id: str,
     resource_type: str,
     resource_id: str,
 ) -> Optional[str]:
+    pk = _uuid_pk(resource_id)
     if resource_type in ("inventory_zone", "location", "room", "cabinet", "fridge"):
-        row = await db.get(Zone, resource_id)
+        if not pk:
+            return None
+        row = await db.get(Zone, pk)
         if row and row.company_id == company_id:
             return row.name
         return None
     if resource_type == "equipment":
-        row = await db.get(FacilityEquipment, resource_id)
+        if not pk:
+            return None
+        row = await db.get(FacilityEquipment, pk)
         if row and row.company_id == company_id:
             return row.name
         return None
     if resource_type == "procedure":
-        row = await db.get(PulseProcedure, resource_id)
+        if not pk:
+            return None
+        row = await db.get(PulseProcedure, pk)
         if row and row.company_id == company_id:
             return row.title
         return None
     if resource_type == "drawing":
-        row = await db.get(FacilityMap, resource_id)
+        if not pk:
+            return None
+        row = await db.get(FacilityMap, pk)
         if row and row.company_id == company_id:
             return row.name
         return None
@@ -101,8 +120,9 @@ async def _guest_payload(
     resource_type: str,
     resource_id: str,
 ) -> dict[str, Any]:
+    pk = _uuid_pk(resource_id)
     if resource_type in ("inventory_zone", "location", "room", "cabinet", "fridge"):
-        zone = await db.get(Zone, resource_id)
+        zone = await db.get(Zone, pk) if pk else None
         if zone is None or zone.company_id != company_id:
             return {}
         return redact_guest_payload(
@@ -113,7 +133,7 @@ async def _guest_payload(
             }
         )
     if resource_type == "equipment":
-        eq = await db.get(FacilityEquipment, resource_id)
+        eq = await db.get(FacilityEquipment, pk) if pk else None
         if eq is None or eq.company_id != company_id:
             return {}
         return redact_guest_payload(
@@ -126,7 +146,7 @@ async def _guest_payload(
             }
         )
     if resource_type == "procedure":
-        proc = await db.get(PulseProcedure, resource_id)
+        proc = await db.get(PulseProcedure, pk) if pk else None
         if proc is None or proc.company_id != company_id:
             return {}
         return redact_guest_payload(
@@ -137,7 +157,7 @@ async def _guest_payload(
             }
         )
     if resource_type == "drawing":
-        mp = await db.get(FacilityMap, resource_id)
+        mp = await db.get(FacilityMap, pk) if pk else None
         if mp is None or mp.company_id != company_id:
             return {}
         return redact_guest_payload(
