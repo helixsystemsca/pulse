@@ -1,12 +1,12 @@
 "use client";
 
 /**
- * Full-screen welcome overlay after sign-in: centered card, platform logo, and ocean-wave progress.
+ * Full-screen welcome overlay after sign-in: centered card, tenant/platform mark, and a slim progress bar.
  * Shown at most once per browser tab session (`sessionStorage`), so refreshes skip the animation.
  */
 
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CinematicLogoImage } from "@/components/branding/CinematicLogoImage";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
@@ -36,8 +36,8 @@ export type WelcomeLoaderModalProps = {
   onWelcomeComplete?: () => void;
 };
 
-/** Minimum time the ocean wave is visible (fast API / warm Render otherwise flashes past). */
-const MIN_WAVE_DISPLAY_MS = 5000;
+/** Minimum time the loader is visible (fast API / warm Render otherwise flashes past). */
+const MIN_LOADER_DISPLAY_MS = 5000;
 /** Minimum time after `isReady` before the personalized line (so “preparing” never feels instant). */
 const LOADING_PHASE_MS = 2200;
 /** How long the personalized welcome is visible before the overlay dismisses. */
@@ -61,56 +61,31 @@ function timeOfDayGreeting(): string {
   return "Good evening";
 }
 
-function WaveTile({ uid }: { uid: string }) {
-  const fill = `oceanWaveFill-${uid}`;
-  const foam = `oceanWaveFoam-${uid}`;
-  return (
-    <svg
-      className="h-full w-1/2 shrink-0"
-      viewBox="0 0 400 72"
-      preserveAspectRatio="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <defs>
-        <linearGradient id={fill} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#7dd9ce" stopOpacity="0.92" />
-          <stop offset="45%" stopColor="#1ea896" stopOpacity="0.9" />
-          <stop offset="100%" stopColor="#4c5454" stopOpacity="0.65" />
-        </linearGradient>
-        <linearGradient id={foam} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#ecfeff" stopOpacity="0.55" />
-          <stop offset="100%" stopColor="#1ea896" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      {/* Period 400: Q + T chain keeps y equal at x=0 and x=400 for seamless tiling */}
-      <path fill={`url(#${fill})`} d="M0 40 Q100 24 200 40 T400 40 L400 72 L0 72 Z" />
-      <path fill={`url(#${foam})`} d="M0 36 Q100 20 200 36 T400 36 L400 42 L0 42 Z" />
-    </svg>
-  );
-}
-
-/** Seamless ocean wave along the card bottom while loading (CSS keyframes for reliable motion). */
-function OceanWaveBar({ progress }: { progress: number }) {
-  const gid = useId().replace(/:/g, "");
+/** Determinate bar under the copy (CSS sheen; static under reduced motion). */
+function WorkspaceProgressBar({ progress }: { progress: number }) {
   const p = Math.max(0, Math.min(100, progress));
   return (
     <div
-      className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] h-[3.25rem] overflow-hidden sm:h-16"
-      aria-hidden
+      className="mx-auto mt-5 w-[min(14.5rem,calc(100%-0.5rem))]"
+      role="progressbar"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(p)}
+      aria-label="Loading your workspace"
     >
-      <div
-        className="h-full w-full motion-safe:transition-[clip-path] motion-safe:duration-200 motion-safe:ease-out"
-        style={{ clipPath: `inset(0 ${100 - p}% 0 0)` }}
-      >
+      <div className="relative h-1.5 overflow-hidden rounded-full bg-[rgba(76,96,133,0.2)]">
         <div
-          className={cn(
-            "flex h-full w-[200%] will-change-transform",
-            "animate-welcome-ocean motion-reduce:animate-none",
-          )}
-        >
-          <WaveTile uid={`${gid}-a`} />
-          <WaveTile uid={`${gid}-b`} />
-        </div>
+          className="h-full min-w-[12%] rounded-full motion-safe:transition-[width] motion-safe:duration-200 motion-safe:ease-out"
+          style={{
+            width: `${Math.max(12, p)}%`,
+            background:
+              "linear-gradient(90deg, #2c3a55 0%, #0ea5e9 55%, #1ea896 100%)",
+          }}
+        />
+        <span
+          className="pointer-events-none absolute inset-y-0 left-0 w-[38%] bg-gradient-to-r from-transparent via-white/65 to-transparent motion-safe:animate-welcome-progress-sheen motion-reduce:hidden"
+          aria-hidden
+        />
       </div>
     </div>
   );
@@ -130,16 +105,16 @@ export function WelcomeLoaderModal({
   const [skipEntirely, setSkipEntirely] = useState(dismissedOnMount);
   const [open, setOpen] = useState(!dismissedOnMount);
   const [phase, setPhase] = useState<WelcomePhase>("loading");
-  /** 0–100: wave bar reveals left-to-right while preparing; completes when data is ready. */
+  /** 0–100: progress bar fills left-to-right while preparing; completes when data is ready. */
   const [loadProgress, setLoadProgress] = useState(0);
   const loadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const welcomeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  /** When the overlay first shows the loading wave for this visit (for minimum wave duration). */
-  const waveSessionStartRef = useRef<number | null>(null);
-  const isReadyForWaveRef = useRef(isReady);
+  /** When the overlay first shows the loader for this visit (for minimum display duration). */
+  const loaderSessionStartRef = useRef<number | null>(null);
+  const isReadyForLoaderRef = useRef(isReady);
   /** True once this mount actually displayed the overlay (used to persist on early navigation). */
   const overlayVisitedRef = useRef(false);
-  isReadyForWaveRef.current = isReady;
+  isReadyForLoaderRef.current = isReady;
 
   useEffect(() => {
     setHydrated(true);
@@ -169,18 +144,18 @@ export function WelcomeLoaderModal({
 
   useEffect(() => {
     if (!hydrated || skipEntirely || !open) return;
-    if (waveSessionStartRef.current === null) {
-      waveSessionStartRef.current = Date.now();
+    if (loaderSessionStartRef.current === null) {
+      loaderSessionStartRef.current = Date.now();
     }
   }, [hydrated, skipEntirely, open]);
 
-  // Wave bar fill: eases toward a cap while waiting, then runs to 100% once `isReady` (ref avoids resetting elapsed).
+  // Progress fill: eases toward a cap while waiting, then runs to 100% once `isReady` (ref avoids resetting elapsed).
   useEffect(() => {
     if (!hydrated || skipEntirely || !open || phase !== "loading") return;
     const start = Date.now();
     const tick = () => {
       const elapsed = Date.now() - start;
-      const ready = isReadyForWaveRef.current;
+      const ready = isReadyForLoaderRef.current;
       setLoadProgress((prev) => {
         if (ready) {
           const n = prev + (100 - prev) * 0.22 + 0.35;
@@ -195,14 +170,14 @@ export function WelcomeLoaderModal({
     return () => window.clearInterval(id);
   }, [hydrated, skipEntirely, open, phase]);
 
-  // After the dashboard is ready: keep the wave at least MIN_WAVE_DISPLAY_MS total, then switch to welcome.
+  // After the dashboard is ready: keep the loader at least MIN_LOADER_DISPLAY_MS total, then switch to welcome.
   useEffect(() => {
     if (!hydrated || skipEntirely || !open || !isReady) return;
     if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
     setPhase("loading");
-    const anchor = waveSessionStartRef.current ?? Date.now();
+    const anchor = loaderSessionStartRef.current ?? Date.now();
     const elapsed = Date.now() - anchor;
-    const waitMs = Math.max(LOADING_PHASE_MS, MIN_WAVE_DISPLAY_MS - elapsed);
+    const waitMs = Math.max(LOADING_PHASE_MS, MIN_LOADER_DISPLAY_MS - elapsed);
     loadingTimerRef.current = setTimeout(() => {
       setPhase("welcome");
       markWelcomeOverlayDismissed(storageKey);
@@ -278,18 +253,14 @@ export function WelcomeLoaderModal({
               exit={{ opacity: 0, scale: 0.99, y: 6 }}
               transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
             >
-              <div
-                className={[
-                  "relative z-[3] px-[3px] pt-5 text-center sm:pt-6",
-                  phase === "loading" ? "pb-[3.25rem] sm:pb-14" : "pb-7 sm:pb-8",
-                ].join(" ")}
-              >
+              <div className="relative z-[3] px-[3px] pb-7 pt-5 text-center sm:pb-8 sm:pt-6">
                 <div
-                  className={
+                  className={cn(
                     vernonMark
                       ? "relative mx-auto h-[5.25rem] w-[min(18rem,calc(100vw-6rem))] sm:h-[5.75rem] sm:w-[20rem]"
-                      : "relative mx-auto h-[9.3rem] w-[9.3rem] sm:h-[9.9rem] sm:w-[9.9rem]"
-                  }
+                      : "relative mx-auto h-[9.3rem] w-[9.3rem] sm:h-[9.9rem] sm:w-[9.9rem]",
+                    phase === "loading" && "motion-safe:animate-welcome-logo-pulse",
+                  )}
                 >
                   <CinematicLogoImage
                     src={brand.cinematicSrc}
@@ -311,6 +282,7 @@ export function WelcomeLoaderModal({
                   <p className="mt-1.5 whitespace-nowrap text-sm font-medium text-[#51647a]">
                     Loading your workspace
                   </p>
+                  <WorkspaceProgressBar progress={loadProgress} />
                 </div>
               ) : (
                 <motion.div
@@ -331,8 +303,6 @@ export function WelcomeLoaderModal({
                 </motion.div>
               )}
               </div>
-
-              {phase === "loading" ? <OceanWaveBar progress={loadProgress} /> : null}
             </motion.div>
           </div>
         </motion.div>
