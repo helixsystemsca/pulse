@@ -31,7 +31,6 @@ export const EQUIPMENT_TOUR_STEPS: TourStep[] = [
   },
   {
     target: tourSel("equipment-tour-facility-filter"),
-    prepareClick: tourSel("equipment-tour-list-tab"),
     title: "Filter by facility",
     description: "Show only assets at one building. Skipped until the facility picker is on this list.",
     placement: "bottom",
