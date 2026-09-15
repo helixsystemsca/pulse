@@ -134,7 +134,7 @@ async def test_login_works_as_nobyprlsrls_role_with_force_rls(
         assert me.status_code == 200, me.text
         assert me.json()["email"].lower() == email.lower()
 
-    await db_session.expire_all()
+    db_session.expire_all()
     user = await db_session.get(User, seeded_tenant.worker_id)
     assert user is not None
     assert user.last_login is not None
