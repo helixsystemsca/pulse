@@ -8,7 +8,7 @@ Endpoints:
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Query
@@ -30,7 +30,7 @@ async def get_schedule(
     Behavior:
     - Uses in-memory cache inside the Xplor client for 30–60s (configurable)
     - If upstream fails, returns cached data
-    - If no cache, returns mock data (or empty list if transform yields none)
+    - If no cache, returns an empty list unless USE_MOCK_DATA=true (demo rink programs)
     """
     client = XplorClient()
     raw = await client.get_schedules_with_fallback(facility_id=facility_id, date=date)
@@ -41,6 +41,12 @@ async def get_schedule(
 async def get_schedule_live() -> dict:
     """
     Reserved for future real-time support (WebSocket/SSE).
+    Returns a structured empty live feed until streaming is implemented.
     """
-    return {"ok": True, "ts": datetime.utcnow().isoformat() + "Z", "message": "Not implemented yet."}
+    return {
+        "ok": True,
+        "ts": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "events": [],
+        "message": "Live schedule streaming is not available.",
+    }
 

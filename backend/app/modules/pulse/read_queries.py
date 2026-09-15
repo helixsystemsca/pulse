@@ -19,14 +19,12 @@ from app.core.schedule_department import (
     schedule_allowed_department_slugs,
 )
 from app.core.user_avatar_upload import co_worker_avatar_url
-from app.core.user_roles import primary_jwt_role
+from app.core.user_roles import PULSE_ROSTER_ROLES, primary_jwt_role
 from app.models.domain import (
     InventoryItem,
-    OperationalRole,
     Tool,
     User,
     UserAccountStatus,
-    UserRole,
     Zone,
 )
 from app.models.pulse_models import (
@@ -119,18 +117,7 @@ async def fetch_workers_roster(
             User.company_id == cid,
             User.is_active.is_(True),
             User.account_status == UserAccountStatus.active,
-            User.operational_role.in_([e.value for e in OperationalRole]),
-            User.roles.overlap(
-                pg_array(
-                    [
-                        UserRole.worker.value,
-                        UserRole.lead.value,
-                        UserRole.supervisor.value,
-                        UserRole.manager.value,
-                        UserRole.company_admin.value,
-                    ]
-                )
-            ),
+            User.roles.overlap(pg_array([r.value for r in PULSE_ROSTER_ROLES])),
         )
     )
     users = list(uq.scalars().all())

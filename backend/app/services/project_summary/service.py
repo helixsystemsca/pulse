@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.core.config import get_settings
 from app.services.project_summary import aggregators
 from app.services.project_summary.metrics import (
     calculate_completion_rate,
@@ -73,19 +74,31 @@ def _empty_outcome() -> SummaryOutcome:
 
 
 def collect_raw_aggregates(project_id: str | int) -> dict[str, Any]:
-    """Single pass over aggregators + deterministic seed sections (no DB)."""
-    seed_int = project_seed_int(project_id)
-    seed = mock_metrics_for_project(seed_int)
+    """Single pass over aggregators + seed sections (mock KPIs only when USE_MOCK_DATA)."""
     schedule_raw = aggregators.get_schedule_summary(project_id)
+    if get_settings().use_mock_data:
+        seed = mock_metrics_for_project(project_seed_int(project_id))
+        overview_base = aggregators.overview_section(seed).model_dump(mode="json")
+        risks = aggregators.risks_section(seed).model_dump(mode="json")
+        stakeholders = aggregators.stakeholders_section(seed).model_dump(mode="json")
+    else:
+        overview_base = SummaryOverview(
+            project_name="",
+            project_type="",
+            owner="",
+            success_flag=None,
+        ).model_dump(mode="json")
+        risks = SummaryRisks().model_dump(mode="json")
+        stakeholders = SummaryStakeholders().model_dump(mode="json")
     return {
         "task": dict(aggregators.get_task_summary(project_id)),
         "schedule": _merge_schedule_variance(schedule_raw),
         "resources": dict(aggregators.get_resource_summary(project_id)),
         "quality": dict(aggregators.get_quality_summary(project_id)),
         "communication": dict(aggregators.get_communication_summary(project_id)),
-        "overview_base": aggregators.overview_section(seed).model_dump(mode="json"),
-        "risks": aggregators.risks_section(seed).model_dump(mode="json"),
-        "stakeholders": aggregators.stakeholders_section(seed).model_dump(mode="json"),
+        "overview_base": overview_base,
+        "risks": risks,
+        "stakeholders": stakeholders,
     }
 
 

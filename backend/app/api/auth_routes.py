@@ -12,7 +12,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user, require_system_admin
+from app.api.deps import get_current_user, require_system_admin, user_can_use_pm_features
 from app.core.audit.service import record_audit
 from app.core.auth.lockout import apply_failed_login_lockout, clear_login_lockout
 from app.core.auth.password_policy import validate_new_password
@@ -487,11 +487,7 @@ async def me(
         is_impersonating=is_imp,
         is_system_admin=bool(user.is_system_admin or user_has_any_role(user, UserRole.system_admin)),
         company=company_summary,
-        can_use_pm_features=(
-            bool(getattr(user, "can_use_pm_features", False))
-            or "projects.pm.view" in (rbac_keys or [])
-            or "*" in (rbac_keys or [])
-        ),
+        can_use_pm_features=await user_can_use_pm_features(db, user, rbac_keys=rbac_keys),
         facility_tenant_admin=bool(getattr(user, "facility_tenant_admin", False)),
         role_display_label=tenant_role_display_label(user),
         permissions=perm_out,

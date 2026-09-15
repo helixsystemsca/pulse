@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from datetime import datetime, timedelta, timezone
+from uuid import UUID
 from pathlib import Path
 from typing import Any, Optional
 
@@ -12,8 +13,8 @@ from sqlalchemy.dialects.postgresql import array as pg_array
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.core.user_roles import user_has_any_role, user_participates_in_workforce_operations
-from app.models.domain import EquipmentPart, InventoryItem, OperationalRole, Tool, ToolStatus, User, UserRole, Zone
+from app.core.user_roles import PULSE_ROSTER_ROLES, user_has_any_role, user_participates_in_workforce_operations
+from app.models.domain import EquipmentPart, InventoryItem, Tool, ToolStatus, User, UserAccountStatus, UserRole, Zone
 from app.models.pulse_models import (
     PulseBeaconEquipment,
     PulseScheduleShift,
@@ -90,6 +91,10 @@ def _cert_has_ticketed(certs: list[str]) -> bool:
 
 
 async def _user_in_company(db: AsyncSession, company_id: str, user_id: str) -> Optional[User]:
+    try:
+        UUID(str(user_id))
+    except (ValueError, TypeError, AttributeError):
+        return None
     q = await db.execute(
         select(User).where(
             User.id == user_id,
@@ -229,17 +234,8 @@ async def dashboard_aggregate(
         .where(
             User.company_id == company_id,
             User.is_active.is_(True),
-            User.operational_role.in_([e.value for e in OperationalRole]),
-            User.roles.overlap(
-                pg_array(
-                    [
-                        UserRole.worker.value,
-                        UserRole.lead.value,
-                        UserRole.supervisor.value,
-                        UserRole.manager.value,
-                    ]
-                )
-            ),
+            User.account_status == UserAccountStatus.active,
+            User.roles.overlap(pg_array([r.value for r in PULSE_ROSTER_ROLES])),
         )
     )
     active_workers = int(active_workers_q.scalar_one() or 0)

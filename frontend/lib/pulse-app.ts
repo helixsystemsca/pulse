@@ -3,8 +3,8 @@
  * left-rail (`pulseTenantSidebarNav` / `pulseSystemSidebarNav`) and top-nav definitions,
  * and marketing-site links. Marketing vs Pulse app hosts are intentionally split.
  *
- * Default app origin: `panorama.helixsystems.ca` (legacy `pulse.helixsystems.ca` still supported via host list).
- * Override with `NEXT_PUBLIC_PULSE_APP_URL`.
+ * Default app origin: `vernon.helixsystems.ca` (legacy panorama/pulse/ops hosts still
+ * supported via the app-host list). Override with `NEXT_PUBLIC_PULSE_APP_URL`.
  */
 import { NAV_VISIBLE_MASTER_FEATURES } from "@/config/platform/master-feature-registry";
 import { resolvePostLoginLandingPath } from "@/lib/dashboards/homepage";
@@ -18,8 +18,11 @@ import { logRedirectAfterLogin, logRedirectLogin } from "@/lib/pulse-auth-lifecy
 import { readSession } from "@/lib/pulse-session";
 import { isProductPath } from "@/lib/route-split-buckets";
 
+/** Default Pulse SPA origin when `NEXT_PUBLIC_PULSE_APP_URL` is unset. */
+export const DEFAULT_PULSE_APP_ORIGIN = "https://vernon.helixsystems.ca";
+
 function pulseAppOrigin(): string {
-  const raw = process.env.NEXT_PUBLIC_PULSE_APP_URL ?? "https://panorama.helixsystems.ca";
+  const raw = process.env.NEXT_PUBLIC_PULSE_APP_URL ?? DEFAULT_PULSE_APP_ORIGIN;
   return raw.replace(/\/$/, "");
 }
 
@@ -92,9 +95,23 @@ export type PulseSidebarIcon =
   | (typeof pulseTenantSidebarNav)[number]["icon"]
   | (typeof pulseSystemSidebarNav)[number]["icon"];
 
-/** Absolute URL to a path on the Pulse app host (for `<a href>`, mailto templates, etc.). */
+function shouldStayOnCurrentAppHost(): boolean {
+  if (typeof window === "undefined") return false;
+  const host = window.location.hostname.toLowerCase();
+  return isPulseAppHost(host) || isLocalDevHost(host);
+}
+
+/**
+ * Path on the Pulse app host.
+ * Same-origin (relative) when the browser is already on an app host so login/session
+ * stays on vernon (or any other allowed app host) instead of bouncing to a different origin.
+ * Absolute `NEXT_PUBLIC_PULSE_APP_URL` URLs only from marketing / unknown hosts.
+ */
 export function pulseAppHref(path: string): string {
   const p = path.startsWith("/") ? path : `/${path}`;
+  if (shouldStayOnCurrentAppHost()) {
+    return p;
+  }
   return `${pulseAppOrigin()}${p}`;
 }
 

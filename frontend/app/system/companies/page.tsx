@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { HELIX_NOREPLY_EMAIL } from "@/lib/helix-emails";
+import { DEFAULT_PULSE_APP_ORIGIN } from "@/lib/pulse-app";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import {
   SYSTEM_ADMIN_FEATURE_LABELS,
@@ -79,7 +80,7 @@ export default function SystemCompaniesPage() {
   }, [load]);
 
   const pulseAppOrigin = (
-    process.env.NEXT_PUBLIC_PULSE_APP_URL ?? "https://panorama.helixsystems.ca"
+    process.env.NEXT_PUBLIC_PULSE_APP_URL ?? DEFAULT_PULSE_APP_ORIGIN
   ).replace(/\/$/, "");
 
   const openModal = (mode: ModalMode) => {

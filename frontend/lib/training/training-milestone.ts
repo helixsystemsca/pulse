@@ -11,11 +11,10 @@ export const TRAINING_MILESTONE_VISIBLE_NAV_KEYS = new Set([
   "training_interviews",
 ]);
 
-/** Route prefixes redirected to Flashcards home when milestone is active. */
+/** Route prefixes redirected to Flashcards home when milestone is active. Compliance stays reachable. */
 export const TRAINING_MILESTONE_HIDDEN_ROUTE_PREFIXES = [
   "/training/overview",
   "/training/learning",
-  "/training/compliance",
 ] as const;
 
 /** Certification / program names recognized for flashcard study decks. */

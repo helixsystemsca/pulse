@@ -2,10 +2,10 @@
 Xplor Recreation API client.
 
 Production goals:
-- credentials from env (see `app/core/config.py`)
+- credentials from env (see `app.core.config`)
 - small surface area (get facilities, get schedules)
 - graceful errors
-- mock fallback for local development
+- mock fallback only when `USE_MOCK_DATA=true` (off by default)
 """
 
 from __future__ import annotations
@@ -169,7 +169,7 @@ class XplorClient:
         Best-effort schedule fetch:
         - try live (unless USE_MOCK_DATA)
         - if it fails: return cached if present
-        - if no cache: return mock payload
+        - if no cache: mock payload only when USE_MOCK_DATA; otherwise an empty schedules list
         """
         cache_key = f"xplor:schedules:{facility_id or 'all'}:{date or 'today'}"
 
@@ -181,5 +181,7 @@ class XplorClient:
             cached = _cache.get(cache_key)
             if cached is not None:
                 return cached
-            return _mock_schedules_payload()
+            if self.use_mock_data:
+                return _mock_schedules_payload()
+            return {"schedules": []}
 

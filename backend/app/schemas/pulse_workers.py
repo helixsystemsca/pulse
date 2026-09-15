@@ -58,6 +58,17 @@ class WorkerComplianceSummaryOut(BaseModel):
     flagged_count: int
 
 
+class WorkersComplianceSummaryOut(BaseModel):
+    """Tenant-wide roster rollup for `GET /api/workers/compliance-summary`."""
+
+    compliance_rate_pct: float
+    missed_acknowledgments: int
+    repeat_offender_count: int
+    flagged_count: int
+    worker_count: int
+    active_monitors: int = 0
+
+
 class WorkerWorkSummaryOut(BaseModel):
     open_work_requests: int
     completed_tasks: int

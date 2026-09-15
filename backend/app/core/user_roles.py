@@ -28,6 +28,16 @@ _FACILITY_STAFF_PRECEDENCE: tuple[UserRole, ...] = (
 )
 _FACILITY_STAFF_INDEX = {r: i for i, r in enumerate(_FACILITY_STAFF_PRECEDENCE)}
 
+# Tenant users listed on Pulse workers / dashboard `active_workers` (same roles as `/api/workers`).
+PULSE_ROSTER_ROLES: tuple[UserRole, ...] = (
+    UserRole.company_admin,
+    UserRole.manager,
+    UserRole.supervisor,
+    UserRole.lead,
+    UserRole.worker,
+    UserRole.demo_viewer,
+)
+
 # Tenant roles that may appear together on one user (system_admin is separate / platform).
 TENANT_ROLE_VALUES: frozenset[str] = frozenset(
     {

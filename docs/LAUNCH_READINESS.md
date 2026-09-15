@@ -34,7 +34,7 @@ This checklist tracks **security and operations** items raised in internal revie
    Not implemented in application code. Enable **scheduled backups** in your host (e.g. Supabase **Point-in-time recovery** / daily backups, Render **PostgreSQL backups**, RDS snapshots). Document restore drills in your runbook.
 
 6. **JWT in `localStorage` vs HttpOnly cookies**  
-   Still the SPA model today (`frontend/lib/pulse-session.ts`). Moving tokens to **HttpOnly cookies** requires the browser to send cookies to the API **Origin** — typically a **same-site** API hostname (e.g. `https://api.helixsystems.ca` with the SPA on `https://panorama.helixsystems.ca` and careful **`SameSite` / `Domain`**), or a **BFF** that shares the SPA origin. A cross-site SPA (`panorama.…`) calling a different API host (`*.onrender.com`) is a poor fit for third-party cookies; plan routing/DNS before migrating.
+   Still the SPA model today (`frontend/lib/pulse-session.ts`). Moving tokens to **HttpOnly cookies** requires the browser to send cookies to the API **Origin** — typically a **same-site** API hostname (e.g. `https://api.helixsystems.ca` with the SPA on `https://vernon.helixsystems.ca` and careful **`SameSite` / `Domain`**), or a **BFF** that shares the SPA origin. A cross-site SPA (`vernon.…`) calling a different API host (`*.onrender.com`) is a poor fit for third-party cookies; plan routing/DNS before migrating.
 
 7. **Token revocation, CSRF depth, MFA**  
    Password change / reset now bumps **`token_version`** (invalidates JWTs). Broader revocation lists, CSRF for cookie-based auth, and MFA remain roadmap items per your risk tolerance.
