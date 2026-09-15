@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { CinematicLogoImage } from "@/components/branding/CinematicLogoImage";
 import { HelixMarketingLogo } from "@/components/branding/HelixMarketingLogo";
 import { helixMarketingHref } from "@/lib/pulse-app";
 import type { AuthBrand } from "@/lib/branding/auth-brand";
@@ -28,12 +28,11 @@ export function LoginCinematicLogo({ layoutClassName, brand: brandProp }: Props)
           )}
           aria-hidden
         />
-        <Image
+        <CinematicLogoImage
           src={brand.cinematicSrc}
           alt={brand.cinematicAlt}
-          fill
-          priority
           sizes="(max-width: 640px) 90vw, 30rem"
+          priority
           className="object-contain object-center [image-rendering:auto]"
         />
       </div>

@@ -11,8 +11,10 @@ VERNON_ADMIN_EMAILS: frozenset[str] = frozenset({"josh@vernon.ca"})
 RECREATION_OPS_FEATURE = "recreation_ops"
 DAILY_PLANNER_FEATURE = "daily_planner"
 VERNON_PINNED_FEATURES: tuple[str, ...] = (RECREATION_OPS_FEATURE, DAILY_PLANNER_FEATURE)
-#: Same-origin static file served by the Pulse SPA (`frontend/public/images/city-of-vernon-logo.png`).
-VERNON_DEFAULT_LOGO_URL = "/images/city-of-vernon-logo.png"
+#: Same-origin static file served by the Pulse SPA (`frontend/public/images/city-of-vernon-logo.svg`).
+VERNON_DEFAULT_LOGO_URL = "/images/city-of-vernon-logo.svg"
+#: Raster from the original seed — still served, but bootstrap rewrites to the SVG.
+VERNON_LEGACY_LOGO_URL = "/images/city-of-vernon-logo.png"
 
 
 def recreation_ops_forced_for_company_name(name: str | None) -> bool:
@@ -27,10 +29,11 @@ def recreation_ops_forced_for_email(email: str | None) -> bool:
 
 
 def apply_vernon_default_logo(company: object) -> bool:
-    """Seed the City of Vernon static mark when the tenant has no logo yet.
+    """Seed the City of Vernon static mark when the tenant has no custom logo.
 
     Does not replace an uploaded file (`logo_storage_key`) or a custom `logo_url`.
-    Returns True when `logo_url` was written.
+    Rewrites the legacy PNG seed onto the transparent SVG.
+    Returns True when `logo_url` was written or updated.
     """
     if not recreation_ops_forced_for_company_name(getattr(company, "name", None)):
         return False
@@ -38,7 +41,9 @@ def apply_vernon_default_logo(company: object) -> bool:
     if storage_key:
         return False
     existing = (getattr(company, "logo_url", None) or "").strip()
-    if existing:
+    if existing == VERNON_DEFAULT_LOGO_URL:
+        return False
+    if existing and existing != VERNON_LEGACY_LOGO_URL:
         return False
     setattr(company, "logo_url", VERNON_DEFAULT_LOGO_URL)
     return True

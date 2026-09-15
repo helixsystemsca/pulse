@@ -6,9 +6,9 @@
  */
 
 import { AnimatePresence, motion } from "framer-motion";
-import Image from "next/image";
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { CinematicLogoImage } from "@/components/branding/CinematicLogoImage";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { resolveAuthModalBrand } from "@/lib/branding/auth-brand";
 import { cn } from "@/lib/cn";
@@ -291,12 +291,11 @@ export function WelcomeLoaderModal({
                       : "relative mx-auto h-[9.3rem] w-[9.3rem] sm:h-[9.9rem] sm:w-[9.9rem]"
                   }
                 >
-                  <Image
+                  <CinematicLogoImage
                     src={brand.cinematicSrc}
                     alt={brand.cinematicAlt}
-                    fill
-                    priority
                     sizes={vernonMark ? "(max-width: 640px) 288px, 320px" : "(max-width: 640px) 158px, 173px"}
+                    priority
                     className="object-contain object-center"
                   />
                 </div>

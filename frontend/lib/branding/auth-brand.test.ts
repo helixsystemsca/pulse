@@ -69,7 +69,7 @@ describe("auth-brand", () => {
       companyName: "City of Vernon",
       logoUrl: "/images/city-of-vernon-logo.png",
     });
-    expect(brand.cinematicSrc).toBe("/images/city-of-vernon-logo.png");
+    expect(brand.cinematicSrc).toBe(CITY_OF_VERNON_LOGO_SRC);
     expect(brand.kind).toBe("vernon");
     expect(brand.showPoweredByHelix).toBe(true);
   });

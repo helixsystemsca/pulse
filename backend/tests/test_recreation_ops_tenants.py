@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 from app.core.features.recreation_ops_tenants import (
     VERNON_DEFAULT_LOGO_URL,
+    VERNON_LEGACY_LOGO_URL,
     apply_vernon_default_logo,
     recreation_ops_forced_for_company_name,
     recreation_ops_forced_for_email,
@@ -51,3 +52,24 @@ def test_vernon_default_logo_skips_other_tenants() -> None:
     company = SimpleNamespace(name="Panorama", logo_url=None, logo_storage_key=None)
     assert apply_vernon_default_logo(company) is False
     assert company.logo_url is None
+
+
+def test_vernon_default_logo_upgrades_legacy_png() -> None:
+    company = SimpleNamespace(
+        name="City of Vernon",
+        logo_url=VERNON_LEGACY_LOGO_URL,
+        logo_storage_key=None,
+    )
+    assert apply_vernon_default_logo(company) is True
+    assert company.logo_url == VERNON_DEFAULT_LOGO_URL
+    assert apply_vernon_default_logo(company) is False
+
+
+def test_vernon_default_logo_does_not_clobber_custom_url() -> None:
+    company = SimpleNamespace(
+        name="City of Vernon",
+        logo_url="https://cdn.example/custom.png",
+        logo_storage_key=None,
+    )
+    assert apply_vernon_default_logo(company) is False
+    assert company.logo_url == "https://cdn.example/custom.png"
