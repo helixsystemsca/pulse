@@ -20,6 +20,9 @@ export type StandardShiftDefinition = {
   end: string;
   /** Tooltip / detail copy */
   description?: string;
+  /** Pulse shift-definition id when loaded from the API. */
+  id?: string;
+  requiredCertifications?: string[];
 };
 
 /** Built-in catalog — extend via org settings / API later. */

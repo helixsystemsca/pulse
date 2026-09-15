@@ -92,6 +92,46 @@ export function readWorkerDragPayload(dt: DataTransfer): WorkerDragPayload | nul
   }
 }
 
+/** Prefer the live session — some browsers omit custom MIME types until/during drop. */
+export function resolveWorkerDropPayload(
+  dt: DataTransfer | null,
+  dragSession: ScheduleDragSession | null,
+): WorkerDragPayload | null {
+  if (dragSession?.kind === "worker") return { workerId: dragSession.workerId };
+  if (!dt) return null;
+  const fromMime = readWorkerDragPayload(dt);
+  if (fromMime) return fromMime;
+  try {
+    const plain = dt.getData("text/plain").trim();
+    if (plain && !plain.includes(":") && plain.length >= 8) return { workerId: plain };
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+export function resolveShiftDropPayload(
+  dt: DataTransfer | null,
+  dragSession: ScheduleDragSession | null,
+): ShiftDragPayload | null {
+  if (dragSession?.kind === "shift") {
+    return { shiftId: dragSession.shiftId, duplicate: dragSession.duplicate };
+  }
+  if (!dt) return null;
+  return readShiftDragPayload(dt);
+}
+
+export function resolvePaletteDropPayload(
+  dt: DataTransfer | null,
+  dragSession: ScheduleDragSession | null,
+): PaletteDragPayload | null {
+  if (dragSession?.kind === "palette") {
+    return { paletteKind: dragSession.paletteKind, code: dragSession.code };
+  }
+  if (!dt) return null;
+  return readPaletteDragPayload(dt);
+}
+
 export type PaletteDragPayload = { paletteKind: "shift" | "badge"; code: string };
 
 export function setPaletteDragData(dt: DataTransfer, payload: PaletteDragPayload) {

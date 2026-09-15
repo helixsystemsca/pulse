@@ -66,6 +66,11 @@ from app.schemas.pulse_bootstrap import DashboardBootstrapOut
 from app.schemas.devices import ZoneCreateIn, ZoneUpdateIn
 from app.services.devices.device_service import DeviceService
 from app.services.routine_shift_band import band_from_shift_and_definition
+from app.services.schedule_assignment_eligibility import (
+    enrich_shift_outs,
+    load_worker_credential_payloads,
+    normalized_cert_requirements_payload,
+)
 from app.services.schedule_facility_zones import ensure_schedule_facility_zones
 from app.services.gamification_service import ensure_task_for_work_request
 from app.schemas.pulse import (
@@ -92,6 +97,7 @@ from app.schemas.pulse import (
     WorkerOut,
     WorkerProfilePatch,
     WorkerSkillMiniOut,
+    WorkerCertificationRecordOut,
     ZoneOut,
 )
 
@@ -589,6 +595,7 @@ async def patch_worker_profile(
     skills = [WorkerSkillMiniOut(name=r[0], level=int(r[1] or 1)) for r in skq.all()]
     uid_s = str(u2.id)
     emp, rec = _worker_scheduling_fields(prof)
+    recs, training = (await load_worker_credential_payloads(db, cid, [uid_s])).get(uid_s, ([], []))
     return WorkerOut(
         id=uid_s,
         email=u2.email,
@@ -602,6 +609,8 @@ async def patch_worker_profile(
         avatar_url=co_worker_avatar_url(uid_s, u2.avatar_url),
         employment_type=emp,
         recurring_shifts=rec,
+        certification_records=[WorkerCertificationRecordOut.model_validate(r) for r in recs],
+        completed_training=list(training),
     )
 
 
@@ -642,7 +651,7 @@ async def list_shifts(
         t = tasks_by_shift.get(sid)
         proj = projects_by_id.get(str(t.project_id)) if t else None
         out.append(_shift_to_out(r, t, proj))
-    return out
+    return await enrich_shift_outs(db, cid, rows, out)
 
 
 @router.get("/schedule/shifts/{shift_id}", response_model=ShiftOut)
@@ -663,7 +672,9 @@ async def get_schedule_shift(db: Db, cid: CompanyId, shift_id: str) -> ShiftOut:
             defn = None
     band = band_from_shift_and_definition(sh, defn)
     band_s = band if band is None else str(band)
-    return _shift_to_out(sh, None, None, routine_shift_band=band_s)
+    out = _shift_to_out(sh, None, None, routine_shift_band=band_s)
+    enriched = await enrich_shift_outs(db, cid, [sh], [out])
+    return enriched[0]
 
 
 @router.get("/schedule/assignments", response_model=list[ScheduleAssignmentOut])
@@ -760,7 +771,7 @@ async def create_shift(
 ) -> ShiftCreateResult:
     if body.facility_id and not await _zone_in_company(db, cid, body.facility_id):
         raise HTTPException(status_code=400, detail="Unknown schedule facility")
-    shift_code: Optional[str] = None
+    shift_code = (body.shift_code or "").strip().upper() or None
     if body.shift_definition_id:
         dq = await db.execute(
             select(PulseScheduleShiftDefinition).where(
@@ -771,7 +782,7 @@ async def create_shift(
         drow = dq.scalar_one_or_none()
         if not drow:
             raise HTTPException(status_code=400, detail="Unknown shift definition")
-        shift_code = str(drow.code or "").strip() or None
+        shift_code = str(drow.code or "").strip().upper() or shift_code
     errs, warnings = await pulse_svc.validate_shift_assignment(
         db,
         cid,
@@ -823,7 +834,11 @@ async def create_shift(
             },
         )
     )
-    return ShiftCreateResult(shift=_shift_to_out(sh), warnings=warnings)
+    shift_out = (await enrich_shift_outs(db, cid, [sh], [_shift_to_out(sh)]))[0]
+    for alarm in shift_out.staffing_alarms:
+        if alarm.label not in warnings:
+            warnings.append(alarm.label)
+    return ShiftCreateResult(shift=shift_out, warnings=warnings)
 
 
 @router.post("/schedule/shifts/{shift_id}/start", status_code=status.HTTP_204_NO_CONTENT)
@@ -909,7 +924,11 @@ async def patch_shift(db: Db, cid: CompanyId, shift_id: str, body: ShiftUpdate) 
     tq = await db.execute(select(PulseProjectTask).where(PulseProjectTask.calendar_shift_id == sh.id))
     task = tq.scalar_one_or_none()
     proj = await db.get(PulseProject, task.project_id) if task else None
-    return ShiftCreateResult(shift=_shift_to_out(sh, task, proj), warnings=warnings)
+    shift_out = (await enrich_shift_outs(db, cid, [sh], [_shift_to_out(sh, task, proj)]))[0]
+    for alarm in shift_out.staffing_alarms:
+        if alarm.label not in warnings:
+            warnings.append(alarm.label)
+    return ShiftCreateResult(shift=shift_out, warnings=warnings)
 
 
 @router.delete("/schedule/shifts/{shift_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -1432,7 +1451,7 @@ async def create_shift_definition(
         end_min=int(body.end_min),
         shift_type=str(body.shift_type or "day").strip().lower(),
         color=(body.color.strip() if body.color else None),
-        cert_requirements=list(body.cert_requirements or []),
+        cert_requirements=normalized_cert_requirements_payload(body.cert_requirements),
     )
     db.add(row)
     try:
@@ -1461,7 +1480,7 @@ async def patch_shift_definition(db: Db, cid: CompanyId, definition_id: str, bod
     row.end_min = int(body.end_min)
     row.shift_type = str(body.shift_type or "day").strip().lower()
     row.color = body.color.strip() if body.color else None
-    row.cert_requirements = list(body.cert_requirements or [])
+    row.cert_requirements = normalized_cert_requirements_payload(body.cert_requirements)
     try:
         await db.commit()
     except IntegrityError:

@@ -47,11 +47,11 @@ export function scheduleShiftHoverSummary(
   } else {
     segments.push("Worker: unassigned");
   }
-  const certIssues = conflicts.filter((c) => c.type === "certification");
+  const certIssues = conflicts.filter((c) => c.type === "certification" || c.type === "training");
   if (certIssues.length) {
-    segments.push(`Certification: ${certIssues.map((c) => c.label).join(" · ")}`);
+    segments.push(`Training: ${certIssues.map((c) => c.label).join(" · ")}`);
   }
-  const other = conflicts.filter((c) => c.type !== "certification");
+  const other = conflicts.filter((c) => c.type !== "certification" && c.type !== "training");
   if (other.length) {
     segments.push(`Other checks: ${other.map((c) => c.label).join(" · ")}`);
   }
@@ -61,5 +61,5 @@ export function scheduleShiftHoverSummary(
 export function shiftHasCertificationFlag(
   conflicts: Array<{ type?: string }>,
 ): boolean {
-  return conflicts.some((c) => c.type === "certification");
+  return conflicts.some((c) => c.type === "certification" || c.type === "training");
 }

@@ -1,6 +1,7 @@
 /**
  * Tenant-scoped assignment palette configuration (badges in localStorage; shifts via API).
  */
+import { parseCertRequirements } from "@/lib/schedule/assignment-eligibility";
 import {
   OPERATIONAL_BADGE_REGISTRY,
   type OperationalBadgeDefinition,
@@ -139,6 +140,7 @@ export type ScheduleShiftDefinitionRow = {
   end_min: number;
   shift_type: string;
   color?: string | null;
+  cert_requirements?: unknown;
 };
 
 export function shiftDefinitionsToPalette(defs: ScheduleShiftDefinitionRow[]): StandardShiftDefinition[] {
@@ -157,8 +159,34 @@ export function shiftDefinitionsToPalette(defs: ScheduleShiftDefinitionRow[]): S
       band,
       start,
       end,
+      id: d.id,
+      requiredCertifications: parseCertRequirements(d.cert_requirements).map((r) => r.code),
     };
   });
+}
+
+export function matchShiftDefinition(
+  defs: ScheduleShiftDefinitionRow[],
+  opts: { code?: string | null; band?: string; start?: string; end?: string },
+): ScheduleShiftDefinitionRow | null {
+  if (!defs.length) return null;
+  const code = opts.code?.trim().toUpperCase();
+  if (code) {
+    const byCode = defs.find((d) => d.code.trim().toUpperCase() === code);
+    if (byCode) return byCode;
+  }
+  if (opts.start && opts.end) {
+    const startMin = minutesFromHhmm(opts.start);
+    const endMin = minutesFromHhmm(opts.end);
+    const windowMatch = defs.find((d) => d.start_min === startMin && d.end_min === endMin);
+    if (windowMatch) return windowMatch;
+  }
+  const band = opts.band?.trim().toLowerCase();
+  if (band) {
+    const bandMatches = defs.filter((d) => d.shift_type?.trim().toLowerCase() === band);
+    if (bandMatches.length === 1) return bandMatches[0]!;
+  }
+  return null;
 }
 
 export const BADGE_GROUP_OPTIONS: { value: OperationalBadgeGroup; label: string }[] = [

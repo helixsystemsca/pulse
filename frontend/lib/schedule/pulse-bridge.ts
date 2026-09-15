@@ -42,6 +42,8 @@ export type PulseShiftApi = {
   project_id?: string | null;
   project_name?: string | null;
   task_priority?: string | null;
+  required_certifications?: string[] | null;
+  staffing_alarms?: Array<{ code: string; severity: string; label: string; kind?: string }> | null;
 };
 
 export type PulseRecurringShiftApi = {
@@ -63,6 +65,12 @@ export type PulseWorkerApi = {
   /** From Workers & Roles profiles (`pulse_worker_skills`). */
   skills?: { name: string; level: number }[];
   certifications?: string[];
+  certification_records?: Array<{
+    name: string;
+    expiry_date?: string | null;
+    status?: string;
+  }>;
+  completed_training?: string[];
   availability?: Record<string, unknown>;
   employment_type?: string | null;
   recurring_shifts?: PulseRecurringShiftApi[] | null;
@@ -127,6 +135,13 @@ export function pulseWorkersToSchedule(workers: PulseWorkerApi[]): Worker[] {
       role: sessionPrimaryRole({ roles: w.roles, role: w.role }) || "worker",
       active: true,
       certifications: w.certifications?.filter(Boolean),
+      certificationRecords: (w.certification_records ?? []).map((r) => ({
+        name: r.name,
+        code: r.name,
+        expiryDate: r.expiry_date ?? null,
+        status: r.status,
+      })),
+      completedTraining: w.completed_training?.filter(Boolean),
       availability: (w.availability ?? undefined) as Worker["availability"],
       employmentType,
       recurringShifts: isFlexDeploymentWorker({ employmentType })
@@ -174,6 +189,8 @@ export function pulseShiftToSchedule(row: PulseShiftApi, fallbackZoneId: string)
     projectName: row.project_name ?? undefined,
     taskTitle: row.display_label ?? undefined,
     taskPriority: tp,
+    required_certifications: row.required_certifications?.filter(Boolean) ?? undefined,
+    staffingAlarms: row.staffing_alarms ?? undefined,
   };
 }
 

@@ -41,6 +41,7 @@ export function computeAlerts(
     unassignedShiftCount,
     coverageCritical: 0,
     coverageWarnings: 0,
+    trainingAlarms: 0,
   };
 }
 

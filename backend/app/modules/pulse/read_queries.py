@@ -39,6 +39,10 @@ from app.models.pulse_models import (
     PulseWorkRequestStatus,
 )
 from app.modules.pulse import service as pulse_svc
+from app.services.schedule_assignment_eligibility import (
+    enrich_shift_outs,
+    load_worker_credential_payloads,
+)
 from app.services.schedule_facility_zones import ensure_schedule_facility_zones
 from app.repositories import inventory_scope_repository as inv_scope_repo
 from app.schemas.pulse import (
@@ -49,6 +53,7 @@ from app.schemas.pulse import (
     ShiftOut,
     WorkRequestListOut,
     WorkRequestOut,
+    WorkerCertificationRecordOut,
     WorkerOut,
     WorkerSkillMiniOut,
     ZoneOut,
@@ -139,6 +144,8 @@ async def fetch_workers_roster(
         for pr in pq.scalars().all():
             prof_map[str(pr.user_id)] = pr
 
+    cred_payloads = await load_worker_credential_payloads(db, cid, uids)
+
     skills_map: dict[str, list[WorkerSkillMiniOut]] = defaultdict(list)
     if uids:
         sq = await db.execute(
@@ -162,6 +169,7 @@ async def fetch_workers_roster(
         worker_dept = primary_department_slug_from_hr(hr_map.get(uid_s), allowed=allowed)
         if dept_filter and worker_dept != dept_filter:
             continue
+        recs, training = cred_payloads.get(uid_s, ([], []))
         out.append(
             WorkerOut(
                 id=uid_s,
@@ -177,6 +185,8 @@ async def fetch_workers_roster(
                 employment_type=emp,
                 recurring_shifts=rec,
                 department_slug=worker_dept,
+                certification_records=[WorkerCertificationRecordOut.model_validate(r) for r in recs],
+                completed_training=list(training),
             )
         )
     return out
@@ -269,4 +279,4 @@ async def fetch_schedule_shifts(
         t = tasks_by_shift.get(sid)
         proj = projects_by_id.get(str(t.project_id)) if t else None
         out.append(_shift_to_out(r, t, proj))
-    return out
+    return await enrich_shift_outs(db, cid, rows, out)

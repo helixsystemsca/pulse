@@ -53,6 +53,7 @@ import {
   savePaletteBadgeConfig,
   setActivePaletteBadgeRegistry,
   shiftDefinitionsToPalette,
+  matchShiftDefinition,
   type PaletteBadgeConfig,
   type ScheduleShiftDefinitionRow,
 } from "@/lib/schedule/palette-config";
@@ -63,6 +64,7 @@ import {
   fetchEmployeeAvailability,
 } from "@/lib/schedule/employee-availability-api";
 import type { EmployeeDailyAvailabilityEntry } from "@/lib/schedule/employee-availability-types";
+import { evaluateShiftAssignmentAlarms, parseCertRequirements } from "@/lib/schedule/assignment-eligibility";
 import { buildWorkerDragHighlightMap, evaluateWorkerDrop } from "@/lib/schedule/worker-drag-highlights";
 import {
   ensureShiftOnServerForAssignment,
@@ -233,6 +235,8 @@ export function ScheduleApp() {
   const [timeOffOpen, setTimeOffOpen] = useState(false);
   const [timeOffSupervisorTab, setTimeOffSupervisorTab] = useState<"queue" | "request" | undefined>();
   const [dragSession, setDragSession] = useState<ScheduleDragSession | null>(null);
+  const [pickedWorkerId, setPickedWorkerId] = useState<string | null>(null);
+  const [coarsePointer, setCoarsePointer] = useState(false);
   const [placementDutyRole, setPlacementDutyRole] = useState<string>("worker");
   const [placementBand, setPlacementBand] = useState<SchedulePlacementBand>("template");
   const [draftResult, setDraftResult] = useState<DraftResult | null>(null);
@@ -282,6 +286,7 @@ export function ScheduleApp() {
   const addShift = useScheduleStore((s) => s.addShift);
   const updateShift = useScheduleStore((s) => s.updateShift);
   const deleteShift = useScheduleStore((s) => s.deleteShift);
+  const replaceShiftId = useScheduleStore((s) => s.replaceShiftId);
   const applyPulseScheduleSnapshot = useScheduleStore((s) => s.applyPulseScheduleSnapshot);
   const setWorkers = useScheduleStore((s) => s.setWorkers);
   const deploymentBadgeOverlays = useScheduleStore((s) => s.deploymentBadgeOverlays);
@@ -312,6 +317,14 @@ export function ScheduleApp() {
       setPlacementBand(allowedPlacementBands[0]!);
     }
   }, [allowedPlacementBands, placementBand]);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(pointer: coarse)");
+    const apply = () => setCoarsePointer(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
 
   const [hydrated, setHydrated] = useState(false);
   const [scheduleModuleBlocked, setScheduleModuleBlocked] = useState(false);
@@ -414,6 +427,25 @@ export function ScheduleApp() {
       setEmployeeAvailabilityIndex({});
     }
   }, [applyPulseScheduleSnapshot, timeScale, cursor.m, cursor.y, focusDate, scheduleDepartmentSlug]);
+
+  const persistCreatedShift = useCallback(
+    async (created: Shift) => {
+      if (!isApiMode()) return;
+      try {
+        const serverId = await persistScheduleShiftToServer(created, scheduleDepartmentSlug);
+        if (serverId && serverId !== created.id) {
+          replaceShiftId(created.id, serverId, { uiFlags: undefined });
+        } else if (serverId) {
+          updateShift(created.id, { uiFlags: undefined });
+        }
+      } catch (e) {
+        setScheduleToast(
+          e instanceof Error ? e.message : "Assignment is on the board but did not save. Use Save changes.",
+        );
+      }
+    },
+    [replaceShiftId, scheduleDepartmentSlug, updateShift],
+  );
 
   const handleScheduleDepartmentChange = useCallback(
     (slug: string) => {
@@ -530,6 +562,8 @@ export function ScheduleApp() {
               ends_at: localDateTimeToIso(s.date, s.endTime),
               facility_id: s.zoneId || null,
               shift_type: s.shiftType,
+              shift_definition_id: s.shiftDefinitionId || null,
+              shift_code: s.shiftCode || null,
               requires_supervisor: !!s.requires_supervisor,
               requires_ticketed: false,
               department_slug: scheduleDepartmentSlug,
@@ -545,6 +579,8 @@ export function ScheduleApp() {
               ends_at: localDateTimeToIso(s.date, s.endTime),
               facility_id: s.zoneId || null,
               shift_type: s.shiftType,
+              shift_definition_id: s.shiftDefinitionId || null,
+              shift_code: s.shiftCode || null,
               requires_supervisor: !!s.requires_supervisor,
               requires_ticketed: false,
               department_slug: scheduleDepartmentSlug,
@@ -736,9 +772,13 @@ export function ScheduleApp() {
         ...base,
         coverageCritical: v.filter((x) => x.severity === "critical").length,
         coverageWarnings: v.filter((x) => x.severity === "warning").length,
+        trainingAlarms: shiftsForView.reduce((n, s) => {
+          const w = s.workerId ? workers.find((x) => x.id === s.workerId) : null;
+          return n + evaluateShiftAssignmentAlarms(s, w ?? null, shiftDefinitions).length;
+        }, 0),
       };
     },
-    [shiftsForView, metricsMonth.y, metricsMonth.m, settings, scheduleMod.settings, workers, timeScale, focusDate],
+    [shiftsForView, metricsMonth.y, metricsMonth.m, settings, scheduleMod.settings, workers, timeScale, focusDate, shiftDefinitions],
   );
 
   const schedulePeriodState: SchedulePeriodHeaderState = activePeriod
@@ -942,17 +982,16 @@ export function ScheduleApp() {
       if (mode === "move" && isApiMode() && sh.workerId && sh.eventType === "work") {
         const moved = { ...sh, date: targetDate };
         if (sh.date === targetDate && isPulseApiShiftId(shiftId)) return;
+        updateShift(shiftId, { date: targetDate, uiFlags: { ...sh.uiFlags, isUpdated: true } });
         try {
           const serverId = await persistScheduleShiftToServer(moved, scheduleDepartmentSlug);
-          if (serverId) {
-            await reloadPulseSchedule();
-            return;
+          if (serverId && serverId !== shiftId) {
+            replaceShiftId(shiftId, serverId, { date: targetDate, uiFlags: undefined });
+          } else if (serverId) {
+            updateShift(shiftId, { date: targetDate, uiFlags: undefined });
           }
         } catch {
-          /* fall through to local update */
-        }
-        if (sh.date !== targetDate) {
-          updateShift(shiftId, { date: targetDate, uiFlags: { ...sh.uiFlags, isUpdated: true } });
+          /* local update already applied */
         }
         return;
       }
@@ -966,7 +1005,7 @@ export function ScheduleApp() {
     },
     [
       addShift,
-      reloadPulseSchedule,
+      replaceShiftId,
       scheduleDepartmentSlug,
       scheduleMod.settings.enforceMaxHours,
       shiftDragEnabled,
@@ -1025,7 +1064,10 @@ export function ScheduleApp() {
         requiredCerts = undefined;
       }
       const zoneId = zones[0]?.id ?? shiftsForView[0]?.zoneId ?? "";
-      if (!zoneId) return;
+      if (!zoneId) {
+        setScheduleToast("Add a schedule facility in Settings before assigning workers.");
+        return;
+      }
 
       if (trimmedOverride) {
         const actor = (session?.full_name ?? session?.email ?? "user").trim() || "user";
@@ -1039,7 +1081,11 @@ export function ScheduleApp() {
       }
 
       const code = inferStandardShiftCode(start, end);
-      addShift({
+      const def = matchShiftDefinition(shiftDefinitions, { code, band: shiftType, start, end });
+      const fromDef = def ? parseCertRequirements(def.cert_requirements).map((r) => r.code) : [];
+      const mergedReqs = [...new Set([...(requiredCerts ?? []), ...fromDef])];
+
+      const created = addShift({
         workerId: w.id,
         date: targetDate,
         startTime: start,
@@ -1049,15 +1095,25 @@ export function ScheduleApp() {
         role: placementDutyRole as Shift["role"],
         zoneId,
         shiftKind: "workforce",
-        required_certifications: requiredCerts,
-        shiftCode: code,
+        required_certifications: mergedReqs.length ? mergedReqs : undefined,
+        shiftDefinitionId: def?.id ?? null,
+        shiftCode: def?.code ?? code,
         availabilityOverrideReason: trimmedOverride,
         uiFlags: { isNew: true },
       });
+      const alarms = evaluateShiftAssignmentAlarms(created, w, shiftDefinitions);
+      if (alarms.length) {
+        setScheduleToast(`Assigned with training alarm: ${alarms.map((a) => a.label).join(" · ")}`);
+      }
+      void persistCreatedShift(created);
+      setPickedWorkerId(null);
+      setDragSession(null);
     },
     [
       addShift,
       canPublishSchedule,
+      persistCreatedShift,
+      shiftDefinitions,
       placementBand,
       placementDutyRole,
       dropAvailabilityOpts,
@@ -1072,6 +1128,26 @@ export function ScheduleApp() {
     ],
   );
 
+  const pickWorker = useCallback((workerId: string) => {
+    setPickedWorkerId((prev) => {
+      const next = prev === workerId ? null : workerId;
+      setDragSession(next ? { kind: "worker", workerId: next } : null);
+      return next;
+    });
+  }, []);
+
+  const handleCalendarDayActivate = useCallback(
+    (iso: string) => {
+      if (pickedWorkerId) {
+        handleWorkerDrop(pickedWorkerId, iso);
+        return;
+      }
+      setFocusDate(iso);
+      setTimeScale("day");
+    },
+    [handleWorkerDrop, pickedWorkerId],
+  );
+
   const commitPaletteShiftAssignment = useCallback(
     (workerId: string, targetDate: string, shiftCode: string, availabilityOverrideReason?: string | null) => {
       const w = workers.find((x) => x.id === workerId);
@@ -1081,11 +1157,20 @@ export function ScheduleApp() {
           ? availabilityOverrideReason.trim()
           : null;
 
-      const def = standardShiftByCode(shiftCode);
-      if (!def) {
+      const catalog =
+        paletteShiftCatalog.find((c) => c.code.toUpperCase() === shiftCode.trim().toUpperCase()) ??
+        standardShiftByCode(shiftCode);
+      if (!catalog) {
         setScheduleToast(`Unknown shift code: ${shiftCode}`);
         return;
       }
+      const defRow = matchShiftDefinition(shiftDefinitions, { code: catalog.code });
+      const required = [
+        ...new Set([
+          ...(catalog.requiredCertifications ?? []),
+          ...parseCertRequirements(defRow?.cert_requirements).map((r) => r.code),
+        ]),
+      ];
 
       const ev = evaluateWorkerDrop(w, targetDate, shiftsForView, settings, timeOffBlocks, placementDropWindow, {
         treatRestrictionsAsSatisfied: Boolean(trimmedOverride),
@@ -1122,7 +1207,7 @@ export function ScheduleApp() {
 
       const weeklyCap = Number(scheduleMod.settings.enforceMaxHours) || 0;
       if (weeklyCap > 0 && w) {
-        const draftLen = shiftLengthHours({ startTime: def.start, endTime: def.end });
+        const draftLen = shiftLengthHours({ startTime: catalog.start, endTime: catalog.end });
         const withShift =
           weeklyAssignedHours(shiftsForView, workerId, targetDate, targetShift?.id) + draftLen;
         if (withShift > weeklyCap + 1e-6) {
@@ -1133,67 +1218,66 @@ export function ScheduleApp() {
         }
       }
 
+      const assignmentPatch: Partial<Shift> = {
+        startTime: catalog.start,
+        endTime: catalog.end,
+        shiftType: catalog.band,
+        shiftCode: catalog.code,
+        shiftDefinitionId: defRow?.id ?? catalog.id ?? null,
+        required_certifications: required.length ? required : undefined,
+        ...(trimmedOverride ? { availabilityOverrideReason: trimmedOverride } : {}),
+      };
+
       if (targetShift && !isEphemeralScheduleShiftId(targetShift.id)) {
-        if (isApiMode() && isPulseApiShiftId(targetShift.id)) {
-          void (async () => {
-            try {
-              await apiFetch(`/api/v1/pulse/schedule/shifts/${targetShift.id}`, {
-                method: "PATCH",
-                json: {
-                  starts_at: localDateTimeToIso(targetDate, def.start),
-                  ends_at: localDateTimeToIso(targetDate, def.end),
-                  shift_type: def.band,
-                },
-              });
-              await reloadPulseSchedule();
-            } catch {
-              updateShift(targetShift.id, {
-                startTime: def.start,
-                endTime: def.end,
-                shiftType: def.band,
-                shiftCode: def.code,
-                ...(trimmedOverride ? { availabilityOverrideReason: trimmedOverride } : {}),
-                uiFlags: { ...targetShift.uiFlags, isUpdated: true },
-              });
-            }
-          })();
-          return;
+        const next: Shift = { ...targetShift, ...assignmentPatch, date: targetDate };
+        updateShift(targetShift.id, { ...assignmentPatch, uiFlags: { ...targetShift.uiFlags, isUpdated: true } });
+        const alarms = evaluateShiftAssignmentAlarms(next, w, shiftDefinitions);
+        if (alarms.length) {
+          setScheduleToast(`Assigned with training alarm: ${alarms.map((a) => a.label).join(" · ")}`);
         }
-        updateShift(targetShift.id, {
-          startTime: def.start,
-          endTime: def.end,
-          shiftType: def.band,
-          shiftCode: def.code,
-          ...(trimmedOverride ? { availabilityOverrideReason: trimmedOverride } : {}),
-          uiFlags: { ...targetShift.uiFlags, isUpdated: true },
-        });
+        if (isApiMode() && isPulseApiShiftId(targetShift.id)) {
+          void persistScheduleShiftToServer(next, scheduleDepartmentSlug).catch((e) => {
+            setScheduleToast(e instanceof Error ? e.message : "Assignment is on the board but did not save.");
+          });
+        }
         return;
       }
 
-      addShift({
+      const created = addShift({
         workerId: w.id,
         date: targetDate,
-        startTime: def.start,
-        endTime: def.end,
-        shiftType: def.band,
+        startTime: catalog.start,
+        endTime: catalog.end,
+        shiftType: catalog.band,
         eventType: "work",
         role: placementDutyRole as Shift["role"],
         zoneId,
         shiftKind: "workforce",
-        shiftCode: def.code,
+        shiftCode: catalog.code,
+        shiftDefinitionId: defRow?.id ?? catalog.id ?? null,
+        required_certifications: required.length ? required : undefined,
         ...(trimmedOverride ? { availabilityOverrideReason: trimmedOverride } : {}),
         uiFlags: { isNew: true },
       });
+      const alarms = evaluateShiftAssignmentAlarms(created, w, shiftDefinitions);
+      if (alarms.length) {
+        setScheduleToast(`Assigned with training alarm: ${alarms.map((a) => a.label).join(" · ")}`);
+      }
+      void persistCreatedShift(created);
     },
     [
       addShift,
+      dropAvailabilityOpts,
+      paletteShiftCatalog,
+      persistCreatedShift,
       placementDutyRole,
       placementDropWindow,
-      reloadPulseSchedule,
+      scheduleDepartmentSlug,
       scheduleMod.settings.enforceMaxHours,
       session?.email,
       session?.full_name,
       settings,
+      shiftDefinitions,
       shifts,
       shiftsForView,
       timeOffBlocks,
@@ -1259,8 +1343,10 @@ export function ScheduleApp() {
         return;
       }
 
-      const def = standardShiftByCode(payload.code);
-      if (!def) {
+      const catalog =
+        paletteShiftCatalog.find((c) => c.code.toUpperCase() === payload.code.trim().toUpperCase()) ??
+        standardShiftByCode(payload.code);
+      if (!catalog) {
         setScheduleToast(`Unknown shift code: ${payload.code}`);
         return;
       }
@@ -1275,7 +1361,7 @@ export function ScheduleApp() {
             kind: "paletteShift",
             workerId,
             date: targetDate,
-            code: def.code,
+            code: catalog.code,
             detail: ev.tooltip ?? "Constraint conflict for this placement.",
           });
           return;
@@ -1284,12 +1370,14 @@ export function ScheduleApp() {
         return;
       }
 
-      commitPaletteShiftAssignment(workerId, targetDate, def.code, null);
+      commitPaletteShiftAssignment(workerId, targetDate, catalog.code, null);
     },
     [
       addWorkerOperationalBadge,
       canPublishSchedule,
       commitPaletteShiftAssignment,
+      dropAvailabilityOpts,
+      paletteShiftCatalog,
       placementDropWindow,
       settings,
       shiftsForView,
@@ -1538,7 +1626,7 @@ export function ScheduleApp() {
                 pendingAvailability={pendingAvailabilityCount}
                 unpublishedChanges={hasPendingServerSave}
                 scheduleStatusLabel={scheduleWorkflow.statusLabel}
-                trainingConflicts={0}
+                trainingConflicts={alerts.trainingAlarms}
                 onManagePeriod={() => setShowPeriodModal(true)}
                 onAvailabilityClick={() => {
                   if (canPublishSchedule) {
@@ -1632,6 +1720,28 @@ export function ScheduleApp() {
                 ) : null}
 
                 <div className="relative flex w-full min-w-0 flex-col">
+                  {pickedWorkerId ? (
+                    <div
+                      role="status"
+                      className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-500/60 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:bg-amber-950/40 dark:text-amber-50"
+                    >
+                      <span>
+                        Tap a day to assign{" "}
+                        <strong>{workers.find((x) => x.id === pickedWorkerId)?.name ?? "this worker"}</strong>.
+                        Training alarms appear immediately if required certs are missing or expired.
+                      </span>
+                      <button
+                        type="button"
+                        className="rounded-md border border-amber-700/40 bg-white px-2 py-1 text-xs font-semibold dark:bg-slate-900"
+                        onClick={() => {
+                          setPickedWorkerId(null);
+                          setDragSession(null);
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : null}
                   {scheduleDragLock ? (
                     <div
                       className="pointer-events-none fixed inset-0 z-[115] bg-[color-mix(in_srgb,var(--ds-text-primary)_6%,transparent)] dark:bg-ds-bg/35"
@@ -1664,6 +1774,9 @@ export function ScheduleApp() {
                             setDragSession(null);
                             setTrashHovering(false);
                           }}
+                          onPickWorker={pickWorker}
+                          pickedWorkerId={pickedWorkerId}
+                          coarsePointer={coarsePointer}
                         />
                       </div>
                       <ScheduleAssignmentPalette
@@ -1745,7 +1858,9 @@ export function ScheduleApp() {
                       workerDayHighlight={workerHighlightMap?.[focusDate] ?? null}
                       workerDropPlacementWindow={placementDropWindow}
                       dropAvailabilityOpts={dropAvailabilityOpts}
+                      shiftDefinitions={shiftDefinitions}
                       onWorkerDropRejected={(msg) => setScheduleToast(msg)}
+                      pickedWorkerId={pickedWorkerId}
                       onWorkerDrop={(workerId) => handleWorkerDrop(workerId, focusDate)}
                       onShiftDragSessionStart={setDragSession}
                       onShiftDragSessionEnd={() => {
@@ -1774,10 +1889,7 @@ export function ScheduleApp() {
                     onAddForDate={openAdd}
                     onShiftMove={handleShiftMove}
                     onWorkerDrop={handleWorkerDrop}
-                    onOpenDay={(iso) => {
-                      setFocusDate(iso);
-                      setTimeScale("day");
-                    }}
+                    onOpenDay={handleCalendarDayActivate}
                     projectBarItems={showProjectOverlay ? projectBarItems : null}
                     scheduleDragLock={scheduleDragLock}
                     dragSession={dragSession}
@@ -1786,6 +1898,7 @@ export function ScheduleApp() {
                     workerHighlightByDate={workerHighlightMap}
                     workerDropPlacementWindow={placementDropWindow}
                     dropAvailabilityOpts={dropAvailabilityOpts}
+                    shiftDefinitions={shiftDefinitions}
                     onWorkerDropRejected={(msg) => setScheduleToast(msg)}
                     onShiftDragSessionStart={setDragSession}
                     onShiftDragSessionEnd={() => {
@@ -1817,10 +1930,7 @@ export function ScheduleApp() {
                     onAddForDate={openAdd}
                     onShiftMove={handleShiftMove}
                     onWorkerDrop={handleWorkerDrop}
-                    onOpenDay={(iso) => {
-                      setFocusDate(iso);
-                      setTimeScale("day");
-                    }}
+                    onOpenDay={handleCalendarDayActivate}
                     projectBarItems={showProjectOverlay ? projectBarItems : null}
                     scheduleDragLock={scheduleDragLock}
                     dragSession={dragSession}
@@ -1829,6 +1939,7 @@ export function ScheduleApp() {
                     workerHighlightByDate={workerHighlightMap}
                     workerDropPlacementWindow={placementDropWindow}
                     dropAvailabilityOpts={dropAvailabilityOpts}
+                    shiftDefinitions={shiftDefinitions}
                     onWorkerDropRejected={(msg) => setScheduleToast(msg)}
                     onShiftDragSessionStart={setDragSession}
                     onShiftDragSessionEnd={() => {
