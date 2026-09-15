@@ -71,7 +71,10 @@ Policies use the existing helpers `pulse_rls_tenant_visible` / `pulse_rls_tenant
    ```
    Head includes `1051_rls_coverage`.
 2. **Create / tighten `pulse_app`** — run [`scripts/sql/create_pulse_app_role.sql`](../scripts/sql/create_pulse_app_role.sql) as owner. Set the password in the SQL editor or secret store. **Do not put passwords in git.**
-3. **Switch Render `DATABASE_URL`** to `pulse_app` with `sslmode=require`. Keep a superuser URL only for Alembic/migrations (CI job or one-off).
+3. **Switch Render `DATABASE_URL`** to `pulse_app` with `sslmode=require`. Set a **separate** owner URL for Alembic only — do not put the owner password in git:
+   - `DATABASE_URL` = `pulse_app` (RLS enforced; API runtime)
+   - `MIGRATION_DATABASE_URL` (or `DATABASE_URL_MIGRATIONS`) = `postgres` / table owner (DDL)
+   Start command (`scripts/render_start.sh` → `python scripts/alembic_migrate.py`) uses the migration URL when set, otherwise falls back to `DATABASE_URL` (local/dev). If the database is already at Alembic head, migrate is a no-op (reads/updates `alembic_version` only; no application DDL).
 4. **Set API env:**
    - `DATABASE_RLS_CONTEXT_ENABLED=true` (default; GUC per request)
    - `DATABASE_RLS_ENFORCED=true` (startup warns if the URL still uses `postgres` / `supabase_admin`)
@@ -99,7 +102,8 @@ Migrations continue to run as owner (may bypass RLS). Runtime must not.
 
 - [ ] `ENVIRONMENT=production`
 - [ ] Strong `SECRET_KEY` (≥ 32 chars, not a placeholder)
-- [ ] `DATABASE_URL` → `pulse_app` (not `postgres`)
+- [ ] `DATABASE_URL` → `pulse_app` (not `postgres`; `sslmode=require`)
+- [ ] `MIGRATION_DATABASE_URL` → owner/`postgres` (Alembic/DDL only; never commit this password)
 - [ ] `DATABASE_RLS_CONTEXT_ENABLED=true`
 - [ ] `DATABASE_RLS_ENFORCED=true`
 - [ ] `REQUIRE_HTTPS=true`, `ENABLE_HSTS=true` behind TLS

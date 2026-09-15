@@ -38,3 +38,6 @@ def test_alembic_upgrade_head_idempotent(test_database) -> None:
     assert first.returncode == 0, first.stderr or first.stdout
     second = _run_upgrade()
     assert second.returncode == 0, second.stderr or second.stdout
+    combined = (second.stdout or "") + (second.stderr or "")
+    assert "already at head" in combined
+    assert "no-op" in combined

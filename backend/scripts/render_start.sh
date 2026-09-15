@@ -3,6 +3,10 @@
 # Prefer setting this as the Start Command:
 #   bash scripts/render_start.sh
 # Optional: move migrations to Render "Pre-Deploy Command" and use only the uvicorn exec line here.
+#
+# Dual DB URLs (RLS): alembic_migrate.py uses MIGRATION_DATABASE_URL (or
+# DATABASE_URL_MIGRATIONS) when set, else DATABASE_URL. uvicorn always uses
+# DATABASE_URL (pulse_app). Never put the owner password in git.
 
 set -euo pipefail
 

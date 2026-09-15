@@ -8,8 +8,9 @@
 --   1. alembic upgrade head          -- includes 1051_rls_coverage
 --   2. this script
 --   3. Point Render DATABASE_URL at pulse_app (sslmode=require)
---   4. DATABASE_RLS_CONTEXT_ENABLED=true
---   5. DATABASE_RLS_ENFORCED=true
+--   4. Point Render MIGRATION_DATABASE_URL at postgres/owner (Alembic only; not in git)
+--   5. DATABASE_RLS_CONTEXT_ENABLED=true
+--   6. DATABASE_RLS_ENFORCED=true
 
 BEGIN;
 

@@ -11,7 +11,9 @@ directly when the stored revision is absent from the active tree (bypassing
 Usage (Render / production):
     python scripts/alembic_migrate.py
 
-Requires ``DATABASE_URL`` (sync ``postgresql+psycopg`` or ``postgresql``).
+Uses ``MIGRATION_DATABASE_URL`` or ``DATABASE_URL_MIGRATIONS`` when set (table owner /
+postgres role for DDL). Otherwise falls back to ``DATABASE_URL`` so local/dev keeps
+working with a single URL. Runtime uvicorn must keep using ``DATABASE_URL`` (``pulse_app``).
 """
 
 from __future__ import annotations
@@ -53,9 +55,15 @@ def _sync_database_url() -> str:
     sys.path.insert(0, str(BACKEND_ROOT))
     from app.core.config import get_settings
 
-    url = get_settings().database_url.strip()
-    if "+asyncpg" in url:
-        return url.replace("postgresql+asyncpg", "postgresql+psycopg", 1)
+    settings = get_settings()
+    url, source = ah.resolve_alembic_sync_url(
+        settings.database_url.strip(),
+        migration_url=settings.migration_database_url,
+    )
+    if source == "DATABASE_URL":
+        _log.info("Alembic using DATABASE_URL")
+    else:
+        _log.info("Alembic using %s (runtime DATABASE_URL is unchanged)", source)
     return url
 
 
@@ -115,21 +123,29 @@ def main() -> int:
 
     url = _sync_database_url()
     engine = create_engine(url)
+    already_at_head = False
     with engine.connect() as conn:
         ensure_version_num_width(conn)
         repair_stored_revision_if_alias(conn)
         stored = _read_stored_revision(conn)
         if stored is not None:
             if stored == migration_head:
-                _log.info("alembic_version already at head %r", migration_head)
+                _log.info(
+                    "alembic_version already at head %r; skipping upgrade (no-op)",
+                    migration_head,
+                )
+                already_at_head = True
             elif stored == ALPHA_BASELINE or _revision_in_active_tree(script, stored):
                 _log.info("alembic_version=%r; proceeding with upgrade head", stored)
             else:
                 _direct_realign_orphan_revision(conn, stored)
 
-    _log.info("STARTUP: running alembic upgrade head")
-    command.upgrade(cfg, "head")
-    _log.info("STARTUP: alembic upgrade head complete")
+    if already_at_head:
+        _log.info("STARTUP: alembic already at head; migrate is a no-op")
+    else:
+        _log.info("STARTUP: running alembic upgrade head")
+        command.upgrade(cfg, "head")
+        _log.info("STARTUP: alembic upgrade head complete")
 
     with engine.connect() as conn:
         missing = [t for t in _REQUIRED_PUBLIC_TABLES if not ah.table_exists(conn, t)]
