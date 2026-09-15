@@ -61,32 +61,31 @@ function timeOfDayGreeting(): string {
   return "Good evening";
 }
 
-/** Slim determinate bar along the card bottom while loading (CSS sheen; static under reduced motion). */
+/** Determinate bar under the copy (CSS sheen; static under reduced motion). */
 function WorkspaceProgressBar({ progress }: { progress: number }) {
   const p = Math.max(0, Math.min(100, progress));
   return (
     <div
-      className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] h-1 overflow-hidden"
+      className="mx-auto mt-5 w-[min(14.5rem,calc(100%-0.5rem))]"
       role="progressbar"
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={Math.round(p)}
       aria-label="Loading your workspace"
     >
-      <div className="h-full w-full bg-[rgba(76,96,133,0.16)]">
+      <div className="relative h-1.5 overflow-hidden rounded-full bg-[rgba(76,96,133,0.2)]">
         <div
-          className="relative h-full overflow-hidden rounded-r-full motion-safe:transition-[width] motion-safe:duration-200 motion-safe:ease-out"
+          className="h-full min-w-[12%] rounded-full motion-safe:transition-[width] motion-safe:duration-200 motion-safe:ease-out"
           style={{
-            width: `${p}%`,
+            width: `${Math.max(12, p)}%`,
             background:
               "linear-gradient(90deg, #2c3a55 0%, #0ea5e9 55%, #1ea896 100%)",
           }}
-        >
-          <span
-            className="absolute inset-y-0 left-0 w-[42%] bg-gradient-to-r from-transparent via-white/55 to-transparent motion-safe:animate-welcome-progress-sheen motion-reduce:animate-none"
-            aria-hidden
-          />
-        </div>
+        />
+        <span
+          className="pointer-events-none absolute inset-y-0 left-0 w-[38%] bg-gradient-to-r from-transparent via-white/65 to-transparent motion-safe:animate-welcome-progress-sheen motion-reduce:hidden"
+          aria-hidden
+        />
       </div>
     </div>
   );
@@ -254,12 +253,7 @@ export function WelcomeLoaderModal({
               exit={{ opacity: 0, scale: 0.99, y: 6 }}
               transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
             >
-              <div
-                className={[
-                  "relative z-[3] px-[3px] pt-5 text-center sm:pt-6",
-                  phase === "loading" ? "pb-8 sm:pb-9" : "pb-7 sm:pb-8",
-                ].join(" ")}
-              >
+              <div className="relative z-[3] px-[3px] pb-7 pt-5 text-center sm:pb-8 sm:pt-6">
                 <div
                   className={cn(
                     vernonMark
@@ -288,6 +282,7 @@ export function WelcomeLoaderModal({
                   <p className="mt-1.5 whitespace-nowrap text-sm font-medium text-[#51647a]">
                     Loading your workspace
                   </p>
+                  <WorkspaceProgressBar progress={loadProgress} />
                 </div>
               ) : (
                 <motion.div
@@ -308,8 +303,6 @@ export function WelcomeLoaderModal({
                 </motion.div>
               )}
               </div>
-
-              {phase === "loading" ? <WorkspaceProgressBar progress={loadProgress} /> : null}
             </motion.div>
           </div>
         </motion.div>
