@@ -7,6 +7,9 @@ import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import { useCallback, useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
+import { resolveAuthModalBrand } from "@/lib/branding/auth-brand";
+import { HelixMarketingLogo } from "@/components/branding/HelixMarketingLogo";
+import { helixMarketingHref } from "@/lib/pulse-app";
 import {
   PULSE_LOGOUT_SUCCESS_DISPLAY_MS,
   PULSE_LOGOUT_SUCCESS_EVENT,
@@ -43,6 +46,11 @@ export function LogoutSuccessModal() {
 
   if (!hydrated) return null;
 
+  const brand = resolveAuthModalBrand({
+    hostname: window.location.hostname,
+  });
+  const vernonMark = brand.kind === "vernon";
+
   const overlay = (
     <AnimatePresence>
       {open ? (
@@ -64,16 +72,33 @@ export function LogoutSuccessModal() {
             exit={{ opacity: 0, scale: 0.99, y: 4 }}
             transition={{ duration: 0.38, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div className="relative mx-auto h-20 w-20 sm:h-24 sm:w-24">
+            <div
+              className={
+                vernonMark
+                  ? "relative mx-auto h-16 w-[min(16rem,calc(100vw-6rem))] sm:h-[4.5rem] sm:w-[18rem]"
+                  : "relative mx-auto h-20 w-20 sm:h-24 sm:w-24"
+              }
+            >
               <Image
-                src="/images/panoramalogo2.png"
-                alt=""
+                src={brand.cinematicSrc}
+                alt={brand.cinematicAlt}
                 fill
                 priority
-                sizes="96px"
+                sizes={vernonMark ? "288px" : "96px"}
                 className="object-contain object-center"
               />
             </div>
+            {vernonMark ? (
+              <a
+                href={helixMarketingHref("/")}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="pointer-events-auto mt-3 flex items-center justify-center gap-2 text-[11px] font-medium text-[#7a8aa0] no-underline"
+              >
+                <span className="uppercase tracking-[0.14em]">Powered by</span>
+                <HelixMarketingLogo variant="compact" className="opacity-90" />
+              </a>
+            ) : null}
             <h1 id={titleId} className="mt-6 font-headline text-xl font-extrabold tracking-tight text-[#1f2a44] sm:text-2xl">
               You&apos;re signed out
             </h1>

@@ -112,6 +112,9 @@ async def _main(*, dry_run: bool) -> None:
         # Clear branding that still points at old tenant assets if present
         if company.logo_url and "panorama" in str(company.logo_url).lower():
             company.logo_url = None
+        from app.core.features.recreation_ops_tenants import apply_vernon_default_logo
+
+        apply_vernon_default_logo(company)
         if company.header_image_url and "panorama" in str(company.header_image_url).lower():
             company.header_image_url = None
 
