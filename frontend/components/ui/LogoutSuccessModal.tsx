@@ -4,10 +4,10 @@
  * Brief full-screen overlay after explicit sign-out (same blur shell as welcome).
  */
 import { AnimatePresence, motion } from "framer-motion";
-import Image from "next/image";
 import { useCallback, useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
 import { resolveAuthModalBrand } from "@/lib/branding/auth-brand";
+import { CinematicLogoImage } from "@/components/branding/CinematicLogoImage";
 import { HelixMarketingLogo } from "@/components/branding/HelixMarketingLogo";
 import { helixMarketingHref } from "@/lib/pulse-app";
 import {
@@ -79,12 +79,11 @@ export function LogoutSuccessModal() {
                   : "relative mx-auto h-20 w-20 sm:h-24 sm:w-24"
               }
             >
-              <Image
+              <CinematicLogoImage
                 src={brand.cinematicSrc}
                 alt={brand.cinematicAlt}
-                fill
-                priority
                 sizes={vernonMark ? "288px" : "96px"}
+                priority
                 className="object-contain object-center"
               />
             </div>

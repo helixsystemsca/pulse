@@ -4,7 +4,7 @@ import {
   CITY_OF_VERNON_LOGO_SRC,
   PLATFORM_DEFAULT_LOGO_SRC,
 } from "@/lib/branding/platform-defaults";
-import { isDirectDisplayLogoUrl, trimLogoUrl } from "@/lib/branding/logo-src";
+import { canonicalPublicLogoUrl, isDirectDisplayLogoUrl, trimLogoUrl } from "@/lib/branding/logo-src";
 
 export const VERNON_APP_HOSTNAME = "vernon.helixsystems.ca";
 
@@ -107,12 +107,13 @@ export function resolveAuthModalBrand(opts: {
   logoUrl?: string | null;
 }): AuthBrand {
   const logoUrl = trimLogoUrl(opts.logoUrl);
-  if (logoUrl && isDirectDisplayLogoUrl(logoUrl)) {
+  const displayLogo = logoUrl ? canonicalPublicLogoUrl(logoUrl) : null;
+  if (displayLogo && isDirectDisplayLogoUrl(displayLogo)) {
     const vernon =
       shouldUseVernonAuthBrand(opts.hostname) || isCityOfVernonCompanyName(opts.companyName);
     return {
       kind: vernon ? "vernon" : "helix",
-      cinematicSrc: logoUrl,
+      cinematicSrc: displayLogo,
       cinematicAlt: (opts.companyName ?? "").trim() || (vernon ? CITY_OF_VERNON_LOGO_ALT : "Organization"),
       showPoweredByHelix: vernon,
     };

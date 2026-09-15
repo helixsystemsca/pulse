@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { CinematicLogoImage } from "@/components/branding/CinematicLogoImage";
 import { pulseRoutes } from "@/lib/pulse-app";
 import { useAuthBrand } from "@/lib/branding/use-auth-brand";
 
@@ -16,10 +17,9 @@ export function AuthBrandLink() {
     >
       {isVernon ? (
         <span className="relative h-10 w-[min(12.5rem,70vw)] shrink-0">
-          <Image
+          <CinematicLogoImage
             src={brand.cinematicSrc}
             alt={brand.cinematicAlt}
-            fill
             sizes="200px"
             className="object-contain object-left"
           />

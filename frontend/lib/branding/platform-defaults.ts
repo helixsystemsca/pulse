@@ -6,8 +6,12 @@ export const LEGACY_PANORAMA_LOGO_SRC = "/images/panoramalogo2.png";
 
 /**
  * City of Vernon recreation-ops tenant mark (official vernon.ca artwork).
+ * Transparent SVG so login and the app header blend with their backgrounds.
  * Used as tenant branding on the Vernon app host — not Helix marketing.
  */
-export const CITY_OF_VERNON_LOGO_SRC = "/images/city-of-vernon-logo.png";
+export const CITY_OF_VERNON_LOGO_SRC = "/images/city-of-vernon-logo.svg";
+
+/** Raster shipped in PR #10; canonicalize to {@link CITY_OF_VERNON_LOGO_SRC}. */
+export const CITY_OF_VERNON_LOGO_PNG_SRC = "/images/city-of-vernon-logo.png";
 
 export const CITY_OF_VERNON_LOGO_ALT = "City of Vernon";
