@@ -32,6 +32,9 @@ const FEATURE_PAGE_TOUR_COPY: Partial<Record<string, FeaturePageTourCopy>> = {
   training_overview: {
     welcomeSubtitle: "KPI tiles first, then the alerts that block a shift.",
   },
+  training_flashcards: {
+    welcomeSubtitle: "Open a certification pack, or import one from Manage decks.",
+  },
   training_learning: {
     welcomeSubtitle: "Assigned learning first, then the Procedure library tab — that screen has its own SOP walkthrough.",
   },

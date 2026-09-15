@@ -323,6 +323,19 @@ export type WriteSessionOptions = {
   resetWelcomeOverlay?: boolean;
 };
 
+/** Local mock login only (`NEXT_PUBLIC_USE_MOCK_AUTH`). Not used when the API is the session source. */
+const MOCK_DEMO_CONTRACT_FEATURES = [
+  "dashboard",
+  "inventory",
+  "equipment",
+  "work_requests",
+  "logs_inspections",
+  "recreation_ops",
+  "procedures",
+  "standards_training",
+  "standards_compliance",
+] as const;
+
 export function writeSession(email: string, remember: boolean, options?: WriteSessionOptions) {
   if (typeof window === "undefined") return;
   if (pulseAuthTeardown && !options?.allowDuringTeardown) {
@@ -332,9 +345,28 @@ export function writeSession(email: string, remember: boolean, options?: WriteSe
   endPulseAuthTeardown();
   const now = Math.floor(Date.now() / 1000);
   const ttlSec = SESSION_FALLBACK_TTL_SEC;
+  const mockFeatures = [...MOCK_DEMO_CONTRACT_FEATURES];
   const payload: PulseAuthSession = {
     sub: "mock_user",
     email,
+    role: "company_admin",
+    roles: ["company_admin"],
+    company_id: "mock-company",
+    facility_tenant_admin: true,
+    enabled_features: mockFeatures,
+    contract_features: mockFeatures,
+    rbac_permissions: ["*"],
+    access_snapshot: {
+      department: "maintenance",
+      matrix_slot: "unassigned",
+      assignment_status: "admin_bypass",
+      features: mockFeatures,
+      capabilities: ["*"],
+      departments: ["maintenance"],
+      is_company_admin: true,
+      contract_features: mockFeatures,
+    },
+    company: { id: "mock-company", name: "Helix Demo" },
     iat: now,
     exp: now + ttlSec,
     remember,

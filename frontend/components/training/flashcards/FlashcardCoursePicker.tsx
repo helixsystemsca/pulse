@@ -46,7 +46,7 @@ export function FlashcardCoursePicker() {
   return (
     <div className={uiPageStack}>
       <header className="space-y-1">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex flex-wrap items-start justify-between gap-3" data-tour="training-flashcards-header">
           <div>
             <h2 className={uiPageTitle}>Flashcards</h2>
             <p className={cn(uiPageDescription, "max-w-2xl")}>
@@ -58,6 +58,7 @@ export function FlashcardCoursePicker() {
             <Link
               href={TRAINING_ROUTES.flashcardDecks}
               className="inline-flex items-center gap-2 rounded-lg border border-ds-border px-3 py-2 text-sm font-semibold hover:bg-ds-muted/20"
+              data-tour="training-flashcards-manage"
             >
               <Settings2 className="h-4 w-4" aria-hidden />
               Manage decks
@@ -76,7 +77,7 @@ export function FlashcardCoursePicker() {
       {error ? <div className={uiCalloutWarning}>{error}</div> : null}
 
       {!loading && !error && courses.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-ds-border bg-ds-muted/10 p-8 text-center">
+        <div className="rounded-xl border border-dashed border-ds-border bg-ds-muted/10 p-8 text-center" data-tour="training-flashcards-empty">
           <GraduationCap className="mx-auto h-10 w-10 text-ds-muted" aria-hidden />
           <p className="mt-3 text-sm font-semibold text-ds-foreground">No study courses available</p>
           <p className={cn(uiPageDescription, "mx-auto mt-1 max-w-md")}>
@@ -102,7 +103,7 @@ export function FlashcardCoursePicker() {
       ) : null}
 
       {!loading && courses.length > 0 ? (
-        <ul className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+        <ul className="grid grid-cols-1 gap-3 lg:grid-cols-3" data-tour="training-flashcards-decks">
           {courses.map((course) => (
             <li key={course.id}>
               <Link

@@ -14,6 +14,7 @@ import { REGULATIONS_TOUR_STEPS } from "@/lib/onboarding/tour-steps/regulations"
 import { PROCEDURES_TOUR_STEPS } from "@/lib/onboarding/tour-steps/procedures";
 import {
   TRAINING_COMPLIANCE_TOUR_STEPS,
+  TRAINING_FLASHCARDS_TOUR_STEPS,
   TRAINING_LEARNING_TOUR_STEPS,
   TRAINING_OVERVIEW_TOUR_STEPS,
 } from "@/lib/onboarding/tour-steps/training";
@@ -31,6 +32,7 @@ export const CUSTOM_FEATURE_TOUR_STEPS: Partial<Record<string, TourStep[]>> = {
   training_overview: TRAINING_OVERVIEW_TOUR_STEPS,
   training_learning: TRAINING_LEARNING_TOUR_STEPS,
   training_compliance: TRAINING_COMPLIANCE_TOUR_STEPS,
+  training_flashcards: TRAINING_FLASHCARDS_TOUR_STEPS,
   procedures: PROCEDURES_TOUR_STEPS,
   standards_procedures: PROCEDURES_TOUR_STEPS,
   daily_planner: PLANNER_TODAY_TOUR_STEPS,

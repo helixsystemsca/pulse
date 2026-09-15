@@ -51,6 +51,33 @@ export const TRAINING_LEARNING_TOUR_STEPS: TourStep[] = [
   },
 ];
 
+export const TRAINING_FLASHCARDS_TOUR_STEPS: TourStep[] = [
+  {
+    target: tourSel("training-flashcards-header"),
+    title: "Certification flashcards",
+    description: "Study published packs (CAPM, FMP, Six Sigma, …) with spaced repetition. Open a deck to pick a section.",
+    placement: "bottom",
+  },
+  {
+    target: tourSel("training-flashcards-manage"),
+    title: "Manage decks",
+    description: "Import, rename, export, or archive packs. Managers and admins only — skipped otherwise.",
+    placement: "left",
+  },
+  {
+    target: tourSel("training-flashcards-decks"),
+    title: "Open a pack",
+    description: "Each card is a certification deck. Tap one to choose a section and start studying.",
+    placement: "top",
+  },
+  {
+    target: tourSel("training-flashcards-empty"),
+    title: "No packs yet",
+    description: "Packs are imported per tenant — they are not loaded from the git repo. Use Manage decks → Import, or skip this step when decks exist.",
+    placement: "top",
+  },
+];
+
 export const TRAINING_COMPLIANCE_TOUR_STEPS: TourStep[] = [
   {
     target: tourSel("training-compliance-tabs"),

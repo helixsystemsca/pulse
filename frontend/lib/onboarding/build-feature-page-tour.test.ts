@@ -94,6 +94,7 @@ describe("buildFeaturePageTour", () => {
     ["training_learning", "/training/learning", "training-learning-tab-library"],
     ["procedures", "/training/learning/library", "procedures-tour-create"],
     ["training_compliance", "/training/compliance", "training-compliance-matrix"],
+    ["training_flashcards", "/training/flashcards", "training-flashcards-header"],
     ["ops_me", "/recreation/me", "ops-me-tour-tabs"],
   ] as const)("walks %s feature-by-feature with real control targets", (key, href, expectedTarget) => {
     const tour = buildFeaturePageTour(navItem({ key, href, label: key }));
@@ -118,6 +119,7 @@ describe("CUSTOM_FEATURE_TOUR_STEPS", () => {
         "training_overview",
         "training_learning",
         "training_compliance",
+        "training_flashcards",
         "procedures",
       ]),
     );
