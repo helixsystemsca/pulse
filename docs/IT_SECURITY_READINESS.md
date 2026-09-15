@@ -57,7 +57,7 @@ Policies use the existing helpers `pulse_rls_tenant_visible` / `pulse_rls_tenant
 | Microsoft auto-provision | First SSO login can create a `worker` | Tenant `sso_required` + invite-only flag (future) | Documented; not enabled globally here |
 | SMTP | Invite/reset mail depends on operator credentials | Google Workspace or M365 SMTP with app passwords; health checks exist | Operator config only; no secrets in git |
 | Supabase service role | Bypasses RLS | Server-only; never in the browser. Prefer anon key on the API for OAuth verify | Startup warns if service role is set in production |
-| App DB user is `postgres` | **RLS not enforced** until role switch | Create `pulse_app` without `BYPASSRLS` (script below) | Script + env flags; live cutover is an operator step |
+| App DB user is `postgres` | **RLS not enforced** until role switch | `pulse_app` runtime + `MIGRATION_DATABASE_URL` owner + system RLS GUCs on seeds | Temporary rollback: owner `DATABASE_URL`. Long-term: dual URL + this PR’s catalog/startup context |
 | `btree_gist` in `public` | Advisor WARN only | Leave unless IT wants it moved to `extensions` | Not a tenant-isolation gap |
 | Rate limits are in-memory | Multi-instance login abuse | Edge / Redis limiter later | Per-process SlowAPI remains |
 
@@ -75,6 +75,8 @@ Policies use the existing helpers `pulse_rls_tenant_visible` / `pulse_rls_tenant
    - `DATABASE_URL` = `pulse_app` (RLS enforced; API runtime)
    - `MIGRATION_DATABASE_URL` (or `DATABASE_URL_MIGRATIONS`) = `postgres` / table owner (DDL)
    Start command (`scripts/render_start.sh` → `python scripts/alembic_migrate.py`) uses the migration URL when set, otherwise falls back to `DATABASE_URL` (local/dev). If the database is already at Alembic head, migrate is a no-op (reads/updates `alembic_version` only; no application DDL).
+   Alembic connections and startup catalog/seed writes set `pulse.is_system_admin=true` (FORCE RLS on `rbac_catalog_permissions` rejects inserts otherwise).
+   **Temporary rollback:** if a deploy still fails after the role switch, point `DATABASE_URL` back at the owner/`postgres` URL to restore service. Long-term remains `pulse_app` + `MIGRATION_DATABASE_URL` + system RLS context on seeds (this change). Do not leave owner as the runtime URL.
 4. **Set API env:**
    - `DATABASE_RLS_CONTEXT_ENABLED=true` (default; GUC per request)
    - `DATABASE_RLS_ENFORCED=true` (startup warns if the URL still uses `postgres` / `supabase_admin`)
@@ -106,6 +108,7 @@ Migrations continue to run as owner (may bypass RLS). Runtime must not.
 - [ ] `MIGRATION_DATABASE_URL` → owner/`postgres` (Alembic/DDL only; never commit this password)
 - [ ] `DATABASE_RLS_CONTEXT_ENABLED=true`
 - [ ] `DATABASE_RLS_ENFORCED=true`
+- [ ] Temporary rollback only: owner `DATABASE_URL` if a `pulse_app` cutover fails; restore dual URL after this deploy
 - [ ] `REQUIRE_HTTPS=true`, `ENABLE_HSTS=true` behind TLS
 - [ ] `TRUSTED_HOSTS` set to the API hostname
 - [ ] `CORS_ORIGINS` / `PULSE_APP_PUBLIC_URL` = SPA origin (not the API host)

@@ -38,6 +38,7 @@ from version_table import (  # noqa: E402
     normalize_stored_revision,
     repair_stored_revision_if_alias,
 )
+from app.core.security.tenant_rls import apply_pulse_rls_system_context_sync  # noqa: E402
 ALPHA_BASELINE = "1000_alpha_baseline"
 _REQUIRED_PUBLIC_TABLES: tuple[str, ...] = (
     "rbac_catalog_permissions",
@@ -125,6 +126,7 @@ def main() -> int:
     engine = create_engine(url)
     already_at_head = False
     with engine.connect() as conn:
+        apply_pulse_rls_system_context_sync(conn)
         ensure_version_num_width(conn)
         repair_stored_revision_if_alias(conn)
         stored = _read_stored_revision(conn)

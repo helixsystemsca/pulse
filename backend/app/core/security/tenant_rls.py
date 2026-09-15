@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import logging
+from contextlib import asynccontextmanager
+from typing import AsyncIterator
 
 from sqlalchemy import text
+from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -13,6 +16,12 @@ from app.core.user_roles import user_has_any_role
 from app.models.domain import UserRole
 
 _log = logging.getLogger("pulse.security.rls")
+
+# Session-scoped (survives Alembic transaction_per_migration + helper commits).
+_SYSTEM_CONTEXT_SESSION_SQL = text(
+    "SELECT set_config('pulse.company_id', '', false), "
+    "set_config('pulse.is_system_admin', 'true', false)"
+)
 
 
 async def apply_pulse_rls_context(
@@ -50,6 +59,43 @@ async def apply_pulse_rls_context_for_user(db: AsyncSession, user: User) -> None
 async def apply_pulse_rls_system_context(db: AsyncSession) -> None:
     """Cron / cross-tenant maintenance jobs that must read all tenants."""
     await apply_pulse_rls_context(db, company_id=None, is_system_admin=True)
+
+
+def apply_pulse_rls_system_context_sync(conn: Connection) -> None:
+    """
+    Session-level system-admin GUCs for Alembic / sync DDL connections.
+
+    Always applied (does not honor ``DATABASE_RLS_CONTEXT_ENABLED``). Catalog tables
+    use FORCE RLS; a non-superuser owner still needs ``pulse.is_system_admin=true``.
+    Session-scoped so values survive ``transaction_per_migration`` and helper commits.
+    """
+    conn.execute(_SYSTEM_CONTEXT_SESSION_SQL)
+
+
+@asynccontextmanager
+async def pulse_rls_system_admin_scope(db: AsyncSession) -> AsyncIterator[None]:
+    """Set system-admin GUCs for catalog/seed writes, then restore prior context."""
+    settings = get_settings()
+    if not settings.database_rls_context_enabled:
+        yield
+        return
+    row = (
+        await db.execute(
+            text(
+                "SELECT current_setting('pulse.company_id', true), "
+                "current_setting('pulse.is_system_admin', true)"
+            )
+        )
+    ).one()
+    await apply_pulse_rls_system_context(db)
+    try:
+        yield
+    finally:
+        await apply_pulse_rls_context(
+            db,
+            company_id=row[0] or None,
+            is_system_admin=(row[1] == "true"),
+        )
 
 
 async def clear_pulse_rls_context(db: AsyncSession) -> None:

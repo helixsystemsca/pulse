@@ -14,6 +14,7 @@ from version_table import ensure_version_num_width, repair_stored_revision_if_al
 
 import alembic_helpers as ah  # noqa: E402
 from app.core.config import get_settings  # noqa: E402
+from app.core.security.tenant_rls import apply_pulse_rls_system_context_sync  # noqa: E402
 from app.models import Base  # noqa: E402
 
 config = context.config
@@ -52,6 +53,7 @@ def run_migrations_online() -> None:
         poolclass=pool.NullPool,
     )
     with connectable.connect() as connection:
+        apply_pulse_rls_system_context_sync(connection)
         ensure_version_num_width(connection)
         repair_stored_revision_if_alias(connection)
         context.configure(

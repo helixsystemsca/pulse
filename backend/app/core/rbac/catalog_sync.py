@@ -10,6 +10,7 @@ from __future__ import annotations
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.security.tenant_rls import pulse_rls_system_admin_scope
 from app.core.rbac.catalog import (
     FEATURE_TO_RBAC_PERMISSIONS,
     RBAC_KEY_REQUIRES_COMPANY_FEATURE,
@@ -47,6 +48,9 @@ async def sync_rbac_catalog_permissions(db: AsyncSession) -> None:
     """
     Upsert catalog rows for all known keys (INSERT … ON CONFLICT DO NOTHING).
 
+    Writes require ``pulse.is_system_admin`` (FORCE RLS on ``rbac_catalog_permissions``).
+    This sets that GUC for the insert only and restores the previous tenant context.
+
     Does not commit — callers own transaction boundaries (tests use rollback;
     API routes / lifespan commit as needed).
     """
@@ -56,5 +60,6 @@ async def sync_rbac_catalog_permissions(db: AsyncSession) -> None:
     rows = [{"key": k, "description": _description_for_key(k)} for k in sorted(keys)]
     stmt = pg_insert(RbacCatalogPermission).values(rows)
     stmt = stmt.on_conflict_do_nothing(index_elements=["key"])
-    await db.execute(stmt)
-    await db.flush()
+    async with pulse_rls_system_admin_scope(db):
+        await db.execute(stmt)
+        await db.flush()
