@@ -13,7 +13,7 @@ import {
 import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { RotateCcw } from "lucide-react";
-import type { TourPlacement, TourStep } from "@/lib/onboarding/tour-steps/types";
+import type { TourPlacement } from "@/lib/onboarding/tour-steps/types";
 import {
   clearTourCompletedMerged,
   isTourCompletedMerged,
@@ -25,9 +25,10 @@ import {
   getTourTargetElements,
   getTourTargetUnionRect,
   hasTourTarget,
+  stepCanStart,
   stepHasTourTarget,
+  clickTourPrepareTarget,
 } from "@/lib/onboarding/tour-target";
-import { PLATFORM_DEFAULT_LOGO_SRC } from "@/lib/branding/platform-defaults";
 import { buildNavigationTree } from "@/lib/navigation/build-navigation-tree";
 import { isInventoryScannerOnlySession } from "@/lib/inventory-scanner/scanner-session";
 import {
@@ -37,6 +38,7 @@ import {
 } from "@/lib/pulse-session";
 import { useOnboardingFlyoutBridge } from "@/lib/onboarding/onboarding-flyout-bridge";
 import { hasProductTour, resolveProductTour } from "@/lib/onboarding/tour-registry";
+import { formatTourWelcomeLine } from "@/lib/onboarding/tour-welcome";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { cn } from "@/lib/cn";
 import "@/components/onboarding/onboarding-tour.css";
@@ -143,7 +145,6 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
 
   const [mounted, setMounted] = useState(false);
   const [toursHydrated, setToursHydrated] = useState(false);
-  const [showWelcome, setShowWelcome] = useState(false);
   const [isActive, setIsActive] = useState(false);
   const [showComplete, setShowComplete] = useState(false);
   const [completeFading, setCompleteFading] = useState(false);
@@ -175,7 +176,6 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setIsActive(false);
-    setShowWelcome(false);
     setShowComplete(false);
     setCompleteFading(false);
     setCurrentStep(0);
@@ -190,8 +190,7 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
     if (!mounted || !toursHydrated || !tourEnabled || !tourId || !welcomeGateReady) return;
     if (!isTourCompletedMerged(tourId)) {
       setCurrentStep(0);
-      setShowWelcome(true);
-      setIsActive(false);
+      setIsActive(true);
     }
   }, [mounted, toursHydrated, tourEnabled, tourId, welcomeGateReady]);
 
@@ -282,17 +281,10 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
 
   const endTour = useCallback(() => {
     setIsActive(false);
-    setShowWelcome(false);
     setShowComplete(false);
     setCompleteFading(false);
     if (tourId) markTourCompletedMerged(tourId);
   }, [tourId]);
-
-  const beginTourFromWelcome = useCallback(() => {
-    setShowWelcome(false);
-    setCurrentStep(0);
-    setIsActive(true);
-  }, []);
 
   const finishTour = useCallback(() => {
     setShowComplete(true);
@@ -314,8 +306,7 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
     setCompleteFading(false);
     clearTourCompletedMerged(tourId);
     setCurrentStep(0);
-    setShowWelcome(true);
-    setIsActive(false);
+    setIsActive(true);
   }, [tourId]);
 
   const resetAllTours = useCallback(() => {
@@ -324,10 +315,8 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
     setCompleteFading(false);
     setCurrentStep(0);
     if (tourEnabled && tourId) {
-      setShowWelcome(true);
-      setIsActive(false);
+      setIsActive(true);
     } else {
-      setShowWelcome(false);
       setIsActive(false);
     }
   }, [tourEnabled, tourId]);
@@ -335,7 +324,7 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
   const advanceFromMissing = useCallback(
     (fromIndex: number) => {
       for (let i = fromIndex + 1; i < steps.length; i += 1) {
-        if (stepHasTourTarget(steps[i]!)) {
+        if (stepCanStart(steps[i]!)) {
           setCurrentStep(i);
           return;
         }
@@ -352,7 +341,7 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
       return;
     }
     const next = currentStep + 1;
-    if (!stepHasTourTarget(steps[next]!)) {
+    if (!stepCanStart(steps[next]!)) {
       advanceFromMissing(currentStep);
       return;
     }
@@ -362,24 +351,33 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
   const previousStep = useCallback(() => {
     if (currentStep <= 0) return;
     let prev = currentStep - 1;
-    while (prev > 0 && !stepHasTourTarget(steps[prev]!)) {
+    while (prev > 0 && !stepCanStart(steps[prev]!)) {
       prev -= 1;
     }
-    if (!stepHasTourTarget(steps[prev]!)) return;
+    if (!stepCanStart(steps[prev]!)) return;
     setCurrentStep(prev);
   }, [currentStep, steps]);
 
   useEffect(() => {
     if (!isActive || showComplete) return;
     const step = steps[currentStep];
-    if (!step || stepHasTourTarget(step)) return;
+    if (!step) return;
+
+    if (!stepCanStart(step)) {
+      advanceFromMissing(currentStep);
+      return;
+    }
 
     let cancelled = false;
     let attempts = 0;
     const maxAttempts = 25;
+    let prepared = !step.prepareClick;
 
     const tick = () => {
       if (cancelled) return;
+      if (!prepared) {
+        prepared = clickTourPrepareTarget(step.prepareClick);
+      }
       attempts += 1;
       updatePositions();
       if (stepHasTourTarget(step)) return;
@@ -387,6 +385,7 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
     };
 
     tick();
+    if (stepHasTourTarget(step)) return undefined;
     const interval = window.setInterval(tick, 200);
     const observer = new MutationObserver(tick);
     observer.observe(document.body, { childList: true, subtree: true });
@@ -399,18 +398,8 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
   }, [isActive, showComplete, currentStep, steps, advanceFromMissing, updatePositions]);
 
   useEffect(() => {
-    if (!isActive && !showWelcome) return;
+    if (!isActive) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (showWelcome) {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          beginTourFromWelcome();
-        } else if (e.key === "Escape") {
-          e.preventDefault();
-          endTour();
-        }
-        return;
-      }
       if (showComplete) {
         if (e.key === "Escape") {
           e.preventDefault();
@@ -431,7 +420,7 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [isActive, showWelcome, showComplete, beginTourFromWelcome, nextStep, previousStep, endTour]);
+  }, [isActive, showComplete, nextStep, previousStep, endTour]);
 
   const contextValue = useMemo(
     () => ({
@@ -444,45 +433,14 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
   );
 
   const step = steps[currentStep];
-  const welcomeTitle = activeTour?.welcomeTitle?.trim() || "Welcome to Helix";
-  const welcomeSubtitle =
-    activeTour?.welcomeSubtitle?.trim() || "Let's walk through the key areas of your workspace.";
+  const welcomeTitle = activeTour?.welcomeTitle?.trim() || "Helix";
+  const waitingCardStyle =
+    cardStyle ?? (mounted && isActive && !showComplete ? calculateCenterCardPosition() : null);
 
   const portal =
     mounted && tourEnabled && activeTour ? (
       <>
-        {isActive || showComplete || showWelcome ? <div className="tour-overlay active" aria-hidden /> : null}
-
-        {showWelcome && !isActive && !showComplete ? (
-          <div
-            className="tour-start-screen active"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="tour-welcome-title"
-          >
-            {activeTour.welcomeEmoji ? (
-              <div className="start-icon" aria-hidden>
-                <span className="text-5xl leading-none">{activeTour.welcomeEmoji}</span>
-              </div>
-            ) : (
-              <div className="start-icon" aria-hidden>
-                <img src={PLATFORM_DEFAULT_LOGO_SRC} alt="Helix Systems" className="start-icon__logo" />
-              </div>
-            )}
-            <h2 id="tour-welcome-title" className="start-title">
-              {welcomeTitle}
-            </h2>
-            <p className="start-subtitle">{welcomeSubtitle}</p>
-            <div className="tour-start-actions">
-              <button type="button" className="btn-start" onClick={beginTourFromWelcome}>
-                Get started
-              </button>
-              <button type="button" className="btn-tour-skip" onClick={endTour}>
-                Skip tour
-              </button>
-            </div>
-          </div>
-        ) : null}
+        {isActive || showComplete ? <div className="tour-overlay active" aria-hidden /> : null}
 
         {isActive && !showComplete && spotlightStyle ? (
           <div
@@ -530,29 +488,41 @@ export function OnboardingTourProvider({ children }: { children: ReactNode }) {
           </div>
         ) : null}
 
-        {isActive && !showComplete && step && cardStyle ? (
+        {isActive && !showComplete && step && waitingCardStyle ? (
           <div
-            className={cn("tour-card active", step.placement === "center" && "tour-card--center")}
+            className={cn("tour-card active", (step.placement === "center" || !spotlightStyle) && "tour-card--center")}
             role="dialog"
             aria-modal="true"
             aria-labelledby="tour-step-title"
-            style={{ top: cardStyle.top, left: cardStyle.left }}
+            style={{ top: waitingCardStyle.top, left: waitingCardStyle.left }}
           >
             <div className="tour-header">
+              {currentStep === 0 ? (
+                <p className="tour-welcome-line">{formatTourWelcomeLine(welcomeTitle)}</p>
+              ) : null}
+              <div className="tour-step-counter">
+                Step {currentStep + 1} of {steps.length}
+              </div>
               <h2 id="tour-step-title" className="tour-title">
-                {step.title}
+                {spotlightStyle ? step.title : "Finding this control…"}
               </h2>
             </div>
-            <p className="tour-description">{step.description}</p>
+            <p className="tour-description">
+              {spotlightStyle
+                ? step.description
+                : "If this control is missing on this screen, the tour will skip it. You can skip the whole walkthrough anytime."}
+            </p>
             <div className="tour-actions">
               {currentStep > 0 ? (
                 <button type="button" className="tour-btn tour-btn-secondary" onClick={previousStep}>
                   Back
                 </button>
               ) : null}
-              <button type="button" className="tour-btn tour-btn-primary" onClick={nextStep}>
-                {currentStep === steps.length - 1 ? "Finish" : "Next"}
-              </button>
+              {spotlightStyle ? (
+                <button type="button" className="tour-btn tour-btn-primary" onClick={nextStep}>
+                  {currentStep === steps.length - 1 ? "Done" : "Next"}
+                </button>
+              ) : null}
               <button type="button" className="tour-btn tour-btn-skip" onClick={endTour}>
                 Skip
               </button>

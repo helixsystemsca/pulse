@@ -589,7 +589,7 @@ export function TrainingComplianceDashboard() {
           </div>
         </div>
 
-        <nav className="flex gap-1 overflow-x-auto pb-0.5" aria-label="Training sections">
+        <nav className="flex gap-1 overflow-x-auto pb-0.5" aria-label="Training sections" data-tour="training-compliance-tabs">
           {TAB_DEF.map((t) => {
             const Icon = t.icon;
             const active = tab === t.id;
@@ -597,6 +597,7 @@ export function TrainingComplianceDashboard() {
               <button
                 key={t.id}
                 type="button"
+                data-tour={`training-compliance-tab-${t.id}`}
                 onClick={() => setTab(t.id)}
                 className={cn(
                   "inline-flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition",
@@ -624,7 +625,7 @@ export function TrainingComplianceDashboard() {
       </div>
 
       {tab === "overview" ? (
-        <section className="min-w-0 space-y-4" aria-labelledby="compliance-overview-kpis">
+        <section className="min-w-0 space-y-4" aria-labelledby="compliance-overview-kpis" data-tour="training-compliance-kpis">
           <h3 id="compliance-overview-kpis" className="sr-only">
             Compliance summary
           </h3>
@@ -667,7 +668,7 @@ export function TrainingComplianceDashboard() {
 
       {tab === "matrix" ? (
         <section className="min-w-0 space-y-4">
-          <div className="flex flex-col gap-3 rounded-xl border border-slate-200/90 bg-white p-4 shadow-sm dark:border-slate-700/80 dark:bg-slate-900/40 sm:flex-row sm:flex-wrap sm:items-end">
+          <div className="flex flex-col gap-3 rounded-xl border border-slate-200/90 bg-white p-4 shadow-sm dark:border-slate-700/80 dark:bg-slate-900/40 sm:flex-row sm:flex-wrap sm:items-end" data-tour="training-compliance-filters">
             <div className="grid flex-1 gap-3 sm:grid-cols-3">
               <div>
                 <label className={dsLabelClass} htmlFor="mx-tier">
@@ -732,6 +733,7 @@ export function TrainingComplianceDashboard() {
             </p>
           ) : null}
           {matrixCellErr ? <p className="text-xs font-medium text-rose-600 dark:text-rose-400">{matrixCellErr}</p> : null}
+          <div data-tour="training-compliance-matrix">
           <TrainingMatrixCategorizedTable
             employees={filteredEmployees}
             programs={matrixPrograms}
@@ -743,6 +745,7 @@ export function TrainingComplianceDashboard() {
             onMatrixAdminCellCycle={handleMatrixAdminCellCycle}
             matrixCycleBusyKey={matrixCellBusyKey}
           />
+          </div>
         </section>
       ) : null}
 

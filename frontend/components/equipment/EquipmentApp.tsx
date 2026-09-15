@@ -478,10 +478,11 @@ export function EquipmentApp() {
     );
   }
 
-  const tabBtn = (id: Tab, label: string, Icon: typeof LayoutGrid) => (
+  const tabBtn = (id: Tab, label: string, Icon: typeof LayoutGrid, tourId?: string) => (
     <button
       key={id}
       type="button"
+      data-tour={tourId}
       onClick={() => {
         if (id === "form") {
           if (!canMutate) return;
@@ -541,10 +542,11 @@ export function EquipmentApp() {
       <nav
         className="ds-card-secondary ds-card-static flex flex-wrap gap-1 rounded-lg p-1"
         aria-label="Equipment sections"
+        data-tour="equipment-tour-tabs"
       >
-        {tabBtn("overview", "Overview", LayoutGrid)}
-        {tabBtn("list", "Equipment List", List)}
-        {tabBtn("form", formMode === "edit" ? "Edit Equipment" : formMode === "view" ? "Details" : "Add Equipment", Plus)}
+        {tabBtn("overview", "Overview", LayoutGrid, "equipment-tour-overview-tab")}
+        {tabBtn("list", "Equipment List", List, "equipment-tour-list-tab")}
+        {tabBtn("form", formMode === "edit" ? "Edit Equipment" : formMode === "view" ? "Details" : "Add Equipment", Plus, "equipment-tour-add-tab")}
       </nav>
 
       {!loading && statsItems.length === 0 && !error ? (
@@ -565,6 +567,7 @@ export function EquipmentApp() {
             <>
               <section
                 className={`grid gap-3 sm:grid-cols-2 lg:grid-cols-3 ${assetMod.settings.enableMaintenanceHistory ? "xl:grid-cols-5" : "xl:grid-cols-4"}`}
+                data-tour="equipment-tour-stats"
               >
                 <Card padding="md" className="flex flex-col gap-1">
                   <p className={LABEL}>Total equipment</p>
@@ -628,7 +631,7 @@ export function EquipmentApp() {
 
       {tab === "list" && (
         <div className="space-y-4">
-          <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end">
+          <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end" data-tour="equipment-tour-filters">
             <div className="min-w-[200px] flex-1">
               <label className={LABEL} htmlFor="eq-search">
                 Search
@@ -702,7 +705,7 @@ export function EquipmentApp() {
             </div>
           </div>
 
-          <Card padding="md" className="!p-0 overflow-x-auto">
+          <Card padding="md" className="!p-0 overflow-x-auto" data-tour="equipment-tour-list">
             {listLoading ? (
               <div className="flex items-center justify-center gap-2 p-12 text-ds-muted">
                 <Loader2 className="h-5 w-5 animate-spin" aria-hidden />

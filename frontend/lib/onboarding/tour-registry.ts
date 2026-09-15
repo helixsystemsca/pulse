@@ -23,20 +23,19 @@ function normalizePath(path: string): string {
 }
 
 const DASHBOARD_OVERVIEW_TOUR: ProductTourDef = {
-  id: "dashboard-overview",
+  id: "dashboard-overview-walkthrough",
   paths: ["/overview"],
-  welcomeTitle: "Welcome to Helix",
-  welcomeSubtitle: "Let's tour your facility platform.",
+  welcomeTitle: "Leadership dashboard",
+  welcomeSubtitle: "We'll highlight Ask/Search, then each live widget on this board.",
   showCompletionScreen: true,
   steps: DASHBOARD_TOUR_STEPS,
 };
 
 const DASHBOARD_WORKER_TOUR: ProductTourDef = {
-  id: "dashboard-worker",
+  id: "dashboard-worker-walkthrough",
   paths: ["/worker"],
   welcomeTitle: "Operations dashboard",
-  welcomeSubtitle:
-    "Your personal operations view uses the same widgets—here's how to read the floor at a glance.",
+  welcomeSubtitle: "Same widgets as leadership — we'll spotlight each control that is on your board.",
   showCompletionScreen: true,
   steps: DASHBOARD_TOUR_STEPS,
 };
@@ -67,6 +66,17 @@ export function resolveProductTour(
 
   const navItem = findNavItemForPathname(navigationTree, normalized);
   if (!navItem) return null;
+
+  const isProcedureLibrary =
+    normalized === "/training/learning/library" || normalized.startsWith("/training/learning/library/");
+  if (navItem.key === "training_learning" && isProcedureLibrary) {
+    return buildFeaturePageTour({
+      ...navItem,
+      key: "procedures",
+      label: "Procedures",
+      href: "/training/learning/library",
+    });
+  }
 
   return buildFeaturePageTour(navItem);
 }

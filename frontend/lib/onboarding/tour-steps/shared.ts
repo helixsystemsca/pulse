@@ -2,16 +2,24 @@ import type { TourStep } from "@/lib/onboarding/tour-steps/types";
 
 export const TOUR_STEP_SIDEBAR: TourStep = {
   target: '[data-tour="sidebar-navigation"]',
-  title: "Quick Navigation",
+  title: "Sidebar",
   description:
-    "Use the sidebar to jump between dashboards, planning, operations, training, assets, and administration.",
+    "Open My Role, Assets, Operations, and Training from here. Each item has its own walkthrough the first time you visit.",
   placement: "right",
 };
 
 export const TOUR_STEP_USER_HUB: TourStep = {
   target: '[data-tour="user-hub"]',
-  title: "User Hub",
-  description: "Important notifications and profile settings.",
+  title: "Ask, notifications, profile",
+  description: "Ask/Search jumps to a screen. The bell is alerts. Your avatar opens profile and sign-out.",
+  placement: "bottom",
+};
+
+export const TOUR_STEP_OPS_ASK: TourStep = {
+  target: '[data-tour="ops-ask"]',
+  title: "Ask / Search",
+  description:
+    "Type an ops question — “add a facility”, “assets at the arena”, “open work requests”. Results deep-link to the matching screen.",
   placement: "bottom",
 };
 
@@ -25,43 +33,33 @@ export function standardFeatureTourSteps(
     includeToolbar?: boolean;
   },
 ): TourStep[] {
-  const workspaceDescription =
-    options?.workspaceDescription ??
-    options?.headerDescription ??
-    "This is the main work area—lists, boards, charts, and editors update here as you work.";
   const steps: TourStep[] = [
     {
       target: '[data-tour="feature-header"]',
-      title: `${label} — what this page is`,
+      title: `${label} — this screen`,
       description:
         options?.headerDescription ??
-        `You are on ${label}. The title and short description tell you what this screen is for before you touch anything.`,
+        `You are on ${label}. Title and short description say what this screen is for.`,
       placement: "bottom",
     },
     {
       target: '[data-tour="feature-actions"]',
-      title: "Page actions",
+      title: "Primary actions",
       description:
         options?.actionsDescription ??
-        `Buttons on the right run the main jobs for ${label}—create, export, settings, and similar. Missing buttons are skipped.`,
+        `Buttons on the right run the main jobs for ${label} — create, export, settings. Missing buttons are skipped.`,
       placement: "left",
     },
   ];
   if (options?.includeToolbar) {
     steps.push({
       target: '[data-tour="feature-toolbar"]',
-      title: "Tools & filters",
+      title: "Filters & views",
       description:
         options.toolbarDescription ??
-        "Switch views, filter data, and run common actions from this toolbar without leaving the page.",
+        "Switch views and filter the list from this row without leaving the page.",
       placement: "bottom",
     });
   }
-  steps.push({
-    target: '[data-tour="feature-workspace"]',
-    title: "Main workspace",
-    description: workspaceDescription,
-    placement: "top",
-  });
   return steps;
 }

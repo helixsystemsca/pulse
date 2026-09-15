@@ -400,7 +400,7 @@ export function InspectionsLogsApp() {
             <p className="text-sm text-ds-muted">
               All inspection sheets in one place — built-in or custom. Open a sheet to run it on shift.
             </p>
-            <div className="relative w-full sm:max-w-xs">
+            <div className="relative w-full sm:max-w-xs" data-tour="inspections-tour-search">
               <Search
                 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ds-muted"
                 aria-hidden
@@ -416,6 +416,7 @@ export function InspectionsLogsApp() {
             </div>
           </div>
 
+          <div data-tour="inspections-tour-sheets">
           <ScrollReveal className="grid gap-4 md:grid-cols-1 lg:grid-cols-2" y={8}>
             {persistError ? (
               <p className="lg:col-span-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">
@@ -583,6 +584,7 @@ export function InspectionsLogsApp() {
               );
             })}
           </ScrollReveal>
+          </div>
 
           {store.inspectionTemplates.length === 0 ? (
             <Card variant="secondary" padding="lg" className="border-dashed border-ds-border/80 text-center">

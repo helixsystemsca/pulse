@@ -1388,6 +1388,7 @@ export function WorkRequestsApp() {
               className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "inline-flex items-center gap-2 px-4 py-2.5")}
               onClick={() => setPmCreateOpen(true)}
               disabled={!dataEnabled || !canManage}
+              data-tour="work-requests-tour-pm"
               title={!canManage ? "Managers can create preventative maintenance plans" : undefined}
             >
               + New PM
@@ -1397,6 +1398,7 @@ export function WorkRequestsApp() {
               className={PRIMARY_BTN}
               onClick={() => setCreateOpen(true)}
               disabled={!dataEnabled}
+              data-tour="work-requests-tour-create"
             >
               + New Work Request
             </button>
@@ -1469,7 +1471,7 @@ export function WorkRequestsApp() {
       <ModuleSettingsModal moduleId="workRequests" open={orgSettingsOpen} onClose={() => setOrgSettingsOpen(false)} />
 
       <FeatureTourToolbar className="mt-4 space-y-4">
-        <div className="space-y-2">
+        <div className="space-y-2" data-tour="work-requests-tour-tabs">
           {scopeTabOptions.length > 1 ? (
             <div className="max-w-3xl">
               <SegmentedControl<WorkTab> value={tab} onChange={handleScopeTab} options={scopeTabOptions} />
@@ -1508,7 +1510,7 @@ export function WorkRequestsApp() {
           <div className="ds-premium-panel mt-6 p-4 md:p-5">
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
-                <div className="min-w-[min(100%,18rem)] flex-1 sm:max-w-lg">
+                <div className="min-w-[min(100%,18rem)] flex-1 sm:max-w-lg" data-tour="work-requests-tour-search">
                   <label className={LABEL}>Search</label>
                   <div className="relative mt-1.5">
                     <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-pulse-muted" />
@@ -1533,7 +1535,7 @@ export function WorkRequestsApp() {
                 </button>
               </div>
 
-              <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end">
+              <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end" data-tour="work-requests-tour-filters">
                 <div className="min-w-[9rem] lg:max-w-[11rem]">
                   <label className={LABEL}>Priority</label>
                   <select
@@ -1642,7 +1644,7 @@ export function WorkRequestsApp() {
       {dataEnabled ? (
         <>
           <FeatureTourWorkspace>
-          <div className="app-data-shell mt-4">
+          <div className="app-data-shell mt-4" data-tour="work-requests-tour-list">
             {listLoading ? (
               <div className="flex items-center justify-center gap-2 py-16 text-pulse-muted">
                 <Loader2 className="h-5 w-5 animate-spin" aria-hidden />

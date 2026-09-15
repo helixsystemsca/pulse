@@ -77,6 +77,7 @@ export function InspectionsLogsHero({
                 "inline-flex min-h-[44px] items-center justify-center gap-2 px-5 py-3 text-base font-semibold shadow-[var(--ds-shadow-card)] transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 active:translate-y-0",
               )}
               onClick={onNewInspectionTemplate}
+              data-tour="inspections-tour-new-sheet"
             >
               <Plus className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
               New inspection sheet
@@ -88,6 +89,7 @@ export function InspectionsLogsHero({
                 "inline-flex min-h-[44px] items-center justify-center gap-2 px-4 py-3 text-sm font-semibold shadow-sm transition-colors duration-200",
               )}
               onClick={onNewLogTemplate}
+              data-tour="inspections-tour-new-log"
             >
               <ClipboardList className="h-4 w-4 shrink-0 text-ds-accent" aria-hidden />
               New log template
@@ -106,7 +108,7 @@ export function InspectionsLogsHero({
             </button>
           </div>
 
-          <nav className={SEGMENT_TRACK} aria-label="Workspace">
+          <nav className={SEGMENT_TRACK} aria-label="Workspace" data-tour="inspections-tour-tabs">
             <button
               type="button"
               className={cn(
@@ -114,6 +116,7 @@ export function InspectionsLogsHero({
                 tab === "inspections" ? SEGMENT_ACTIVE : SEGMENT_IDLE,
               )}
               onClick={() => onTabChange("inspections")}
+              data-tour="inspections-tour-tab-inspections"
             >
               Inspections
             </button>
@@ -156,7 +159,7 @@ export function InspectionsLogsMetricsInspections({
   needsAttentionCount: number;
 }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" data-tour="inspections-tour-metrics">
       <MetricCard label="Inspection sheets" value={templateCount} borderAccent="neutral" hint="Custom sheets in this workspace" />
       <MetricCard
         label="Completed runs"

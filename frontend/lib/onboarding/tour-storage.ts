@@ -12,7 +12,7 @@ function readCompletedMap(): Record<string, boolean> {
       if (parsed && typeof parsed === "object") return parsed;
     }
     if (localStorage.getItem(TOUR_COMPLETED_KEY) === "true") {
-      return { "dashboard-overview": true, "dashboard-worker": true };
+      return { "dashboard-overview-walkthrough": true, "dashboard-worker-walkthrough": true };
     }
   } catch {
     /* ignore */

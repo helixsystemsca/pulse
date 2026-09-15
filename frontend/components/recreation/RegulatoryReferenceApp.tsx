@@ -314,7 +314,7 @@ export function RegulatoryReferenceApp() {
         icon={ScrollText}
         actions={
           canEdit ? (
-            <button type="button" className={HEADER_BTN} onClick={startCreate}>
+            <button type="button" className={HEADER_BTN} onClick={startCreate} data-tour="regulations-tour-create">
               <Plus className="h-4 w-4" />
               New card
             </button>
@@ -322,7 +322,7 @@ export function RegulatoryReferenceApp() {
         }
       />
       <PageBody>
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950" data-tour="feature-toolbar">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950" data-tour="regulations-tour-disclaimer">
           {REGULATORY_DISCLAIMER}
         </div>
 
@@ -351,8 +351,8 @@ export function RegulatoryReferenceApp() {
           </section>
         ) : (
           <>
-            <div className="flex flex-col gap-3">
-              <div className="relative">
+        <div className="flex flex-col gap-3">
+          <div className="relative" data-tour="regulations-tour-search">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ds-muted" />
                 <input
                   type="search"
@@ -364,7 +364,7 @@ export function RegulatoryReferenceApp() {
                 />
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <div className="-mx-1 flex min-w-0 flex-1 gap-2 overflow-x-auto px-1 pb-1">
+                <div className="-mx-1 flex min-w-0 flex-1 gap-2 overflow-x-auto px-1 pb-1" data-tour="regulations-tour-topics">
                   <CategoryChip label="All" active={category === "all"} onClick={() => setCategory("all")} />
                   {REGULATORY_TOPIC_CATEGORIES.map((c) => (
                     <CategoryChip key={c} label={c} active={category === c} onClick={() => setCategory(c)} />
@@ -382,8 +382,8 @@ export function RegulatoryReferenceApp() {
               </div>
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,32rem)]" data-tour="feature-workspace">
-              <div className={cn(formOpen && "hidden lg:block")}>
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,32rem)]">
+              <div className={cn(formOpen && "hidden lg:block")} data-tour="regulations-tour-list">
                 {loading ? (
                   <p className="flex items-center gap-2 text-sm text-ds-muted">
                     <Loader2 className="h-4 w-4 animate-spin" /> Loading library…
@@ -453,7 +453,7 @@ export function RegulatoryReferenceApp() {
                 )}
               </div>
 
-              <aside className="rounded-xl border border-ds-border bg-ds-card p-4 lg:sticky lg:top-4">
+              <aside className="rounded-xl border border-ds-border bg-ds-card p-4 lg:sticky lg:top-4" data-tour="regulations-tour-detail">
                 {editing && selected ? (
                   <CardForm
                     draft={draft}

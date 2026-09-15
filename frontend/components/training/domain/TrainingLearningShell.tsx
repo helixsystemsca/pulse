@@ -77,8 +77,10 @@ export function TrainingLearningShell({ section }: { section: string }) {
             supervisors verify your work.
           </p>
         </header>
+        <div data-tour="training-learning-assigned">
         <TrainingEmployeeSelfView />
         <MyProceduresAssignmentsView embedded />
+        </div>
       </div>
     );
   }
@@ -93,7 +95,7 @@ export function TrainingLearningShell({ section }: { section: string }) {
           </p>
         </header>
         {visibleTabs.length > 1 ? (
-          <nav className={uiTabNav} aria-label="Learning sections">
+          <nav className={uiTabNav} aria-label="Learning sections" data-tour="training-learning-tabs">
             {visibleTabs
               .filter((t) => ["my-learning", "courses", "study", "paths"].includes(t.id))
               .map((t) => {
@@ -105,6 +107,7 @@ export function TrainingLearningShell({ section }: { section: string }) {
                     key={t.id}
                     href={href}
                     className={cn(uiTabLink, isActive ? uiTabLinkActive : uiTabLinkIdle)}
+                    data-tour={t.id === "library" ? "training-learning-tab-library" : undefined}
                   >
                     <Icon className={uiIconInTab} aria-hidden />
                     {t.label}
@@ -131,7 +134,7 @@ export function TrainingLearningShell({ section }: { section: string }) {
       </header>
 
       {visibleTabs.length > 1 ? (
-        <nav className={uiTabNav} aria-label="Learning sections">
+        <nav className={uiTabNav} aria-label="Learning sections" data-tour="training-learning-tabs">
           {visibleTabs.map((t) => {
             const Icon = t.icon;
             const href = trainingLearningHref(t.id);
@@ -141,6 +144,7 @@ export function TrainingLearningShell({ section }: { section: string }) {
                 key={t.id}
                 href={href}
                 className={cn(uiTabLink, isActive ? uiTabLinkActive : uiTabLinkIdle)}
+                data-tour={t.id === "library" ? "training-learning-tab-library" : undefined}
               >
                 <Icon className={uiIconInTab} aria-hidden />
                 {t.label}
@@ -169,7 +173,7 @@ export function TrainingLearningShell({ section }: { section: string }) {
       ) : null}
 
       {canViewActive && activeSection === "my-learning" ? (
-        <div className="space-y-8">
+          <div data-tour="training-learning-assigned" className="space-y-8">
           <TrainingEmployeeSelfView />
           <MyProceduresAssignmentsView embedded />
         </div>
