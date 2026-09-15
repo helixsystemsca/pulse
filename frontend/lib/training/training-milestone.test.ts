@@ -15,8 +15,8 @@ describe("isTrainingRouteHiddenInMilestone", () => {
     expect(isTrainingRouteHiddenInMilestone("/training/learning/courses")).toBe(true);
   });
 
-  it("allows flashcards and interviews", () => {
+  it("allows flashcards and hides interview prep", () => {
     expect(isTrainingRouteHiddenInMilestone("/training/flashcards")).toBe(false);
-    expect(isTrainingRouteHiddenInMilestone("/training/interviews")).toBe(false);
+    expect(isTrainingRouteHiddenInMilestone("/training/interviews")).toBe(true);
   });
 });

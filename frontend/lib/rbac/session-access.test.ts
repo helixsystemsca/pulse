@@ -104,6 +104,7 @@ describe("tenantSidebarNavItemsForLiveApp — training flashcards milestone", ()
       }),
     );
     expect(items.some((i) => i.key === "training_flashcards")).toBe(true);
+    expect(items.some((i) => i.key === "training_interviews")).toBe(false);
     expect(items.some((i) => i.key === "training_compliance")).toBe(false);
     expect(items.some((i) => i.key === "training_overview")).toBe(false);
   });

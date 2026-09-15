@@ -51,11 +51,7 @@ export function FlashcardCoursePicker() {
             <h2 className={uiPageTitle}>Flashcards</h2>
             <p className={cn(uiPageDescription, "max-w-2xl")}>
               Select a certification deck to study with spaced repetition. CAPM, FMP, Six Sigma, Power BI, and other
-              published packs appear here. For job interview prep, see{" "}
-              <Link href={TRAINING_ROUTES.interviews} className="font-medium text-ds-primary hover:underline">
-                Interview Prep
-              </Link>
-              .
+              published packs appear here.
             </p>
           </div>
           {canManageDecks ? (
