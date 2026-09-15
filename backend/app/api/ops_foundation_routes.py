@@ -10,6 +10,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_db, require_any_rbac, require_tenant_user
 from app.models.domain import User
 from app.schemas.ops_foundation import (
+    FacilityContentsOut,
+    FacilityContainedAssetOut,
+    FacilityContainedInventoryOut,
     OpsContactCreateIn,
     OpsContactOut,
     OpsContactPatchIn,
@@ -39,6 +42,11 @@ from app.schemas.ops_foundation import (
     OpsRevisionOut,
 )
 from app.services import ops_foundation_service as svc
+from app.services.ops_facility_links import (
+    equipment_names_by_id,
+    list_facility_equipment,
+    list_facility_inventory,
+)
 
 router = APIRouter(prefix="/recreation-ops", tags=["recreation-ops"])
 
@@ -92,6 +100,51 @@ async def _out(db: AsyncSession, cid: str, entity_type: str, row: Any) -> Any:
     links = await svc.list_links_for(db, cid, entity_type, str(row.id))
     data = svc.serialize_record(row, links)
     return OUT_MODELS[entity_type].model_validate(data)
+
+
+@router.get("/facilities/{record_id}/contents", response_model=FacilityContentsOut)
+async def facility_contents(
+    record_id: str,
+    db: Db,
+    cid: CompanyId,
+    _: Reader,
+) -> FacilityContentsOut:
+    """Assets and inventory linked to this recreation facility."""
+    row = await svc.get_record(db, cid, "facilities", record_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Not found")
+    facility = await _out(db, cid, "facilities", row)
+    assets = await list_facility_equipment(db, cid, record_id)
+    parent_ids = {str(a.parent_equipment_id) for a in assets if getattr(a, "parent_equipment_id", None)}
+    parent_names = await equipment_names_by_id(db, cid, parent_ids)
+    inventory = await list_facility_inventory(db, cid, record_id)
+    return FacilityContentsOut(
+        facility=facility,
+        assets=[
+            FacilityContainedAssetOut(
+                id=str(a.id),
+                name=a.name,
+                type=a.type,
+                status=a.status.value if hasattr(a.status, "value") else str(a.status),
+                parent_equipment_id=str(a.parent_equipment_id) if a.parent_equipment_id else None,
+                parent_equipment_name=parent_names.get(str(a.parent_equipment_id))
+                if a.parent_equipment_id
+                else None,
+            )
+            for a in assets
+        ],
+        inventory=[
+            FacilityContainedInventoryOut(
+                id=str(it.id),
+                sku=it.sku,
+                name=it.name,
+                quantity=float(it.quantity or 0),
+                unit=it.unit,
+                inv_status=it.inv_status,
+            )
+            for it in inventory
+        ],
+    )
 
 
 @router.get("/{entity_type}", response_model=list[dict[str, Any]])

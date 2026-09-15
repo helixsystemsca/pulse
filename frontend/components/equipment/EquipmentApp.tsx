@@ -20,6 +20,7 @@ import {
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { FacilitySelect } from "@/components/facilities/FacilitySelect";
 import { Card } from "@/components/pulse/Card";
 import { HintCallout } from "@/components/ui/HintCallout";
 import { ModuleSettingsGear } from "@/components/module-settings/ModuleSettingsGear";
@@ -81,6 +82,8 @@ export function EquipmentApp() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const qParam = searchParams.get("q");
+  const createParam = searchParams.get("create") === "1";
+  const facilityParam = searchParams.get("ops_facility_id") || searchParams.get("facility");
   const { can } = usePermissions();
   const canViewEquipment = can("equipment.view") || can("equipment.manage");
   const canMutate = can("equipment.manage");
@@ -100,6 +103,7 @@ export function EquipmentApp() {
 
   const [search, setSearch] = useState("");
   const [filterZone, setFilterZone] = useState("");
+  const [filterFacility, setFilterFacility] = useState("");
   const [filterType, setFilterType] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [sort, setSort] = useState<"name" | "type" | "status" | "last_service_date" | "updated_at" | "zone_name">(
@@ -112,6 +116,15 @@ export function EquipmentApp() {
     setSearch(qParam.trim());
     setTab("list");
   }, [qParam]);
+
+  useEffect(() => {
+    if (!facilityParam) return;
+    setFilterFacility(facilityParam);
+    // Keep the add form open when arriving with ?create=1&ops_facility_id=…
+    if (!createParam) {
+      setTab((t) => (t === "form" ? t : "list"));
+    }
+  }, [facilityParam, createParam]);
 
   const listColumns = useMemo(
     () =>
@@ -138,6 +151,8 @@ export function EquipmentApp() {
   const [formName, setFormName] = useState("");
   const [formType, setFormType] = useState("General");
   const [formZoneId, setFormZoneId] = useState("");
+  const [formFacilityId, setFormFacilityId] = useState("");
+  const [formParentId, setFormParentId] = useState("");
   const [formStatus, setFormStatus] = useState("active");
   const [formManufacturer, setFormManufacturer] = useState("");
   const [formModel, setFormModel] = useState("");
@@ -176,6 +191,7 @@ export function EquipmentApp() {
       const rows = await fetchEquipmentList({
         q: search.trim() || undefined,
         zone_id: filterZone || undefined,
+        ops_facility_id: filterFacility || undefined,
         type: filterType || undefined,
         status: filterStatus || undefined,
         sort,
@@ -195,7 +211,7 @@ export function EquipmentApp() {
     } finally {
       setListLoading(false);
     }
-  }, [search, filterZone, filterType, filterStatus, sort, order]);
+  }, [search, filterZone, filterFacility, filterType, filterStatus, sort, order]);
 
   useEffect(() => {
     void loadZones();
@@ -231,6 +247,8 @@ export function EquipmentApp() {
     setFormName("");
     setFormType("General");
     setFormZoneId("");
+    setFormFacilityId("");
+    setFormParentId("");
     setFormStatus("active");
     setFormManufacturer("");
     setFormModel("");
@@ -249,6 +267,8 @@ export function EquipmentApp() {
     setFormName(r.name);
     setFormType(r.type || "General");
     setFormZoneId(r.zone_id ?? "");
+    setFormFacilityId(r.ops_facility_id ?? "");
+    setFormParentId(r.parent_equipment_id ?? "");
     setFormStatus(r.status);
     setFormManufacturer(r.manufacturer ?? "");
     setFormModel(r.model ?? "");
@@ -265,8 +285,20 @@ export function EquipmentApp() {
   const openCreate = useCallback(() => {
     resetForm();
     setFormMode("create");
+    if (facilityParam) setFormFacilityId(facilityParam);
     setTab("form");
-  }, [resetForm]);
+  }, [resetForm, facilityParam]);
+
+  useEffect(() => {
+    if (!createParam || !canMutate) return;
+    openCreate();
+    const next = new URLSearchParams();
+    if (facilityParam) next.set("ops_facility_id", facilityParam);
+    const qs = next.toString();
+    router.replace(qs ? `/equipment?${qs}` : "/equipment", { scroll: false });
+    // Strip create=1 so this does not re-open after the form mounts.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [createParam, canMutate, facilityParam]);
 
   const openView = useCallback(
     async (id: string) => {
@@ -322,6 +354,8 @@ export function EquipmentApp() {
       name: formName.trim(),
       type: formType.trim() || "General",
       zone_id: formZoneId || null,
+      ops_facility_id: formFacilityId || null,
+      parent_equipment_id: formParentId || null,
       status: formStatus,
       manufacturer: formManufacturer.trim() || null,
       model: formModel.trim() || null,
@@ -475,7 +509,17 @@ export function EquipmentApp() {
         title="Equipment"
         description="Manage and monitor all facility equipment."
         icon={Wrench}
-        actions={<ModuleSettingsGear moduleId="assets" label="Equipment organization settings" />}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/recreation/facilities"
+              className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-4 py-2.5 text-sm")}
+            >
+              Facilities
+            </Link>
+            <ModuleSettingsGear moduleId="assets" label="Equipment organization settings" />
+          </div>
+        }
       />
       <p className="text-sm text-ds-muted">
         BLE location tags pair with <span className="font-medium text-ds-foreground">tracked assets</span> in{" "}
@@ -614,6 +658,15 @@ export function EquipmentApp() {
                 </select>
               </div>
             ) : null}
+            <div className="w-full min-w-[160px] sm:w-auto">
+              <label className={LABEL}>Facility</label>
+              <FacilitySelect
+                className={FIELD}
+                value={filterFacility}
+                onChange={setFilterFacility}
+                emptyLabel="All facilities"
+              />
+            </div>
             <div className="w-full min-w-[140px] sm:w-auto">
               <label className={LABEL}>Type</label>
               <select className={FIELD} value={filterType} onChange={(e) => setFilterType(e.target.value)}>
@@ -657,7 +710,7 @@ export function EquipmentApp() {
               </div>
             ) : items.length === 0 ? (
               <p className="p-8 text-center text-sm text-ds-muted">
-                {search.trim() || filterZone || filterType || filterStatus
+                {search.trim() || filterZone || filterFacility || filterType || filterStatus
                   ? "No equipment matches your filters."
                   : "No equipment yet. Add your first asset to start tracking maintenance."}
               </p>
@@ -677,6 +730,7 @@ export function EquipmentApp() {
                         </button>
                       </th>
                     ))}
+                    <th className="px-4 py-3 font-semibold text-ds-foreground">Facility</th>
                     <th className="px-4 py-3 font-semibold text-ds-foreground">Actions</th>
                   </tr>
                 </thead>
@@ -706,7 +760,14 @@ export function EquipmentApp() {
                               <AlertTriangle className="h-4 w-4" aria-hidden />
                             </span>
                           ) : null}
-                          {r.name}
+                          <span>
+                            {r.name}
+                            {r.parent_equipment_name ? (
+                              <span className="block text-[11px] font-normal text-ds-muted">
+                                under {r.parent_equipment_name}
+                              </span>
+                            ) : null}
+                          </span>
                         </span>
                       </td>
                       <td className="px-4 py-3 text-ds-muted">{r.type}</td>
@@ -719,6 +780,7 @@ export function EquipmentApp() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-ds-muted tabular-nums">{formatDate(r.last_service_date)}</td>
+                      <td className="px-4 py-3 text-ds-muted">{r.ops_facility_name ?? "—"}</td>
                       <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                         <div className="flex flex-wrap gap-1">
                           <button
@@ -842,6 +904,47 @@ export function EquipmentApp() {
                   </select>
                 </div>
               ) : null}
+              <div>
+                <label className={LABEL} htmlFor="eq-facility">
+                  Facility
+                </label>
+                <FacilitySelect
+                  id="eq-facility"
+                  className={FIELD}
+                  disabled={formMode === "view"}
+                  value={formFacilityId}
+                  onChange={setFormFacilityId}
+                  emptyLabel="Unassigned"
+                />
+              </div>
+              <div>
+                <label className={LABEL} htmlFor="eq-parent">
+                  Parent asset (sub-asset)
+                </label>
+                <select
+                  id="eq-parent"
+                  className={FIELD}
+                  disabled={formMode === "view"}
+                  value={formParentId}
+                  onChange={(e) => {
+                    const pid = e.target.value;
+                    setFormParentId(pid);
+                    if (!formFacilityId && pid) {
+                      const parent = statsItems.find((r) => r.id === pid);
+                      if (parent?.ops_facility_id) setFormFacilityId(parent.ops_facility_id);
+                    }
+                  }}
+                >
+                  <option value="">None — this is a main asset</option>
+                  {statsItems
+                    .filter((r) => r.id !== formId)
+                    .map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
               <div>
                 <label className={LABEL} htmlFor="eq-status">
                   Status *

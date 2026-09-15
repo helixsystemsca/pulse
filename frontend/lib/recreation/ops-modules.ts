@@ -265,7 +265,7 @@ export const OPS_MODULES: readonly OpsModuleDef[] = [
     key: "ops_facilities",
     label: "Facilities",
     singular: "Facility",
-    description: "Facility profiles — building info, mechanical systems, emergency procedures, and documents.",
+    description: "Buildings you operate — add a name, then link inventory and equipment to each facility.",
     route: "/recreation/facilities",
     icon: "building",
     fields: [

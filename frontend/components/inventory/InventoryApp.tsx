@@ -78,6 +78,7 @@ import {
 import { InventoryRegisterFieldsEditor } from "@/components/inventory/InventoryRegisterFieldsEditor";
 import { InventoryDepartmentsPanel } from "@/components/inventory/InventoryDepartmentsPanel";
 import { InventoryLocationsPanel } from "@/components/inventory/InventoryLocationsPanel";
+import { FacilitySelect } from "@/components/facilities/FacilitySelect";
 import { InventoryTransactionSettingsPanel } from "@/components/inventory/InventoryTransactionSettingsPanel";
 import { ReorderOutputsStep } from "@/components/inventory/setup-wizard/InventoryWizardStepFields";
 import { procurementModeFromReorderOutputs } from "@/lib/inventory/reorder-outputs-config";
@@ -213,6 +214,7 @@ export function InventoryApp() {
   const [typeFilter, setTypeFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [zoneFilter, setZoneFilter] = useState("");
+  const [facilityFilter, setFacilityFilter] = useState("");
   const [scopeFilter, setScopeFilter] = useState("");
   const [scopeOptions, setScopeOptions] = useState<{ id: string; name: string; slug: string }[]>([]);
   const [dateFrom, setDateFrom] = useState("");
@@ -473,6 +475,10 @@ export function InventoryApp() {
     if (tab && isWorkspaceTab(tab)) {
       setInventoryTab(tab);
     }
+    const qFromUrl = searchParams.get("q");
+    if (qFromUrl) setQ(qFromUrl);
+    const fac = searchParams.get("ops_facility_id") || searchParams.get("facility");
+    if (fac) setFacilityFilter(fac);
   }, [searchParams]);
 
   const selectInventoryTab = useCallback(
@@ -545,6 +551,7 @@ export function InventoryApp() {
         item_type: typeFilter || undefined,
         category: categoryFilter || undefined,
         zone_id: zoneFilter || undefined,
+        ops_facility_id: facilityFilter || undefined,
         scope_id: scopeFilter || undefined,
         date_from,
         date_to,
@@ -569,6 +576,7 @@ export function InventoryApp() {
     typeFilter,
     categoryFilter,
     zoneFilter,
+    facilityFilter,
     scopeFilter,
     dateFrom,
     dateTo,
@@ -679,6 +687,7 @@ export function InventoryApp() {
     setTypeFilter("");
     setCategoryFilter("");
     setZoneFilter("");
+    setFacilityFilter("");
     setScopeFilter("");
     setDateFrom("");
     setDateTo("");
@@ -705,7 +714,10 @@ export function InventoryApp() {
       "";
     setForm(
       registerFormStateWithDefaultZone(
-        emptyRegisterFormState(mergedSettings.threshold_defaults.default_min ?? 5, dept),
+        {
+          ...emptyRegisterFormState(mergedSettings.threshold_defaults.default_min ?? 5, dept),
+          ops_facility_id: searchParams.get("ops_facility_id") || searchParams.get("facility") || "",
+        },
         storageZones,
         "0",
       ),
@@ -713,6 +725,17 @@ export function InventoryApp() {
     setEditFormError(null);
     setEditOpen(true);
   }
+
+  useEffect(() => {
+    if (searchParams.get("create") !== "1" || !canMutateInventory || !dataEnabled) return;
+    openCreate();
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete("create");
+    const qs = next.toString();
+    router.replace(qs ? `/dashboard/inventory?${qs}` : "/dashboard/inventory", { scroll: false });
+    // Intentionally run when the deep-link appears, not on every openCreate identity change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, canMutateInventory, dataEnabled, router]);
 
   const formFromRow = useCallback(
     (
@@ -728,6 +751,7 @@ export function InventoryApp() {
         | "zone_id"
         | "assigned_user_id"
         | "linked_tool_id"
+        | "ops_facility_id"
         | "department_slug"
         | "condition"
         | "unit_cost"
@@ -755,6 +779,7 @@ export function InventoryApp() {
         location_lines: loc.location_lines,
         assigned_user_id: row.assigned_user_id ?? "",
         linked_tool_id: row.linked_tool_id ?? "",
+        ops_facility_id: row.ops_facility_id ?? "",
         department_slug: row.department_slug ?? "maintenance",
         condition: row.condition,
         unit_cost: row.unit_cost != null ? String(row.unit_cost) : "",
@@ -977,17 +1002,25 @@ export function InventoryApp() {
         icon={Package}
         divider={false}
         actions={
-          canConfigureOrg ? (
-            <button
-              type="button"
-              className={ICON_BTN}
-              title="Inventory settings"
-              aria-label="Inventory settings"
-              onClick={() => setSettingsOpen(true)}
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/recreation/facilities"
+              className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-4 py-2.5 text-sm")}
             >
-              <Settings className="h-4 w-4" aria-hidden />
-            </button>
-          ) : null
+              Facilities
+            </Link>
+            {canConfigureOrg ? (
+              <button
+                type="button"
+                className={ICON_BTN}
+                title="Inventory settings"
+                aria-label="Inventory settings"
+                onClick={() => setSettingsOpen(true)}
+              >
+                <Settings className="h-4 w-4" aria-hidden />
+              </button>
+            ) : null}
+          </div>
         }
       />
 
@@ -1206,6 +1239,17 @@ export function InventoryApp() {
                   </option>
                 ))}
               </select>
+              <div className="min-w-[12rem]">
+                <FacilitySelect
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
+                  value={facilityFilter}
+                  onChange={(id) => {
+                    setFacilityFilter(id);
+                    setPage(0);
+                  }}
+                  emptyLabel="All facilities"
+                />
+              </div>
               {scopeOptions.length > 1 ? (
                 <select
                   className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
@@ -1321,6 +1365,9 @@ export function InventoryApp() {
                                   <p className="mt-0.5 text-xs text-[#2B4C7E]">
                                     Linked: {row.linked_asset_name}
                                   </p>
+                                ) : null}
+                                {row.ops_facility_name ? (
+                                  <p className="mt-0.5 text-xs text-pulse-muted">Facility: {row.ops_facility_name}</p>
                                 ) : null}
                               </div>
                             </div>
@@ -1566,6 +1613,26 @@ export function InventoryApp() {
               <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
                 <p className="text-xs font-bold uppercase text-pulse-muted">Assignment &amp; location</p>
                 <p className="mt-2 text-sm font-semibold text-pulse-navy">{detail.assignee_name ?? "Unassigned"}</p>
+                <p className={`${LABEL} mt-3`}>Facility</p>
+                {canMutateInventory ? (
+                  <FacilitySelect
+                    className={FIELD}
+                    value={detail.ops_facility_id ?? ""}
+                    disabled={submitPending}
+                    onChange={(ops_facility_id) => {
+                      void runSubmit(async () => {
+                        await patchInventoryItem(apiCompany, detail.id, {
+                          ops_facility_id: ops_facility_id || null,
+                        });
+                        await loadDetail();
+                        await loadList();
+                      });
+                    }}
+                    emptyLabel="Unassigned"
+                  />
+                ) : (
+                  <p className="mt-1 text-sm text-pulse-navy">{detail.ops_facility_name ?? "—"}</p>
+                )}
                 <p className={`${LABEL} mt-3`}>Location</p>
                 {(() => {
                   const stock = parseLocationStock(detail.custom_attributes);

@@ -367,6 +367,36 @@ export function EquipmentDetailApp({ equipmentId }: Props) {
             <p className="mt-1 text-sm text-pulse-navy">{data.type}</p>
           </div>
           <div>
+            <p className={LABEL}>Facility</p>
+            <p className="mt-1 text-sm text-pulse-navy">
+              {data.ops_facility_id ? (
+                <Link
+                  href={`/recreation/facilities?id=${encodeURIComponent(data.ops_facility_id)}`}
+                  className="ds-link font-medium"
+                >
+                  {data.ops_facility_name ?? "Facility"}
+                </Link>
+              ) : (
+                "—"
+              )}
+            </p>
+          </div>
+          <div>
+            <p className={LABEL}>Parent asset</p>
+            <p className="mt-1 text-sm text-pulse-navy">
+              {data.parent_equipment_id ? (
+                <Link
+                  href={`/equipment/${encodeURIComponent(data.parent_equipment_id)}`}
+                  className="ds-link font-medium"
+                >
+                  {data.parent_equipment_name ?? "Parent"}
+                </Link>
+              ) : (
+                "—"
+              )}
+            </p>
+          </div>
+          <div>
             <p className={LABEL}>Zone</p>
             <p className="mt-1 text-sm text-pulse-navy">{data.zone_name ?? "—"}</p>
           </div>

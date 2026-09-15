@@ -114,3 +114,31 @@ export async function listOpsRevisions(
 ): Promise<OpsRevision[]> {
   return apiFetch<OpsRevision[]>(`${base(entityType)}/${id}/revisions`);
 }
+
+export type FacilityContainedAsset = {
+  id: string;
+  name: string;
+  type: string;
+  status: string;
+  parent_equipment_id: string | null;
+  parent_equipment_name: string | null;
+};
+
+export type FacilityContainedInventory = {
+  id: string;
+  sku: string;
+  name: string;
+  quantity: number;
+  unit: string;
+  inv_status: string;
+};
+
+export type FacilityContents = {
+  facility: OpsRecord;
+  assets: FacilityContainedAsset[];
+  inventory: FacilityContainedInventory[];
+};
+
+export async function fetchFacilityContents(id: string): Promise<FacilityContents> {
+  return apiFetch<FacilityContents>(`${base("facilities")}/${encodeURIComponent(id)}/contents`);
+}

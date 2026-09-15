@@ -135,7 +135,7 @@ async def create_record(
 ) -> Any:
     Model = model_for(entity_type)
     payload = {k: v for k, v in data.items() if k not in _PROTECTED and hasattr(Model, k)}
-    if payload.get("reports_to_person_id") in ("", None):
+    if "reports_to_person_id" in payload and payload["reports_to_person_id"] in ("", None):
         payload["reports_to_person_id"] = None
     row = Model(company_id=company_id, created_by_user_id=actor_id, **payload)
     db.add(row)

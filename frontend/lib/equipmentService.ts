@@ -16,6 +16,10 @@ export type FacilityEquipmentRow = {
   type: string;
   zone_id: string | null;
   zone_name: string | null;
+  ops_facility_id?: string | null;
+  ops_facility_name?: string | null;
+  parent_equipment_id?: string | null;
+  parent_equipment_name?: string | null;
   status: string;
   manufacturer: string | null;
   model: string | null;
@@ -70,6 +74,8 @@ export type FacilityEquipmentCreate = {
   name: string;
   type?: string;
   zone_id?: string | null;
+  ops_facility_id?: string | null;
+  parent_equipment_id?: string | null;
   status?: string;
   manufacturer?: string | null;
   model?: string | null;
@@ -86,6 +92,7 @@ export type FacilityEquipmentPatch = Partial<FacilityEquipmentCreate>;
 export type ListEquipmentParams = {
   q?: string;
   zone_id?: string;
+  ops_facility_id?: string;
   type?: string;
   status?: string;
   sort?: string;
@@ -105,6 +112,7 @@ function qs(params: ListEquipmentParams): string {
   const e = new URLSearchParams();
   if (params.q) e.set("q", params.q);
   if (params.zone_id) e.set("zone_id", params.zone_id);
+  if (params.ops_facility_id) e.set("ops_facility_id", params.ops_facility_id);
   if (params.type) e.set("type", params.type);
   if (params.status) e.set("status", params.status);
   if (params.sort) e.set("sort", params.sort);

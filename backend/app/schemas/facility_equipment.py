@@ -22,6 +22,10 @@ class FacilityEquipmentOut(BaseModel):
     type: str
     zone_id: Optional[str] = None
     zone_name: Optional[str] = None
+    ops_facility_id: Optional[str] = None
+    ops_facility_name: Optional[str] = None
+    parent_equipment_id: Optional[str] = None
+    parent_equipment_name: Optional[str] = None
     status: str
     manufacturer: Optional[str] = None
     model: Optional[str] = None
@@ -49,6 +53,8 @@ class FacilityEquipmentCreateIn(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     type: str = Field(default="General", max_length=128)
     zone_id: Optional[str] = None
+    ops_facility_id: Optional[str] = None
+    parent_equipment_id: Optional[str] = None
     status: str = Field(default="active", pattern="^(active|maintenance|offline)$")
     manufacturer: Optional[str] = Field(None, max_length=255)
     model: Optional[str] = Field(None, max_length=255)
@@ -64,6 +70,8 @@ class FacilityEquipmentPatchIn(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     type: Optional[str] = Field(None, max_length=128)
     zone_id: Optional[str] = None
+    ops_facility_id: Optional[str] = None
+    parent_equipment_id: Optional[str] = None
     status: Optional[str] = None
     manufacturer: Optional[str] = Field(None, max_length=255)
     model: Optional[str] = Field(None, max_length=255)

@@ -39,6 +39,31 @@ function equipmentSearchHref(normalizedQuery: string): string {
   return "/equipment";
 }
 
+function placeFromAtQuery(normalizedQuery: string): string | null {
+  const m = normalizedQuery.match(/\b(?:at|in)\s+(?:the\s+)?(.+)$/);
+  if (!m) return null;
+  return m[1].replace(/[?!.,]+$/g, "").trim() || null;
+}
+
+function assetsAtHref(normalizedQuery: string): string {
+  const place = placeFromAtQuery(normalizedQuery);
+  if (place) return `/equipment?q=${encodeURIComponent(place)}`;
+  return "/equipment";
+}
+
+function inventoryAtHref(normalizedQuery: string): string {
+  const place = placeFromAtQuery(normalizedQuery);
+  if (place) return `/dashboard/inventory?q=${encodeURIComponent(place)}`;
+  return "/dashboard/inventory";
+}
+
+function facilitiesPlaceHref(normalizedQuery: string): string {
+  const place = placeFromAtQuery(normalizedQuery);
+  if (place) return `/recreation/facilities?q=${encodeURIComponent(place)}`;
+  if (/\badd\b|\bcreate\b|\bnew\b/.test(normalizedQuery)) return "/recreation/facilities?create=1";
+  return "/recreation/facilities";
+}
+
 function codesGuidanceHref(normalizedQuery: string): string {
   const q = normalizedQuery.trim();
   if (!q) return "/recreation/regulations";
@@ -48,11 +73,11 @@ function codesGuidanceHref(normalizedQuery: string): string {
 /** Starter questions shown in the empty Ask palette. */
 export const OPS_ASK_EXAMPLE_QUERIES = [
   "Where do I add a PM for the ice plant?",
+  "Add a facility",
+  "Assets at the arena",
+  "Inventory at the pool",
   "How do I start a pool seasonal checklist?",
   "Where are contractor insurance expiries?",
-  "Create a work request from a failed inspection",
-  "Show ammonia emergency procedure",
-  "Chief engineer responsibilities",
 ] as const;
 
 /** High-value browse targets when Ask is empty or unsure. */
@@ -306,13 +331,62 @@ export const OPS_ASK_CATALOG: readonly OpsAskCatalogItem[] = [
     weight: 6,
   },
   {
+    id: "add-facility",
+    title: "Add a facility",
+    href: "/recreation/facilities?create=1",
+    why: "Name a building (Arena, Aquatic Centre) so inventory and equipment can link to it.",
+    howTo: "Tap Add facility, type the name, Save. Then pick that facility when you add inventory or assets.",
+    phrases: [
+      "add facility",
+      "add a facility",
+      "create facility",
+      "new facility",
+      "add an arena",
+      "add aquatic centre",
+    ],
+    keywords: ["facility", "facilities", "arena", "pool", "building", "add", "create"],
+    weight: 15,
+  },
+  {
+    id: "assets-at-facility",
+    title: "Assets at a facility",
+    href: "/equipment",
+    why: "Main equipment list — filter or search by facility name.",
+    howTo: "Open Equipment and pick a facility filter, or open Facilities and see what that building has.",
+    phrases: ["assets at arena", "assets at the arena", "equipment at arena", "equipment at the pool"],
+    keywords: ["assets", "equipment", "arena", "pool", "facility"],
+    weight: 12,
+    hrefForQuery: assetsAtHref,
+  },
+  {
+    id: "inventory-at-facility",
+    title: "Inventory at a facility",
+    href: "/dashboard/inventory",
+    why: "Stock list — search or filter by the facility you named.",
+    howTo: "Open Inventory and choose a facility filter, or open the facility to see linked stock.",
+    phrases: ["inventory at pool", "inventory at the pool", "stock at arena", "inventory at the aquatic centre"],
+    keywords: ["inventory", "stock", "pool", "arena", "facility"],
+    weight: 12,
+    hrefForQuery: inventoryAtHref,
+  },
+  {
     id: "facilities",
     title: "Facilities",
     href: "/recreation/facilities",
-    why: "Facility profiles, including shutdown and emergency steps.",
-    phrases: ["facilities", "facility profile", "arena", "aquatic centre"],
+    why: "Facility list — add buildings and see which assets and inventory each one has.",
+    howTo: "Add a facility by name, then link inventory and equipment to it. Open a facility to see what it contains.",
+    phrases: [
+      "facilities",
+      "facility profile",
+      "arena",
+      "aquatic centre",
+      "what's at the arena",
+      "whats at the arena",
+      "what does the pool have",
+    ],
     keywords: ["facility", "facilities", "arena", "pool", "building"],
-    weight: 5,
+    weight: 8,
+    hrefForQuery: facilitiesPlaceHref,
   },
   {
     id: "certs",
