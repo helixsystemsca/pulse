@@ -1,5 +1,19 @@
 import type { TourStep } from "@/lib/onboarding/tour-steps/types";
 
+/** CSS selector for a `data-tour` anchor. */
+export function tourSel(id: string): string {
+  return `[data-tour="${id}"]`;
+}
+
+/** Click a prepare control once so a later spotlight target can mount (tabs, etc.). */
+export function clickTourPrepareTarget(selector: string | undefined): boolean {
+  if (!selector || typeof document === "undefined") return false;
+  const el = document.querySelector(selector);
+  if (!(el instanceof HTMLElement)) return false;
+  el.click();
+  return true;
+}
+
 /** Union bounding rect for one or more tour target nodes (e.g. CO₂ + pool widgets). */
 export function getTourTargetElements(selector: string): Element[] {
   const all = Array.from(document.querySelectorAll(selector));
@@ -40,4 +54,11 @@ export function stepHasTourTarget(step: TourStep): boolean {
     return step.rotateTargets.some((selector) => hasTourTarget(selector));
   }
   return hasTourTarget(step.target);
+}
+
+/** True when the spotlight target exists, or a tab/control we can click to reveal it exists. */
+export function stepCanStart(step: TourStep): boolean {
+  if (stepHasTourTarget(step)) return true;
+  if (step.prepareClick) return hasTourTarget(step.prepareClick);
+  return false;
 }

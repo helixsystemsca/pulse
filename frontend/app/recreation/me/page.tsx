@@ -99,11 +99,12 @@ export default function RecreationMePage() {
           <p className="text-sm text-ds-muted">Loading…</p>
         ) : (
           <>
-            <div className="mb-6 flex flex-wrap gap-2 border-b border-ds-border pb-3">
+            <div className="mb-6 flex flex-wrap gap-2 border-b border-ds-border pb-3" data-tour="ops-me-tour-tabs">
               {tabs.map((t) => (
                 <button
                   key={t.id}
                   type="button"
+                  data-tour={`ops-me-tour-tab-${t.id}`}
                   onClick={() => setTab(t.id)}
                   className={`rounded-lg px-3 py-1.5 text-sm ${
                     tab === t.id ? "bg-ds-primary text-white" : "text-ds-muted hover:bg-ds-card"
@@ -115,7 +116,7 @@ export default function RecreationMePage() {
             </div>
 
             {tab === "profile" ? (
-              <div className="grid max-w-3xl gap-4 sm:grid-cols-2">
+              <div className="grid max-w-3xl gap-4 sm:grid-cols-2" data-tour="ops-me-tour-profile">
                 {(
                   [
                     ["display_name", "Display name"],
@@ -154,7 +155,7 @@ export default function RecreationMePage() {
             ) : null}
 
             {tab === "philosophy" ? (
-              <div className="max-w-3xl space-y-6">
+              <div className="max-w-3xl space-y-6" data-tour="ops-me-tour-philosophy">
                 <label className="block">
                   <span className={labelClass}>Role purpose</span>
                   <textarea
@@ -242,7 +243,7 @@ export default function RecreationMePage() {
             ) : null}
 
             {tab === "role" ? (
-              <div className="max-w-3xl space-y-4">
+              <div className="max-w-3xl space-y-4" data-tour="ops-me-tour-role">
                 <div className="flex flex-wrap gap-2 rounded-xl border border-ds-border bg-ds-card p-3">
                   <input
                     className={`${inputClass} min-w-[12rem] flex-1`}
@@ -328,7 +329,7 @@ export default function RecreationMePage() {
             ) : null}
 
             {tab === "authority" ? (
-              <div className="space-y-4 overflow-x-auto">
+              <div className="space-y-4 overflow-x-auto" data-tour="ops-me-tour-authority">
                 <div className="flex flex-wrap gap-2">
                   <input
                     className={`${inputClass} max-w-md flex-1`}

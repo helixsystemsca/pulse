@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-DASHBOARD_OVERVIEW_TOUR_ID = "dashboard-overview"
-DASHBOARD_WORKER_TOUR_ID = "dashboard-worker"
+DASHBOARD_OVERVIEW_TOUR_ID = "dashboard-overview-walkthrough"
+DASHBOARD_WORKER_TOUR_ID = "dashboard-worker-walkthrough"
 
 
 class OnboardingToursOut(BaseModel):

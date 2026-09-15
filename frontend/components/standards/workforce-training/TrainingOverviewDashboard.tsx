@@ -65,7 +65,7 @@ export function TrainingOverviewDashboard() {
       {loading ? <p className="text-sm text-ds-muted">Loading workforce qualification metrics…</p> : null}
       {err ? <p className="text-sm font-medium text-rose-600">{err}</p> : null}
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6" data-tour="training-overview-kpis">
         <KpiCard
           label="Expiring (60d)"
           value={expiring.length}
@@ -100,7 +100,7 @@ export function TrainingOverviewDashboard() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <section className="rounded-xl border border-ds-border bg-ds-card p-4">
+        <section className="rounded-xl border border-ds-border bg-ds-card p-4" data-tour="training-overview-alerts">
           <h3 className="flex items-center gap-2 text-sm font-bold text-ds-foreground">
             <AlertTriangle className="h-4 w-4 text-amber-600" aria-hidden />
             Operational alerts
@@ -120,7 +120,7 @@ export function TrainingOverviewDashboard() {
           </p>
         </section>
 
-        <section className="rounded-xl border border-ds-border bg-ds-card p-4">
+        <section className="rounded-xl border border-ds-border bg-ds-card p-4" data-tour="training-overview-actions">
           <h3 className="text-sm font-bold text-ds-foreground">Quick actions</h3>
           <div className="mt-3 flex flex-wrap gap-2">
             <Link
@@ -148,7 +148,7 @@ export function TrainingOverviewDashboard() {
         </section>
       </div>
 
-      <section className="rounded-xl border border-ds-border bg-ds-card p-4">
+      <section className="rounded-xl border border-ds-border bg-ds-card p-4" data-tour="training-overview-queue">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm font-bold text-ds-foreground">Priority queue</h3>
           <Link

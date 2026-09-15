@@ -17,6 +17,30 @@ const FEATURE_PAGE_TOUR_COPY: Partial<Record<string, FeaturePageTourCopy>> = {
     welcomeSubtitle:
       "We'll highlight each control on Today: the hour calendar, sidebar cards, and the buttons that reshape the day.",
   },
+  ops_facilities: {
+    welcomeSubtitle: "Add a building, search the list, then open it to see linked assets and inventory.",
+  },
+  equipment: {
+    welcomeSubtitle: "Overview counts, add an asset, then filter the registry by status or facility.",
+  },
+  work_requests: {
+    welcomeSubtitle: "Log a request, switch My work / Approval / All, then filter and open a row.",
+  },
+  logs_inspections: {
+    welcomeSubtitle: "New inspection sheet, switch Inspections / Logs / Archive, then run a checklist.",
+  },
+  training_overview: {
+    welcomeSubtitle: "KPI tiles first, then the alerts that block a shift.",
+  },
+  training_learning: {
+    welcomeSubtitle: "Assigned learning, then the procedure library — create, filter, and open an SOP.",
+  },
+  training_compliance: {
+    welcomeSubtitle: "Compliance views, KPI tiles, then the qualification matrix.",
+  },
+  ops_me: {
+    welcomeSubtitle: "Profile tabs, then the fields that save when you leave them.",
+  },
   daily_planner_inbox: {
     welcomeSubtitle: "Capture work here first. We'll show the form, the list, and how items get onto Today.",
   },
@@ -62,42 +86,13 @@ const FEATURE_PAGE_TOUR_COPY: Partial<Record<string, FeaturePageTourCopy>> = {
     welcomeSubtitle: "Manage standard shift templates and codes used on the scheduling grid.",
     workspaceDescription: "Define start/end times, labels, and bands so palette drops stay consistent.",
   },
-  work_requests: {
-    welcomeSubtitle: "Walk through the work request queue from intake to completion.",
-    headerDescription: "Track maintenance and service requests—status, assignee, and priority show in the header KPIs.",
-    toolbarDescription:
-      "Switch between My work, Approval queue, and All requests, then filter by priority, location, category, and due dates.",
-    workspaceDescription: "Filter and open requests, update status, and link assets or zones from the main list or board.",
-    includeToolbar: true,
-  },
   monitoring: {
     welcomeSubtitle: "How to read live monitoring for CO₂, pools, and system health.",
     workspaceDescription:
       "Tank levels and live readings show what is in range, trending, and what needs immediate attention.",
   },
-  logs_inspections: {
-    welcomeSubtitle: "Inspection checklists, compliance logs, and audit history on one page.",
-    workspaceDescription: "Start inspections, record results, and review historical entries from the workspace.",
-  },
   inventory: {
-    welcomeSubtitle:
-      "A quick walkthrough of Inventory—sections, filters, the item list, and registering new stock.",
-  },
-  equipment: {
-    welcomeSubtitle: "Asset registry, maintenance history, and assignments.",
-    workspaceDescription: "Locate equipment, open maintenance records, and tie assets to work requests.",
-  },
-  training_overview: {
-    welcomeSubtitle: "Training KPIs—certifications, expirations, and compliance risk.",
-    workspaceDescription: "Summary tiles and charts show org-wide training health before you drill into matrices.",
-  },
-  training_learning: {
-    welcomeSubtitle: "Procedures, acknowledgments, and learning assignments for your role.",
-    workspaceDescription: "Open learning paths, assigned procedures, and completion status from this workspace.",
-  },
-  training_compliance: {
-    welcomeSubtitle: "Qualification matrix, gaps, and expiring credentials.",
-    workspaceDescription: "The matrix is the source of truth for who is current on each required procedure.",
+    welcomeSubtitle: "Sections, filters (including facility when present), the item list, and Register item.",
   },
   standards_routines: {
     welcomeSubtitle: "Routine templates, daily assignments, and shift handoffs.",
@@ -145,7 +140,7 @@ const FEATURE_PAGE_TOUR_COPY: Partial<Record<string, FeaturePageTourCopy>> = {
     workspaceDescription: "Configure tenant-wide options—the sections on this page group related admin controls.",
   },
   ops_regulations: {
-    welcomeSubtitle: "Codes & Guidance is an editable reference library—cards point to official public pages, not legal advice.",
+    welcomeSubtitle: "New card, search, topic chips, then open a card for the official source.",
     headerDescription: "Search and filter by topic. Company admins can add a card or open one to edit every field, the same way Procedures work.",
     toolbarDescription: "The disclaimer stays visible so summaries are never mistaken for a legal determination.",
     workspaceDescription: "Open a card to read or edit applicability, official URL, verification, Pulse pointers, then save. Archive hides a card without deleting it.",
@@ -160,7 +155,7 @@ export function featurePageTourCopy(featureKey: string, label: string): FeatureP
   const custom = FEATURE_PAGE_TOUR_COPY[featureKey];
   if (custom) return custom;
   return {
-    welcomeSubtitle: `We'll walk through each part of ${label}—header, actions, then the workspace.`,
+    welcomeSubtitle: `We'll highlight the title, primary buttons, and filters on ${label}.`,
     workspaceDescription: DEFAULT_WORKSPACE,
   };
 }

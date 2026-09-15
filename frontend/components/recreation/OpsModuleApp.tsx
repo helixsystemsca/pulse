@@ -364,6 +364,7 @@ export function OpsModuleApp({ entityType }: Props) {
             <button
               type="button"
               onClick={openCreate}
+              data-tour={entityType === "facilities" ? "facilities-tour-create" : undefined}
               className="inline-flex items-center gap-2 rounded-lg bg-ds-primary px-3 py-2 text-sm font-semibold text-white"
             >
               <Plus className="h-4 w-4" />
@@ -375,7 +376,10 @@ export function OpsModuleApp({ entityType }: Props) {
 
       <PageBody>
         <div className="mb-4 flex flex-wrap gap-2">
-          <div className="relative min-w-[16rem] flex-1">
+          <div
+            className="relative min-w-[16rem] flex-1"
+            data-tour={entityType === "facilities" ? "facilities-tour-search" : undefined}
+          >
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ds-muted" />
             <input
               className="w-full rounded-lg border border-ds-border bg-ds-bg py-2 pl-9 pr-3 text-sm"
@@ -389,7 +393,10 @@ export function OpsModuleApp({ entityType }: Props) {
         {error ? <div className={cn(uiCalloutWarning, "mb-4")}>{error}</div> : null}
 
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)]">
-          <div className="rounded-xl border border-ds-border bg-ds-card overflow-hidden">
+          <div
+            className="rounded-xl border border-ds-border bg-ds-card overflow-hidden"
+            data-tour={entityType === "facilities" ? "facilities-tour-list" : undefined}
+          >
             {loading ? (
               <div className="flex items-center gap-2 p-6 text-sm text-ds-muted">
                 <Loader2 className="h-4 w-4 animate-spin" /> Loading…
@@ -437,7 +444,10 @@ export function OpsModuleApp({ entityType }: Props) {
             )}
           </div>
 
-          <div className="rounded-xl border border-ds-border bg-ds-card p-4">
+          <div
+            className="rounded-xl border border-ds-border bg-ds-card p-4"
+            data-tour={entityType === "facilities" ? "facilities-tour-detail" : undefined}
+          >
             {!creating && !selected ? (
               <p className="text-sm text-ds-muted">Select a record or create a new one.</p>
             ) : (
@@ -506,7 +516,10 @@ export function OpsModuleApp({ entityType }: Props) {
                 ) : null}
 
                 {!creating && selected ? (
-                  <div className="mt-4 space-y-2 border-t border-ds-border pt-4">
+                  <div
+                    className="mt-4 space-y-2 border-t border-ds-border pt-4"
+                    data-tour={entityType === "facilities" ? "facilities-tour-links" : undefined}
+                  >
                     <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">Relationships</p>
                     <ul className="space-y-1 text-xs">
                       {(selected.links ?? []).map((l) => {

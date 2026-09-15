@@ -91,8 +91,8 @@ async def main() -> None:
         onboarding_done = {
             "onboardingTours": {
                 "completed": {
-                    "dashboard-overview": True,
-                    "dashboard-worker": True,
+                    "dashboard-overview-walkthrough": True,
+                    "dashboard-worker-walkthrough": True,
                     "feature-inventory_scanner": True,
                 }
             }

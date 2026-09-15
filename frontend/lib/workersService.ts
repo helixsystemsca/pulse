@@ -218,7 +218,7 @@ export async function resetWorkerDashboardTour(
   return apiFetch(withCompany(`/api/workers/${encodeURIComponent(userId)}/onboarding-tours/reset`, companyId), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ tour_id: "dashboard-overview" }),
+    body: JSON.stringify({ tour_id: "dashboard-overview-walkthrough" }),
   });
 }
 

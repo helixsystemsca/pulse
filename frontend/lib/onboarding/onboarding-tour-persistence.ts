@@ -7,7 +7,7 @@ import {
   writeCompletedMap,
 } from "@/lib/onboarding/tour-storage";
 
-export const DASHBOARD_OVERVIEW_TOUR_ID = "dashboard-overview";
+export const DASHBOARD_OVERVIEW_TOUR_ID = "dashboard-overview-walkthrough";
 
 type OnboardingToursPayload = { completed: Record<string, boolean> };
 

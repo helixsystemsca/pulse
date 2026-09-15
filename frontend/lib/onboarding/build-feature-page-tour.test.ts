@@ -4,7 +4,9 @@ import {
   featurePageTourId,
   findNavItemForPathname,
 } from "@/lib/onboarding/build-feature-page-tour";
-import type { NavigationTreeDomain } from "@/lib/navigation/build-navigation-tree";
+import { resolveProductTour } from "@/lib/onboarding/tour-registry";
+import { CUSTOM_FEATURE_TOUR_STEPS } from "@/lib/onboarding/feature-page-tour-steps";
+import type { NavigationTreeDomain, NavigationTreeItem } from "@/lib/navigation/build-navigation-tree";
 
 const TREE: NavigationTreeDomain[] = [
   {
@@ -30,8 +32,18 @@ const TREE: NavigationTreeDomain[] = [
   },
 ];
 
+function navItem(partial: Pick<NavigationTreeItem, "key" | "href" | "label">): NavigationTreeItem {
+  return {
+    icon: "folder-kanban",
+    navDomain: "My Role",
+    navGroup: "Ops",
+    navOrder: 1,
+    ...partial,
+  };
+}
+
 describe("buildFeaturePageTour", () => {
-  it("builds in-page steps for a nav item", () => {
+  it("builds header/actions/toolbar steps for a generic nav item (no whole-page workspace spotlight)", () => {
     const item = TREE[0]!.groups[0]!.items[0]!;
     const tour = buildFeaturePageTour(item);
     expect(tour.id).toBe(featurePageTourId("projects"));
@@ -39,8 +51,8 @@ describe("buildFeaturePageTour", () => {
       '[data-tour="feature-header"]',
       '[data-tour="feature-actions"]',
       '[data-tour="feature-toolbar"]',
-      '[data-tour="feature-workspace"]',
     ]);
+    expect(tour.steps.map((s) => s.target)).not.toContain('[data-tour="feature-workspace"]');
   });
 
   it("resolves nested paths with pathPrefix", () => {
@@ -49,37 +61,72 @@ describe("buildFeaturePageTour", () => {
   });
 
   it("builds inventory-specific in-page steps", () => {
-    const tour = buildFeaturePageTour({
-      key: "inventory",
-      href: "/dashboard/inventory",
-      label: "Inventory",
-      icon: "package",
-      navDomain: "Operations",
-      navGroup: "Inventory",
-      navOrder: 10,
-    });
-    expect(tour.id).toBe(featurePageTourId("inventory"));
+    const tour = buildFeaturePageTour(
+      navItem({ key: "inventory", href: "/dashboard/inventory", label: "Inventory" }),
+    );
+    expect(tour.id).toBe("feature-inventory-walkthrough");
     expect(tour.steps.map((s) => s.target)).toEqual([
       '[data-tour="inventory-tour-tabs"]',
       '[data-tour="inventory-tour-filters"]',
+      '[data-tour="inventory-tour-facility"]',
       '[data-tour="inventory-tour-list"]',
       '[data-tour="inventory-tour-create"]',
     ]);
   });
 
   it("builds a control-by-control walkthrough for the daily planner", () => {
-    const tour = buildFeaturePageTour({
-      key: "daily_planner",
-      href: "/planner",
-      label: "Daily Planner",
-      icon: "calendar",
-      navDomain: "My Role",
-      navGroup: "Planner",
-      navOrder: 1,
-    });
+    const tour = buildFeaturePageTour(
+      navItem({ key: "daily_planner", href: "/planner", label: "Daily Planner" }),
+    );
     expect(tour.id).toBe("feature-daily_planner-walkthrough");
     expect(tour.steps.length).toBeGreaterThan(6);
     expect(tour.steps.map((s) => s.target)).toContain('[data-tour="planner-calendar"]');
     expect(tour.welcomeSubtitle.toLowerCase()).toContain("calendar");
+  });
+
+  it.each([
+    ["equipment", "/equipment", "equipment-tour-list"],
+    ["ops_facilities", "/recreation/facilities", "facilities-tour-create"],
+    ["work_requests", "/dashboard/maintenance", "work-requests-tour-create"],
+    ["logs_inspections", "/dashboard/compliance", "inspections-tour-new-sheet"],
+    ["ops_regulations", "/recreation/regulations", "regulations-tour-search"],
+    ["training_overview", "/training/overview", "training-overview-kpis"],
+    ["training_learning", "/training/learning", "procedures-tour-create"],
+    ["training_compliance", "/training/compliance", "training-compliance-matrix"],
+    ["ops_me", "/recreation/me", "ops-me-tour-tabs"],
+  ] as const)("walks %s feature-by-feature with real control targets", (key, href, expectedTarget) => {
+    const tour = buildFeaturePageTour(navItem({ key, href, label: key }));
+    expect(tour.id).toBe(`feature-${key}-walkthrough`);
+    expect(tour.steps.length).toBeGreaterThanOrEqual(4);
+    expect(tour.steps.map((s) => s.target)).toContain(`[data-tour="${expectedTarget}"]`);
+    expect(tour.steps.every((s) => s.target !== '[data-tour="feature-workspace"]')).toBe(true);
+  });
+});
+
+describe("CUSTOM_FEATURE_TOUR_STEPS", () => {
+  it("covers high-traffic Vernon modules", () => {
+    expect(Object.keys(CUSTOM_FEATURE_TOUR_STEPS)).toEqual(
+      expect.arrayContaining([
+        "inventory",
+        "equipment",
+        "work_requests",
+        "logs_inspections",
+        "ops_regulations",
+        "ops_facilities",
+        "ops_me",
+        "training_overview",
+        "training_learning",
+        "training_compliance",
+      ]),
+    );
+  });
+});
+
+describe("resolveProductTour", () => {
+  it("uses the retargeted dashboard walkthrough (no overview modal id)", () => {
+    const tour = resolveProductTour("/overview", []);
+    expect(tour?.id).toBe("dashboard-overview-walkthrough");
+    expect(tour?.steps.map((s) => s.target)).toContain('[data-tour="ops-ask"]');
+    expect(tour?.steps.map((s) => s.title).join(" ")).not.toMatch(/Widget System/i);
   });
 });

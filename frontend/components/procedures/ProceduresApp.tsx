@@ -986,6 +986,7 @@ export function ProceduresApp() {
               <button
                 type="button"
                 className={PROCEDURES_HEADER_BTN}
+                data-tour="procedures-tour-create"
                 onClick={() => {
                   setIsCreating(true);
                   setSelectedId(null);
@@ -1002,7 +1003,7 @@ export function ProceduresApp() {
               </button>
               {canAssign ? (
                 <>
-                  <button type="button" className={PROCEDURES_HEADER_BTN_OUTLINE} onClick={() => void openAssign("complete")}>
+                  <button type="button" className={PROCEDURES_HEADER_BTN_OUTLINE} data-tour="procedures-tour-assign" onClick={() => void openAssign("complete")}>
                     Assign
                   </button>
                   <button type="button" className={PROCEDURES_HEADER_BTN_OUTLINE} onClick={() => void openAssign("revise")}>
@@ -1656,7 +1657,7 @@ export function ProceduresApp() {
 
         {!selected && !isCreating ? (
           <section className="ds-premium-panel flex min-h-0 flex-1 flex-col overflow-hidden">
-            <div className="shrink-0 space-y-2 border-b border-ds-border bg-ds-surface-secondary px-4 py-2.5">
+            <div className="shrink-0 space-y-2 border-b border-ds-border bg-ds-surface-secondary px-4 py-2.5" data-tour="procedures-tour-filter">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-ds-foreground">Library</h2>
               <div>
                 <label className="block text-[10px] font-semibold uppercase tracking-wide text-ds-muted" htmlFor={`${formId}-lib-kw`}>
@@ -1675,7 +1676,7 @@ export function ProceduresApp() {
               </div>
             </div>
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3">
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3" data-tour="procedures-tour-list">
                 {loading ? (
                   <p className="text-sm text-ds-muted">Loading…</p>
                 ) : rows.length === 0 ? (
