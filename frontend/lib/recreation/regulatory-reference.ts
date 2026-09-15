@@ -38,7 +38,38 @@ export type RegulatoryVerificationStatus = (typeof REGULATORY_VERIFICATION_STATU
 export const REGULATORY_DISCLAIMER =
   "Reference information only — not legal advice and not a municipal compliance determination. Pulse does not reproduce copyrighted code or standards. Confirm current wording on the official source before relying on it for a decision.";
 
+export const REGULATORY_LIBRARY_TAG = "regulatory-reference";
+export const REGULATORY_SEED_TAG = "vernon-starter";
+
 export type PulsePointer = { label: string; href: string };
+
+export function isSystemRegulationTag(tag: string): boolean {
+  const t = tag.trim();
+  return t === REGULATORY_LIBRARY_TAG || t === REGULATORY_SEED_TAG || t.startsWith("seed-key:");
+}
+
+export function userKeywordTags(tags: unknown): string[] {
+  if (!Array.isArray(tags)) return [];
+  return tags
+    .map(String)
+    .map((t) => t.trim())
+    .filter((t) => t && !isSystemRegulationTag(t) && !(REGULATORY_TOPIC_CATEGORIES as readonly string[]).includes(t));
+}
+
+export function serializePulsePointers(rows: PulsePointer[]): PulsePointer[] {
+  const out: PulsePointer[] = [];
+  const seen = new Set<string>();
+  for (const row of rows) {
+    const label = String(row.label || "").trim();
+    const href = String(row.href || "").trim();
+    if (!label || !href) continue;
+    const key = `${label}\0${href}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ label, href });
+  }
+  return out;
+}
 
 export function classificationTone(classification: string): string {
   switch (classification) {

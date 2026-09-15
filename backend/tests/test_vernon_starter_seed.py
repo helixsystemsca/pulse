@@ -29,3 +29,14 @@ def test_regulatory_reference_seed_catalog_is_tenant_safe() -> None:
     for card in REFERENCE_CARDS:
         assert "pulse_pointers" in card
         assert not card["summary"].lower().startswith("you are legally required")
+
+
+def test_vernon_starter_pack_does_not_auto_insert_guidance_cards() -> None:
+    """Josh enters Codes & Guidance as he learns — startup must not push catalog rows."""
+    import inspect
+
+    from app.core.vernon_starter_seed import seed_vernon_starter_pack
+
+    src = inspect.getsource(seed_vernon_starter_pack)
+    assert "seed_regulatory_reference_cards" not in src
+    assert "REFERENCE_CARDS" not in src

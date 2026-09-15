@@ -128,6 +128,10 @@ class OpsRegulation(OpsRecordBase):
     verification_status: Mapped[str] = mapped_column(String(64), nullable=False, default="Unverified")
     review_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     pulse_pointers: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
+    # Catalog slug (e.g. chief-engineer-plant-responsibility). Null for Josh-created cards.
+    source_key: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    # Once true, Vernon starter seed must not overwrite this row.
+    user_modified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
 
 class OpsFacility(OpsRecordBase):

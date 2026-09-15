@@ -187,16 +187,19 @@ async def unified_search(
             select(OpsRegulation)
             .where(
                 OpsRegulation.company_id == cid,
+                OpsRegulation.status != "archived",
                 or_(
                     OpsRegulation.title.ilike(like),
                     OpsRegulation.summary.ilike(like),
+                    OpsRegulation.applicability.ilike(like),
                     OpsRegulation.topic_category.ilike(like),
                     OpsRegulation.authority.ilike(like),
                     OpsRegulation.classification.ilike(like),
                     OpsRegulation.official_source_name.ilike(like),
+                    OpsRegulation.regulation_name.ilike(like),
                 ),
             )
-            .limit(5)
+            .limit(8)
         )
         for row in reg_q.scalars():
             results.regulations.append(

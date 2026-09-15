@@ -5,6 +5,8 @@ import {
   cardMatchesQuery,
   classificationTone,
   parsePulsePointers,
+  serializePulsePointers,
+  userKeywordTags,
 } from "@/lib/recreation/regulatory-reference";
 
 describe("regulatory reference helpers", () => {
@@ -34,5 +36,21 @@ describe("regulatory reference helpers", () => {
     expect(parsePulsePointers("nope")).toEqual([]);
     expect(classificationTone("Law/Regulation")).toContain("rose");
     expect(classificationTone("Internal note")).toContain("stone");
+  });
+
+  it("keeps user keywords separate from seed tags", () => {
+    expect(
+      userKeywordTags(["vernon-starter", "regulatory-reference", "seed-key:chief-engineer-plant-responsibility", "Chief Engineer", "ice plant"]),
+    ).toEqual(["ice plant"]);
+  });
+
+  it("serializes pulse pointers without empty rows", () => {
+    expect(
+      serializePulsePointers([
+        { label: "Emergency", href: "/recreation/emergency" },
+        { label: "  ", href: "/x" },
+        { label: "Emergency", href: "/recreation/emergency" },
+      ]),
+    ).toEqual([{ label: "Emergency", href: "/recreation/emergency" }]);
   });
 });
