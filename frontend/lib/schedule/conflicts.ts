@@ -1,3 +1,4 @@
+import { evaluateShiftAssignmentAlarms } from "@/lib/schedule/assignment-eligibility";
 import { workerEffectiveCertificationCodes } from "@/lib/standards/qualification-overrides";
 import { shiftHours } from "./calendar";
 import type { ScheduleSettings, Shift, TimeOffBlock, Worker, Zone } from "./types";
@@ -9,7 +10,7 @@ export type ShiftConflict = {
   code: string;
   label: string;
   /** Narrow category for compact indicators and tooltips. */
-  type?: "certification" | "staffing" | "coverage" | "time" | "other";
+  type?: "certification" | "training" | "staffing" | "coverage" | "time" | "other";
 };
 
 /**
@@ -22,6 +23,7 @@ export function getShiftConflicts(
   settings: ScheduleSettings,
   timeOffBlocks: TimeOffBlock[],
   zones?: Zone[],
+  definitions?: Array<{ id: string; code: string; cert_requirements?: unknown }>,
 ): ShiftConflict[] {
   const out: ShiftConflict[] = [];
   if (shift.eventType !== "work") {
@@ -58,43 +60,25 @@ export function getShiftConflicts(
   }
 
   const certs = shift.required_certifications?.filter(Boolean) ?? [];
-  const anyCert = shift.accepts_any_certification === true;
+  const assignedWorker = shift.workerId ? workers.find((x) => x.id === shift.workerId) : undefined;
 
-  if (certs.length > 0) {
-    if (!shift.workerId) {
-      out.push({
-        severity: "warning",
-        code: "cert_open",
-        label: "Certifications required but shift is open",
-        type: "certification",
-      });
-    } else {
-      const w = workers.find((x) => x.id === shift.workerId);
-      const wc = w ? workerEffectiveCertificationCodes(w) : [];
-      let certLabel: string | null = null;
-      if (anyCert) {
-        const ok = certs.some((c) => wc.includes(c));
-        if (!ok) {
-          certLabel =
-            certs.length === 1 ? `Missing ${certs[0]} certification` : `Requires ${certs.join(" or ")}`;
-        }
-      } else {
-        const missing = certs.filter((c) => !wc.includes(c));
-        if (missing.length === 1) {
-          certLabel = `Missing ${missing[0]} certification`;
-        } else if (missing.length > 1) {
-          certLabel = "Missing required certification";
-        }
-      }
-      if (certLabel) {
-        out.push({
-          severity: "critical",
-          code: "certification",
-          label: certLabel,
-          type: "certification",
-        });
-      }
-    }
+  const trainingAlarms = evaluateShiftAssignmentAlarms(shift, assignedWorker, definitions);
+  for (const alarm of trainingAlarms) {
+    out.push({
+      severity: alarm.severity,
+      code: alarm.code,
+      label: alarm.label,
+      type: "training",
+    });
+  }
+
+  if (certs.length > 0 && !shift.workerId) {
+    out.push({
+      severity: "warning",
+      code: "cert_open",
+      label: "Certifications required but shift is open",
+      type: "certification",
+    });
   }
 
   const shiftMentionsPoolOp = certs.includes("P1") || certs.includes("P2");

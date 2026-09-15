@@ -2,7 +2,12 @@ import { mondayOfCalendarWeek, parseLocalDate } from "@/lib/schedule/calendar";
 import { evaluateAvailabilityCell } from "@/lib/schedule/availability-layer";
 import type { EmployeeDailyAvailabilityEntry } from "@/lib/schedule/employee-availability-types";
 import { normalizeWeekdayKey, weekdayKeyFromIso } from "@/lib/schedule/recurring";
-import { workerEffectiveCertificationCodes } from "@/lib/standards/qualification-overrides";
+import {
+  buildWorkerCredentialState,
+  evaluateAssignmentTraining,
+  parseCertRequirements,
+  type AssignmentAlarm,
+} from "@/lib/schedule/assignment-eligibility";
 import type { ScheduleSettings, Shift, TimeOffBlock, Worker } from "@/lib/schedule/types";
 
 export type WorkerDayHighlightTone = "good" | "warning" | "invalid" | "neutral" | "pickup";
@@ -53,12 +58,13 @@ function proposedSlot(worker: Worker, date: string, settings: ScheduleSettings):
   return { start, end, requiredCerts };
 }
 
-function firstMissingCert(worker: Worker, required: string[]): string | null {
+function firstTrainingAlarm(worker: Worker, required: string[]): { missing?: string; expired?: string } | null {
   if (!required.length) return null;
-  const wc = new Set(workerEffectiveCertificationCodes(worker));
-  for (const c of required) {
-    if (!wc.has(c)) return c;
-  }
+  const alarms = evaluateAssignmentTraining(parseCertRequirements(required), buildWorkerCredentialState(worker));
+  const expired = alarms.find((a) => a.code === "training_expired");
+  if (expired) return { expired: expired.requirementCode };
+  const missing = alarms.find((a) => a.code === "training_missing");
+  if (missing) return { missing: missing.requirementCode };
   return null;
 }
 
@@ -113,15 +119,20 @@ export function buildWorkerDragHighlightMap(
     }
 
     const { requiredCerts } = proposedSlot(worker, date, settings);
-    const missing = firstMissingCert(worker, requiredCerts);
-    if (missing) {
-      map[date] = { tone: "invalid", tooltip: `Missing certification: ${missing}` };
-      continue;
-    }
-
+    const train = firstTrainingAlarm(worker, requiredCerts);
     const proposedH = shiftLengthHours(slot.start, slot.end);
     const weekH = weeklyWorkHoursForWorker(shifts, worker.id, date);
     const nearOt = weekH + proposedH > warnThreshold + 1e-6;
+
+    if (train) {
+      map[date] = {
+        tone: "warning",
+        tooltip: train.expired
+          ? `Expired certification: ${train.expired} — drop will alarm`
+          : `Missing certification: ${train.missing} — drop will alarm`,
+      };
+      continue;
+    }
 
     if (nearOt) {
       map[date] = { tone: "warning", tooltip: "Near weekly hour limit" };
@@ -146,7 +157,7 @@ export function evaluateWorkerDrop(
     employeeAvailabilityIndex?: Record<string, EmployeeDailyAvailabilityEntry[]>;
     useDailyAvailability?: boolean;
   },
-): { ok: boolean; tooltip?: string; needsManagerOverride?: boolean } {
+): { ok: boolean; tooltip?: string; needsManagerOverride?: boolean; trainingAlarms?: AssignmentAlarm[] } {
   const slot = placementWindow ?? proposedSlot(worker, targetDate, settings);
   const ev = evaluateAvailabilityCell(
     worker,
@@ -169,10 +180,10 @@ export function evaluateWorkerDrop(
   }
 
   const { requiredCerts } = proposedSlot(worker, targetDate, settings);
-  const missing = firstMissingCert(worker, requiredCerts);
-  if (missing) {
-    return { ok: false, tooltip: `Missing certification: ${missing}`, needsManagerOverride: false };
-  }
+  const trainingAlarms = evaluateAssignmentTraining(
+    parseCertRequirements(requiredCerts),
+    buildWorkerCredentialState(worker),
+  );
 
   const proposedH = shiftLengthHours(slot.start, slot.end);
   const weekH = weeklyWorkHoursForWorker(shifts, worker.id, targetDate);
@@ -182,8 +193,13 @@ export function evaluateWorkerDrop(
       ok: false,
       tooltip: `Would exceed ${maxH}h weekly limit`,
       needsManagerOverride: false,
+      trainingAlarms,
     };
   }
 
-  return { ok: true };
+  return {
+    ok: true,
+    tooltip: trainingAlarms[0]?.label,
+    trainingAlarms,
+  };
 }

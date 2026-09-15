@@ -39,6 +39,10 @@ type Props = {
   onPlacementBandChange: (band: SchedulePlacementBand) => void;
   onDragSessionStart: (session: ScheduleDragSession) => void;
   onDragSessionEnd: () => void;
+  /** Touch / tablet: tap a worker, then tap a day to assign. */
+  onPickWorker?: (workerId: string) => void;
+  pickedWorkerId?: string | null;
+  coarsePointer?: boolean;
 };
 
 export function ScheduleWorkerPanel({
@@ -53,6 +57,9 @@ export function ScheduleWorkerPanel({
   onPlacementBandChange,
   onDragSessionStart,
   onDragSessionEnd,
+  onPickWorker,
+  pickedWorkerId = null,
+  coarsePointer = false,
 }: Props) {
   const scheduleSettings = useScheduleStore((s) => s.settings);
   const placementRoleChoices = useMemo(
@@ -100,7 +107,9 @@ export function ScheduleWorkerPanel({
       <div className="border-b border-pulseShell-border px-2 py-2 sm:px-2.5">
         <h2 className="text-xs font-semibold text-ds-foreground">Workers</h2>
         <p className="mt-0.5 text-[10px] leading-snug text-ds-muted">
-          Choose the duty role and shift window, then drag someone onto the calendar to create their assignment.
+          {coarsePointer
+            ? "Tap a person, then tap a day on the calendar to assign them."
+            : "Choose the duty role and shift window, then drag someone onto the calendar to create their assignment."}
         </p>
         <div className="mt-2 space-y-1.5">
           <div>
@@ -172,7 +181,7 @@ export function ScheduleWorkerPanel({
                         <div
                           role="button"
                           tabIndex={0}
-                          draggable={rosterDragEnabled}
+                          draggable={rosterDragEnabled && !coarsePointer}
                           title={
                             !eligible && missingCerts.length
                               ? `Missing cert: ${missingCerts.join(", ")}`
@@ -182,9 +191,16 @@ export function ScheduleWorkerPanel({
                             rosterDragEnabled
                               ? "cursor-grab border border-transparent bg-[color-mix(in_srgb,var(--ds-success)_8%,var(--ds-surface-primary))] hover:border-ds-border active:cursor-grabbing dark:bg-[color-mix(in_srgb,var(--ds-success)_10%,var(--ds-surface-secondary))]"
                               : "cursor-default opacity-60"
-                          } ${!eligible ? "pointer-events-none opacity-40" : ""}`}
+                          } ${!eligible ? "border-amber-400/80 bg-amber-50/80 dark:bg-amber-950/30" : ""} ${
+                            pickedWorkerId === w.id ? "ring-2 ring-amber-500" : ""
+                          } ${coarsePointer && rosterDragEnabled ? "cursor-pointer" : ""}`}
+                          style={rosterDragEnabled && !coarsePointer ? { touchAction: "none" } : undefined}
+                          onClick={() => {
+                            if (!rosterDragEnabled || !coarsePointer || !onPickWorker) return;
+                            onPickWorker(w.id);
+                          }}
                           onDragStart={(e) => {
-                            if (!rosterDragEnabled) {
+                            if (!rosterDragEnabled || coarsePointer) {
                               e.preventDefault();
                               return;
                             }
@@ -197,6 +213,7 @@ export function ScheduleWorkerPanel({
                             if (!rosterDragEnabled) return;
                             if (e.key === "Enter" || e.key === " ") {
                               e.preventDefault();
+                              if (coarsePointer && onPickWorker) onPickWorker(w.id);
                             }
                           }}
                         >

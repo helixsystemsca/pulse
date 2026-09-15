@@ -59,6 +59,9 @@ function scheduleHealthDetail(alerts: ScheduleAlerts): string | null {
   if (alerts.coverageWarnings > 0) {
     parts.push(`${alerts.coverageWarnings} coverage warning${alerts.coverageWarnings === 1 ? "" : "s"}`);
   }
+  if (alerts.trainingAlarms > 0) {
+    parts.push(`${alerts.trainingAlarms} training alarm${alerts.trainingAlarms === 1 ? "" : "s"}`);
+  }
   return parts.length ? parts.join(" · ") : null;
 }
 
@@ -242,10 +245,10 @@ export function ScheduleOperationalStatusStrip({
       />
       <StatCell
         icon={GraduationCap}
-        iconClassName="text-violet-600 dark:text-violet-400"
+        iconClassName={trainingConflicts > 0 ? "text-amber-600 dark:text-amber-400" : "text-violet-600 dark:text-violet-400"}
         label="Training"
-        value={trainingConflicts > 0 ? `${trainingConflicts} conflict${trainingConflicts === 1 ? "" : "s"}` : "No conflicts"}
-        sub={trainingConflicts > 0 ? "Resolve before publish" : "All clear"}
+        value={trainingConflicts > 0 ? `${trainingConflicts} alarm${trainingConflicts === 1 ? "" : "s"}` : "No alarms"}
+        sub={trainingConflicts > 0 ? "Missing or expired training on assignments" : "All clear"}
       />
       <StatCell
         icon={RefreshCw}

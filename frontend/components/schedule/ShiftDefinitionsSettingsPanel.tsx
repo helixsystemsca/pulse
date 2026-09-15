@@ -1,37 +1,96 @@
 "use client";
 
 import { Pencil, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { apiFetch, isApiMode } from "@/lib/api";
+import {
+  parseCertRequirements,
+  serializeCertRequirements,
+  type CertRequirement,
+} from "@/lib/schedule/assignment-eligibility";
+import { CERT_CODE_LABELS, certificationLabel } from "@/lib/schedule/certifications";
 import {
   hhmmFromMinutes,
   minutesFromHhmm,
   type ScheduleShiftDefinitionRow,
 } from "@/lib/schedule/palette-config";
+import { useScheduleStore } from "@/lib/schedule/schedule-store";
 
 const FIELD =
   "w-full rounded-md border border-pulseShell-border bg-pulseShell-surface px-2.5 py-1.5 text-sm text-ds-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ds-primary/40";
+
+const BUILTIN_CODES = Object.keys(CERT_CODE_LABELS);
+
+const EMPTY_DRAFT = {
+  id: "" as string | "",
+  code: "",
+  name: "",
+  start: "08:00",
+  end: "16:00",
+  shift_type: "day",
+  color: "",
+  requiredCodes: [] as string[],
+  extraCodes: "",
+  facilityId: "" as string,
+};
 
 type Props = {
   shiftDefinitions: ScheduleShiftDefinitionRow[];
   onShiftDefinitionsChange: (rows: ScheduleShiftDefinitionRow[]) => void;
 };
 
+function draftFromRow(r: ScheduleShiftDefinitionRow) {
+  const reqs = parseCertRequirements(r.cert_requirements);
+  const builtin = new Set(BUILTIN_CODES);
+  const requiredCodes = [...new Set(reqs.map((x) => x.code).filter((c) => builtin.has(c)))];
+  const extraCodes = reqs
+    .map((x) => x.code)
+    .filter((c) => !builtin.has(c))
+    .join(", ");
+  const facilityId = reqs.find((x) => x.facilityId)?.facilityId ?? "";
+  return {
+    id: r.id,
+    code: r.code,
+    name: r.name ?? "",
+    start: hhmmFromMinutes(r.start_min),
+    end: hhmmFromMinutes(r.end_min),
+    shift_type: r.shift_type,
+    color: r.color ?? "",
+    requiredCodes,
+    extraCodes,
+    facilityId,
+  };
+}
+
+function payloadRequirements(draft: typeof EMPTY_DRAFT): Array<string | { code: string; facility_id: string }> {
+  const extra = draft.extraCodes
+    .split(/[,;\s]+/)
+    .map((c) => c.trim().toUpperCase())
+    .filter(Boolean);
+  const codes = [...new Set([...draft.requiredCodes, ...extra])];
+  const reqs: CertRequirement[] = codes.map((code) => ({
+    code,
+    facilityId: draft.facilityId || null,
+  }));
+  return serializeCertRequirements(reqs);
+}
+
 export function ShiftDefinitionsSettingsPanel({ shiftDefinitions, onShiftDefinitionsChange }: Props) {
   const api = isApiMode();
+  const zones = useScheduleStore((s) => s.zones);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [shiftDraft, setShiftDraft] = useState({
-    id: "" as string | "",
-    code: "",
-    name: "",
-    start: "08:00",
-    end: "16:00",
-    shift_type: "day",
-    color: "",
-  });
+  const [shiftDraft, setShiftDraft] = useState(EMPTY_DRAFT);
 
   const editing = Boolean(shiftDraft.id);
+
+  const requiredSummary = useMemo(() => {
+    return (r: ScheduleShiftDefinitionRow) => {
+      const reqs = parseCertRequirements(r.cert_requirements);
+      if (!reqs.length) return "No required training";
+      return reqs.map((x) => certificationLabel(x.code)).join(", ");
+    };
+  }, []);
 
   async function saveShift() {
     if (!api) return;
@@ -45,7 +104,7 @@ export function ShiftDefinitionsSettingsPanel({ shiftDefinitions, onShiftDefinit
         end_min: minutesFromHhmm(shiftDraft.end),
         shift_type: shiftDraft.shift_type.trim() || "day",
         color: shiftDraft.color.trim() || null,
-        cert_requirements: [],
+        cert_requirements: payloadRequirements(shiftDraft),
       };
       if (shiftDraft.id) {
         await apiFetch<ScheduleShiftDefinitionRow>(`/api/v1/pulse/schedule/shift-definitions/${shiftDraft.id}`, {
@@ -60,7 +119,7 @@ export function ShiftDefinitionsSettingsPanel({ shiftDefinitions, onShiftDefinit
       }
       const rows = await apiFetch<ScheduleShiftDefinitionRow[]>("/api/v1/pulse/schedule/shift-definitions");
       onShiftDefinitionsChange(rows);
-      setShiftDraft({ id: "", code: "", name: "", start: "08:00", end: "16:00", shift_type: "day", color: "" });
+      setShiftDraft(EMPTY_DRAFT);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Could not save shift definition.");
     } finally {
@@ -77,9 +136,7 @@ export function ShiftDefinitionsSettingsPanel({ shiftDefinitions, onShiftDefinit
       await apiFetch<void>(`/api/v1/pulse/schedule/shift-definitions/${id}`, { method: "DELETE" });
       const rows = await apiFetch<ScheduleShiftDefinitionRow[]>("/api/v1/pulse/schedule/shift-definitions");
       onShiftDefinitionsChange(rows);
-      if (shiftDraft.id === id) {
-        setShiftDraft({ id: "", code: "", name: "", start: "08:00", end: "16:00", shift_type: "day", color: "" });
-      }
+      if (shiftDraft.id === id) setShiftDraft(EMPTY_DRAFT);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Could not delete shift definition.");
     } finally {
@@ -87,11 +144,20 @@ export function ShiftDefinitionsSettingsPanel({ shiftDefinitions, onShiftDefinit
     }
   }
 
+  function toggleCode(code: string) {
+    setShiftDraft((d) => ({
+      ...d,
+      requiredCodes: d.requiredCodes.includes(code)
+        ? d.requiredCodes.filter((c) => c !== code)
+        : [...d.requiredCodes, code],
+    }));
+  }
+
   return (
     <div className="space-y-4">
       <p className="text-sm text-gray-600 dark:text-gray-400">
-        Shift codes appear on the calendar and assignment palette (e.g. D1, PM2). Configure standard start/end windows
-        and bands here.
+        Shift codes appear on the calendar and assignment palette (e.g. D1, PM2). Tick the trainings this shift type
+        requires — Pulse alarms if you assign someone who is missing or expired. No demo staff is created for you.
       </p>
 
       {err ? (
@@ -167,6 +233,49 @@ export function ShiftDefinitionsSettingsPanel({ shiftDefinitions, onShiftDefinit
                   placeholder="#3b82f6"
                 />
               </div>
+              <div className="col-span-2 sm:col-span-3">
+                <p className={LABEL}>Required training</p>
+                <div className="mt-1 flex flex-wrap gap-2">
+                  {BUILTIN_CODES.map((code) => (
+                    <label
+                      key={code}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-pulseShell-border bg-pulseShell-surface px-2 py-1 text-xs text-ds-foreground"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={shiftDraft.requiredCodes.includes(code)}
+                        onChange={() => toggleCode(code)}
+                      />
+                      <span className="font-mono font-bold">{code}</span>
+                      <span className="text-ds-muted">{CERT_CODE_LABELS[code]}</span>
+                    </label>
+                  ))}
+                </div>
+                <label className={`${LABEL} mt-2 block`}>Other codes (comma-separated)</label>
+                <input
+                  className={FIELD}
+                  value={shiftDraft.extraCodes}
+                  onChange={(e) => setShiftDraft((d) => ({ ...d, extraCodes: e.target.value }))}
+                  placeholder="WHMIS, LIFEGUARD"
+                />
+                {zones.length > 0 ? (
+                  <div className="mt-2">
+                    <label className={LABEL}>Only required at facility (optional)</label>
+                    <select
+                      className={FIELD}
+                      value={shiftDraft.facilityId}
+                      onChange={(e) => setShiftDraft((d) => ({ ...d, facilityId: e.target.value }))}
+                    >
+                      <option value="">All facilities using this shift type</option>
+                      {zones.map((z) => (
+                        <option key={z.id} value={z.id}>
+                          {z.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : null}
+              </div>
             </div>
             <div className="mt-2 flex flex-wrap gap-2">
               <button
@@ -181,9 +290,7 @@ export function ShiftDefinitionsSettingsPanel({ shiftDefinitions, onShiftDefinit
                 <button
                   type="button"
                   className="rounded-md border border-pulseShell-border px-3 py-1.5 text-sm font-semibold"
-                  onClick={() =>
-                    setShiftDraft({ id: "", code: "", name: "", start: "08:00", end: "16:00", shift_type: "day", color: "" })
-                  }
+                  onClick={() => setShiftDraft(EMPTY_DRAFT)}
                 >
                   Cancel
                 </button>
@@ -203,23 +310,14 @@ export function ShiftDefinitionsSettingsPanel({ shiftDefinitions, onShiftDefinit
                   <span className="ml-2 text-xs text-ds-muted">
                     {hhmmFromMinutes(r.start_min)}–{hhmmFromMinutes(r.end_min)} · {r.shift_type}
                   </span>
+                  <p className="mt-0.5 text-xs text-ds-muted">{requiredSummary(r)}</p>
                 </div>
                 <div className="flex gap-1">
                   <button
                     type="button"
                     className="rounded border border-pulseShell-border p-1"
                     aria-label={`Edit ${r.code}`}
-                    onClick={() =>
-                      setShiftDraft({
-                        id: r.id,
-                        code: r.code,
-                        name: r.name ?? "",
-                        start: hhmmFromMinutes(r.start_min),
-                        end: hhmmFromMinutes(r.end_min),
-                        shift_type: r.shift_type,
-                        color: r.color ?? "",
-                      })
-                    }
+                    onClick={() => setShiftDraft(draftFromRow(r))}
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </button>
@@ -236,7 +334,10 @@ export function ShiftDefinitionsSettingsPanel({ shiftDefinitions, onShiftDefinit
               </li>
             ))}
             {shiftDefinitions.length === 0 ? (
-              <li className="px-3 py-4 text-sm text-ds-muted">No shift definitions yet — defaults show in the palette.</li>
+              <li className="px-3 py-4 text-sm text-ds-muted">
+                No shift types yet. Create one above and tick the trainings it requires. Then drag a worker onto the
+                calendar — Pulse will alarm if they are not qualified.
+              </li>
             ) : null}
           </ul>
         </>

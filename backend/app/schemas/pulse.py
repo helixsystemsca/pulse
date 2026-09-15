@@ -135,6 +135,19 @@ class WorkerSkillMiniOut(BaseModel):
     level: int = 1
 
 
+class WorkerCertificationRecordOut(BaseModel):
+    name: str
+    expiry_date: Optional[datetime] = None
+    status: str = "no_expiry"
+
+
+class StaffingAlarmOut(BaseModel):
+    code: str
+    severity: str
+    label: str
+    kind: str = "training"
+
+
 class WorkerOut(BaseModel):
     id: str
     email: str
@@ -149,6 +162,8 @@ class WorkerOut(BaseModel):
     employment_type: Optional[str] = None
     recurring_shifts: list[dict[str, Any]] = []
     department_slug: Optional[str] = None
+    certification_records: list[WorkerCertificationRecordOut] = Field(default_factory=list)
+    completed_training: list[str] = Field(default_factory=list)
 
 
 class WorkerProfilePatch(BaseModel):
@@ -170,6 +185,7 @@ class ShiftCreate(BaseModel):
     )
     shift_type: str = "shift"
     shift_definition_id: Optional[str] = None
+    shift_code: Optional[str] = None
     requires_supervisor: bool = False
     requires_ticketed: bool = False
     department_slug: Optional[str] = None
@@ -186,6 +202,7 @@ class ShiftUpdate(BaseModel):
     )
     shift_type: Optional[str] = None
     shift_definition_id: Optional[str] = None
+    shift_code: Optional[str] = None
     requires_supervisor: Optional[bool] = None
     requires_ticketed: Optional[bool] = None
     locked: Optional[bool] = None
@@ -219,6 +236,8 @@ class ShiftOut(BaseModel):
     generated_by: Optional[str] = None
     confidence_score: Optional[float] = None
     recommendation_reason: Optional[str] = None
+    required_certifications: list[str] = Field(default_factory=list)
+    staffing_alarms: list[StaffingAlarmOut] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}
 

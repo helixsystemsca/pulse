@@ -67,6 +67,15 @@ export interface Worker {
   availability?: Partial<Record<string, DayAvailability>>;
   /** Optional certs for conflict hints (built-ins include RO, P1, P2, FA; free-text codes ok). */
   certifications?: string[];
+  /** Structured HR certifications with expiry (from `/api/v1/pulse/workers`). */
+  certificationRecords?: Array<{
+    name: string;
+    code?: string;
+    expiryDate?: string | null;
+    status?: string;
+  }>;
+  /** Completed training names from the worker record. */
+  completedTraining?: string[];
   /** Templates used to auto-fill workforce shifts for visible calendar dates. */
   recurringShifts?: RecurringShiftRule[];
 }
@@ -146,6 +155,8 @@ export interface Shift {
   required_certifications?: string[];
   /** When true, assigned worker needs at least one cert from `required_certifications`; otherwise all are required. */
   accepts_any_certification?: boolean;
+  /** Server-computed training alarms (missing / expired). Client also recomputes. */
+  staffingAlarms?: Array<{ code: string; severity: string; label: string; kind?: string }>;
   requires_supervisor?: boolean;
   minimum_workers?: number;
   uiFlags?: ShiftUiFlags;
@@ -228,6 +239,8 @@ export interface ScheduleAlerts {
   coverageCritical: number;
   /** Coverage rule violations (warning). */
   coverageWarnings: number;
+  /** Assigned workers missing or expired required training/certs. */
+  trainingAlarms: number;
 }
 
 export interface WorkforceSummary {

@@ -12,10 +12,12 @@ import {
   scheduleShiftHoverSummary,
 } from "@/lib/schedule/certifications";
 import { getShiftConflicts, worstConflictSeverity } from "@/lib/schedule/conflicts";
+import { evaluateShiftAssignmentAlarms } from "@/lib/schedule/assignment-eligibility";
+import { AssignmentTrainingAlarmBadge } from "./AssignmentTrainingAlarmBadge";
 import { workerHighlightOverlayClass } from "@/lib/schedule/drag-highlight-classes";
 import {
   attachShiftDragPreview,
-  readWorkerDragPayload,
+  resolveWorkerDropPayload,
   scheduleDayWorkerDropZoneAccepts,
   setShiftDragData,
 } from "@/lib/schedule/drag";
@@ -76,6 +78,8 @@ type Props = {
   workerDropPlacementWindow?: { start: string; end: string } | null;
   onWorkerDropRejected?: (message: string) => void;
   onWorkerDrop?: (workerId: string) => void;
+  /** Touch / tablet: worker already picked from the roster. */
+  pickedWorkerId?: string | null;
   onShiftDragSessionStart: (payload: ScheduleDragSession) => void;
   onShiftDragSessionEnd: () => void;
   /** Projects that cover this calendar day (coloured top strip, same tints as month view). */
@@ -86,6 +90,7 @@ type Props = {
   };
   /** Area assignments require a published schedule. */
   dailyAssignmentsEnabled?: boolean;
+  shiftDefinitions?: Array<{ id: string; code: string; cert_requirements?: unknown }>;
 };
 
 /**
@@ -113,11 +118,13 @@ export function ScheduleDayView({
   workerDropPlacementWindow = null,
   onWorkerDropRejected,
   onWorkerDrop,
+  pickedWorkerId = null,
   onShiftDragSessionStart,
   onShiftDragSessionEnd,
   dayProjectBar = null,
   dropAvailabilityOpts,
   dailyAssignmentsEnabled = true,
+  shiftDefinitions,
 }: Props) {
   const [shake, setShake] = useState(false);
   const shakeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -175,7 +182,7 @@ export function ScheduleDayView({
     let shiftsWithCritical = 0;
     const labels = new Set<string>();
     for (const s of sorted) {
-      const c = getShiftConflicts(s, dayShiftsAll, workers, settings, timeOffBlocks, zones);
+      const c = getShiftConflicts(s, dayShiftsAll, workers, settings, timeOffBlocks, zones, shiftDefinitions);
       if (!c.length) continue;
       withIssues += 1;
       if (c.some((x) => x.severity === "critical")) shiftsWithCritical += 1;
@@ -187,7 +194,7 @@ export function ScheduleDayView({
       labels: [...labels].slice(0, 6),
       totalLabels: labels.size,
     };
-  }, [sorted, dayShiftsAll, workers, settings, timeOffBlocks, zones]);
+  }, [sorted, dayShiftsAll, workers, settings, timeOffBlocks, zones, shiftDefinitions]);
 
   useEffect(() => {
     if (!dailyAssignmentsEnabled) {
@@ -298,8 +305,13 @@ export function ScheduleDayView({
 
       <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_280px]">
         <div
-          className={`relative min-h-[16rem] border-b border-pulseShell-border lg:border-b-0 lg:border-r ${shake ? "schedule-cell-shake" : ""}`}
+          className={`relative min-h-[16rem] border-b border-pulseShell-border lg:border-b-0 lg:border-r ${shake ? "schedule-cell-shake" : ""} ${pickedWorkerId && !calendarDropsDisabled ? "cursor-pointer ring-2 ring-inset ring-amber-500/50" : ""}`}
           title={dragSession?.kind === "worker" && workerDayHighlight?.tooltip ? workerDayHighlight.tooltip : undefined}
+          onClick={(e) => {
+            if (!pickedWorkerId || !onWorkerDrop || calendarDropsDisabled || scheduleDragLock) return;
+            if ((e.target as HTMLElement).closest("[data-schedule-interactive]")) return;
+            onWorkerDrop(pickedWorkerId);
+          }}
           onDragOver={(e) => {
             if (calendarDropsDisabled) return;
             if (!scheduleDayWorkerDropZoneAccepts(e, dragSession)) return;
@@ -309,7 +321,7 @@ export function ScheduleDayView({
           onDrop={(e) => {
             e.preventDefault();
             if (calendarDropsDisabled || !onWorkerDrop) return;
-            const wp = readWorkerDragPayload(e.dataTransfer);
+            const wp = resolveWorkerDropPayload(e.dataTransfer, dragSession);
             if (!wp) return;
             const w = workers.find((x) => x.id === wp.workerId);
             if (w) {
@@ -355,13 +367,13 @@ export function ScheduleDayView({
                   s.eventType === "vacation" ? "Vacation" : s.eventType === "sick" ? "Sick leave" : rawName;
                 const zone = zoneMap.get(s.zoneId) ?? "—";
                 const roleLb = roleMap.get(s.role) ?? s.role;
-                const conflicts = getShiftConflicts(s, dayShiftsAll, workers, settings, timeOffBlocks, zones);
+                const conflicts = getShiftConflicts(s, dayShiftsAll, workers, settings, timeOffBlocks, zones, shiftDefinitions);
                 const sev = worstConflictSeverity(conflicts);
                 const hoverTip = scheduleShiftHoverSummary(s, w, conflicts);
                 const shiftCode = shiftDisplayCode(s, codeMap);
                 const shiftCodeBadgeTone = shiftCodeToneClassForRowBadge(shiftCode);
-                const certRows = conflicts.filter((c) => c.type === "certification");
-                const otherRows = conflicts.filter((c) => c.type !== "certification");
+                const certRows = conflicts.filter((c) => c.type === "certification" || c.type === "training");
+                const otherRows = conflicts.filter((c) => c.type !== "certification" && c.type !== "training");
                 const req = s.required_certifications?.filter(Boolean) ?? [];
                 const acceptAny = s.accepts_any_certification === true;
                 const cls = st
@@ -391,6 +403,7 @@ export function ScheduleDayView({
                     key={s.id}
                     role="button"
                     tabIndex={0}
+                    data-schedule-interactive
                     draggable={canDrag}
                     title={sev ? hoverTip : undefined}
                     className={`w-full rounded-md px-3 py-3 text-left text-sm shadow-sm transition-opacity hover:brightness-[0.98] ${
@@ -435,6 +448,10 @@ export function ScheduleDayView({
                             </span>
                           ) : null}
                           <span className="truncate">{name}</span>
+                          <AssignmentTrainingAlarmBadge
+                            alarms={evaluateShiftAssignmentAlarms(s, w ?? null, shiftDefinitions)}
+                            size="day"
+                          />
                         </p>
                         <p className="mt-0.5 text-xs opacity-90">
                           {formatTimeRange(s.startTime, s.endTime, settings.timeFormat)}

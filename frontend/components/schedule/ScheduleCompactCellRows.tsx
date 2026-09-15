@@ -4,10 +4,13 @@ import { flushSync } from "react-dom";
 import { workerDayAttendanceKey, useWorkerDayAttendanceStore } from "@/lib/dashboard/worker-day-attendance-store";
 import { scheduleShiftHoverSummary } from "@/lib/schedule/certifications";
 import { getShiftConflicts } from "@/lib/schedule/conflicts";
+import { evaluateShiftAssignmentAlarms } from "@/lib/schedule/assignment-eligibility";
+import { AssignmentTrainingAlarmBadge } from "./AssignmentTrainingAlarmBadge";
 import type { CompactDayShiftRow } from "@/lib/schedule/compact-day-shifts";
 import {
   attachShiftDragPreview,
   readPaletteDragPayload,
+  resolvePaletteDropPayload,
   setShiftDragData,
   type PaletteDragPayload,
 } from "@/lib/schedule/drag";
@@ -62,6 +65,7 @@ type Props = {
    * `full` — second line with role · facility (or project line).
    */
   chipDetailLevel?: "summary" | "full";
+  shiftDefinitions?: Array<{ id: string; code: string; cert_requirements?: unknown }>;
 };
 
 function aggregateConflictHoverTip(
@@ -72,11 +76,12 @@ function aggregateConflictHoverTip(
   timeOffBlocks: TimeOffBlock[],
   zones: Zone[],
   workerMap: Map<string, Worker>,
+  shiftDefinitions?: Array<{ id: string; code: string; cert_requirements?: unknown }>,
 ): string {
   const tips: string[] = [];
   for (const s of row.shifts) {
     const w = s.workerId ? workerMap.get(s.workerId) : null;
-    const c = getShiftConflicts(s, fullDay, workers, settings, timeOffBlocks, zones);
+    const c = getShiftConflicts(s, fullDay, workers, settings, timeOffBlocks, zones, shiftDefinitions);
     tips.push(scheduleShiftHoverSummary(s, w ?? null, c));
   }
   return tips.filter(Boolean).join("\n---\n");
@@ -103,6 +108,7 @@ export function ScheduleCompactCellRows({
   onOpenWorkerAttendance,
   scrollClassName = "max-h-[11rem] flex-1 flex-col gap-1 overflow-y-auto px-1 pb-2 pt-1",
   chipDetailLevel = "full",
+  shiftDefinitions,
 }: Props) {
   const attendanceMarks = useWorkerDayAttendanceStore((s) => s.marks);
   const typeMap = new Map(shiftTypes.map((t) => [t.key, t]));
@@ -138,6 +144,7 @@ export function ScheduleCompactCellRows({
           timeOffBlocks,
           zones,
           workerMap,
+          shiftDefinitions,
         );
         const chipLocked =
           scheduleDragLock &&
@@ -156,6 +163,11 @@ export function ScheduleCompactCellRows({
             row.shifts.flatMap((x) => (x.required_certifications?.filter(Boolean) as string[] | undefined) ?? []),
           ),
         ] as string[];
+
+        const trainingAlarms = row.shifts.flatMap((x) => {
+          const w = x.workerId ? workerMap.get(x.workerId) : null;
+          return evaluateShiftAssignmentAlarms(x, w ?? null, shiftDefinitions);
+        });
 
         const attendanceMark =
           s.workerId && s.eventType === "work"
@@ -200,7 +212,7 @@ export function ScheduleCompactCellRows({
               summary ? "px-1 py-px text-[10px] leading-tight" : "px-1.5 py-1.5 text-[11px] leading-snug"
             } ${anyAuto ? "opacity-[0.92]" : ""} ${canDrag ? "cursor-grab active:cursor-grabbing" : "cursor-default"} ${chipLocked ? "pointer-events-none" : ""} ${cardCls} ${openCls} ${
               paletteWorkerId && onPaletteDrop && dragSession?.kind === "palette" ? "ring-1 ring-inset ring-sky-400/50" : ""
-            }`}
+            } ${trainingAlarms.length ? "ring-2 ring-inset ring-amber-500" : ""}`}
             onDragOver={(e) => {
               if (!paletteWorkerId || !onPaletteDrop || paletteInteractionsBlocked) return;
               if (dragSession?.kind !== "palette") return;
@@ -210,20 +222,11 @@ export function ScheduleCompactCellRows({
             }}
             onDrop={(e) => {
               if (!paletteWorkerId || !onPaletteDrop || paletteInteractionsBlocked) return;
-              const pl = readPaletteDragPayload(e.dataTransfer);
+              const pl = resolvePaletteDropPayload(e.dataTransfer, dragSession);
               if (pl) {
                 e.preventDefault();
                 e.stopPropagation();
                 onPaletteDrop(paletteWorkerId, cellDate, pl);
-                return;
-              }
-              if (dragSession?.kind === "palette") {
-                e.preventDefault();
-                e.stopPropagation();
-                onPaletteDrop(paletteWorkerId, cellDate, {
-                  paletteKind: dragSession.paletteKind,
-                  code: dragSession.code,
-                });
               }
             }}
             onClick={(e) => {
@@ -291,6 +294,7 @@ export function ScheduleCompactCellRows({
                       </span>
                     ) : null}
                     <span className="flex min-w-0 shrink-0 items-center gap-0.5">
+                      <AssignmentTrainingAlarmBadge alarms={trainingAlarms} size="compact" />
                       {certUnion.length ? (
                         <ScheduleShiftCertChips shift={s} size="compact" requiredOverride={certUnion} />
                       ) : null}

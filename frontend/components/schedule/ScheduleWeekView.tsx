@@ -9,6 +9,8 @@ import { workerHighlightOverlayClass } from "@/lib/schedule/drag-highlight-class
 import {
   readShiftDragPayload,
   readWorkerDragPayload,
+  resolveShiftDropPayload,
+  resolveWorkerDropPayload,
   scheduleCalendarDragOverAccepts,
   type PaletteDragPayload,
 } from "@/lib/schedule/drag";
@@ -69,6 +71,7 @@ type Props = {
     employeeAvailabilityIndex?: Record<string, EmployeeDailyAvailabilityEntry[]>;
     useDailyAvailability?: boolean;
   };
+  shiftDefinitions?: Array<{ id: string; code: string; cert_requirements?: unknown }>;
 };
 
 export function ScheduleWeekView({
@@ -102,6 +105,7 @@ export function ScheduleWeekView({
   onPaletteDrop,
   onRemoveOperationalBadge,
   dropAvailabilityOpts,
+  shiftDefinitions,
 }: Props) {
   const [dragOverDate, setDragOverDate] = useState<string | null>(null);
   const [shakeDate, setShakeDate] = useState<string | null>(null);
@@ -264,7 +268,7 @@ export function ScheduleWeekView({
                 e.preventDefault();
                 setDragOverDate(null);
                 if (calendarDropsDisabled) return;
-                const wp = readWorkerDragPayload(e.dataTransfer);
+                const wp = resolveWorkerDropPayload(e.dataTransfer, dragSession);
                 if (wp) {
                   const w = workers.find((x) => x.id === wp.workerId);
                   if (w) {
@@ -291,7 +295,7 @@ export function ScheduleWeekView({
                   return;
                 }
                 if (!shiftDragEnabled) return;
-                const p = readShiftDragPayload(e.dataTransfer);
+                const p = resolveShiftDropPayload(e.dataTransfer, dragSession);
                 if (p) onShiftMove(p.shiftId, date, p.duplicate ? "duplicate" : "move");
               }}
             >
@@ -347,6 +351,7 @@ export function ScheduleWeekView({
                 onOpenWorkerAttendance={onOpenWorkerAttendance}
                 chipDetailLevel="summary"
                 scrollClassName="flex min-h-0 flex-1 flex-col gap-0.5 px-1 pb-1.5 pt-0.5"
+                shiftDefinitions={shiftDefinitions}
               />
             </div>
           );
