@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { MessageSquare } from "lucide-react";
 import { PageBody } from "@/components/ui/PageBody";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { askCopilot, listCopilotPrompts, type OpsCopilotAnswer, type OpsCopilotPrompt } from "@/lib/recreation/copilotService";
+import { askCopilot, askCopilotQuery, listCopilotPrompts, type OpsCopilotAnswer, type OpsCopilotPrompt } from "@/lib/recreation/copilotService";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { resolveAuthorizedNavItems } from "@/lib/navigation/build-navigation-tree";
@@ -22,8 +22,8 @@ function OpsCopilotInner() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [asking, setAsking] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [typed, setTyped] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const [shortcut, setShortcut] = useState("Ctrl+K");
 
   useEffect(() => {
@@ -50,6 +50,21 @@ function OpsCopilotInner() {
     }
   }, []);
 
+  const onAskQuery = useCallback(async (raw: string) => {
+    const q = raw.trim();
+    if (!q) return;
+    setAsking(true);
+    setError(null);
+    setActiveId(null);
+    try {
+      setAnswer(await askCopilotQuery(q));
+    } catch (e) {
+      setError(parseClientApiError(e).message);
+    } finally {
+      setAsking(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!promptParam || loading) return;
     void onAsk(promptParam);
@@ -69,14 +84,18 @@ function OpsCopilotInner() {
   function submitTyped(e: FormEvent) {
     e.preventDefault();
     const id = matchCopilotPromptId(typed) ?? dest?.copilotPromptId;
-    if (id) void onAsk(id);
+    if (id) {
+      void onAsk(id);
+      return;
+    }
+    if (typed.trim()) void onAskQuery(typed);
   }
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Ops Copilot"
-        description="Starter questions for Vernon recreation operations. Answers cite Pulse records (assets, PMs, certifications, contractors, internal procedures) — not an LLM and not a regulatory citation. Press Search / Ask in the header (or the keyboard shortcut) from any page to find where to go."
+        description="Ask or pick a starter. Answers cite Pulse records and Codes & Guidance cards — not an LLM and not a legal determination. Press Search / Ask in the header (or the keyboard shortcut) from any page to find where to go."
         icon={MessageSquare}
       />
       <PageBody>
@@ -94,17 +113,25 @@ function OpsCopilotInner() {
             type="search"
             value={typed}
             onChange={(e) => setTyped(e.target.value)}
-            placeholder={`Ask in plain language, or press ${shortcut} anywhere`}
+            placeholder={`Ask: chief engineer, pool code, building code, or press ${shortcut} anywhere`}
             className="min-w-0 flex-1 rounded-lg border border-ds-border bg-ds-card px-3 py-2 text-sm text-ds-foreground"
+            aria-label="Ask or search"
           />
           <button
             type="submit"
             disabled={asking || !typed.trim()}
             className="rounded-lg bg-ds-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
           >
-            Ask records
+            Ask
           </button>
         </form>
+        <p className="mb-4 text-xs text-ds-muted">
+          Regulatory questions open{" "}
+          <Link href="/recreation/regulations" className="text-ds-primary hover:underline">
+            Codes & Guidance
+          </Link>
+          . Internal SOPs stay labelled as internal.
+        </p>
 
         {dest?.matched ? (
           <div className="mb-4 rounded-xl border border-ds-border bg-ds-card p-3">
@@ -170,7 +197,8 @@ function OpsCopilotInner() {
           </article>
         ) : (
           <p className="mt-6 text-sm text-ds-muted">
-            Choose a starter question or type your own. Navigation help is also in the header Ask / Search control.
+            Ask a question or choose a starter. Navigation help is also in the header Ask / Search control. Results stay
+            in-app and update as you fill in records.
           </p>
         )}
       </PageBody>

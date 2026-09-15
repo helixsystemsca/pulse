@@ -144,6 +144,13 @@ const FEATURE_PAGE_TOUR_COPY: Partial<Record<string, FeaturePageTourCopy>> = {
     welcomeSubtitle: "Organization settings, integrations, and preferences.",
     workspaceDescription: "Configure tenant-wide options—the sections on this page group related admin controls.",
   },
+  ops_regulations: {
+    welcomeSubtitle: "Codes & Guidance is a reference library—cards point to official public pages, not legal advice.",
+    headerDescription: "Search and filter by topic. Each card shows classification (law vs guidance vs internal) and an official source link.",
+    toolbarDescription: "The disclaimer stays visible so summaries are never mistaken for a legal determination.",
+    workspaceDescription: "Open a card to read applicability, the official URL, verification status, and Pulse pointers (SOPs, PMs, contractors).",
+    includeToolbar: true,
+  },
 };
 
 const DEFAULT_WORKSPACE =

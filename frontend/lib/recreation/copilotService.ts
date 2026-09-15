@@ -35,3 +35,10 @@ export async function askCopilot(promptId: string): Promise<OpsCopilotAnswer> {
     json: { prompt_id: promptId },
   });
 }
+
+export async function askCopilotQuery(query: string): Promise<OpsCopilotAnswer> {
+  return apiFetch<OpsCopilotAnswer>("/api/v1/recreation-ops/command/copilot/ask", {
+    method: "POST",
+    json: { query },
+  });
+}

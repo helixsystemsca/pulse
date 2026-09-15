@@ -102,6 +102,27 @@ describe("routeOpsAsk — intent to route", () => {
     expect(pm.results.some((r) => (r.href.split("?")[0] ?? r.href) === "/equipment")).toBe(false);
   });
 
+  it("maps regulatory questions onto Codes & Guidance", () => {
+    const cases: Array<[string, string]> = [
+      ["chief engineer responsibilities", "/recreation/regulations"],
+      ["interior health pool code", "/recreation/regulations"],
+      ["building code", "/recreation/regulations"],
+      ["oh&s", "/recreation/regulations"],
+      ["refrigeration plant requirements", "/recreation/regulations"],
+    ];
+    for (const [query, hrefBase] of cases) {
+      const answer = routeOpsAsk(query, vernonAdmin());
+      expect(answer.matched, query).toBe(true);
+      expect((topHref(query) ?? "").split("?")[0], query).toBe(hrefBase);
+    }
+    expect(routeOpsAsk("oh&s", vernonAdmin()).copilotPromptId).toBe("ohs-worksafebc");
+    expect(routeOpsAsk("building code", vernonAdmin()).copilotPromptId).toBe("building-code");
+  });
+
+  it("still sends ammonia emergency to Emergency Response, not the library as primary", () => {
+    expect(topHref("Show ammonia emergency procedure")).toBe("/recreation/emergency");
+  });
+
   it("says so when nothing matches and suggests high-value browse destinations", () => {
     const answer = routeOpsAsk("blarghxyz not a real module 999", vernonAdmin());
     expect(answer.matched).toBe(false);

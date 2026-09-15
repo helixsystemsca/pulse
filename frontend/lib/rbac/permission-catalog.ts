@@ -232,7 +232,7 @@ export const RBAC_PERMISSION_CATALOG: readonly RbacPermissionMeta[] = [
   {
     key: "recreation_ops.view",
     label: "View My Role",
-    description: "Open knowledge base, meetings, people, contractors, regulations, facilities, notes, and contacts.",
+    description: "Open knowledge base, meetings, people, contractors, Codes & Guidance, facilities, notes, and contacts.",
     module: "recreation_ops",
     category: "My Role",
   },

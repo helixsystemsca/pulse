@@ -103,9 +103,10 @@ async def list_entities(
     q: Optional[str] = Query(None, max_length=200),
     status_filter: Optional[str] = Query(None, alias="status", max_length=64),
     tag: Optional[str] = Query(None, max_length=64),
+    category: Optional[str] = Query(None, max_length=64),
 ) -> list[dict[str, Any]]:
     et = _ensure_type(entity_type)
-    rows = await svc.list_records(db, cid, et, q=q, status=status_filter, tag=tag)
+    rows = await svc.list_records(db, cid, et, q=q, status=status_filter, tag=tag, category=category)
     out = []
     for row in rows:
         links = await svc.list_links_for(db, cid, et, str(row.id))

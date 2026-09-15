@@ -95,6 +95,8 @@ export function normalizeAskQuery(raw: string): string {
   return raw
     .toLowerCase()
     .replace(/['’]/g, "")
+    .replace(/oh\s*&\s*s/g, "ohs")
+    .replace(/oh\s+and\s+s\b/g, "ohs")
     .replace(/[^a-z0-9\s]/g, " ")
     .replace(/\s+/g, " ")
     .trim();

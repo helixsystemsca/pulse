@@ -39,6 +39,12 @@ function equipmentSearchHref(normalizedQuery: string): string {
   return "/equipment";
 }
 
+function codesGuidanceHref(normalizedQuery: string): string {
+  const q = normalizedQuery.trim();
+  if (!q) return "/recreation/regulations";
+  return `/recreation/regulations?q=${encodeURIComponent(q)}`;
+}
+
 /** Starter questions shown in the empty Ask palette. */
 export const OPS_ASK_EXAMPLE_QUERIES = [
   "Where do I add a PM for the ice plant?",
@@ -46,6 +52,7 @@ export const OPS_ASK_EXAMPLE_QUERIES = [
   "Where are contractor insurance expiries?",
   "Create a work request from a failed inspection",
   "Show ammonia emergency procedure",
+  "Chief engineer responsibilities",
 ] as const;
 
 /** High-value browse targets when Ask is empty or unsure. */
@@ -232,6 +239,54 @@ export const OPS_ASK_CATALOG: readonly OpsAskCatalogItem[] = [
     weight: 8,
   },
   {
+    id: "codes-guidance",
+    title: "Codes & Guidance",
+    href: "/recreation/regulations",
+    why: "Regulatory reference library — official public sources, not legal advice.",
+    howTo:
+      "Filter by topic or search. Each card points at a public regulator or municipal page. Confirm current wording on the official source; Pulse summaries are not a legal determination.",
+    phrases: [
+      "chief engineer responsibilities",
+      "chief engineer",
+      "interior health pool code",
+      "interior health",
+      "pool code",
+      "pool regulation",
+      "building code",
+      "bc building code",
+      "ohs",
+      "oh and s",
+      "worksafebc",
+      "refrigeration plant requirements",
+      "refrigeration plant",
+      "codes and guidance",
+      "regulatory library",
+      "technical safety bc",
+      "tsbc",
+    ],
+    keywords: [
+      "chief",
+      "engineer",
+      "ohs",
+      "worksafebc",
+      "building",
+      "code",
+      "interior",
+      "health",
+      "regulation",
+      "tsbc",
+      "refrigeration",
+      "whmis",
+      "playground",
+      "z614",
+      "codes",
+      "guidance",
+      "electrical",
+    ],
+    weight: 16,
+    hrefForQuery: codesGuidanceHref,
+  },
+  {
     id: "procedures",
     title: "Procedures",
     href: "/training/learning/library",
@@ -301,9 +356,9 @@ export const OPS_ASK_CATALOG: readonly OpsAskCatalogItem[] = [
     id: "ops-copilot",
     title: "Ops Copilot",
     href: "/recreation/copilot",
-    why: "Starter questions answered from Pulse records (assets, PMs, certs, contractors) — not an LLM.",
+    why: "Starter questions answered from Pulse records and Codes & Guidance cards — not an LLM.",
     phrases: ["ops copilot", "copilot", "ask copilot"],
-    keywords: ["copilot", "ask", "overdue", "qualified"],
+    keywords: ["copilot", "ask", "overdue", "qualified", "codes", "guidance"],
     weight: 5,
   },
   {
@@ -362,5 +417,30 @@ export const OPS_COPILOT_PROMPT_MATCHERS: readonly {
     id: "assets-without-pms",
     label: "Critical assets without current PMs",
     phrases: ["assets without pm", "no preventive maintenance", "assets without current pms"],
+  },
+  {
+    id: "chief-engineer",
+    label: "Chief engineer responsibilities",
+    phrases: ["chief engineer responsibilities", "chief engineer", "power engineer in charge"],
+  },
+  {
+    id: "ohs-worksafebc",
+    label: "OH&S / WorkSafeBC",
+    phrases: ["ohs", "oh and s", "worksafebc", "occupational health"],
+  },
+  {
+    id: "building-code",
+    label: "BC Building Code",
+    phrases: ["building code", "bc building code", "bc codes"],
+  },
+  {
+    id: "interior-health-pools",
+    label: "Interior Health / pool code",
+    phrases: ["interior health pool code", "interior health", "pool code", "pool regulation"],
+  },
+  {
+    id: "refrigeration-plant",
+    label: "Refrigeration plant / TSBC",
+    phrases: ["refrigeration plant requirements", "refrigeration plant", "technical safety bc", "tsbc"],
   },
 ];

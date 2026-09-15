@@ -1,6 +1,7 @@
 """Vernon starter seed is tenant-scoped, placeholder contractors, no fake staff."""
 
 from app.core.vernon_starter_seed import FACILITIES, INTERNAL_NOTE, PROCEDURES, SEED_TAG
+from app.core.regulatory_reference_catalog import REFERENCE_CARDS
 
 
 def test_vernon_facilities_and_internal_disclaimer() -> None:
@@ -18,3 +19,13 @@ def test_emergency_procedures_are_internal() -> None:
     assert "Drowning / pool emergency — internal response" in titles
     for p in PROCEDURES:
         assert "internal" in p["title"].lower()
+
+
+def test_regulatory_reference_seed_catalog_is_tenant_safe() -> None:
+    keys = [c["key"] for c in REFERENCE_CARDS]
+    assert "chief-engineer-plant-responsibility" in keys
+    assert "interior-health-recreational-water" in keys
+    assert "bc-building-code-how-it-applies" in keys
+    for card in REFERENCE_CARDS:
+        assert "pulse_pointers" in card
+        assert not card["summary"].lower().startswith("you are legally required")

@@ -37,6 +37,7 @@ class SearchResults(BaseModel):
     equipment: list[SearchResultItem] = []
     procedures: list[SearchResultItem] = []
     work_requests: list[SearchResultItem] = []
+    regulations: list[SearchResultItem] = []
     total: int = 0
 
 
@@ -167,11 +168,59 @@ async def unified_search(
     except Exception as e:
         log.warning("search procedures failed: %s", e)
 
+    try:
+        from app.models.ops_foundation_models import OpsRegulation
+        from app.services.ops_ask_router import route_ops_ask
+
+        route = route_ops_ask(term)
+        if route.get("intents") or route.get("card_keys"):
+            results.regulations.append(
+                SearchResultItem(
+                    id="codes-guidance",
+                    kind="regulatory_reference",
+                    title="Codes & Guidance",
+                    subtitle="Regulatory reference library",
+                    meta={"href": route.get("library_href") or "/recreation/regulations"},
+                )
+            )
+        reg_q = await db.execute(
+            select(OpsRegulation)
+            .where(
+                OpsRegulation.company_id == cid,
+                or_(
+                    OpsRegulation.title.ilike(like),
+                    OpsRegulation.summary.ilike(like),
+                    OpsRegulation.topic_category.ilike(like),
+                    OpsRegulation.authority.ilike(like),
+                    OpsRegulation.classification.ilike(like),
+                    OpsRegulation.official_source_name.ilike(like),
+                ),
+            )
+            .limit(5)
+        )
+        for row in reg_q.scalars():
+            results.regulations.append(
+                SearchResultItem(
+                    id=str(row.id),
+                    kind="regulatory_reference",
+                    title=row.title,
+                    subtitle=f"{row.classification} · {row.topic_category}",
+                    meta={
+                        "href": f"/recreation/regulations?id={row.id}",
+                        "classification": row.classification,
+                        "official_source_url": row.official_source_url,
+                    },
+                )
+            )
+    except Exception as e:
+        log.warning("search regulations failed: %s", e)
+
     results.total = (
         len(results.tools)
         + len(results.equipment)
         + len(results.procedures)
         + len(results.work_requests)
+        + len(results.regulations)
     )
 
     log.info("search q=%r company=%s total=%d", term, cid[:8], results.total)
