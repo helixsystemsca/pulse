@@ -110,3 +110,5 @@ Secrets are stored as **bcrypt hashes** in `automation_gateways.ingest_secret_ha
 | Over-broad CORS | Explicit allow-lists + optional origin regex. |
 
 This design is intended to be **easy to approve**: devices behave like **standard corporate IoT clients** (outbound 443 only), with **no inbound exposure** of the facility network to the cloud.
+
+Municipal IT appendix (RLS completeness, `pulse_app` cutover, residual SSO/MFA): [`IT_SECURITY_READINESS.md`](IT_SECURITY_READINESS.md).

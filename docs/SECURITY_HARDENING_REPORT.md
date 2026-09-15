@@ -1,12 +1,25 @@
 # Security Hardening Report — Pulse Platform
 
-**Date:** 2026-05-26 (updated: continuation pass)  
+**Date:** 2026-05-26 (updated: 2026-09-15 RLS completeness)  
 **Scope:** Enterprise readiness — tenant isolation, authentication, operations, dependencies  
 **Architecture:** FastAPI + PostgreSQL (Supabase) + React/Next.js  
 
-This report documents **findings**, **remediations implemented in this pass**, and **recommended next steps**. It is intended for IT, security, and legal review alongside [`SECURITY_OVERVIEW.md`](SECURITY_OVERVIEW.md).
+This report documents **findings**, **remediations implemented in this pass**, and **recommended next steps**. It is intended for IT, security, and legal review alongside [`SECURITY_OVERVIEW.md`](SECURITY_OVERVIEW.md) and [`IT_SECURITY_READINESS.md`](IT_SECURITY_READINESS.md).
 
-### Continuation pass (same date)
+### 2026-09-15 — RLS completeness (municipal IT / pre-SSO)
+
+Supabase advisor on Pulse-DB reported **39 public tables without RLS** and **mutable `search_path`** on `pulse_rls_*` helpers. Migration **`1051_rls_coverage`** extends 1021/1023 (same GUCs and helpers; no parallel model):
+
+- Tenant policies on remaining `company_id` tables (`ops_*`, `planner_*`, `roadmap_*`, and any other public table still missing policies)
+- Parent `EXISTS` policies: `material_request_draft_items`, `purchasing_quick_purchase_lines`, `user_refresh_sessions`
+- `companies`: own `id` only for tenants
+- `alembic_version`: RLS on, no app policies
+- Helpers recreated with `SET search_path TO pg_catalog`
+- Operator SQL + verification: `scripts/sql/create_pulse_app_role.sql`, `scripts/sql/verify_rls_coverage.sql`
+
+**Not in this pass:** cookie JWT migration (`AUTH_SESSION_MODE` stays `bearer` unless already tested), Entra MFA enforcement, SMTP provider cutover.
+
+### Continuation pass (2026-05-26)
 
 - **RLS phase 2** — migration `1023` (child/junction tables)
 - **Permission audit dual-write** — `record_permission_change()` → `rbac_audit_events` + `audit_logs`
@@ -19,7 +32,7 @@ This report documents **findings**, **remediations implemented in this pass**, a
 
 | Priority | Status | Summary |
 |----------|--------|---------|
-| P1 RLS | **Implemented (phase 1)** | Migration `1021`, session GUCs, ~90 tables with `company_id` policies |
+| P1 RLS | **Implemented (phases 1–3)** | `1021` + `1023` + `1051`; session GUCs; all public tables RLS-enabled; helpers have fixed `search_path` |
 | P2 JWT / cookies | **Designed** | Incremental plan in [`JWT_SESSION_MIGRATION.md`](JWT_SESSION_MIGRATION.md) — no breaking auth change |
 | P3 MFA | **Prepared** | Tenant policy JSON, user hooks, Entra path documented in [`MFA_READINESS.md`](MFA_READINESS.md) |
 | P4 Secrets | **Improved** | Startup validation, production `SECRET_KEY` guard (existing), `.env` gitignored |
@@ -50,25 +63,30 @@ This report documents **findings**, **remediations implemented in this pass**, a
 
 - Alembic **`1021_tenant_rls`**: enables RLS on all `public` tables with `company_id`; policies use `pulse.company_id` / `pulse.is_system_admin` session variables.
 - **`1022_tenant_security_policy`**: `companies.security_policy`, `users.mfa_*` / `sso_subject`.
+- **`1023_tenant_rls_child`**: child/junction tables via parent `EXISTS`.
+- **`1051_rls_coverage`**: remaining public tables (ops/planner/roadmap/companies/refresh sessions/draft lines) + helper `search_path`.
 - **`app/core/security/tenant_rls.py`**: sets GUCs per request in `get_current_user`.
 - **`assert_company_scope()`** in deps: app-layer cross-tenant deny + audit.
-- Docs: [`RLS_POLICY_STRATEGY.md`](RLS_POLICY_STRATEGY.md).
+- Docs: [`RLS_POLICY_STRATEGY.md`](RLS_POLICY_STRATEGY.md), [`IT_SECURITY_READINESS.md`](IT_SECURITY_READINESS.md).
 - Tests: `backend/tests/test_tenant_rls.py`.
 
 ### Findings
 
 | ID | Severity | Finding | Affected | Remediation | Complexity |
 |----|----------|---------|----------|-------------|------------|
-| RLS-01 | **High** | App DB user likely `postgres`/owner → **RLS bypassed** | All tenant data | Create `pulse_app` role without BYPASSRLS; `DATABASE_RLS_ENFORCED=true` | M |
-| RLS-02 | **Medium** | ~26 child tables lack direct `company_id` policies (phase 2) | Monitoring subtree, WO children, `user_badges` | Add policies via parent FK or denormalize `company_id` | L |
+| RLS-01 | **High** | App DB user likely `postgres`/owner → **RLS bypassed** | All tenant data | Create `pulse_app` (script in `scripts/sql/`); `DATABASE_RLS_ENFORCED=true` | M (ops) |
+| RLS-02 | **Resolved** | Child tables + later modules lacked RLS | ops/planner/roadmap, draft/purchase lines, refresh sessions | Migrations `1023` + `1051` | — |
 | RLS-03 | **Medium** | Nullable `company_id` on audit/automation rows | `audit_logs`, `automation_events` | Tighten app writes; optional NOT NULL for tenant events | M |
 | RLS-04 | **Low** | Supabase service role bypasses RLS | Direct SQL API | Never expose service role to clients; server-only | S |
+| RLS-05 | **Resolved** | `pulse_rls_*` helpers had mutable `search_path` | Advisor WARN | `1051` sets `search_path = pg_catalog` | — |
 
 ### Operator actions
 
-1. Run `alembic upgrade head` (includes `1021`, `1022`).
-2. Create DB role `pulse_app` (no BYPASSRLS), grant table privileges, update `DATABASE_URL`.
+1. Run `alembic upgrade head` (includes `1021`, `1022`, `1023`, `1051`).
+2. Create DB role `pulse_app` (no BYPASSRLS) via `scripts/sql/create_pulse_app_role.sql`; update `DATABASE_URL`.
 3. Set `DATABASE_RLS_CONTEXT_ENABLED=true`, `DATABASE_RLS_ENFORCED=true` in production.
+4. Re-run Supabase advisors / `scripts/sql/verify_rls_coverage.sql` — target zero `rls_disabled_in_public`.
+5. Follow [`IT_SECURITY_READINESS.md`](IT_SECURITY_READINESS.md) for Render / Supabase / Vercel.
 
 ---
 
@@ -268,23 +286,25 @@ Run `scripts/security-audit-deps.sh` locally for current CVE list.
 | Lockout | `backend/app/core/auth/lockout.py` |
 | Tests | `backend/tests/test_tenant_rls.py`, `test_internal_cron.py`, … |
 | Scripts | `scripts/security-audit-deps.sh` |
+| RLS phase 3 (2026-09-15) | `backend/alembic/versions/1051_rls_coverage.py`, `scripts/sql/*.sql`, `docs/IT_SECURITY_READINESS.md` |
 
 ---
 
 ## Recommended rollout order
 
-1. **Deploy migrations** `1021` + `1022` to staging.
+1. **Deploy migrations** through `1051_rls_coverage` to staging.
 2. **Create `pulse_app` DB role** and test with `DATABASE_RLS_ENFORCED=true`.
 3. **Rotate secrets** if any ever leaked; set cron secrets + `X-Cron-Timestamp` on schedulers.
 4. **Enable Entra MFA** + Microsoft SSO for pilot tenant (`security_policy.auth_mode=sso_preferred`).
 5. **CI**: dependency audit + gitleaks.
-6. **Plan JWT phase 2** when IT approves cookie/same-site routing.
+6. **Plan JWT cookie mode** when IT approves same-site routing — do not flip `AUTH_SESSION_MODE=cookie` in this pass.
 
 ---
 
 ## Related documents
 
 - [`SECURITY_OVERVIEW.md`](SECURITY_OVERVIEW.md) — architecture for reviewers  
+- [`IT_SECURITY_READINESS.md`](IT_SECURITY_READINESS.md) — municipal apply + residual SSO/MFA  
 - [`RLS_POLICY_STRATEGY.md`](RLS_POLICY_STRATEGY.md)  
 - [`JWT_SESSION_MIGRATION.md`](JWT_SESSION_MIGRATION.md)  
 - [`MFA_READINESS.md`](MFA_READINESS.md)  

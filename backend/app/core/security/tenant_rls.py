@@ -22,7 +22,7 @@ async def apply_pulse_rls_context(
     is_system_admin: bool,
 ) -> None:
     """
-    Set transaction-local GUCs consumed by RLS policies (migration 1021).
+    Set transaction-local GUCs consumed by RLS policies (migrations 1021 / 1023 / 1051).
 
     Policies use ``pulse.company_id`` and ``pulse.is_system_admin``. When context is unset,
     tenant rows are hidden unless the DB role bypasses RLS (e.g. superuser / BYPASSRLS).
