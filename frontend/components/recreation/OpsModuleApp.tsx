@@ -180,6 +180,43 @@ function FieldInput({
   );
 }
 
+function contractorCompliance(row: OpsRecord): {
+  overall_status?: string;
+  has_attention?: boolean;
+  alerts?: Array<{ label: string; status: string; expiry?: string | null }>;
+} | null {
+  const raw = row.compliance;
+  if (!raw || typeof raw !== "object") return null;
+  return raw as {
+    overall_status?: string;
+    has_attention?: boolean;
+    alerts?: Array<{ label: string; status: string; expiry?: string | null }>;
+  };
+}
+
+function ComplianceBadge({ status }: { status?: string }) {
+  if (!status || status === "ok") return null;
+  const label =
+    status === "expired"
+      ? "Expired"
+      : status === "missing"
+        ? "Missing docs"
+        : status.startsWith("expiring")
+          ? status.replace("expiring_", "Due ") + "d"
+          : status;
+  const cls =
+    status === "expired"
+      ? "bg-rose-100 text-rose-800"
+      : status === "missing"
+        ? "bg-amber-50 text-amber-900"
+        : "bg-amber-100 text-amber-900";
+  return (
+    <span className={`inline-flex shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${cls}`}>
+      {label}
+    </span>
+  );
+}
+
 type Props = { entityType: OpsEntityType };
 
 export function OpsModuleApp({ entityType }: Props) {
@@ -378,14 +415,20 @@ export function OpsModuleApp({ entityType }: Props) {
                             {row.status}
                             {typeof row.category === "string" ? ` · ${row.category}` : ""}
                             {typeof row.authority === "string" && row.authority ? ` · ${row.authority}` : ""}
+                            {typeof row.trade === "string" && row.trade ? ` · ${row.trade}` : ""}
                           </p>
                         </div>
-                        {(row.links?.length ?? 0) > 0 ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] text-ds-muted">
-                            <Link2 className="h-3 w-3" />
-                            {row.links.length}
-                          </span>
-                        ) : null}
+                        <span className="flex shrink-0 items-center gap-1">
+                          {entityType === "contractors" ? (
+                            <ComplianceBadge status={contractorCompliance(row)?.overall_status} />
+                          ) : null}
+                          {(row.links?.length ?? 0) > 0 ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] text-ds-muted">
+                              <Link2 className="h-3 w-3" />
+                              {row.links.length}
+                            </span>
+                          ) : null}
+                        </span>
                       </div>
                     </button>
                   </li>
@@ -402,6 +445,28 @@ export function OpsModuleApp({ entityType }: Props) {
                 <h3 className="text-sm font-semibold text-ds-foreground">
                   {creating ? `New ${mod.singular}` : `Edit ${mod.singular}`}
                 </h3>
+                {entityType === "contractors" && selected && !creating ? (
+                  <div className="rounded-lg border border-ds-border bg-ds-muted/10 p-2 text-xs">
+                    {contractorCompliance(selected)?.has_attention ? (
+                      <ul className="space-y-1">
+                        {(contractorCompliance(selected)?.alerts ?? []).map((a, i) => (
+                          <li key={`${a.label}-${i}`} className="flex items-center justify-between gap-2">
+                            <span>{a.label}</span>
+                            <ComplianceBadge status={a.status} />
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-ds-muted">Insurance / WCB dates on file look current (or are still blank).</p>
+                    )}
+                    <Link
+                      href="/dashboard/maintenance"
+                      className="mt-2 inline-block font-semibold text-ds-primary hover:underline"
+                    >
+                      Open work history
+                    </Link>
+                  </div>
+                ) : null}
                 {mod.fields.map((field) =>
                   field.type === "checkbox" ? (
                     <FieldInput

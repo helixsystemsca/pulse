@@ -4,9 +4,11 @@ import { Loader2 } from "lucide-react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { QrGuestView } from "@/components/qr/QrGuestView";
+import { QrOperationalRecord, type OperationalRecord } from "@/components/qr/QrOperationalRecord";
 import { isLoggedIn } from "@/lib/pulse-session";
 import { loginHrefWithReturnTo, storeLoginReturnTo } from "@/lib/qr/qr-return-path";
 import {
+  fetchQrOperationalRecord,
   resolveQrTokenAuthenticated,
   resolveQrTokenPublic,
   type QrResolveResult,
@@ -24,6 +26,7 @@ export default function QrResolvePage() {
   const [error, setError] = useState<string | null>(null);
   const [resolve, setResolve] = useState<QrResolveResult | null>(null);
   const [showGuest, setShowGuest] = useState(false);
+  const [record, setRecord] = useState<OperationalRecord | null>(null);
 
   useEffect(() => {
     if (!token) {
@@ -46,6 +49,20 @@ export default function QrResolvePage() {
 
         const guestAllowed =
           result.guest_access_enabled && result.guest_access_level === "read_only";
+
+        if (result.resource_type === "equipment") {
+          if (!authed && !guestAllowed) {
+            const returnPath = `/qr/${token}`;
+            storeLoginReturnTo(returnPath);
+            window.location.replace(loginHrefWithReturnTo(returnPath));
+            return;
+          }
+          const rec = await fetchQrOperationalRecord(token, { guest: !authed || guestQuery, authenticated: authed });
+          if (cancelled) return;
+          setRecord(rec);
+          setLoading(false);
+          return;
+        }
 
         if (!authed && guestAllowed && (guestQuery || result.requires_auth)) {
           setResolve(result);
@@ -74,6 +91,11 @@ export default function QrResolvePage() {
           const parsed = parseClientApiError(e);
           if (parsed.status === 404) {
             setError("QR code not found. It may have been deleted or the label needs reprinting after a token change.");
+          } else if (parsed.status === 401) {
+            const returnPath = `/qr/${token}`;
+            storeLoginReturnTo(returnPath);
+            window.location.replace(loginHrefWithReturnTo(returnPath));
+            return;
           } else {
             setError(parsed.message);
           }
@@ -102,6 +124,10 @@ export default function QrResolvePage() {
         <p className="text-sm text-rose-600">{error}</p>
       </div>
     );
+  }
+
+  if (record) {
+    return <QrOperationalRecord record={record} />;
   }
 
   if (showGuest && resolve) {

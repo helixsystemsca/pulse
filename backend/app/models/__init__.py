@@ -24,6 +24,7 @@ from app.models.ops_foundation_models import (
     OpsRegulation,
     OpsRevision,
 )
+from app.models.inspection_models import PulseInspectionItem, PulseInspectionRun
 from app.models.ops_command_models import (
     OpsAuthorityMatrixRow,
     OpsChecklistInstance,
@@ -273,6 +274,8 @@ __all__ = [
     "OpsQuickNote",
     "OpsRegulation",
     "OpsRevision",
+    "PulseInspectionItem",
+    "PulseInspectionRun",
     "OpsAuthorityMatrixRow",
     "OpsChecklistInstance",
     "OpsChecklistItem",

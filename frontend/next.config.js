@@ -14,6 +14,18 @@ const nextConfig = {
     if (!apiBase) return [];
     return [
       {
+        source: "/api/public/qr/resolve/:token/record",
+        destination: `${apiBase}/api/public/qr/resolve/:token/record`,
+      },
+      {
+        source: "/api/qr/resolve/:token/record",
+        destination: `${apiBase}/api/qr/resolve/:token/record`,
+      },
+      {
+        source: "/api/public/qr/image/:token",
+        destination: `${apiBase}/api/public/qr/image/:token`,
+      },
+      {
         source: "/api/public/qr/resolve/:token",
         destination: `${apiBase}/api/public/qr/resolve/:token`,
       },

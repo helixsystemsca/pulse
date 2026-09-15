@@ -6,6 +6,7 @@ import { useWorkforceQualifications } from "@/components/standards/workforce-tra
 import { QualificationStatusChip } from "@/components/standards/workforce-training/QualificationStatusChip";
 import type { EmployeeCertificationRecord } from "@/lib/standards/employee-certifications";
 import { cn } from "@/lib/cn";
+import { CertificationExpiryPanel } from "@/components/recreation/CertificationExpiryPanel";
 
 type QueueTab = "expiring" | "expired" | "missing_proof" | "pending_verification";
 
@@ -36,6 +37,7 @@ export function ExpiringQualificationsView() {
 
   return (
     <div className="space-y-4">
+      <CertificationExpiryPanel />
       <p className="text-sm text-ds-muted">
         Operational queue for leadership and audits. Approvals are not blocked here — use worker profiles for follow-up.
       </p>

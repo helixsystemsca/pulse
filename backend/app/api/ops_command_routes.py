@@ -78,6 +78,10 @@ async def get_dashboard(db: Db, cid: CompanyId, actor: Actor, _: Reader) -> OpsC
             "pm_coord_risks": totals.get("pm_coord_risks", 0),
             "overdue_work_requests": totals.get("overdue_work_requests", 0),
             "roadmap_with_budget": totals.get("roadmap_with_budget", 0),
+            "certs_expired": totals.get("certs_expired", 0),
+            "certs_expiring_30": totals.get("certs_expiring_30", 0),
+            "certs_expiring_90": totals.get("certs_expiring_90", 0),
+            "contractor_attention": totals.get("contractor_attention", 0),
             "intelligence_items": intel.get("attention_items") or [],
         }
     )
@@ -88,6 +92,34 @@ async def get_dashboard(db: Db, cid: CompanyId, actor: Actor, _: Reader) -> OpsC
 async def get_intelligence(db: Db, cid: CompanyId, _: Reader) -> OpsIntelligenceOut:
     data = await intel_svc.gather_intelligence(db, cid)
     return OpsIntelligenceOut.model_validate(data)
+
+
+@router.get("/certification-expiry")
+async def certification_expiry(db: Db, cid: CompanyId, _: Reader) -> dict[str, Any]:
+    from app.services.certification_expiry_service import certification_expiry_summary
+
+    return await certification_expiry_summary(db, cid)
+
+
+@router.get("/copilot/prompts")
+async def list_copilot_prompts(_: Reader) -> dict[str, Any]:
+    from app.services.ops_copilot_service import PROMPT_LIBRARY
+
+    return {"items": PROMPT_LIBRARY}
+
+
+class OpsCopilotAskIn(BaseModel):
+    prompt_id: str = Field(..., min_length=1, max_length=64)
+
+
+@router.post("/copilot/ask")
+async def ask_copilot(body: OpsCopilotAskIn, db: Db, cid: CompanyId, _: Reader) -> dict[str, Any]:
+    from app.services.ops_copilot_service import answer_prompt
+
+    try:
+        return await answer_prompt(db, cid, body.prompt_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 class OpsBinderExportIn(BaseModel):
@@ -399,6 +431,8 @@ async def start_checklist(
             title=body.title,
             due_date=body.due_date,
             priority=body.priority,
+            facility_id=body.facility_id,
+            season_year=body.season_year,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

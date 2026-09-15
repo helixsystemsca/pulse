@@ -210,5 +210,9 @@ export function operationalNotificationHref(a: OperationalNotificationItem): str
   if (id === "rec-ops-profile" || id === "rec-ops-authority") return "/recreation/me";
   if (id === "rec-ops-risks") return "/recreation/team-development";
   if (id === "rec-ops-emergency") return "/recreation/emergency";
+  if (id === "rec-ops-certs-expired" || id === "rec-ops-certs-30") {
+    return "/training/compliance/workers?panel=certifications";
+  }
+  if (id === "rec-ops-contractors") return "/recreation/contractors";
   return "/overview";
 }

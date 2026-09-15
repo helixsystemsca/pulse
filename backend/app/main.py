@@ -87,6 +87,7 @@ from app.api.operational_xp_routes import router as operational_xp_router
 from app.api.team_insights_routes import router as team_insights_router
 from app.api.worker_profile_routes import router as worker_profile_router
 from app.api.work_requests_routes import router as work_requests_router
+from app.api.inspection_routes import router as inspection_router
 from app.api.workers_routes import router as workers_router
 from app.api.worker_development_routes import router as worker_development_router
 from app.api.worker_meetings_routes import router as worker_meetings_router
@@ -338,6 +339,7 @@ app.include_router(advertising_router, prefix="/api")
 app.include_router(infrastructure_map_router, prefix="/api")
 app.include_router(compliance_router, prefix="/api")
 app.include_router(work_requests_router, prefix="/api")
+app.include_router(inspection_router, prefix="/api")
 # Register before workers_router: `/workers/{user_id}` would otherwise capture
 # `tenant-departments`, `tenant-roles`, `development`, `meetings`, etc.
 app.include_router(tenant_departments_router, prefix="/api")

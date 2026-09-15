@@ -24,9 +24,9 @@ const HUB_LINKS = [
     description: "Knowledge Base category “Emergency Procedures” for searchable playbooks.",
   },
   {
-    title: "Contractors / callout",
-    href: "/recreation/contractors",
-    description: "Preferred vendors and emergency contractor contacts.",
+    title: "Ops Copilot",
+    href: "/recreation/copilot",
+    description: "Ask what’s overdue, who is qualified for ice plant work, or ammonia / pool emergency procedures — answers cite Pulse records.",
   },
   {
     title: "Regulations",

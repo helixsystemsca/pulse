@@ -50,6 +50,23 @@ describe("recreation ops leadership notifications", () => {
     expect(operationalNotificationHref(items.find((i) => i.id === "rec-ops-profile")!)).toBe("/recreation/me");
   });
 
+  it("surfaces in-app cert and contractor attention", () => {
+    const items = recreationOpsNotificationItems({
+      ...emptyDash(),
+      certs_expired: 1,
+      contractor_attention: 2,
+    });
+    const ids = items.map((i) => i.id);
+    expect(ids).toContain("rec-ops-certs-expired");
+    expect(ids).toContain("rec-ops-contractors");
+    expect(operationalNotificationHref(items.find((i) => i.id === "rec-ops-certs-expired")!)).toBe(
+      "/training/compliance/workers?panel=certifications",
+    );
+    expect(operationalNotificationHref(items.find((i) => i.id === "rec-ops-contractors")!)).toBe(
+      "/recreation/contractors",
+    );
+  });
+
   it("stays quiet when personal ops is current", () => {
     expect(recreationOpsNotificationItems(emptyDash())).toEqual([]);
   });

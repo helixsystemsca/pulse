@@ -135,3 +135,18 @@ export async function resolveQrTokenAuthenticated(
     sameOrigin: true,
   });
 }
+
+export async function fetchQrOperationalRecord(
+  token: string,
+  opts: { guest?: boolean; authenticated?: boolean } = {},
+): Promise<import("@/components/qr/QrOperationalRecord").OperationalRecord> {
+  const qs = opts.guest ? "?guest=1" : "";
+  const path = opts.authenticated
+    ? `/api/qr/resolve/${encodeURIComponent(token)}/record${qs}`
+    : `/api/public/qr/resolve/${encodeURIComponent(token)}/record${qs}`;
+  return apiFetch(path, { sameOrigin: true });
+}
+
+export function qrImageSrc(token: string, format: "png" | "svg" = "png"): string {
+  return `/api/public/qr/image/${encodeURIComponent(token)}?format=${format}`;
+}

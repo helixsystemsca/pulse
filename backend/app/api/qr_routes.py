@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db, require_any_rbac
+from app.core.security.tenant_rls import apply_pulse_rls_auth_bootstrap_context
 from app.core.tenant_context import resolve_tenant_company_id
 from app.limiter import limiter
 from app.models.domain import User
@@ -176,5 +177,89 @@ async def resolve_qr_token_public(
     token: str,
     guest: bool = Query(False),
 ) -> QrResolveOut:
+    await apply_pulse_rls_auth_bootstrap_context(db)
     payload = await qr_svc.resolve_qr_token(db, token, authenticated=False, guest_mode=guest)
     return QrResolveOut.model_validate(payload)
+
+
+@router.get("/resolve/{token}/record")
+async def resolve_qr_operational_record_authenticated(
+    db: Db,
+    user: Annotated[User, Depends(get_current_user)],
+    token: str,
+    guest: bool = Query(False),
+) -> dict:
+    from app.services.equipment_operational_record import equipment_operational_record
+
+    row = await qr_svc.get_qr_resource_by_token(db, token)
+    if not user.is_system_admin and user.company_id and str(user.company_id) != str(row.company_id):
+        raise HTTPException(status_code=403, detail="QR resource belongs to another organization")
+    if row.resource_type != "equipment":
+        resolved = await qr_svc.resolve_qr_token(db, token, authenticated=True, guest_mode=guest)
+        return {"resource_type": row.resource_type, "resolve": resolved, "record": None}
+    record = await equipment_operational_record(db, str(row.company_id), row.resource_id, guest=guest)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Linked asset not found")
+    return record
+
+
+@router.get("/resources/{qr_id}/image")
+async def qr_resource_image(
+    db: Db,
+    _: QrViewUser,
+    cid: CompanyId,
+    qr_id: str,
+    fmt: str = Query("png", alias="format"),
+):
+    from fastapi.responses import Response
+
+    from app.services.qr_image_service import render_qr_png, render_qr_svg
+
+    row = await qr_svc.get_qr_resource(db, cid, qr_id)
+    token = row["qr_token"]
+    if fmt == "svg":
+        return Response(content=render_qr_svg(token), media_type="image/svg+xml")
+    return Response(content=render_qr_png(token), media_type="image/png")
+
+
+@public_router.get("/qr/resolve/{token}/record")
+@limiter.limit("60/minute")
+async def resolve_qr_operational_record_public(
+    request: Request,
+    db: Db,
+    token: str,
+    guest: bool = Query(True),
+) -> dict:
+    from app.services.equipment_operational_record import equipment_operational_record
+
+    await apply_pulse_rls_auth_bootstrap_context(db)
+    row = await qr_svc.get_qr_resource_by_token(db, token)
+    if row.resource_type != "equipment":
+        resolved = await qr_svc.resolve_qr_token(db, token, authenticated=False, guest_mode=guest)
+        return {"resource_type": row.resource_type, "resolve": resolved, "record": None}
+    guest_ok = row.guest_access_enabled and row.guest_access_level == "read_only"
+    if not guest_ok:
+        raise HTTPException(status_code=401, detail="Sign in to view this asset record")
+    record = await equipment_operational_record(db, str(row.company_id), row.resource_id, guest=True)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Linked asset not found")
+    return record
+
+
+@public_router.get("/qr/image/{token}")
+@limiter.limit("60/minute")
+async def qr_public_image(
+    request: Request,
+    db: Db,
+    token: str,
+    fmt: str = Query("png", alias="format"),
+):
+    from fastapi.responses import Response
+
+    from app.services.qr_image_service import render_qr_png, render_qr_svg
+
+    await apply_pulse_rls_auth_bootstrap_context(db)
+    row = await qr_svc.get_qr_resource_by_token(db, token)
+    if fmt == "svg":
+        return Response(content=render_qr_svg(row.qr_token), media_type="image/svg+xml")
+    return Response(content=render_qr_png(row.qr_token), media_type="image/png")

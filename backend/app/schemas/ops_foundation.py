@@ -190,6 +190,21 @@ class OpsContractorOut(OpsRecordBaseOut):
     services_provided: Optional[str] = None
     emergency_contact: Optional[str] = None
     preferred_vendor: bool = False
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    insurance_carrier: Optional[str] = None
+    insurance_policy: Optional[str] = None
+    insurance_expiry: Optional[date] = None
+    wcb_account: Optional[str] = None
+    wcb_expiry: Optional[date] = None
+    hourly_rate: Optional[str] = None
+    after_hours_rate: Optional[str] = None
+    tickets: list[Any] = Field(default_factory=list)
+    safety_docs: list[Any] = Field(default_factory=list)
+    agreements: list[Any] = Field(default_factory=list)
+    serviced_assets: list[Any] = Field(default_factory=list)
+    serviced_facilities: list[Any] = Field(default_factory=list)
+    compliance: dict[str, Any] = Field(default_factory=dict)
 
 
 class OpsContractorCreateIn(OpsRecordBaseIn):
@@ -199,6 +214,20 @@ class OpsContractorCreateIn(OpsRecordBaseIn):
     services_provided: Optional[str] = None
     emergency_contact: Optional[str] = None
     preferred_vendor: bool = False
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    insurance_carrier: Optional[str] = None
+    insurance_policy: Optional[str] = None
+    insurance_expiry: Optional[date] = None
+    wcb_account: Optional[str] = None
+    wcb_expiry: Optional[date] = None
+    hourly_rate: Optional[str] = None
+    after_hours_rate: Optional[str] = None
+    tickets: list[Any] = Field(default_factory=list)
+    safety_docs: list[Any] = Field(default_factory=list)
+    agreements: list[Any] = Field(default_factory=list)
+    serviced_assets: list[Any] = Field(default_factory=list)
+    serviced_facilities: list[Any] = Field(default_factory=list)
 
 
 class OpsContractorPatchIn(OpsRecordBasePatch):
@@ -208,6 +237,20 @@ class OpsContractorPatchIn(OpsRecordBasePatch):
     services_provided: Optional[str] = None
     emergency_contact: Optional[str] = None
     preferred_vendor: Optional[bool] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    insurance_carrier: Optional[str] = None
+    insurance_policy: Optional[str] = None
+    insurance_expiry: Optional[date] = None
+    wcb_account: Optional[str] = None
+    wcb_expiry: Optional[date] = None
+    hourly_rate: Optional[str] = None
+    after_hours_rate: Optional[str] = None
+    tickets: Optional[list[Any]] = None
+    safety_docs: Optional[list[Any]] = None
+    agreements: Optional[list[Any]] = None
+    serviced_assets: Optional[list[Any]] = None
+    serviced_facilities: Optional[list[Any]] = None
 
 
 # —— Regulations ——

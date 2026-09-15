@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { PageBody } from "@/components/ui/PageBody";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { CertificationExpiryPanel } from "@/components/recreation/CertificationExpiryPanel";
 import { fetchIntelligence, type OpsIntelligence } from "@/lib/recreation/commandService";
 
 const MODULES: {
@@ -95,6 +96,20 @@ const MODULES: {
     icon: CalendarRange,
     blurb: "Overdue work requests and open preventative orders.",
   },
+  {
+    key: "certifications",
+    label: "Certifications",
+    href: "/training/compliance/workers?panel=certifications",
+    icon: ClipboardCheck,
+    blurb: "Employee certs expired or due in 30 / 60 / 90 days (in-app).",
+  },
+  {
+    key: "contractors",
+    label: "Contractors",
+    href: "/recreation/contractors",
+    icon: Wrench,
+    blurb: "Insurance, WCB, or tickets expired or due soon.",
+  },
 ];
 
 function countFor(key: keyof OpsIntelligence, data: OpsIntelligence): number {
@@ -120,6 +135,10 @@ function countFor(key: keyof OpsIntelligence, data: OpsIntelligence): number {
       return t.roadmap_with_budget ?? 0;
     case "maintenance":
       return t.overdue_work_requests ?? 0;
+    case "certifications":
+      return (t.certs_expired ?? 0) + (t.certs_expiring_90 ?? 0);
+    case "contractors":
+      return t.contractor_attention ?? 0;
     default:
       return 0;
   }
@@ -178,7 +197,8 @@ export default function AttentionPage() {
               })}
             </ul>
 
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-ds-muted">Priority items</h2>
+            <CertificationExpiryPanel />
+            <h2 className="mb-3 mt-8 text-sm font-semibold uppercase tracking-wide text-ds-muted">Priority items</h2>
             {data.attention_items.length ? (
               <ul className="space-y-2">
                 {data.attention_items.map((item, idx) => (

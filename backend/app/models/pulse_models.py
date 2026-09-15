@@ -51,6 +51,7 @@ class PulseWorkOrderSource(str, enum.Enum):
     manual = "manual"
     auto_pm = "auto_pm"
     downtime_detected = "downtime_detected"
+    inspection = "inspection"
 
 
 class PulseWorkRequestPriority(str, enum.Enum):
@@ -926,6 +927,18 @@ class PulseWorkRequest(Base):
         index=True,
     )
     attachments: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    inspection_run_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("pulse_inspection_runs.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    inspection_item_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("pulse_inspection_items.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
