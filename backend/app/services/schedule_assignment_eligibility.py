@@ -193,6 +193,13 @@ class StaffingAlarm:
         return {"code": self.code, "severity": self.severity, "label": self.label, "kind": self.kind}
 
 
+def staffing_alarm_label(alarm: Any) -> str:
+    """ShiftOut.staffing_alarms may be StaffingAlarmOut or a raw dict after model_copy(update=)."""
+    if isinstance(alarm, dict):
+        return str(alarm.get("label") or "")
+    return str(getattr(alarm, "label", "") or "")
+
+
 def evaluate_assignment_training(
     required: Iterable[CertRequirement],
     worker: WorkerCredentialState,

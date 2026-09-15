@@ -70,6 +70,7 @@ from app.services.schedule_assignment_eligibility import (
     enrich_shift_outs,
     load_worker_credential_payloads,
     normalized_cert_requirements_payload,
+    staffing_alarm_label,
 )
 from app.services.schedule_facility_zones import ensure_schedule_facility_zones
 from app.services.gamification_service import ensure_task_for_work_request
@@ -836,8 +837,9 @@ async def create_shift(
     )
     shift_out = (await enrich_shift_outs(db, cid, [sh], [_shift_to_out(sh)]))[0]
     for alarm in shift_out.staffing_alarms:
-        if alarm.label not in warnings:
-            warnings.append(alarm.label)
+        label = staffing_alarm_label(alarm)
+        if label and label not in warnings:
+            warnings.append(label)
     return ShiftCreateResult(shift=shift_out, warnings=warnings)
 
 
@@ -926,8 +928,9 @@ async def patch_shift(db: Db, cid: CompanyId, shift_id: str, body: ShiftUpdate) 
     proj = await db.get(PulseProject, task.project_id) if task else None
     shift_out = (await enrich_shift_outs(db, cid, [sh], [_shift_to_out(sh, task, proj)]))[0]
     for alarm in shift_out.staffing_alarms:
-        if alarm.label not in warnings:
-            warnings.append(alarm.label)
+        label = staffing_alarm_label(alarm)
+        if label and label not in warnings:
+            warnings.append(label)
     return ShiftCreateResult(shift=shift_out, warnings=warnings)
 
 

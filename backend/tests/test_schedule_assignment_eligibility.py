@@ -7,6 +7,7 @@ from app.services.schedule_assignment_eligibility import (
     evaluate_assignment_training,
     normalize_credential_code,
     parse_cert_requirements,
+    staffing_alarm_label,
 )
 
 
@@ -72,3 +73,11 @@ def test_accepts_any_passes_when_one_code_is_qualified() -> None:
     alarms = evaluate_assignment_training(reqs, empty, accepts_any=True)
     assert alarms[0].code == "training_missing"
     assert "one of" in alarms[0].label.lower()
+
+
+def test_staffing_alarm_label_accepts_dict_or_object() -> None:
+    from types import SimpleNamespace
+
+    assert staffing_alarm_label({"label": "Missing P1"}) == "Missing P1"
+    assert staffing_alarm_label(SimpleNamespace(label="FA expired")) == "FA expired"
+    assert staffing_alarm_label({}) == ""
