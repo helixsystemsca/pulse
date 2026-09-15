@@ -41,6 +41,7 @@ from app.core.security.tenant_auth_policy import (
 )
 from app.core.security.tenant_rls import (
     apply_pulse_rls_auth_bootstrap_context,
+    apply_pulse_rls_context_for_auth_write,
     apply_pulse_rls_context_for_login_user,
 )
 from app.core.permissions.service import PermissionService
@@ -231,11 +232,13 @@ async def login(
 ) -> Token:
     email_norm = str(body.email).strip().lower()
     now = datetime.now(timezone.utc)
-    # FORCE RLS + pulse_app: empty GUCs hide all users and reject audit/lockout writes.
+    # FORCE RLS + pulse_app: empty GUCs hide users AND reject INSERT INTO audit_logs
+    # (production ProgrammingError) / login_events / lockout updates.
     await apply_pulse_rls_auth_bootstrap_context(db)
     q = await db.execute(select(User).where(func.lower(User.email) == email_norm))
     user = q.scalar_one_or_none()
     if not user or not user.is_active:
+        await apply_pulse_rls_context_for_auth_write(db, None)
         await record_audit(
             db,
             action="auth.login_failed",
@@ -244,6 +247,7 @@ async def login(
         await db.commit()
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     if user.account_status != UserAccountStatus.active:
+        await apply_pulse_rls_context_for_auth_write(db, user)
         await record_audit(
             db,
             action="auth.login_failed",
@@ -269,6 +273,7 @@ async def login(
         )
     if not verify_password(body.password, user.hashed_password):
         apply_failed_login_lockout(user, settings, now)
+        await apply_pulse_rls_context_for_auth_write(db, user)
         await record_audit(
             db,
             action="auth.login_failed",
@@ -283,6 +288,7 @@ async def login(
     clear_login_lockout(user)
     user.last_login = now
     user.last_active_at = now
+    await apply_pulse_rls_context_for_auth_write(db, user)
     await record_audit(
         db,
         action="auth.login",
@@ -292,6 +298,7 @@ async def login(
     )
     await log_login_event(db, request, user, login_method="password")
     out = await _issue_token_pair(db, request, user)
+    await apply_pulse_rls_context_for_auth_write(db, user)
     await db.commit()
     return out
 
@@ -321,6 +328,7 @@ async def microsoft_oauth_login(
     user.mfa_enrolled_at = now
     user.last_login = now
     user.last_active_at = now
+    await apply_pulse_rls_context_for_auth_write(db, user)
     await record_audit(
         db,
         action="auth.microsoft_login",
@@ -335,6 +343,7 @@ async def microsoft_oauth_login(
     )
     await log_login_event(db, request, user, login_method="microsoft")
     out = await _issue_token_pair(db, request, user)
+    await apply_pulse_rls_context_for_auth_write(db, user)
     await db.commit()
     return out
 

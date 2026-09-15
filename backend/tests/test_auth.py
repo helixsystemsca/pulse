@@ -91,9 +91,12 @@ async def test_login_works_as_nobyprlsrls_role_with_force_rls(
     client, db_session: AsyncSession, seeded_tenant
 ) -> None:
     """
-    Production incident: pulse_app + FORCE RLS hid users (empty GUCs) and login
-    returned 500 internal_server_error. Auth bootstrap must set system GUCs,
-    then tenant GUCs so lockout / audit / login_events writes succeed.
+    Production incident: pulse_app + FORCE RLS made password login return 500.
+
+    Empty GUCs hid users; the handler then ``INSERT INTO audit_logs`` and raised
+    ``sqlalchemy.exc.ProgrammingError``. Auth bootstrap must set system GUCs for
+    the email lookup and unknown-email audit, then tenant GUCs so lockout /
+    ``audit_logs`` / ``login_events`` writes succeed.
     """
     email = seeded_tenant.worker_email
     async with _pulse_app_style_role(db_session):
@@ -155,3 +158,85 @@ async def test_login_works_as_nobyprlsrls_role_with_force_rls(
         )
     ).scalar_one()
     assert int(audits or 0) >= 1
+
+
+@pytest.mark.asyncio
+async def test_audit_logs_insert_as_nobyprlsrls_matches_production_programmingerror(
+    db_session: AsyncSession, seeded_tenant
+) -> None:
+    """
+    Production log: sqlalchemy.exc.ProgrammingError on INSERT INTO audit_logs
+    during password login when pulse_app had empty FORCE RLS GUCs.
+
+    Unknown-email audits (company_id NULL) need system-admin GUC; post-login
+    audits and login_events need tenant GUC. Do not weaken users USING (true).
+    """
+    from sqlalchemy.exc import DBAPIError
+
+    from app.core.security.tenant_rls import (
+        apply_pulse_rls_auth_bootstrap_context,
+        apply_pulse_rls_context_for_login_user,
+    )
+
+    async with _pulse_app_style_role(db_session):
+        with pytest.raises(DBAPIError, match="row-level security"):
+            async with db_session.begin_nested():
+                await db_session.execute(
+                    text(
+                        "INSERT INTO audit_logs (id, action, metadata, created_at) "
+                        "VALUES (CAST(:id AS uuid), 'auth.login_failed', '{}'::jsonb, NOW())"
+                    ),
+                    {"id": str(uuid.uuid4())},
+                )
+                await db_session.flush()
+
+        with pytest.raises(DBAPIError, match="row-level security"):
+            async with db_session.begin_nested():
+                await db_session.execute(
+                    text(
+                        "INSERT INTO login_events "
+                        "(id, user_id, timestamp, ip_address, login_method, session_origin) "
+                        "VALUES (CAST(:id AS uuid), CAST(:uid AS uuid), NOW(), "
+                        "'127.0.0.1', 'password', 'user')"
+                    ),
+                    {"id": str(uuid.uuid4()), "uid": seeded_tenant.worker_id},
+                )
+                await db_session.flush()
+
+        await apply_pulse_rls_auth_bootstrap_context(db_session)
+        await db_session.execute(
+            text(
+                "INSERT INTO audit_logs (id, action, metadata, created_at) "
+                "VALUES (CAST(:id AS uuid), 'auth.login_failed', '{}'::jsonb, NOW())"
+            ),
+            {"id": str(uuid.uuid4())},
+        )
+        await db_session.flush()
+
+        worker = await db_session.get(User, seeded_tenant.worker_id)
+        assert worker is not None
+        await apply_pulse_rls_context_for_login_user(db_session, worker)
+        await db_session.execute(
+            text(
+                "INSERT INTO audit_logs (id, action, company_id, actor_user_id, metadata, created_at) "
+                "VALUES (CAST(:id AS uuid), 'auth.login', CAST(:cid AS uuid), "
+                "CAST(:uid AS uuid), '{}'::jsonb, NOW())"
+            ),
+            {
+                "id": str(uuid.uuid4()),
+                "cid": seeded_tenant.company_id,
+                "uid": seeded_tenant.worker_id,
+            },
+        )
+        await db_session.flush()
+
+        await db_session.execute(
+            text(
+                "INSERT INTO login_events "
+                "(id, user_id, timestamp, ip_address, login_method, session_origin) "
+                "VALUES (CAST(:id AS uuid), CAST(:uid AS uuid), NOW(), "
+                "'127.0.0.1', 'password', 'user')"
+            ),
+            {"id": str(uuid.uuid4()), "uid": seeded_tenant.worker_id},
+        )
+        await db_session.flush()
