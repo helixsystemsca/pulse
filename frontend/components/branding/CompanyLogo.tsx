@@ -8,14 +8,14 @@
 import { Building2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getApiBaseUrl } from "@/lib/api";
-import { isApiRelativeLogoUrl, isDirectDisplayLogoUrl, isHttpsLogoUrl, trimLogoUrl } from "@/lib/branding/logo-src";
+import { canonicalPublicLogoUrl, isApiRelativeLogoUrl, isDirectDisplayLogoUrl, isHttpsLogoUrl, trimLogoUrl } from "@/lib/branding/logo-src";
 import { readSession } from "@/lib/pulse-session";
 import { cn } from "@/lib/cn";
 
 const imgBase =
   "max-h-[2.25rem] w-auto max-w-[min(100%,11rem)] object-contain object-center md:max-h-[2.5rem]";
 const imgBaseChrome =
-  "max-h-[2.05rem] w-auto max-w-[min(100%,13.5rem)] object-contain object-center sm:max-h-[2.2rem] md:max-h-[2.35rem]";
+  "max-h-[2.2rem] w-auto max-w-[min(100%,14rem)] object-contain object-center sm:max-h-[2.45rem] md:max-h-[2.65rem]";
 
 type Props = {
   logoUrl?: string | null;
@@ -38,6 +38,7 @@ export function CompanyLogo({
   const [authEpoch, setAuthEpoch] = useState(0);
   const [broken, setBroken] = useState(false);
   const trimmed = trimLogoUrl(logoUrl);
+  const displayUrl = trimmed ? canonicalPublicLogoUrl(trimmed) : null;
 
   useEffect(() => {
     const bump = () => setAuthEpoch((n) => n + 1);
@@ -47,10 +48,10 @@ export function CompanyLogo({
 
   useEffect(() => {
     setBroken(false);
-  }, [trimmed]);
+  }, [displayUrl]);
 
   useEffect(() => {
-    if (!trimmed || isDirectDisplayLogoUrl(trimmed)) {
+    if (!displayUrl || isDirectDisplayLogoUrl(displayUrl)) {
       setBlobUrl((prev) => {
         if (prev) URL.revokeObjectURL(prev);
         return null;
@@ -69,7 +70,7 @@ export function CompanyLogo({
       return;
     }
     let cancelled = false;
-    const path = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+    const path = displayUrl.startsWith("/") ? displayUrl : `/${displayUrl}`;
     const url = `${base.replace(/\/$/, "")}${path}`;
     fetch(url, { cache: "no-store", headers: { Authorization: `Bearer ${token}` } })
       .then((r) => (r.ok ? r.blob() : Promise.reject(new Error(String(r.status)))))
@@ -91,7 +92,7 @@ export function CompanyLogo({
     return () => {
       cancelled = true;
     };
-  }, [trimmed, authEpoch]);
+  }, [displayUrl, authEpoch]);
 
   const fallbackText = (companyName?.trim() || "Organization").slice(0, 48);
   const ring =
@@ -101,13 +102,11 @@ export function CompanyLogo({
         ? "border-white/20 bg-white/10 text-white ring-1 ring-white/15"
         : "border-slate-200/80 bg-slate-50 text-pulse-navy ring-1 ring-slate-200/60";
   const imgClass = variant === "chrome" ? imgBaseChrome : imgBase;
-  const frameClass =
-    variant === "chrome"
-      ? "rounded-md bg-white px-2 py-1 shadow-sm ring-1 ring-white/25"
-      : "";
+  /** Chrome sits on iron-grey: no fill, ring, or shadow — transparent marks must blend. */
+  const frameClass = variant === "chrome" ? "px-1.5 py-1" : "";
 
   const directSrc =
-    trimmed && !broken && isDirectDisplayLogoUrl(trimmed) ? trimmed : null;
+    displayUrl && !broken && isDirectDisplayLogoUrl(displayUrl) ? displayUrl : null;
   const blobSrc = !broken && blobUrl ? blobUrl : null;
   const displaySrc = directSrc ?? blobSrc;
 
@@ -127,7 +126,7 @@ export function CompanyLogo({
     );
   }
 
-  if (trimmed && isApiRelativeLogoUrl(trimmed)) {
+  if (displayUrl && isApiRelativeLogoUrl(displayUrl)) {
     return (
       <span
         className={`inline-flex h-9 max-h-9 min-w-[2.25rem] items-center justify-center rounded-md border px-2 ${ring} ${className}`}

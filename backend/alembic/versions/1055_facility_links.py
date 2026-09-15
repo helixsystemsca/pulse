@@ -17,8 +17,8 @@ from sqlalchemy.dialects.postgresql import UUID
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-revision = "1054_facility_links"
-down_revision = "1053_reg_ref_fields"
+revision = "1055_facility_links"
+down_revision = "1054_reg_source_key"
 branch_labels = None
 depends_on = None
 

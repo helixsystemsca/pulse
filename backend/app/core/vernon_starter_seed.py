@@ -254,49 +254,92 @@ async def _resolve_pulse_pointers(db: AsyncSession, company_id: str, pointers: l
     return out
 
 
-async def _ensure_regulation(db: AsyncSession, company_id: str, spec: dict[str, Any]) -> None:
-    """Idempotent by seed-key tag, then title. Does not overwrite Josh's edits."""
+def _regulation_seed_tags(spec: dict[str, Any]) -> list[str]:
+    key = spec["key"]
+    return [REG_SEED_TAG, LIBRARY_TAG, seed_tag_for(key), spec.get("topic_category") or "Other"]
+
+
+def _apply_regulation_catalog_fields(
+    row: OpsRegulation,
+    spec: dict[str, Any],
+    pointers: list[dict[str, str]],
+) -> None:
+    extra = list(spec.get("extra_sources") or [])
+    row.title = spec["title"]
+    row.description = spec.get("summary")
+    row.status = "active"
+    row.tags = _regulation_seed_tags(spec)
+    row.notes = REG_DISCLAIMER
+    row.authority = spec.get("authority") or spec.get("official_source_name") or ""
+    row.regulation_name = spec.get("regulation_name")
+    row.summary = spec.get("summary")
+    row.requirements = (
+        "See the official source linked on this card. Pulse does not reproduce "
+        "copyrighted code or standard text, and this summary is not a legal determination."
+    )
+    row.external_references = extra
+    row.topic_category = spec.get("topic_category") or "Other"
+    row.classification = spec.get("classification") or "Regulator guidance"
+    row.applicability = spec.get("applicability")
+    row.official_source_name = spec.get("official_source_name")
+    row.official_source_url = spec.get("official_source_url")
+    row.verification_status = spec.get("verification_status") or "Unverified"
+    row.review_date = _parse_seed_date(spec.get("review_date"))
+    row.pulse_pointers = pointers
+    row.source_key = spec["key"]
+
+
+async def _find_seeded_regulation(
+    db: AsyncSession, company_id: str, spec: dict[str, Any]
+) -> Optional[OpsRegulation]:
     key = spec["key"]
     seed_key = seed_tag_for(key)
+    by_slug = (
+        await db.execute(
+            select(OpsRegulation).where(
+                OpsRegulation.company_id == company_id, OpsRegulation.source_key == key
+            )
+        )
+    ).scalar_one_or_none()
+    if by_slug is not None:
+        return by_slug
     existing_rows = list(
         (await db.execute(select(OpsRegulation).where(OpsRegulation.company_id == company_id))).scalars().all()
     )
     for row in existing_rows:
         tags = row.tags if isinstance(row.tags, list) else []
         if seed_key in tags or key in tags:
+            return row
+        if row.title == spec["title"] and not row.source_key and not bool(getattr(row, "user_modified", False)):
+            return row
+    return None
+
+
+async def _ensure_regulation(db: AsyncSession, company_id: str, spec: dict[str, Any]) -> None:
+    """Upsert by stable source_key only when untouched. Never clobber Josh's edits."""
+    key = spec["key"]
+    row = await _find_seeded_regulation(db, company_id, spec)
+    if row is not None:
+        if not row.source_key:
+            row.source_key = key
+        # Archived (or any user edit) stays as Josh left it — do not recreate or overwrite.
+        if bool(getattr(row, "user_modified", False)) or (row.status or "") == "archived":
+            if (row.status or "") == "archived":
+                row.user_modified = True
             return
-        if row.title == spec["title"]:
-            return
+        pointers = await _resolve_pulse_pointers(db, company_id, spec.get("pulse_pointers") or [])
+        _apply_regulation_catalog_fields(row, spec, pointers)
+        return
     pointers = await _resolve_pulse_pointers(db, company_id, spec.get("pulse_pointers") or [])
-    extra = list(spec.get("extra_sources") or [])
-    db.add(
-        OpsRegulation(
-            id=str(uuid4()),
-            company_id=company_id,
-            title=spec["title"],
-            description=spec.get("summary"),
-            status="active",
-            tags=[REG_SEED_TAG, LIBRARY_TAG, seed_key, spec.get("topic_category") or "Other"],
-            notes=REG_DISCLAIMER,
-            authority=spec.get("authority") or spec.get("official_source_name") or "",
-            regulation_name=spec.get("regulation_name"),
-            summary=spec.get("summary"),
-            requirements=(
-                "See the official source linked on this card. Pulse does not reproduce "
-                "copyrighted code or standard text, and this summary is not a legal determination."
-            ),
-            inspection_frequency=None,
-            external_references=extra,
-            topic_category=spec.get("topic_category") or "Other",
-            applicability=spec.get("applicability"),
-            classification=spec.get("classification") or "Regulator guidance",
-            official_source_name=spec.get("official_source_name"),
-            official_source_url=spec.get("official_source_url"),
-            verification_status=spec.get("verification_status") or "Unverified",
-            review_date=_parse_seed_date(spec.get("review_date")),
-            pulse_pointers=pointers,
-        )
+    created = OpsRegulation(
+        id=str(uuid4()),
+        company_id=company_id,
+        source_key=key,
+        user_modified=False,
+        inspection_frequency=None,
     )
+    _apply_regulation_catalog_fields(created, spec, pointers)
+    db.add(created)
 
 
 async def _ensure_contractor(db: AsyncSession, company_id: str, spec: dict[str, Any]) -> None:
@@ -597,6 +640,17 @@ PROCEDURES = [
 ]
 
 
+async def seed_regulatory_reference_cards(db: AsyncSession, company_id: str) -> None:
+    """Optional catalog insert. Not called from startup — Josh prefers manual entry.
+
+    Safe to re-run in tests or a one-off script: upserts untouched source_key rows only;
+    never clobbers user-modified or archived cards.
+    """
+    for spec in REFERENCE_CARDS:
+        await _ensure_regulation(db, company_id, spec)
+    await db.flush()
+
+
 async def seed_vernon_starter_pack(db: AsyncSession, company_id: str) -> dict[str, Any]:
     """Create a small realistic starter set. Idempotent by title/slug."""
     created: dict[str, int] = {}
@@ -682,9 +736,9 @@ async def seed_vernon_starter_pack(db: AsyncSession, company_id: str) -> dict[st
         await _ensure_procedure(db, company_id, spec)
     created["emergency"] = len(EMERGENCY_ARTICLES)
 
-    for spec in REFERENCE_CARDS:
-        await _ensure_regulation(db, company_id, spec)
-    created["regulatory_reference"] = len(REFERENCE_CARDS)
+    # Codes & Guidance is manual-entry (Josh adds cards as he learns). Do not
+    # auto-insert the catalog on startup/restart. Existing tenant rows stay.
+    created["regulatory_reference"] = 0
 
     await _ensure_contractor(
         db,

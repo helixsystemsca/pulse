@@ -35,7 +35,42 @@ ENTITY_MODELS: dict[str, Type[Any]] = {
 ENTITY_TYPES = frozenset(ENTITY_MODELS.keys())
 
 # Fields that should not be mass-assigned from client payloads.
-_PROTECTED = frozenset({"id", "company_id", "created_at", "updated_at", "created_by_user_id", "revision"})
+_PROTECTED = frozenset(
+    {
+        "id",
+        "company_id",
+        "created_at",
+        "updated_at",
+        "created_by_user_id",
+        "revision",
+        "source_key",
+        "user_modified",
+    }
+)
+
+_REGULATION_SYSTEM_TAGS = frozenset({"vernon-starter", "regulatory-reference"})
+
+
+def _merge_regulation_tags(existing: Any, incoming: Any) -> list[Any]:
+    """Keep seed-key / library tags so starter matching survives Josh's keyword edits."""
+    prev = existing if isinstance(existing, list) else []
+    nxt = incoming if isinstance(incoming, list) else []
+    system: list[Any] = []
+    seen: set[str] = set()
+    for tag in prev:
+        s = str(tag)
+        if s in _REGULATION_SYSTEM_TAGS or s.startswith("seed-key:"):
+            if s not in seen:
+                seen.add(s)
+                system.append(tag)
+    user: list[Any] = []
+    for tag in nxt:
+        s = str(tag).strip()
+        if not s or s in seen or s in _REGULATION_SYSTEM_TAGS or s.startswith("seed-key:"):
+            continue
+        seen.add(s)
+        user.append(s)
+    return system + user
 
 
 def model_for(entity_type: str) -> Type[Any]:
@@ -135,8 +170,13 @@ async def create_record(
 ) -> Any:
     Model = model_for(entity_type)
     payload = {k: v for k, v in data.items() if k not in _PROTECTED and hasattr(Model, k)}
-    if "reports_to_person_id" in payload and payload["reports_to_person_id"] in ("", None):
+    if "reports_to_person_id" in payload and payload.get("reports_to_person_id") in ("", None):
         payload["reports_to_person_id"] = None
+    if entity_type == "regulations":
+        payload["source_key"] = None
+        payload["user_modified"] = True
+        if "tags" in payload:
+            payload["tags"] = _merge_regulation_tags([], payload.get("tags"))
     row = Model(company_id=company_id, created_by_user_id=actor_id, **payload)
     db.add(row)
     await db.flush()
@@ -158,12 +198,17 @@ async def patch_record(
         return None
     if "reports_to_person_id" in data and data["reports_to_person_id"] in ("", None):
         data = {**data, "reports_to_person_id": None}
-    Model = model_for(entity_type)
+    if entity_type == "regulations" and "tags" in data:
+        data = {**data, "tags": _merge_regulation_tags(getattr(row, "tags", None), data.get("tags"))}
+    assigned = False
     for k, v in data.items():
         if k in _PROTECTED:
             continue
         if hasattr(row, k):
             setattr(row, k, v)
+            assigned = True
+    if entity_type == "regulations" and assigned:
+        row.user_modified = True
     if entity_type == "knowledge" and hasattr(row, "revision"):
         row.revision = int(row.revision or 1) + 1
         await _save_revision(db, company_id, entity_type, record_id, actor_id, row)
@@ -280,18 +325,4 @@ def serialize_record(row: Any, links: Optional[list[OpsEntityLink]] = None) -> d
         from app.services.contractor_compliance import contractor_compliance
 
         data["compliance"] = contractor_compliance(row)
-    return data
-    data = _row_to_dict(row)
-    data["links"] = [
-        {
-            "id": str(l.id),
-            "from_type": l.from_type,
-            "from_id": str(l.from_id),
-            "to_type": l.to_type,
-            "to_id": str(l.to_id),
-            "link_role": l.link_role,
-            "created_at": l.created_at,
-        }
-        for l in (links or [])
-    ]
     return data

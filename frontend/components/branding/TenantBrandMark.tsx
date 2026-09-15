@@ -7,7 +7,7 @@
 import { useAuthenticatedAssetSrc } from "@/hooks/useAuthenticatedAssetSrc";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { PLATFORM_DEFAULT_LOGO_SRC } from "@/lib/branding/platform-defaults";
-import { isDirectDisplayLogoUrl, trimLogoUrl } from "@/lib/branding/logo-src";
+import { canonicalPublicLogoUrl, isDirectDisplayLogoUrl, trimLogoUrl } from "@/lib/branding/logo-src";
 import { cn } from "@/lib/cn";
 
 type Props = {
@@ -18,7 +18,8 @@ type Props = {
 
 export function TenantBrandMark({ className = "", logoUrl, companyName }: Props) {
   const { session } = usePulseAuth();
-  const tenantLogoUrl = trimLogoUrl(logoUrl ?? session?.company?.logo_url);
+  const rawTenantLogoUrl = trimLogoUrl(logoUrl ?? session?.company?.logo_url);
+  const tenantLogoUrl = rawTenantLogoUrl ? canonicalPublicLogoUrl(rawTenantLogoUrl) : null;
   const alt = (companyName ?? session?.company?.name ?? "Organization").trim() || "Organization";
   const direct = tenantLogoUrl && isDirectDisplayLogoUrl(tenantLogoUrl) ? tenantLogoUrl : null;
   const apiBlob = useAuthenticatedAssetSrc(direct ? null : tenantLogoUrl);

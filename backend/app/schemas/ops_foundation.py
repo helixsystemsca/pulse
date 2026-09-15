@@ -269,6 +269,8 @@ class OpsRegulationOut(OpsRecordBaseOut):
     verification_status: str = "Unverified"
     review_date: Optional[date] = None
     pulse_pointers: list[Any] = Field(default_factory=list)
+    source_key: Optional[str] = None
+    user_modified: bool = False
 
 
 class OpsRegulationCreateIn(OpsRecordBaseIn):
