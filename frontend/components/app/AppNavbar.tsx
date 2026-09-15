@@ -5,7 +5,7 @@
  */
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Bell, ChevronDown, Image as ImageIcon, KeyRound, LogOut, Megaphone, Menu, MessageSquare, Settings, X } from "lucide-react";
+import { Bell, ChevronDown, Image as ImageIcon, KeyRound, LogOut, Megaphone, Menu, MessageSquare, Search, Settings, X } from "lucide-react";
 import { AppHeaderWordmark } from "@/components/branding/AppHeaderWordmark";
 import { CompanyLogo } from "@/components/branding/CompanyLogo";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -33,6 +33,8 @@ import { isApiMode } from "@/lib/api";
 import { fetchFeedbackUnreadCount } from "@/lib/feedbackApi";
 import { useSidebarState } from "@/components/app/SidebarState";
 import { OnboardingTourRestartButton } from "@/components/onboarding/OnboardingTour";
+import { OpsAskPalette } from "@/components/app/OpsAskPalette";
+import { isOpsAskHotkey, opsAskShortcutLabel } from "@/lib/search/ops-ask-hotkey";
 
 const FEEDBACK_HEADER_TIP_DISMISSED_KEY = "pulse_feedback_header_tip_dismissed_v1";
 function IconBadgeCount({ count }: { count: number }) {
@@ -61,6 +63,8 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
   const { toggleSidebar } = useSidebarState();
   const [userOpen, setUserOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [askOpen, setAskOpen] = useState(false);
+  const [askShortcut, setAskShortcut] = useState("Ctrl+K");
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [feedbackInboxCount, setFeedbackInboxCount] = useState(0);
   const [clientReady, setClientReady] = useState(false);
@@ -100,7 +104,19 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
 
   useEffect(() => {
     setClientReady(true);
+    setAskShortcut(opsAskShortcutLabel());
   }, []);
+
+  useEffect(() => {
+    if (!authed) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (!isOpsAskHotkey(e)) return;
+      e.preventDefault();
+      setAskOpen((open) => !open);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [authed]);
 
   useEffect(() => {
     if (!authed) {
@@ -258,6 +274,24 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
           ) : (
             <>
               <OnboardingTourRestartButton />
+              <button
+                type="button"
+                data-tour="ops-ask"
+                className={cn(
+                  "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-2 text-white/90 transition-colors hover:bg-ds-chrome-hover hover:text-white active:bg-ds-chrome-active focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-200/45",
+                  "sm:min-w-0 sm:border sm:border-white/15 sm:bg-white/10 sm:px-2.5 sm:hover:bg-white/15",
+                )}
+                aria-label={`Search or ask (${askShortcut})`}
+                title={`Search or ask (${askShortcut})`}
+                onClick={() => setAskOpen(true)}
+              >
+                <Search className="h-[1.125rem] w-[1.125rem]" strokeWidth={1.75} aria-hidden />
+                <span className="text-xs font-semibold sm:font-medium">Ask</span>
+                <span className="hidden text-xs font-medium text-white/70 md:inline">/ Search</span>
+                <kbd className="ml-1 hidden rounded border border-white/20 bg-white/10 px-1.5 py-0.5 font-sans text-[10px] font-semibold text-white/75 lg:inline">
+                  {askShortcut}
+                </kbd>
+              </button>
               {showWorkerPasswordBadge ? (
                 <Link
                   href={pulseApp.to("/dashboard/profile-settings")}
@@ -414,6 +448,7 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
       </div>
       <div className="h-px w-full shrink-0 bg-gradient-to-r from-transparent via-white/12 to-transparent" aria-hidden />
       <OperationalNotificationsModal open={notificationsOpen} onClose={() => setNotificationsOpen(false)} />
+      <OpsAskPalette open={askOpen} onClose={() => setAskOpen(false)} />
       <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
       {clientReady && feedbackHeaderTipOpen && feedbackTipCoords
         ? createPortal(

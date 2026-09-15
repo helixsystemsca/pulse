@@ -1,12 +1,12 @@
 "use client";
 
+import { Suspense, useEffect, useState } from "react";
 import { EquipmentApp } from "@/components/equipment/EquipmentApp";
 import { isApiMode } from "@/lib/api";
 import { navigateToPulseLogin } from "@/lib/pulse-app";
 import { readSession } from "@/lib/pulse-session";
-import { useEffect, useState } from "react";
 
-export default function EquipmentPage() {
+function EquipmentPageInner() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -31,4 +31,18 @@ export default function EquipmentPage() {
   }
 
   return <EquipmentApp />;
+}
+
+export default function EquipmentPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[40vh] items-center justify-center">
+          <p className="text-sm text-pulse-muted">Loading…</p>
+        </div>
+      }
+    >
+      <EquipmentPageInner />
+    </Suspense>
+  );
 }

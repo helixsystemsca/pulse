@@ -22,6 +22,7 @@ const btnGhost =
 function ChecklistsInner() {
   const search = useSearchParams();
   const focusId = search.get("id");
+  const seasonalFocus = search.get("category") === "seasonal";
   const [templates, setTemplates] = useState<OpsChecklistTemplate[]>([]);
   const [instances, setInstances] = useState<OpsChecklistInstance[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(focusId);
@@ -58,6 +59,11 @@ function ChecklistsInner() {
     void reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- initial load
   }, []);
+
+  useEffect(() => {
+    if (!seasonalFocus) return;
+    document.getElementById("ops-ask-seasonal")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [seasonalFocus, loading]);
 
   const selected = useMemo(
     () => instances.find((i) => i.id === selectedId) ?? null,
@@ -112,7 +118,10 @@ function ChecklistsInner() {
         ) : (
           <div className="grid gap-6 lg:grid-cols-[16rem_1fr]">
             <aside className="space-y-4">
-              <div>
+              <div
+                id="ops-ask-seasonal"
+                className={seasonalFocus ? "rounded-xl border border-ds-primary/40 bg-ds-card p-2" : undefined}
+              >
                 <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ds-muted">
                   Seasonal startup
                 </h3>
