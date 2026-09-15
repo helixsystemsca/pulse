@@ -82,6 +82,8 @@ export type InventoryRow = {
   assignee_name: string | null;
   zone_id: string | null;
   location_name: string | null;
+  ops_facility_id?: string | null;
+  ops_facility_name?: string | null;
   linked_tool_id: string | null;
   linked_asset_name: string | null;
   condition: string;
@@ -185,6 +187,7 @@ export function buildInventoryListQuery(params: {
   item_type?: string;
   category?: string;
   zone_id?: string;
+  ops_facility_id?: string;
   assigned_user_id?: string;
   department_slug?: string;
   /** Tenant admins only — narrows visible scopes beyond HR defaults */
@@ -201,6 +204,7 @@ export function buildInventoryListQuery(params: {
   if (params.item_type) sp.set("item_type", params.item_type);
   if (params.category) sp.set("category", params.category);
   if (params.zone_id) sp.set("zone_id", params.zone_id);
+  if (params.ops_facility_id) sp.set("ops_facility_id", params.ops_facility_id);
   if (params.assigned_user_id) sp.set("assigned_user_id", params.assigned_user_id);
   if (params.department_slug) sp.set("department_slug", params.department_slug);
   if (params.scope_id) sp.set("scope_id", params.scope_id);
@@ -237,6 +241,7 @@ export async function createInventoryItem(
     inv_status?: string | null;
     zone_id?: string | null;
     location_lines?: { zone_id: string; quantity: number }[];
+    ops_facility_id?: string | null;
     assigned_user_id?: string | null;
     linked_tool_id?: string | null;
     condition: string;

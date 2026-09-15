@@ -42,6 +42,7 @@ from app.models.domain import (
     UserRole,
     Zone,
 )
+from app.models.ops_foundation_models import OpsFacility
 from app.api.inventory_query_helpers import (
     collect_item_reference_ids,
     ctx_maps_for_ids,
@@ -80,6 +81,7 @@ from app.services.material_request_queue_service import (
 )
 from app.models.pulse_models import PulseWorkRequest
 from app.modules.pulse import service as pulse_svc
+from app.services.ops_facility_links import facility_titles_by_id, require_ops_facility
 from app.schemas.inventory_portal import (
     InventoryAssignIn,
     InventoryCreateIn,
@@ -426,9 +428,11 @@ def _row(
     tools: dict[str, Tool],
     last_used: Optional[datetime],
     mr_on_order: bool = False,
+    facility_names: Optional[dict[str, str]] = None,
 ) -> InventoryRowOut:
     au = users.get(str(item.assigned_user_id)) if item.assigned_user_id else None
     t = tools.get(str(item.linked_tool_id)) if item.linked_tool_id else None
+    fid = getattr(item, "ops_facility_id", None)
     return InventoryRowOut(
         id=item.id,
         sku=item.sku,
@@ -444,6 +448,8 @@ def _row(
         assignee_name=au.full_name if au else None,
         zone_id=item.zone_id,
         location_name=_location_name_for_item(item, zones),
+        ops_facility_id=str(fid) if fid else None,
+        ops_facility_name=(facility_names or {}).get(str(fid)) if fid else None,
         linked_tool_id=item.linked_tool_id,
         linked_asset_name=t.name if t else None,
         condition=item.item_condition,
@@ -500,6 +506,8 @@ async def _inventory_detail_payload(db: AsyncSession, cid: str, item: InventoryI
     )
     last_used = (await last_used_at_map(db, [str(item.id)])).get(str(item.id))
     mr_ids = await inventory_item_ids_mr_on_order(db, cid)
+    facility_ids = {str(item.ops_facility_id)} if getattr(item, "ops_facility_id", None) else set()
+    facility_names = await facility_titles_by_id(db, cid, facility_ids)
     base = _row(
         item,
         users=users,
@@ -507,6 +515,7 @@ async def _inventory_detail_payload(db: AsyncSession, cid: str, item: InventoryI
         tools=tools,
         last_used=last_used,
         mr_on_order=str(item.id) in mr_ids,
+        facility_names=facility_names,
     )
 
     wr_map: dict[str, PulseWorkRequest] = {}
@@ -1175,6 +1184,7 @@ async def list_inventory(
     date_to: Optional[datetime] = Query(None),
     department_slug: Optional[str] = Query(None, description="Filter by workspace department slug"),
     scope_id: Optional[str] = Query(None, description="Optional narrow filter by inventory scope id"),
+    ops_facility_id: Optional[str] = Query(None, description="Filter by recreation facility"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
 ) -> InventoryListOut:
@@ -1183,7 +1193,19 @@ async def list_inventory(
     conds: list = []
     if q and q.strip():
         like = f"%{q.strip()}%"
-        conds.append(or_(InventoryItem.name.ilike(like), InventoryItem.sku.ilike(like), InventoryItem.category.ilike(like)))
+        conds.append(
+            or_(
+                InventoryItem.name.ilike(like),
+                InventoryItem.sku.ilike(like),
+                InventoryItem.category.ilike(like),
+                InventoryItem.ops_facility_id.in_(
+                    select(OpsFacility.id).where(
+                        OpsFacility.company_id == cid,
+                        OpsFacility.title.ilike(like),
+                    )
+                ),
+            )
+        )
     if inv_status:
         conds.append(InventoryItem.inv_status == inv_status)
     if item_type:
@@ -1192,6 +1214,8 @@ async def list_inventory(
         conds.append(InventoryItem.category == category)
     if zone_id:
         conds.append(InventoryItem.zone_id == zone_id)
+    if ops_facility_id:
+        conds.append(InventoryItem.ops_facility_id == ops_facility_id)
     if assigned_user_id:
         conds.append(InventoryItem.assigned_user_id == assigned_user_id)
     if department_slug and department_slug.strip():
@@ -1241,6 +1265,8 @@ async def list_inventory(
     )
     last_used = await last_used_at_map(db, [str(r.id) for r in rows])
     mr_ids = await inventory_item_ids_mr_on_order(db, cid)
+    facility_ids = {str(it.ops_facility_id) for it in rows if getattr(it, "ops_facility_id", None)}
+    facility_names = await facility_titles_by_id(db, cid, facility_ids)
     items = [
         _row(
             it,
@@ -1249,6 +1275,7 @@ async def list_inventory(
             tools=tools,
             last_used=last_used.get(str(it.id)),
             mr_on_order=str(it.id) in mr_ids,
+            facility_names=facility_names,
         )
         for it in rows
     ]
@@ -1499,6 +1526,7 @@ async def create_inventory_item(
         raise HTTPException(status_code=400, detail="Unknown assignee")
     if body.linked_tool_id and not await pulse_svc.tool_in_company(db, cid, body.linked_tool_id):
         raise HTTPException(status_code=400, detail="Unknown linked asset")
+    facility = await require_ops_facility(db, cid, body.ops_facility_id)
 
     if body.scope_id and str(body.scope_id).strip():
         scope_row = await inv_scope_repo.get_inventory_scope(db, str(body.scope_id).strip(), cid)
@@ -1535,6 +1563,7 @@ async def create_inventory_item(
         category=body.category,
         inv_status=inv_st or "in_stock",
         zone_id=create_zone,
+        ops_facility_id=str(facility.id) if facility else None,
         assigned_user_id=body.assigned_user_id,
         linked_tool_id=body.linked_tool_id,
         item_condition=body.condition,
@@ -1595,6 +1624,9 @@ async def patch_inventory_item(
     if "linked_tool_id" in data and data["linked_tool_id"]:
         if not await pulse_svc.tool_in_company(db, cid, data["linked_tool_id"]):
             raise HTTPException(status_code=400, detail="Unknown linked asset")
+    if "ops_facility_id" in data:
+        facility = await require_ops_facility(db, cid, data.pop("ops_facility_id"))
+        item.ops_facility_id = str(facility.id) if facility else None
 
     new_scope_raw = data.pop("scope_id", None)
 

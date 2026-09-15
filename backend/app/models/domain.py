@@ -436,6 +436,12 @@ class FacilityEquipment(Base):
     ops_facility_id: Mapped[Optional[str]] = mapped_column(
         UUID(as_uuid=False), ForeignKey("ops_facilities.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    parent_equipment_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("facility_equipment.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
 
 class EquipmentPart(Base):
@@ -576,6 +582,9 @@ class InventoryItem(Base):
     inv_status: Mapped[str] = mapped_column(String(32), nullable=False, default="in_stock", index=True)
     zone_id: Mapped[Optional[str]] = mapped_column(
         UUID(as_uuid=False), ForeignKey("zones.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    ops_facility_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("ops_facilities.id", ondelete="SET NULL"), nullable=True, index=True
     )
     assigned_user_id: Mapped[Optional[str]] = mapped_column(
         UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True

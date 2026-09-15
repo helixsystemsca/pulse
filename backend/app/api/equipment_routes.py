@@ -19,7 +19,15 @@ from app.core.pulse_storage import (
     write_part_image_bytes,
 )
 from app.models.domain import EquipmentPart, FacilityEquipment, FacilityEquipmentStatus, User, Zone
+from app.models.ops_foundation_models import OpsFacility
 from app.models.pulse_models import PulseWorkRequest
+from app.services.ops_facility_links import (
+    equipment_names_by_id,
+    facility_titles_by_id,
+    inherit_facility_id,
+    require_ops_facility,
+    require_parent_equipment,
+)
 from app.schemas.equipment_part import (
     EquipmentImageUploadOut,
     EquipmentPartCreateIn,
@@ -97,6 +105,8 @@ def _row_to_out(
     *,
     parts_overdue_count: int = 0,
     parts_due_soon_count: int = 0,
+    ops_facility_name: str | None = None,
+    parent_equipment_name: str | None = None,
 ) -> FacilityEquipmentOut:
     return FacilityEquipmentOut(
         id=row.id,
@@ -105,6 +115,10 @@ def _row_to_out(
         type=row.type,
         zone_id=row.zone_id,
         zone_name=zone_name,
+        ops_facility_id=row.ops_facility_id,
+        ops_facility_name=ops_facility_name,
+        parent_equipment_id=row.parent_equipment_id,
+        parent_equipment_name=parent_equipment_name,
         status=row.status.value,
         manufacturer=row.manufacturer,
         model=row.model,
@@ -204,6 +218,7 @@ async def list_equipment(
     db: Db,
     q: Optional[str] = Query(None, description="Search name, type, serial, model"),
     zone_id: Optional[str] = Query(None),
+    ops_facility_id: Optional[str] = Query(None, description="Filter by recreation facility"),
     type: Optional[str] = Query(None, description="Filter by equipment type/category"),
     status: Optional[str] = Query(None, pattern="^(active|maintenance|offline)$"),
     sort: str = Query("name", pattern="^(name|type|status|last_service_date|updated_at|zone_name)$"),
@@ -219,16 +234,23 @@ async def list_equipment(
     )
     if q and q.strip():
         term = f"%{q.strip().lower()}%"
+        facility_title_ids = select(OpsFacility.id).where(
+            OpsFacility.company_id == cid,
+            func.lower(OpsFacility.title).like(term),
+        )
         stmt = stmt.where(
             or_(
                 func.lower(FacilityEquipment.name).like(term),
                 func.lower(FacilityEquipment.type).like(term),
                 func.lower(func.coalesce(FacilityEquipment.serial_number, "")).like(term),
                 func.lower(func.coalesce(FacilityEquipment.model, "")).like(term),
+                FacilityEquipment.ops_facility_id.in_(facility_title_ids),
             )
         )
     if zone_id:
         stmt = stmt.where(FacilityEquipment.zone_id == zone_id)
+    if ops_facility_id:
+        stmt = stmt.where(FacilityEquipment.ops_facility_id == ops_facility_id)
     if type and type.strip():
         stmt = stmt.where(FacilityEquipment.type == type.strip())
     if status:
@@ -250,11 +272,26 @@ async def list_equipment(
 
     res = await db.execute(stmt)
     rows = res.all()
+    facility_ids = {str(r[0].ops_facility_id) for r in rows if getattr(r[0], "ops_facility_id", None)}
+    parent_ids = {str(r[0].parent_equipment_id) for r in rows if getattr(r[0], "parent_equipment_id", None)}
+    facility_names = await facility_titles_by_id(db, cid, facility_ids)
+    parent_names = await equipment_names_by_id(db, cid, parent_ids)
     out: list[FacilityEquipmentOut] = []
     for r in rows:
         eq = r[0]
         po, ps = counts.get(eq.id, (0, 0))
-        out.append(_row_to_out(eq, r[1], parts_overdue_count=po, parts_due_soon_count=ps))
+        out.append(
+            _row_to_out(
+                eq,
+                r[1],
+                parts_overdue_count=po,
+                parts_due_soon_count=ps,
+                ops_facility_name=facility_names.get(str(eq.ops_facility_id)) if eq.ops_facility_id else None,
+                parent_equipment_name=parent_names.get(str(eq.parent_equipment_id))
+                if eq.parent_equipment_id
+                else None,
+            )
+        )
     return out
 
 
@@ -443,7 +480,21 @@ async def get_equipment(
         raise HTTPException(status_code=404, detail="Equipment not found")
     counts = await _part_counts_by_equipment(db, cid)
     po, ps = counts.get(row[0].id, (0, 0))
-    base = _row_to_out(row[0], row[1], parts_overdue_count=po, parts_due_soon_count=ps)
+    eq = row[0]
+    facility_names = await facility_titles_by_id(
+        db, cid, {str(eq.ops_facility_id)} if eq.ops_facility_id else set()
+    )
+    parent_names = await equipment_names_by_id(
+        db, cid, {str(eq.parent_equipment_id)} if eq.parent_equipment_id else set()
+    )
+    base = _row_to_out(
+        eq,
+        row[1],
+        parts_overdue_count=po,
+        parts_due_soon_count=ps,
+        ops_facility_name=facility_names.get(str(eq.ops_facility_id)) if eq.ops_facility_id else None,
+        parent_equipment_name=parent_names.get(str(eq.parent_equipment_id)) if eq.parent_equipment_id else None,
+    )
     wo_q = await db.execute(
         select(PulseWorkRequest)
         .where(PulseWorkRequest.company_id == cid, PulseWorkRequest.equipment_id == equipment_id)
@@ -475,6 +526,9 @@ async def create_equipment(
 ) -> FacilityEquipmentOut:
     cid = str(user.company_id)
     await _validate_zone(db, cid, body.zone_id)
+    parent = await require_parent_equipment(db, cid, body.parent_equipment_id)
+    facility_id = inherit_facility_id(body.ops_facility_id, parent)
+    facility = await require_ops_facility(db, cid, facility_id)
     try:
         st = FacilityEquipmentStatus(body.status)
     except ValueError:
@@ -485,6 +539,8 @@ async def create_equipment(
         name=body.name.strip(),
         type=(body.type or "General").strip() or "General",
         zone_id=body.zone_id,
+        ops_facility_id=str(facility.id) if facility else None,
+        parent_equipment_id=str(parent.id) if parent else None,
         status=st,
         manufacturer=body.manufacturer.strip() if body.manufacturer else None,
         model=body.model.strip() if body.model else None,
@@ -506,7 +562,12 @@ async def create_equipment(
         zn_val = z.name if z else None
     await db.commit()
     await db.refresh(row)
-    return _row_to_out(row, zn_val)
+    return _row_to_out(
+        row,
+        zn_val,
+        ops_facility_name=facility.title if facility else None,
+        parent_equipment_name=parent.name if parent else None,
+    )
 
 
 @router.patch("/{equipment_id}", response_model=FacilityEquipmentOut)
@@ -521,6 +582,18 @@ async def patch_equipment(
     data = body.model_dump(exclude_unset=True)
     if "zone_id" in data:
         await _validate_zone(db, cid, data["zone_id"])
+    parent = None
+    if "parent_equipment_id" in data:
+        parent = await require_parent_equipment(db, cid, data["parent_equipment_id"], self_id=str(row.id))
+        data["parent_equipment_id"] = str(parent.id) if parent else None
+    if "ops_facility_id" in data:
+        facility = await require_ops_facility(db, cid, data["ops_facility_id"])
+        data["ops_facility_id"] = str(facility.id) if facility else None
+    elif "parent_equipment_id" in data and not row.ops_facility_id:
+        inherited = inherit_facility_id(None, parent)
+        if inherited:
+            facility = await require_ops_facility(db, cid, inherited)
+            data["ops_facility_id"] = str(facility.id) if facility else None
     st_raw = data.pop("status", None)
     if st_raw is not None:
         try:
@@ -540,7 +613,20 @@ async def patch_equipment(
         zn_val = z.name if z else None
     counts = await _part_counts_by_equipment(db, cid)
     po, ps = counts.get(row.id, (0, 0))
-    return _row_to_out(row, zn_val, parts_overdue_count=po, parts_due_soon_count=ps)
+    facility_names = await facility_titles_by_id(
+        db, cid, {str(row.ops_facility_id)} if row.ops_facility_id else set()
+    )
+    parent_names = await equipment_names_by_id(
+        db, cid, {str(row.parent_equipment_id)} if row.parent_equipment_id else set()
+    )
+    return _row_to_out(
+        row,
+        zn_val,
+        parts_overdue_count=po,
+        parts_due_soon_count=ps,
+        ops_facility_name=facility_names.get(str(row.ops_facility_id)) if row.ops_facility_id else None,
+        parent_equipment_name=parent_names.get(str(row.parent_equipment_id)) if row.parent_equipment_id else None,
+    )
 
 
 @router.delete("/{equipment_id}", status_code=status.HTTP_204_NO_CONTENT)

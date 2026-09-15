@@ -332,6 +332,30 @@ class OpsFacilityPatchIn(OpsRecordBasePatch):
     documents: Optional[list[Any]] = None
 
 
+class FacilityContainedAssetOut(BaseModel):
+    id: str
+    name: str
+    type: str
+    status: str
+    parent_equipment_id: Optional[str] = None
+    parent_equipment_name: Optional[str] = None
+
+
+class FacilityContainedInventoryOut(BaseModel):
+    id: str
+    sku: str
+    name: str
+    quantity: float
+    unit: str
+    inv_status: str
+
+
+class FacilityContentsOut(BaseModel):
+    facility: OpsFacilityOut
+    assets: list[FacilityContainedAssetOut] = Field(default_factory=list)
+    inventory: list[FacilityContainedInventoryOut] = Field(default_factory=list)
+
+
 # —— Quick notes ——
 class OpsQuickNoteOut(OpsRecordBaseOut):
     priority: str = "normal"

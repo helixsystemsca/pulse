@@ -17,6 +17,7 @@ import {
   type LocationStockLine,
 } from "@/lib/inventory/inventory-location-stock";
 import { cn } from "@/lib/cn";
+import { FacilitySelect } from "@/components/facilities/FacilitySelect";
 
 const FIELD =
   "mt-1.5 w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25";
@@ -40,6 +41,7 @@ export type InventoryRegisterFormState = {
   location_lines: InventoryRegisterLocationLineState[];
   assigned_user_id: string;
   linked_tool_id: string;
+  ops_facility_id: string;
   department_slug: string;
   condition: string;
   unit_cost: string;
@@ -476,6 +478,19 @@ export function InventoryRegisterItemForm({
 
   return (
     <div className={cn("grid gap-4 sm:grid-cols-2", disabled && "pointer-events-none opacity-50")}>
+      <div className="sm:col-span-2">
+        <label className={LABEL} htmlFor="inv-facility">
+          Facility
+        </label>
+        <FacilitySelect
+          id="inv-facility"
+          className={FIELD}
+          disabled={disabled}
+          value={form.ops_facility_id}
+          onChange={(ops_facility_id) => setForm({ ops_facility_id })}
+          emptyLabel="Unassigned"
+        />
+      </div>
       {fields.map((field) => {
         const inputType = effectiveInputType(field);
         const isCheckbox = inputType === "checkbox" || field.id === "reorder_flag";
@@ -576,6 +591,7 @@ export function registerFormStateToPayload(
     location_lines: location_lines.length > 0 ? location_lines : undefined,
     assigned_user_id: form.assigned_user_id || null,
     linked_tool_id: form.linked_tool_id || null,
+    ops_facility_id: form.ops_facility_id || null,
     condition: form.condition,
     department_slug: form.department_slug,
     unit_cost: unit_cost != null && !Number.isNaN(unit_cost) ? unit_cost : null,
@@ -622,6 +638,7 @@ export function emptyRegisterFormState(defaultMin = 5, departmentSlug = ""): Inv
     location_lines: [{ zone_id: "", quantity: "" }],
     assigned_user_id: "",
     linked_tool_id: "",
+    ops_facility_id: "",
     department_slug: departmentSlug,
     condition: "good",
     unit_cost: "",

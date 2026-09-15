@@ -123,6 +123,25 @@ describe("routeOpsAsk — intent to route", () => {
     expect(topHref("Show ammonia emergency procedure")).toBe("/recreation/emergency");
   });
 
+  it("maps “add facility” to the facility create screen", () => {
+    expect(topHref("add facility")).toBe("/recreation/facilities?create=1");
+    expect(topHref("Add a facility")).toBe("/recreation/facilities?create=1");
+  });
+
+  it("maps “assets at the arena” to the equipment list", () => {
+    expect(topHref("assets at the arena")).toBe("/equipment?q=arena");
+    expect(topHref("equipment at arena")).toBe("/equipment?q=arena");
+  });
+
+  it("maps “inventory at the pool” to inventory", () => {
+    expect(topHref("inventory at the pool")).toBe("/dashboard/inventory?q=pool");
+    expect(topHref("inventory at pool")).toBe("/dashboard/inventory?q=pool");
+  });
+
+  it("maps “what's at the arena” to the facilities list", () => {
+    expect((topHref("what's at the arena") ?? "").startsWith("/recreation/facilities")).toBe(true);
+  });
+
   it("says so when nothing matches and suggests high-value browse destinations", () => {
     const answer = routeOpsAsk("blarghxyz not a real module 999", vernonAdmin());
     expect(answer.matched).toBe(false);
