@@ -17,6 +17,7 @@ import {
 import { PageBody } from "@/components/ui/PageBody";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { CertificationExpiryPanel } from "@/components/recreation/CertificationExpiryPanel";
+import { fetchIntelligence, type OpsIntelligence } from "@/lib/recreation/commandService";
 
 const MODULES: {
   key: keyof OpsIntelligence;

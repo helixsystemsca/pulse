@@ -44,7 +44,7 @@ function ChecklistsInner() {
       setTemplates(t);
       setInstances(i);
       setFacilities(fac);
-      if (!seasonFacilityId && fac[0]) setSeasonFacilityId(fac[0].id);
+      setSeasonFacilityId((prev) => prev || fac[0]?.id || "");
       if (focusId && i.some((x) => x.id === focusId)) setSelectedId(focusId);
       else if (!selectedId && i[0]) setSelectedId(i[0].id);
     } catch (e) {

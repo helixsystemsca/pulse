@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { useWorkforceQualifications } from "@/components/standards/workforce-training/WorkforceQualificationsContext";
 import { QualificationStatusChip } from "@/components/standards/workforce-training/QualificationStatusChip";
 import type { EmployeeCertificationRecord } from "@/lib/standards/employee-certifications";
+import { cn } from "@/lib/cn";
 import { CertificationExpiryPanel } from "@/components/recreation/CertificationExpiryPanel";
 
 type QueueTab = "expiring" | "expired" | "missing_proof" | "pending_verification";
