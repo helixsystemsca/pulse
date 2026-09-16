@@ -163,4 +163,22 @@ describe("resolveProductTour", () => {
       '[data-tour="procedures-tour-list"]',
     ]);
   });
+
+  it("keeps planner inbox tours when inbox is hidden from the sidebar", () => {
+    const tree: NavigationTreeDomain[] = [
+      {
+        domain: "My Role",
+        label: "Recreation",
+        icon: "user-cog",
+        groups: [
+          {
+            group: "Planner",
+            items: [navItem({ key: "daily_planner", href: "/planner", label: "Daily Planner" })],
+          },
+        ],
+      },
+    ];
+    const tour = resolveProductTour("/planner/inbox", tree);
+    expect(tour?.id).toBe("feature-daily_planner_inbox-walkthrough");
+  });
 });

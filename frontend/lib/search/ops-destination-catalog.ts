@@ -323,10 +323,10 @@ export const OPS_ASK_CATALOG: readonly OpsAskCatalogItem[] = [
   },
   {
     id: "knowledge",
-    title: "Knowledge Base",
+    title: "Ops Knowledge",
     href: "/recreation/knowledge",
-    why: "Searchable playbooks including emergency procedures.",
-    phrases: ["knowledge base", "knowledge articles", "playbooks"],
+    why: "Searchable operational notes and playbooks. Codes & Guidance is the regulatory library.",
+    phrases: ["knowledge base", "knowledge articles", "playbooks", "ops knowledge"],
     keywords: ["knowledge", "article", "playbook", "emergency"],
     weight: 6,
   },

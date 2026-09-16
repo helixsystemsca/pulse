@@ -32,7 +32,8 @@ export const NAV_DOMAIN_ORDER: readonly NavDomain[] = NAV_DOMAINS;
 
 export type NavDomainMeta = {
   domain: NavDomain;
-  label: NavDomain;
+  /** Rail display label (may differ from the stable domain key). */
+  label: string;
   /** Lucide key shared with master feature icons / AppSideNav rail map. */
   icon: MasterFeatureIcon;
 };
@@ -41,7 +42,7 @@ export const NAV_DOMAIN_META: Record<NavDomain, NavDomainMeta> = {
   Dashboards: { domain: "Dashboards", label: "Dashboards", icon: "layout" },
   Planning: { domain: "Planning", label: "Planning", icon: "calendar" },
   Operations: { domain: "Operations", label: "Operations", icon: "clipboard" },
-  "My Role": { domain: "My Role", label: "My Role", icon: "user-cog" },
+  "My Role": { domain: "My Role", label: "Recreation", icon: "user-cog" },
   Communications: { domain: "Communications", label: "Communications", icon: "megaphone" },
   Aquatics: { domain: "Aquatics", label: "Aquatics", icon: "waves" },
   Reception: { domain: "Reception", label: "Reception", icon: "building" },
@@ -50,7 +51,7 @@ export const NAV_DOMAIN_META: Record<NavDomain, NavDomainMeta> = {
   Training: { domain: "Training", label: "Training", icon: "book-open" },
   "Team Management": { domain: "Team Management", label: "Team Management", icon: "users" },
   Assets: { domain: "Assets", label: "Assets", icon: "package" },
-  Visuals: { domain: "Visuals", label: "Visuals", icon: "layers" },
+  Visuals: { domain: "Visuals", label: "Maps", icon: "layers" },
   Administration: { domain: "Administration", label: "Administration", icon: "user-cog" },
 };
 

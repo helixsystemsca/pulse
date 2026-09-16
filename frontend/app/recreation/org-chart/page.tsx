@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Network } from "lucide-react";
 import { PageBody } from "@/components/ui/PageBody";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { DirectoryChrome } from "@/components/recreation/DirectoryChrome";
 import { listOpsRecords, patchOpsRecord, type OpsRecord } from "@/lib/recreation/opsService";
 import { fetchOrgChart, type OpsOrgNode } from "@/lib/recreation/commandService";
 
@@ -108,6 +109,7 @@ export default function OrgChartPage() {
 
   return (
     <div className="space-y-6">
+      <DirectoryChrome />
       <PageHeader
         title="Org Chart"
         description="Operational hierarchy — departments, teams, and reporting relationships. Click a name to open their person record."

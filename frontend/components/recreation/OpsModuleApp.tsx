@@ -45,6 +45,7 @@ import {
 } from "@/lib/recreation/opsService";
 import { cn } from "@/lib/cn";
 import { uiCalloutWarning } from "@/styles/ui-classes";
+import { DirectoryChrome } from "@/components/recreation/DirectoryChrome";
 
 const ICONS = {
   "book-open": BookOpen,
@@ -355,6 +356,7 @@ export function OpsModuleApp({ entityType }: Props) {
 
   return (
     <div className="space-y-6">
+      {entityType === "people" || entityType === "contacts" ? <DirectoryChrome /> : null}
       <PageHeader
         title={mod.label}
         description={mod.description}

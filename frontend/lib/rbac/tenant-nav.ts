@@ -6,6 +6,7 @@ import type { NavDomain } from "@/config/platform/nav-domains";
 import type { DashboardScope } from "@/config/platform/dashboard-scope";
 import {
   MASTER_FEATURES,
+  masterFeatureNavLabel,
   NAV_VISIBLE_MASTER_FEATURES,
   normalizeNavHref,
   type MasterFeatureDef,
@@ -267,7 +268,7 @@ export function tenantSidebarNavItemsForSession(
     out.push({
       key: f.key,
       href: f.route,
-      label: f.navLabelOverride?.trim() || f.label,
+      label: masterFeatureNavLabel(f),
       icon: f.icon,
       moduleCategory: normalizeModuleCategory(f.moduleCategory),
       navDomain: f.navDomain,
