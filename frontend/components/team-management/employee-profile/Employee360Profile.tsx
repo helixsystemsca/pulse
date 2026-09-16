@@ -6,6 +6,7 @@ import { PulseDrawer } from "@/components/schedule/PulseDrawer";
 import { Button } from "@/components/ui/Button";
 import { EmployeeProfileProvider } from "@/components/team-management/employee-profile/EmployeeProfileContext";
 import { ProfileOverviewTab } from "@/components/team-management/employee-profile/tabs/ProfileOverviewTab";
+import { ProfileHireOnboardingTab } from "@/components/team-management/employee-profile/tabs/ProfileHireOnboardingTab";
 import { ProfilePerformanceTab } from "@/components/team-management/employee-profile/tabs/ProfilePerformanceTab";
 import { ProfileDevelopmentTab } from "@/components/team-management/employee-profile/tabs/ProfileDevelopmentTab";
 import { ProfileTrainingTab } from "@/components/team-management/employee-profile/tabs/ProfileTrainingTab";
@@ -19,6 +20,7 @@ import { cn } from "@/lib/cn";
 
 const TABS: { id: EmployeeProfileTab; label: string }[] = [
   { id: "overview", label: "Overview" },
+  { id: "hire-docs", label: "Hire docs" },
   { id: "performance", label: "Performance" },
   { id: "development", label: "Development" },
   { id: "training", label: "Training" },
@@ -31,6 +33,8 @@ function ProfileBody({ tab }: { tab: EmployeeProfileTab }) {
   switch (tab) {
     case "overview":
       return <ProfileOverviewTab />;
+    case "hire-docs":
+      return <ProfileHireOnboardingTab />;
     case "performance":
       return <ProfilePerformanceTab />;
     case "development":

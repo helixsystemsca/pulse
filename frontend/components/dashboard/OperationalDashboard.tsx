@@ -101,6 +101,8 @@ import {
   mergeNotificationItems,
   recreationOpsNotificationItems,
 } from "@/lib/dashboard/recreation-ops-notifications";
+import { fetchHireOnboardingIncompleteSummary } from "@/lib/hireOnboardingService";
+import { hireOnboardingNotificationItems } from "@/lib/hire-onboarding/notifications";
 import { fetchDashboardBootstrap } from "@/lib/pulse/dashboard-bootstrap";
 import { primePulseReferenceFromBootstrap } from "@/lib/pulse/pulse-reference-data";
 import { fetchWorkRequestKpiSummary } from "@/lib/work-requests/kpi-summary";
@@ -2164,7 +2166,22 @@ export function OperationalDashboard({
         workRequests: { ...model.workRequests, kpi: wrKpi },
       };
       let alerts = withWelcome.alerts;
+      let hireBanner: string | null = null;
       const recSess = tokenOverride ? null : readSession();
+      if (recSess) {
+        try {
+          const hireSummary = await fetchHireOnboardingIncompleteSummary(recSess.company_id ?? null);
+          alerts = mergeNotificationItems(alerts, hireOnboardingNotificationItems(hireSummary));
+          if (hireSummary.open_hires > 0 && hireSummary.incomplete_required_items > 0) {
+            hireBanner =
+              hireSummary.open_hires === 1
+                ? `Hire documents incomplete — ${hireSummary.hires[0]?.full_name || hireSummary.hires[0]?.email || "1 hire"} still has required items.`
+                : `${hireSummary.open_hires} open hires have incomplete required documents.`;
+          }
+        } catch {
+          /* Hire packets require Team Management access */
+        }
+      }
       if (recSess && isTenantFeatureOnContract(recSess, "recreation_ops")) {
         try {
           const rec = await fetchCommandDashboard();
@@ -2173,8 +2190,9 @@ export function OperationalDashboard({
           /* Rec Ops is optional on this board */
         }
       }
+      const withAlerts: DashboardViewModel = { ...withWelcome, bannerNote: hireBanner };
       readyPayload = notificationCountsFromAlerts(alerts);
-      setLiveModel(withWelcome);
+      setLiveModel(withAlerts);
       useOperationalNotificationsStore.getState().setItems(alerts);
     } catch (err) {
       if (isPulseAuthTeardown()) {

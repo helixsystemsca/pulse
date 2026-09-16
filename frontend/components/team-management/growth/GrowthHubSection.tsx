@@ -31,7 +31,7 @@ export function GrowthHubSection() {
               <h2 className="text-sm font-bold text-ds-foreground">{item.label}</h2>
               <p className="mt-1 flex-1 text-xs text-ds-muted">
                 {item.id === "onboarding"
-                  ? "Standardized onboarding tracks and readiness signoffs."
+                  ? "Required hire documents, review/sign checklist, and packet progress."
                   : item.id === "training"
                     ? "Training matrix, compliance, and workforce qualifications."
                     : "Growth overview and navigation."}

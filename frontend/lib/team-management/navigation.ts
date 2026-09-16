@@ -90,7 +90,7 @@ export const PEOPLE_SUB_NAV: readonly TeamManagementSubNavItem[] = [
   { id: "skills", label: "Skills Matrix", href: "/team-management/people/skills" },
   { id: "certifications", label: "Certifications", href: "/team-management/people/certifications" },
   { id: "career-goals", label: "Career Goals", href: "/team-management/people/career-goals" },
-  { id: "documents", label: "Documents", href: "/team-management/people/documents", future: true },
+  { id: "documents", label: "Documents", href: "/team-management/people/documents" },
   { id: "emergency", label: "Emergency Contacts", href: "/team-management/people/emergency-contacts", future: true },
   { id: "org-chart", label: "Org Chart", href: "/team-management/people/org-chart", future: true },
 ];

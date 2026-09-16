@@ -246,6 +246,13 @@ export type WorkerCreateResult = {
   invite_email_sent: boolean | null;
   invite_email_error?: string | null;
   message: string;
+  hire_onboarding?: {
+    packet_id: string;
+    required_total: number;
+    required_completed: number;
+    percent: number;
+    status: string;
+  } | null;
 };
 
 export async function createWorker(

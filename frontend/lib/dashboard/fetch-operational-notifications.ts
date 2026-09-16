@@ -13,6 +13,8 @@ import {
   recreationOpsNotificationItems,
 } from "@/lib/dashboard/recreation-ops-notifications";
 import { fetchCommandDashboard } from "@/lib/recreation/commandService";
+import { fetchHireOnboardingIncompleteSummary } from "@/lib/hireOnboardingService";
+import { hireOnboardingNotificationItems } from "@/lib/hire-onboarding/notifications";
 
 type DashboardPayload = {
   active_workers: number;
@@ -61,12 +63,20 @@ export async function fetchOperationalNotificationsForHeader(): Promise<Operatio
       zones: zoneList,
       nowMs: getServerNow(),
     });
-    if (!isTenantFeatureOnContract(sess, "recreation_ops")) return items;
+    let merged = items;
+    const sessCompany = sess.company_id ?? null;
+    try {
+      const hireSummary = await fetchHireOnboardingIncompleteSummary(sessCompany);
+      merged = mergeNotificationItems(merged, hireOnboardingNotificationItems(hireSummary));
+    } catch {
+      /* hire packets are optional for roles without Team Management */
+    }
+    if (!isTenantFeatureOnContract(sess, "recreation_ops")) return merged;
     try {
       const rec = await fetchCommandDashboard();
-      return mergeNotificationItems(items, recreationOpsNotificationItems(rec));
+      return mergeNotificationItems(merged, recreationOpsNotificationItems(rec));
     } catch {
-      return items;
+      return merged;
     }
   } catch {
     return null;
