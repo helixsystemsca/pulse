@@ -24,11 +24,19 @@ def test_emergency_procedures_are_internal() -> None:
 def test_regulatory_reference_seed_catalog_is_tenant_safe() -> None:
     keys = [c["key"] for c in REFERENCE_CARDS]
     assert "chief-engineer-plant-responsibility" in keys
+    assert "tsbc-ammonia-public-occupancy" in keys
+    assert "tsbc-general-supervision-risk-assessed" in keys
+    assert "tsbc-ammonia-safety-awareness" in keys
+    assert "tsbc-refrigeration-operator-certificate" in keys
+    assert "tsbc-ice-facility-operator-certificate" in keys
     assert "interior-health-recreational-water" in keys
     assert "bc-building-code-how-it-applies" in keys
     for card in REFERENCE_CARDS:
         assert "pulse_pointers" in card
         assert not card["summary"].lower().startswith("you are legally required")
+        hrefs = [p.get("href") for p in card["pulse_pointers"] if p.get("href")]
+        if card["key"].startswith("tsbc-") or card["key"] == "chief-engineer-plant-responsibility":
+            assert hrefs, card["key"]
 
 
 def test_vernon_starter_pack_does_not_auto_insert_guidance_cards() -> None:

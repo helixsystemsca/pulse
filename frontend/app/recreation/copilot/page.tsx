@@ -113,7 +113,7 @@ function OpsCopilotInner() {
             type="search"
             value={typed}
             onChange={(e) => setTyped(e.target.value)}
-            placeholder={`Ask: chief engineer, pool code, building code, or press ${shortcut} anywhere`}
+            placeholder={`Ask: chief engineer, refrigeration operator, ammonia plant, or press ${shortcut} anywhere`}
             className="min-w-0 flex-1 rounded-lg border border-ds-border bg-ds-card px-3 py-2 text-sm text-ds-foreground"
             aria-label="Ask or search"
           />

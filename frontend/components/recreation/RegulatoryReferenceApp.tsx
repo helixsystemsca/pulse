@@ -357,7 +357,7 @@ export function RegulatoryReferenceApp() {
                 <input
                   type="search"
                   className="w-full rounded-lg border border-ds-border bg-ds-bg py-2.5 pl-9 pr-3 text-base sm:text-sm"
-                  placeholder="Search chief engineer, pool code, building code, OH&S…"
+                  placeholder="Search chief engineer, ammonia plant, refrigeration operator, pool code…"
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
                   aria-label="Search Codes & Guidance"
