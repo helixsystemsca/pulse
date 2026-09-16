@@ -97,7 +97,7 @@ PROMPT_LIBRARY: list[dict[str, str]] = [
         "id": "refrigeration-plant",
         "label": "Refrigeration plant / TSBC requirements",
         "prompt": "What are refrigeration plant requirements (Technical Safety BC)?",
-        "hint": "TSBC public notices for plant supervision, ammonia in ice rinks, and permits.",
+        "hint": "TSBC public notices for plant supervision, ammonia in ice rinks, certificates, and special-status registration.",
     },
 ]
 
@@ -489,6 +489,11 @@ async def answer_prompt(db: AsyncSession, company_id: str, prompt_id: str) -> di
         answer, cites = await _overdue_for_place(db, company_id, ("aquatic", "pool", "water quality", "chemical"))
     elif prompt_id == "qualified-ice-plant":
         answer, cites = await _qualified_ammonia(db, company_id)
+        extra_a, extra_c = await _library_cards(
+            db, company_id, query="refrigeration operator ice facility operator chief engineer"
+        )
+        answer = f"{answer}\n\n{extra_a}"
+        cites = cites + extra_c
     elif prompt_id == "ammonia-release":
         answer, cites = await _procedure_search(db, company_id, ("ammonia", "ice plant", "refrigerat"))
         extra_a, extra_c = await _library_cards(db, company_id, query="ammonia emergency")

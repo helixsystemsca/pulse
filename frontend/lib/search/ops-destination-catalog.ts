@@ -284,6 +284,9 @@ export const OPS_ASK_CATALOG: readonly OpsAskCatalogItem[] = [
       "worksafebc",
       "refrigeration plant requirements",
       "refrigeration plant",
+      "refrigeration operator",
+      "ice facility operator",
+      "ammonia safety order",
       "codes and guidance",
       "regulatory library",
       "technical safety bc",
@@ -307,6 +310,10 @@ export const OPS_ASK_CATALOG: readonly OpsAskCatalogItem[] = [
       "codes",
       "guidance",
       "electrical",
+      "ammonia",
+      "safety",
+      "order",
+      "operator",
     ],
     weight: 16,
     hrefForQuery: codesGuidanceHref,
@@ -495,7 +502,7 @@ export const OPS_COPILOT_PROMPT_MATCHERS: readonly {
   {
     id: "chief-engineer",
     label: "Chief engineer responsibilities",
-    phrases: ["chief engineer responsibilities", "chief engineer", "power engineer in charge"],
+    phrases: ["chief engineer responsibilities", "chief engineer", "power engineer in charge", "refrigeration operator", "ice facility operator"],
   },
   {
     id: "ohs-worksafebc",
@@ -515,6 +522,6 @@ export const OPS_COPILOT_PROMPT_MATCHERS: readonly {
   {
     id: "refrigeration-plant",
     label: "Refrigeration plant / TSBC",
-    phrases: ["refrigeration plant requirements", "refrigeration plant", "technical safety bc", "tsbc"],
+    phrases: ["refrigeration plant requirements", "refrigeration plant", "technical safety bc", "tsbc", "ammonia safety order", "general supervision"],
   },
 ];

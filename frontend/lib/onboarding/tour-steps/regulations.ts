@@ -18,7 +18,7 @@ export const REGULATIONS_TOUR_STEPS: TourStep[] = [
   {
     target: tourSel("regulations-tour-search"),
     title: "Search the library",
-    description: "Find a card by keyword — chief engineer, pool code, building code, OH&S.",
+    description: "Find a card by keyword — chief engineer, ammonia plant, refrigeration operator, pool code, building code, OH&S.",
     placement: "bottom",
   },
   {

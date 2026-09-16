@@ -117,10 +117,19 @@ describe("routeOpsAsk — intent to route", () => {
     }
     expect(routeOpsAsk("oh&s", vernonAdmin()).copilotPromptId).toBe("ohs-worksafebc");
     expect(routeOpsAsk("building code", vernonAdmin()).copilotPromptId).toBe("building-code");
+    expect((topHref("refrigeration operator") ?? "").split("?")[0]).toBe("/recreation/regulations");
+    expect((topHref("ammonia safety order") ?? "").split("?")[0]).toBe("/recreation/regulations");
   });
 
   it("still sends ammonia emergency to Emergency Response, not the library as primary", () => {
     expect(topHref("Show ammonia emergency procedure")).toBe("/recreation/emergency");
+    expect(topHref("ammonia release")).toBe("/recreation/emergency");
+  });
+
+  it("sends ammonia plant-rule questions to Codes & Guidance, not Emergency Response", () => {
+    expect((topHref("ammonia safety order") ?? "").split("?")[0]).toBe("/recreation/regulations");
+    expect((topHref("refrigeration operator") ?? "").split("?")[0]).toBe("/recreation/regulations");
+    expect((topHref("chief engineer responsibilities") ?? "").split("?")[0]).toBe("/recreation/regulations");
   });
 
   it("maps “add facility” to the facility create screen", () => {

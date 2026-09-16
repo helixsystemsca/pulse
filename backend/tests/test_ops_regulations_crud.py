@@ -179,6 +179,56 @@ async def test_seed_does_not_clobber_edited_or_archived_cards(
 
 
 @pytest.mark.asyncio
+async def test_seed_inserts_missing_catalog_key_without_clobbering_edits(
+    db_session: AsyncSession, seeded_tenant
+) -> None:
+    cid = seeded_tenant.company_id
+    await seed_regulatory_reference_cards(db_session, cid)
+
+    new_key = "tsbc-ammonia-safety-awareness"
+    catalog_summary = next(c["summary"] for c in REFERENCE_CARDS if c["key"] == new_key)
+    row = (
+        await db_session.execute(
+            select(OpsRegulation).where(OpsRegulation.company_id == cid, OpsRegulation.source_key == new_key)
+        )
+    ).scalar_one()
+    await db_session.delete(row)
+    await db_session.flush()
+
+    edited_key = "chief-engineer-plant-responsibility"
+    edited = (
+        await db_session.execute(
+            select(OpsRegulation).where(OpsRegulation.company_id == cid, OpsRegulation.source_key == edited_key)
+        )
+    ).scalar_one()
+    edited.summary = "Josh site notes — do not overwrite."
+    edited.user_modified = True
+    await db_session.flush()
+
+    await seed_regulatory_reference_cards(db_session, cid)
+
+    restored = (
+        await db_session.execute(
+            select(OpsRegulation).where(OpsRegulation.company_id == cid, OpsRegulation.source_key == new_key)
+        )
+    ).scalar_one()
+    assert restored.summary == catalog_summary
+    assert restored.user_modified is False
+    assert seed_tag_for(new_key) in (restored.tags or [])
+
+    await db_session.refresh(edited)
+    assert edited.summary == "Josh site notes — do not overwrite."
+    assert edited.user_modified is True
+
+    count = (
+        await db_session.execute(
+            select(func.count()).select_from(OpsRegulation).where(OpsRegulation.company_id == cid)
+        )
+    ).scalar_one()
+    assert count == len(REFERENCE_CARDS)
+
+
+@pytest.mark.asyncio
 async def test_seed_does_not_steal_user_created_title_collision(
     db_session: AsyncSession, seeded_tenant
 ) -> None:
