@@ -68,6 +68,7 @@ from app.core.workers_settings_merge import (
     sanitize_workers_policy_keys,
 )
 from app.services.invite_email_service import invite_failure_message, try_send_employee_invite_email
+from app.services.hire_onboarding.service import ensure_packet_for_user
 from app.core.auth.security import bump_access_token_version, hash_password
 from app.core.equipment_roster import is_equipment_roster_account
 from app.core.system_tokens import generate_raw_token, hash_system_token
@@ -1286,6 +1287,19 @@ async def _apply_worker_hr_and_extras(
         await assign_user_tenant_role(db, user, role)
 
 
+async def _attach_hire_onboarding_packet(db: AsyncSession, cid: str, user: User):
+    from app.schemas.hire_onboarding import HireOnboardingAttachOut
+
+    packet, _items, progress = await ensure_packet_for_user(db, company_id=cid, user=user)
+    return HireOnboardingAttachOut(
+        packet_id=packet.id,
+        required_total=int(progress["required_total"]),
+        required_completed=int(progress["required_completed"]),
+        percent=int(progress["percent"]),
+        status=str(progress["status"]),
+    )
+
+
 @router.post("", response_model=WorkerCreateResultOut, status_code=status.HTTP_201_CREATED)
 async def create_worker(
     db: Db,
@@ -1370,6 +1384,7 @@ async def create_worker(
 
         hr = await _get_hr(db, user.id)
         await _apply_worker_hr_and_extras(db, cid, user, body, hr_row=hr, actor_id=str(actor.id))
+        hire_onboarding = await _attach_hire_onboarding_packet(db, cid, user)
 
         await db.commit()
 
@@ -1383,6 +1398,7 @@ async def create_worker(
             invite_link_path="",
             invite_email_sent=None,
             message="Profile created — user is active on the roster. Temporary password set; prompt them to change it after sign-in.",
+            hire_onboarding=hire_onboarding,
         )
 
     exp = datetime.now(timezone.utc) + timedelta(hours=settings.system_invite_expire_hours)
@@ -1426,6 +1442,7 @@ async def create_worker(
 
     hr = await _get_hr(db, user.id)
     await _apply_worker_hr_and_extras(db, cid, user, body, hr_row=hr, actor_id=str(actor.id))
+    hire_onboarding = await _attach_hire_onboarding_packet(db, cid, user)
 
     company = await db.get(Company, cid)
     co_name = company.name if company else "your organization"
@@ -1466,6 +1483,7 @@ async def create_worker(
         invite_email_sent=invite_email_sent,
         invite_email_error=invite_email_error,
         message=create_msg,
+        hire_onboarding=hire_onboarding,
     )
 
 

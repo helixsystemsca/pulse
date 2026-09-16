@@ -12,6 +12,10 @@ import {
 import { useTeamLeadershipInsights } from "@/lib/team-management/hooks/useTeamLeadershipInsights";
 import { QUADRANT_META, STATUS_META, formatShortDate } from "@/lib/team-management/development-types";
 import { cn } from "@/lib/cn";
+import { usePulseAuth } from "@/hooks/usePulseAuth";
+import { fetchHireOnboardingIncompleteSummary, type HireIncompleteSummary } from "@/lib/hireOnboardingService";
+import { HIRE_ONBOARDING_LIST_HREF } from "@/lib/hire-onboarding/notifications";
+import { useEffect, useState } from "react";
 
 export function OverviewSection() {
   const {
@@ -30,6 +34,23 @@ export function OverviewSection() {
   const anniversaries = upcomingAnniversaries(devRows, 30);
   const activeCount = employees.filter((e) => e.is_active).length;
   const { recognition, attention, leadershipTasks, loading: insightsLoading } = useTeamLeadershipInsights(devRows);
+  const { session } = usePulseAuth();
+  const [hireSummary, setHireSummary] = useState<HireIncompleteSummary | null>(null);
+
+  useEffect(() => {
+    const companyId = session?.company_id ?? null;
+    let cancelled = false;
+    void fetchHireOnboardingIncompleteSummary(companyId)
+      .then((next) => {
+        if (!cancelled) setHireSummary(next);
+      })
+      .catch(() => {
+        if (!cancelled) setHireSummary(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.company_id]);
 
   const pageLoading = loading || insightsLoading;
 
@@ -104,11 +125,23 @@ export function OverviewSection() {
                   <span className="font-bold tabular-nums">{attention.noAssessment.length}</span>
                 </li>
                 <li className="flex justify-between gap-2">
+                  <span className="text-ds-muted">Hire documents incomplete</span>
+                  <span className="font-bold tabular-nums">{hireSummary?.incomplete_required_items ?? 0}</span>
+                </li>
+                <li className="flex justify-between gap-2">
                   <span className="text-ds-muted">Training expiring</span>
                   <span className="font-bold tabular-nums text-ds-muted">—</span>
                 </li>
               </ul>
-              {attention.noAssessment.length > 0 ? (
+              {hireSummary && hireSummary.open_hires > 0 ? (
+                <ul className="mt-3 space-y-1 border-t border-ds-border/50 pt-2">
+                  {hireSummary.hires.slice(0, 3).map((row) => (
+                    <li key={row.user_id} className="truncate text-xs font-medium text-ds-foreground">
+                      {row.full_name || row.email} · {row.required_total - row.required_completed} remaining
+                    </li>
+                  ))}
+                </ul>
+              ) : attention.noAssessment.length > 0 ? (
                 <ul className="mt-3 space-y-1 border-t border-ds-border/50 pt-2">
                   {attention.noAssessment.slice(0, 3).map((row) => (
                     <li key={row.user_id} className="truncate text-xs font-medium text-ds-foreground">
@@ -118,10 +151,11 @@ export function OverviewSection() {
                 </ul>
               ) : null}
               <Link
-                href="/team-management/people"
+                href={hireSummary && hireSummary.open_hires > 0 ? HIRE_ONBOARDING_LIST_HREF : "/team-management/people"}
                 className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[var(--ds-accent)]"
               >
-                View People <ArrowRight className="h-3 w-3" aria-hidden />
+                {hireSummary && hireSummary.open_hires > 0 ? "Open Onboarding" : "View People"}{" "}
+                <ArrowRight className="h-3 w-3" aria-hidden />
               </Link>
             </OverviewWidget>
 

@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from app.core.permission_feature_matrix import normalize_matrix_slot
 from app.core.tenant_departments import normalize_department_slug_format
 from app.core.tenant_role_assignments import ASSIGNABLE_ROLE_KEYS, normalize_matrix_slot
+from app.schemas.hire_onboarding import HireOnboardingAttachOut
 
 _EMPLOYMENT_TYPES = {"full_time", "regular_part_time", "part_time"}
 
@@ -376,6 +377,7 @@ class WorkerCreateResultOut(BaseModel):
     invite_email_sent: Optional[bool] = None
     invite_email_error: Optional[str] = None
     message: str = "Invite sent"
+    hire_onboarding: Optional[HireOnboardingAttachOut] = None
 
 
 class WorkerResendInviteIn(BaseModel):

@@ -90,6 +90,7 @@ from app.api.work_requests_routes import router as work_requests_router
 from app.api.inspection_routes import router as inspection_router
 from app.api.workers_routes import router as workers_router
 from app.api.worker_development_routes import router as worker_development_router
+from app.api.hire_onboarding_routes import router as hire_onboarding_router
 from app.api.worker_meetings_routes import router as worker_meetings_router
 from app.api.tenant_roles_routes import router as tenant_roles_router
 from app.api.tenant_departments_routes import router as tenant_departments_router
@@ -345,6 +346,7 @@ app.include_router(inspection_router, prefix="/api")
 app.include_router(tenant_departments_router, prefix="/api")
 app.include_router(tenant_roles_router, prefix="/api")
 app.include_router(worker_development_router, prefix="/api")
+app.include_router(hire_onboarding_router, prefix="/api")
 app.include_router(worker_meetings_router, prefix="/api")
 app.include_router(workers_router, prefix="/api")
 app.include_router(inventory_portal_router, prefix="/api")

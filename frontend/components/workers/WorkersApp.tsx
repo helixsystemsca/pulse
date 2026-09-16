@@ -15,6 +15,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/pulse/Card";
 import { AsyncSubmitButton } from "@/components/ui/AsyncSubmitButton";
@@ -196,10 +197,10 @@ type InviteLinkBanner = {
 
 /** Inline banner at the top of the Add employee drawer after an action completes. */
 type CreateModalBanner =
-  | { kind: "link"; url: string }
-  | { kind: "invite_ok" }
-  | { kind: "invite_warning"; url: string; serverMessage: string; emailError?: string | null }
-  | { kind: "profile"; serverMessage: string }
+  | { kind: "link"; url: string; hireUserId?: string; hireRequiredTotal?: number }
+  | { kind: "invite_ok"; hireUserId?: string; hireRequiredTotal?: number }
+  | { kind: "invite_warning"; url: string; serverMessage: string; emailError?: string | null; hireUserId?: string; hireRequiredTotal?: number }
+  | { kind: "profile"; serverMessage: string; hireUserId?: string; hireRequiredTotal?: number }
   | { kind: "error"; message: string };
 
 function jwtRolesForMatrixSlot(slot: string, preserveDemoViewer: boolean): string[] {
@@ -1695,11 +1696,13 @@ export function WorkersApp() {
       };
       const result = await createWorker(apiCompany, body);
       const origin = typeof window !== "undefined" ? window.location.origin : "";
+      const hireUserId = result.worker?.id;
+      const hireRequiredTotal = result.hire_onboarding?.required_total;
       if (mode === "profile") {
-        setCreateModalBanner({ kind: "profile", serverMessage: result.message });
+        setCreateModalBanner({ kind: "profile", serverMessage: result.message, hireUserId, hireRequiredTotal });
       } else if (mode === "invite") {
         if (result.invite_email_sent === true) {
-          setCreateModalBanner({ kind: "invite_ok" });
+          setCreateModalBanner({ kind: "invite_ok", hireUserId, hireRequiredTotal });
         } else {
           const path = result.invite_link_path?.trim() ?? "";
           const absLink = path ? `${origin}${path}` : "";
@@ -1708,6 +1711,8 @@ export function WorkersApp() {
             url: absLink,
             serverMessage: result.message,
             emailError: result.invite_email_error,
+            hireUserId,
+            hireRequiredTotal,
           });
         }
       } else {
@@ -1718,7 +1723,7 @@ export function WorkersApp() {
             message: "No join link was returned. Check that the request completed successfully.",
           });
         } else {
-          setCreateModalBanner({ kind: "link", url: `${origin}${path}` });
+          setCreateModalBanner({ kind: "link", url: `${origin}${path}`, hireUserId, hireRequiredTotal });
         }
       }
       await loadList();
@@ -2924,6 +2929,21 @@ export function WorkersApp() {
                 <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-ds-danger" aria-hidden />
                 <p className="font-medium">{createModalBanner.message}</p>
               </div>
+            ) : null}
+            {createModalBanner.kind !== "error" && createModalBanner.hireUserId ? (
+              <p className="mt-3 border-t border-ds-border pt-3 text-xs text-ds-muted">
+                Required hire documents are attached
+                {createModalBanner.hireRequiredTotal
+                  ? ` (${createModalBanner.hireRequiredTotal} items)`
+                  : ""}
+                .{" "}
+                <Link
+                  href={`/team-management/growth/onboarding?hire=${encodeURIComponent(createModalBanner.hireUserId)}`}
+                  className="font-semibold text-[var(--ds-accent)]"
+                >
+                  Open checklist
+                </Link>
+              </p>
             ) : null}
           </div>
         ) : null}

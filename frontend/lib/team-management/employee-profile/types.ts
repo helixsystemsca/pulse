@@ -12,6 +12,7 @@ export type EmployeeProfile = {
 
 export type EmployeeProfileTab =
   | "overview"
+  | "hire-docs"
   | "performance"
   | "development"
   | "training"

@@ -1,6 +1,7 @@
 "use client";
 
 import { ClipboardList } from "lucide-react";
+import Link from "next/link";
 
 import { PageBody } from "@/components/ui/PageBody";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -60,7 +61,11 @@ export function HiringSection() {
             <div className="ops-dash-inner-card p-4">
               <p className="text-xs font-bold text-[color-mix(in_srgb,var(--ds-text-primary)_88%,transparent)]">Onboarding readiness</p>
               <p className="mt-1 text-[11px] text-[color-mix(in_srgb,var(--ds-text-primary)_58%,transparent)]">
-                Offer accepted → checklist auto-starts in Onboarding when hired.
+                Offer accepted → adding the employee on Permissions attaches the required-document packet. Review it in{" "}
+                <Link href="/team-management/growth/onboarding" className="font-semibold text-[var(--ds-accent)]">
+                  Onboarding
+                </Link>
+                .
               </p>
             </div>
           </aside>
