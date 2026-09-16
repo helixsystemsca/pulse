@@ -49,6 +49,7 @@ import { DASH } from "@/styles/dashboardTheme";
 import { UI } from "@/styles/ui";
 import { buildWorkspaceRenderContext, type DashboardWidgetRenderContext } from "@/lib/dashboard/render-context";
 import { OPS_WIDGET_BODY_CLASS } from "@/lib/dashboard/ops-widget-fill";
+import { workRequestsLayoutForTier } from "@/lib/dashboard/widget-tier-disclosure";
 import {
   computeWorkforceSiteCertCoverage,
   type WorkforceSiteCertCoverage,
@@ -1223,7 +1224,7 @@ function DashboardBody({
           <NotificationsWorkOrdersOpsWidget
             model={model}
             kpiLoading={workRequestKpiLoading}
-            layoutMode="4x1"
+            layoutMode={workRequestsLayoutForTier(ctx?.heightTier ?? "compact")}
           />
         ),
       },

@@ -12,16 +12,16 @@ import {
 import { cn } from "@/lib/cn";
 
 const KPI_TONE_CLASS = {
-  amber: "!text-[var(--ds-warning)]",
-  teal: "!text-[var(--ds-palette-verdigris)]",
-  lobster: "!text-[#e85d6f]",
-  neutral: "!text-[color-mix(in_srgb,var(--ds-text-primary)_78%,transparent)]",
+  warning: "text-[var(--ds-warning)]",
+  success: "text-[var(--ds-success)]",
+  danger: "text-[var(--ds-danger)]",
+  neutral: "text-[color-mix(in_srgb,var(--ds-text-primary)_82%,transparent)]",
 } as const;
 
 const KPI_TILE_CLASS = {
-  amber: "ops-kpi-tile--amber",
-  teal: "ops-kpi-tile--teal",
-  lobster: "ops-kpi-tile--lobster",
+  warning: "ops-kpi-tile--warning",
+  success: "ops-kpi-tile--success",
+  danger: "ops-kpi-tile--danger",
   neutral: "ops-kpi-tile--neutral",
 } as const;
 
@@ -42,36 +42,18 @@ function KpiCell({
   tone: keyof typeof KPI_TONE_CLASS;
   loading: boolean;
 }) {
-  const indicator =
-    tone === "amber"
-      ? "var(--ds-warning)"
-      : tone === "teal"
-        ? "var(--ds-palette-verdigris)"
-        : tone === "lobster"
-          ? "#e85d6f"
-          : "color-mix(in srgb, var(--ds-text-primary) 38%, transparent)";
-
   return (
     <div className="ops-work-requests-kpi-cell">
       <div className={cn("ops-kpi-tile ops-kpi-tile--grid ops-kpi-tile--centered", KPI_TILE_CLASS[tone])}>
-        <div className="flex w-full shrink-0 items-center justify-center gap-1.5">
-          <span
-            className="h-2 w-2 shrink-0 rounded-full"
-            style={{ backgroundColor: indicator }}
-            aria-hidden
-          />
-          <span className="min-w-0 text-center text-[10px] font-bold uppercase leading-snug tracking-[0.06em] text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)] sm:text-[11px]">
-            {label}
-          </span>
-        </div>
+        <span className="ops-kpi-tile__label">{label}</span>
         <div
           className={cn(
-            "ops-kpi-tile__value flex min-h-0 flex-1 w-full items-center justify-center font-extrabold leading-none tabular-nums tracking-tight",
+            "ops-kpi-tile__value flex min-h-0 flex-1 w-full items-center justify-center font-bold leading-none tabular-nums tracking-tight",
             !loading && KPI_TONE_CLASS[tone],
-            loading && "text-[color-mix(in_srgb,var(--ds-text-primary)_40%,transparent)]",
+            loading && "text-[var(--ds-text-secondary)]",
           )}
         >
-          {loading ? <Loader2 className="h-7 w-7 animate-spin" aria-hidden /> : (value ?? "—")}
+          {loading ? <Loader2 className="h-6 w-6 animate-spin" aria-hidden /> : (value ?? "—")}
         </div>
       </div>
     </div>
@@ -105,9 +87,9 @@ export function NotificationsWorkOrdersOpsWidget({
           role="group"
           aria-label="Work request KPIs"
         >
-          <KpiCell label="Pending approval" value={kpi?.pendingApproval ?? null} tone="amber" loading={kpiLoading} />
-          <KpiCell label="In progress" value={kpi?.inProgress ?? null} tone="teal" loading={kpiLoading} />
-          <KpiCell label="Overdue" value={kpi?.overdueAny ?? null} tone="lobster" loading={kpiLoading} />
+          <KpiCell label="Pending approval" value={kpi?.pendingApproval ?? null} tone="warning" loading={kpiLoading} />
+          <KpiCell label="In progress" value={kpi?.inProgress ?? null} tone="success" loading={kpiLoading} />
+          <KpiCell label="Overdue" value={kpi?.overdueAny ?? null} tone="danger" loading={kpiLoading} />
           <KpiCell label="Total active" value={kpi?.total ?? null} tone="neutral" loading={kpiLoading} />
         </div>
       </div>
