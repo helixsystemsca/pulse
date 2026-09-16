@@ -257,6 +257,20 @@ export const RBAC_PERMISSION_CATALOG: readonly RbacPermissionMeta[] = [
     module: "daily_planner",
     category: "My Role",
   },
+  {
+    key: "finance_asset_planning.view",
+    label: "View Financial & Asset Planning",
+    description: "Open the municipal budget, asset lifecycle, and procurement hub.",
+    module: "finance_asset_planning",
+    category: "Financial & Asset Planning",
+  },
+  {
+    key: "finance_asset_planning.manage",
+    label: "Manage Financial & Asset Planning",
+    description: "Edit budgets, issue purchase orders, post invoices, and record deferred maintenance. AI cannot do this without you.",
+    module: "finance_asset_planning",
+    category: "Financial & Asset Planning",
+  },
   { key: "projects.view", label: "View projects", description: "Project list and project dashboards.", module: "projects", category: "Operations" },
   {
     key: "projects.pm.view",

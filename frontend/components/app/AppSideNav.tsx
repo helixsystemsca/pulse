@@ -556,6 +556,8 @@ function SidebarNavLink({
 
 function domainForPathname(tree: readonly NavigationTreeDomain[], pathname: string): NavDomain | null {
   for (const domain of tree) {
+    const home = navDomainHomeHref(domain.domain)?.split("?")[0];
+    if (home && (pathname === home || pathname.startsWith(`${home}/`))) return domain.domain;
     for (const group of domain.groups) {
       for (const item of group.items) {
         if (isPulseNavActive(item.href, pathname)) return domain.domain;

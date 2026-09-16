@@ -19,6 +19,7 @@ const VERNON_FEATURES = [
   "project_management",
   "qr_codes",
   "messaging",
+  "finance_asset_planning",
 ];
 
 function vernonAdmin(partial: Partial<PulseAuthSession> = {}): PulseAuthSession {
@@ -157,6 +158,14 @@ describe("routeOpsAsk — intent to route", () => {
   it("maps “inventory at the pool” to inventory", () => {
     expect(topHref("inventory at the pool")).toBe("/dashboard/inventory?q=pool");
     expect(topHref("inventory at pool")).toBe("/dashboard/inventory?q=pool");
+  });
+
+  it("maps budget questions onto Financial & Asset Planning", () => {
+    expect(topHref("How much budget is left?")).toBe("/finance/dashboard");
+    expect(topHref("available budget")).toBe("/finance/dashboard");
+    expect(topHref("issue a po")).toBe("/finance/procurement/pos");
+    expect(topHref("deferred maintenance")).toBe("/finance/deferred");
+    expect(topHref("five year capital")).toBe("/finance/planner/long-range");
   });
 
   it("maps “what's at the arena” to the facilities list", () => {

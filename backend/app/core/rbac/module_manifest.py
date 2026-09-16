@@ -40,4 +40,9 @@ TENANT_MODULE_SURFACES: Final[tuple[TenantModuleSurface, ...]] = (
         "Operational improvements",
         ("operational_improvements.view", "operational_improvements.manage"),
     ),
+    TenantModuleSurface(
+        "finance_asset_planning",
+        "Financial & Asset Planning",
+        ("finance_asset_planning.view", "finance_asset_planning.manage"),
+    ),
 )

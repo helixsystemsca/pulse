@@ -24,7 +24,7 @@ export const PRODUCT_MODULE_PERMISSION_SECTIONS: readonly {
     id: "recreation_ops",
     label: "Recreation",
     description: "Personal operating system: daily planner, facilities, people, contractors, codes, and ops knowledge.",
-    keys: ["recreation_ops", "daily_planner"],
+    keys: ["recreation_ops", "daily_planner", "finance_asset_planning"],
   },
   {
     id: "training",
@@ -104,6 +104,7 @@ export const MODULE_LABEL: Record<CanonicalFeatureKey, string> = {
   roadmap: "Roadmap",
   recreation_ops: "Recreation",
   daily_planner: "Daily Operations Planner",
+  finance_asset_planning: "Financial & Asset Planning",
   procedures: "Procedures",
   standards_training: "Training · Overview & learning hub",
   standards_certifications: "Training · Certifications",

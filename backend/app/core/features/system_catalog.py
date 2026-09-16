@@ -39,6 +39,7 @@ GLOBAL_SYSTEM_FEATURES: tuple[str, ...] = (
     "roadmap",
     "recreation_ops",
     "daily_planner",
+    "finance_asset_planning",
 )
 
 _LEGACY_FEATURE_ALIASES: dict[str, tuple[str, ...]] = {

@@ -15,9 +15,9 @@ describe("isPulseNavActive — hub prefixes after sidebar collapse", () => {
     expect(isPulseNavActive("/projects", "/planning")).toBe(true);
   });
 
-  it("highlights ops People for the org-chart tab", () => {
-    expect(isPulseNavActive("/recreation/people", "/recreation/people")).toBe(true);
-    expect(isPulseNavActive("/recreation/people", "/recreation/org-chart")).toBe(true);
-    expect(isPulseNavActive("/recreation/people", "/recreation/contacts")).toBe(false);
+  it("highlights finance leaves under the /finance hub prefix", () => {
+    expect(isPulseNavActive("/finance/dashboard", "/finance/dashboard")).toBe(true);
+    expect(isPulseNavActive("/finance/dashboard", "/finance/operating/actuals")).toBe(false);
+    expect(isPulseNavActive("/finance/operating/actuals", "/finance/operating/actuals")).toBe(true);
   });
 });

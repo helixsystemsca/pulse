@@ -78,6 +78,7 @@ export const OPS_ASK_EXAMPLE_QUERIES = [
   "Inventory at the pool",
   "How do I start a pool seasonal checklist?",
   "Where are contractor insurance expiries?",
+  "How much budget is left?",
 ] as const;
 
 /** High-value browse targets when Ask is empty or unsure. */
@@ -473,6 +474,49 @@ export const OPS_ASK_CATALOG: readonly OpsAskCatalogItem[] = [
     phrases: ["emergency contacts", "callout list"],
     keywords: ["contacts", "callout", "phone", "after-hours"],
     weight: 4,
+  },
+  {
+    id: "finance-dashboard",
+    title: "Budget Dashboard",
+    href: "/finance/dashboard",
+    why: "Approved, actual, committed, available, and forecast — Available is Approved − Actual − Committed.",
+    phrases: [
+      "budget dashboard",
+      "how much budget is left",
+      "available budget",
+      "approved vs actual",
+      "what is committed",
+      "encumbered funds",
+    ],
+    keywords: ["budget", "available", "approved", "actual", "committed", "encumbered", "forecast", "variance"],
+    weight: 11,
+  },
+  {
+    id: "finance-procurement",
+    title: "Purchase orders",
+    href: "/finance/procurement/pos",
+    why: "Issuing a PO creates a commitment. Posting an invoice reduces remaining commitment and increases actual.",
+    phrases: ["purchase order", "issue a po", "post an invoice", "remaining po"],
+    keywords: ["po", "purchase", "invoice", "commitment", "encumber"],
+    weight: 10,
+  },
+  {
+    id: "finance-deferred",
+    title: "Deferred Maintenance",
+    href: "/finance/deferred",
+    why: "Unfunded repairs and replacements linked to existing assets and open work requests.",
+    phrases: ["deferred maintenance", "unfunded repair", "defer replacement"],
+    keywords: ["deferred", "unfunded", "backlog"],
+    weight: 9,
+  },
+  {
+    id: "finance-capital",
+    title: "5–10 Year Forecast",
+    href: "/finance/planner/long-range",
+    why: "Multi-year capital matrix, peak pressure years, and funding gaps.",
+    phrases: ["capital plan", "five year capital", "10 year capital", "next year budget"],
+    keywords: ["capital", "replacement", "lifecycle", "forecast"],
+    weight: 9,
   },
 ];
 

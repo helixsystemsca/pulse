@@ -65,6 +65,7 @@ describe("nav-visible feature labels", () => {
           "projects",
           "daily_planner",
           "recreation_ops",
+          "finance_asset_planning",
           "procedures",
           "inventory",
           "equipment",
@@ -92,6 +93,7 @@ describe("nav-visible feature labels", () => {
           "project_management",
           "daily_planner",
           "recreation_ops",
+          "finance_asset_planning",
           "procedures",
           "standards_training",
           "inventory",
@@ -137,5 +139,12 @@ describe("nav-visible feature labels", () => {
     const domainOrder = tree.map((d) => d.domain);
     expect(domainOrder.indexOf("Reference")).toBeGreaterThan(domainOrder.indexOf("My Role"));
     expect(navDomainHomeHref("Reference")).toBe("/recreation/regulations");
+    const finance = tree.find((d) => d.domain === "Financial & Asset Planning");
+    expect(finance?.label).toBe("Financial & Asset Planning");
+    expect(navDomainHomeHref("Financial & Asset Planning")).toBe("/finance");
+    expect(items.find((i) => i.key === "finance_budget_dashboard")?.href).toBe("/finance/dashboard");
+    expect(items.find((i) => i.key === "finance_capital_projects")?.label).toBe("Capital projects");
+    expect(items.filter((i) => i.label === "Projects")).toHaveLength(1);
+    expect(items.find((i) => i.key === "finance_opportunities")?.label).toBe("Budget Opportunities");
   });
 });
