@@ -213,6 +213,7 @@ export function operationalNotificationHref(a: OperationalNotificationItem): str
   if (id === "rec-ops-certs-expired" || id === "rec-ops-certs-30") {
     return "/training/compliance/workers?panel=certifications";
   }
+  if (id === "rec-ops-contractors") return "/recreation/contractors";
   if (id.startsWith("hire-onboarding-") && id !== "hire-onboarding-digest") {
     const userId = id.slice("hire-onboarding-".length);
     if (userId) return `/team-management/growth/onboarding?hire=${encodeURIComponent(userId)}`;
