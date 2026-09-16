@@ -14,4 +14,11 @@ export const CITY_OF_VERNON_LOGO_SRC = "/images/city-of-vernon-logo.svg";
 /** Raster shipped in PR #10; canonicalize to {@link CITY_OF_VERNON_LOGO_SRC}. */
 export const CITY_OF_VERNON_LOGO_PNG_SRC = "/images/city-of-vernon-logo.png";
 
+/**
+ * Square crop of the official Vernon mark (no wordmark) for tab favicon / apple-touch.
+ * Next.js serves `app/icon.png` and `app/apple-icon.png` generated from this artwork.
+ * Login and the app header keep {@link CITY_OF_VERNON_LOGO_SRC} (full lockup).
+ */
+export const CITY_OF_VERNON_MARK_SRC = "/images/city-of-vernon-mark.svg";
+
 export const CITY_OF_VERNON_LOGO_ALT = "City of Vernon";
