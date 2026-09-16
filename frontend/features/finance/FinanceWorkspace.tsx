@@ -640,7 +640,7 @@ function CapitalViews({ path }: { path: string }) {
             formatMoney(pos.actual),
             formatMoney(pos.committed),
             formatMoney(pos.available),
-            `${i.start_year ?? "—"}–${i.end_year ?? "—"}`,
+            `${String(i.start_year ?? "—")}–${String(i.end_year ?? "—")}`,
           ];
         })}
       />
@@ -724,8 +724,8 @@ function LifecycleViews({ path }: { path: string }) {
         headers={["Asset", "Age", "RUL", "Replace year", "Cost now", "Cost at year", "Lifecycle to date", "Next service", "Criticality"]}
         rows={filtered.map((i) => [
           String(i.name ?? ""),
-          i.age_years ?? "—",
-          i.remaining_useful_life_years ?? "—",
+          String(i.age_years ?? "—"),
+          String(i.remaining_useful_life_years ?? "—"),
           String(i.planned_replacement_year ?? "—"),
           formatMoney(Number(i.replacement_cost_now || 0)),
           formatMoney(Number(i.replacement_cost_at_year || 0)),
@@ -1018,15 +1018,18 @@ function HistoryView() {
   return (
     <QuietTable
       headers={["When", "Kind", "Approved", "Actual", "Committed", "Available", "Note"]}
-      rows={items.map((i) => [
-        String(i.created_at ?? ""),
-        String(i.version_kind ?? ""),
-        formatMoney(Number(i.approved_total ?? (i.snapshot as { approved?: number } | undefined)?.approved || 0)),
-        formatMoney(Number(i.actual_total ?? (i.snapshot as { actual?: number } | undefined)?.actual || 0)),
-        formatMoney(Number(i.committed_total ?? (i.snapshot as { committed?: number } | undefined)?.committed || 0)),
-        formatMoney(Number(i.available_total ?? (i.snapshot as { available?: number } | undefined)?.available || 0)),
-        String(i.note ?? ""),
-      ])}
+      rows={items.map((i) => {
+        const snap = i.snapshot as { approved?: number; actual?: number; committed?: number; available?: number } | undefined;
+        return [
+          String(i.created_at ?? ""),
+          String(i.version_kind ?? ""),
+          formatMoney(Number(i.approved_total ?? snap?.approved ?? 0)),
+          formatMoney(Number(i.actual_total ?? snap?.actual ?? 0)),
+          formatMoney(Number(i.committed_total ?? snap?.committed ?? 0)),
+          formatMoney(Number(i.available_total ?? snap?.available ?? 0)),
+          String(i.note ?? ""),
+        ];
+      })}
     />
   );
 }
