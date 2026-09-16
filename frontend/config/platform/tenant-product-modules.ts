@@ -22,8 +22,8 @@ export const PRODUCT_MODULE_PERMISSION_SECTIONS: readonly {
   },
   {
     id: "recreation_ops",
-    label: "My Role",
-    description: "Personal operating system: daily planner, knowledge, meetings, people, contractors, regulations, facilities, notes, and contacts.",
+    label: "Recreation",
+    description: "Personal operating system: daily planner, facilities, people, contractors, codes, and ops knowledge.",
     keys: ["recreation_ops", "daily_planner"],
   },
   {
@@ -102,7 +102,7 @@ export const MODULE_LABEL: Record<CanonicalFeatureKey, string> = {
   work_requests: "Work Requests",
   operational_improvements: "Operational Improvements",
   roadmap: "Roadmap",
-  recreation_ops: "My Role",
+  recreation_ops: "Recreation",
   daily_planner: "Daily Operations Planner",
   procedures: "Procedures",
   standards_training: "Training · Overview & learning hub",
@@ -111,7 +111,7 @@ export const MODULE_LABEL: Record<CanonicalFeatureKey, string> = {
   standards_my_procedures: "My procedures",
   standards_routines: "Routines",
   standards_acknowledgments: "Acknowledgment archive",
-  facilities_spatial: "Facilities (drawings)",
+  facilities_spatial: "Facility drawings",
   spatial_infrastructure: "Infrastructure maps",
   messaging: "Messaging",
   comms_assets: "Communications · Assets",

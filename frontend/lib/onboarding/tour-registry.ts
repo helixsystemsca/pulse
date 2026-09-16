@@ -1,7 +1,9 @@
-import type { NavigationTreeDomain } from "@/lib/navigation/build-navigation-tree";
+import type { NavigationTreeDomain, NavigationTreeItem } from "@/lib/navigation/build-navigation-tree";
 import { findNavItemForPathname, buildFeaturePageTour } from "@/lib/onboarding/build-feature-page-tour";
 import type { TourStep } from "@/lib/onboarding/tour-steps/types";
 import { DASHBOARD_TOUR_STEPS } from "@/lib/onboarding/tour-steps/dashboard";
+import { getMasterFeatureForPath, masterFeatureNavLabel } from "@/config/platform/master-feature-registry";
+import { CUSTOM_FEATURE_TOUR_STEPS } from "@/lib/onboarding/feature-page-tour-steps";
 
 export type ProductTourDef = {
   id: string;
@@ -52,6 +54,20 @@ function pathMatchesStaticTour(pathname: string, tour: ProductTourDef): boolean 
   return false;
 }
 
+function registryFeatureAsNavItem(pathname: string): NavigationTreeItem | null {
+  const def = getMasterFeatureForPath(pathname);
+  if (!def || !CUSTOM_FEATURE_TOUR_STEPS[def.key]) return null;
+  return {
+    key: def.key,
+    href: def.route.split("?")[0] ?? def.route,
+    label: masterFeatureNavLabel(def),
+    icon: def.icon,
+    navDomain: def.navDomain,
+    navGroup: def.navGroup ?? "General",
+    navOrder: def.navOrder ?? def.sortOrder,
+  };
+}
+
 const STATIC_TOURS: readonly ProductTourDef[] = [DASHBOARD_OVERVIEW_TOUR, DASHBOARD_WORKER_TOUR];
 
 export function resolveProductTour(
@@ -64,19 +80,26 @@ export function resolveProductTour(
     if (pathMatchesStaticTour(normalized, tour)) return tour;
   }
 
-  const navItem = findNavItemForPathname(navigationTree, normalized);
-  if (!navItem) return null;
-
   const isProcedureLibrary =
     normalized === "/training/learning/library" || normalized.startsWith("/training/learning/library/");
-  if (navItem.key === "training_learning" && isProcedureLibrary) {
+  if (isProcedureLibrary) {
+    const navItem = findNavItemForPathname(navigationTree, normalized);
     return buildFeaturePageTour({
-      ...navItem,
       key: "procedures",
-      label: "Procedures",
       href: "/training/learning/library",
+      label: "Procedures",
+      icon: navItem?.icon ?? "list-checks",
+      navDomain: navItem?.navDomain ?? "Training",
+      navGroup: navItem?.navGroup ?? "Learning",
+      navOrder: navItem?.navOrder ?? 0,
     });
   }
+
+  const hiddenTabItem = registryFeatureAsNavItem(normalized);
+  if (hiddenTabItem) return buildFeaturePageTour(hiddenTabItem);
+
+  const navItem = findNavItemForPathname(navigationTree, normalized);
+  if (!navItem) return null;
 
   return buildFeaturePageTour(navItem);
 }

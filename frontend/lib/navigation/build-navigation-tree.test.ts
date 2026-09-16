@@ -4,6 +4,7 @@ import {
   attachRegistryMetadata,
   buildNavigationTree,
   resolveAuthorizedNavItems,
+  shouldShowNavGroupHeader,
 } from "@/lib/navigation/build-navigation-tree";
 import type { TenantSidebarNavItem } from "@/lib/rbac/tenant-nav";
 
@@ -79,7 +80,9 @@ describe("buildNavigationTree", () => {
     const planningPm = withPm
       .find((d) => d.domain === "Planning")
       ?.groups.flatMap((g) => g.items.map((i) => i.key)) ?? [];
-    expect(planningPm).toContain("project_management");
+    expect(planningPm).toContain("projects");
+    expect(planningPm).not.toContain("project_management");
+    expect(planningPm).not.toContain("roadmap");
     expect(planningPm).not.toContain("planning_workspace");
     expect(planningPm).not.toContain("pm_workspace");
     expect(planningPm).not.toContain("pm_planning");
@@ -124,8 +127,9 @@ describe("buildNavigationTree", () => {
     const leadershipKeys =
       leadership.find((d) => d.domain === "Dashboards")?.groups.flatMap((g) => g.items.map((i) => i.key)) ?? [];
     expect(leadershipKeys).toEqual(
-      expect.arrayContaining(["dashboard_worker", "dashboard", "dashboard_project"]),
+      expect.arrayContaining(["dashboard_worker", "dashboard"]),
     );
+    expect(leadershipKeys).not.toContain("dashboard_project");
     expect(leadershipKeys).not.toContain("kiosk_overview");
 
     const comms = buildNavigationTree(
@@ -262,5 +266,105 @@ describe("buildNavigationTree", () => {
     const flyoutGroup = withLegacyFlyoutKeys[0]?.groups.find((g) => g.group === "Scheduling");
     const flyoutLabels = (flyoutGroup?.items ?? []).map((i) => i.label);
     expect(flyoutLabels).toEqual(["Schedule"]);
+  });
+
+  it("collapses planner, team management, and projects into hub entries", () => {
+    const tree = buildNavigationTree(
+      session({
+        role: "company_admin",
+        facility_tenant_admin: true,
+        can_use_pm_features: true,
+        contract_features: [
+          "daily_planner",
+          "team_management",
+          "projects",
+          "recreation_ops",
+          "drawings",
+        ],
+        enabled_features: [
+          "daily_planner",
+          "team_management",
+          "projects",
+          "project_management",
+          "recreation_ops",
+          "facilities_spatial",
+          "spatial_infrastructure",
+        ],
+        rbac_permissions: ["*"],
+      }),
+    );
+    const myRoleKeys =
+      tree.find((d) => d.domain === "My Role")?.groups.flatMap((g) => g.items.map((i) => i.key)) ?? [];
+    expect(myRoleKeys).toContain("daily_planner");
+    expect(myRoleKeys).not.toContain("daily_planner_inbox");
+    expect(myRoleKeys).not.toContain("daily_planner_routine");
+    expect(myRoleKeys).not.toContain("daily_planner_analytics");
+    expect(myRoleKeys).toContain("ops_facilities");
+    expect(myRoleKeys).toContain("ops_people");
+    expect(myRoleKeys).toContain("ops_meetings");
+    expect(myRoleKeys).not.toContain("ops_org_chart");
+    expect(myRoleKeys).not.toContain("ops_team_development");
+    expect(myRoleKeys).not.toContain("ops_knowledge_gaps");
+
+    const teamKeys =
+      tree.find((d) => d.domain === "Team Management")?.groups.flatMap((g) => g.items.map((i) => i.key)) ?? [];
+    expect(teamKeys).toEqual(["workforce_hub"]);
+
+    const planningKeys =
+      tree.find((d) => d.domain === "Planning")?.groups.flatMap((g) => g.items.map((i) => i.key)) ?? [];
+    expect(planningKeys).toEqual(["projects"]);
+
+    const visuals = tree.find((d) => d.domain === "Visuals");
+    expect(visuals?.label).toBe("Maps");
+    const visualsItems = visuals?.groups.flatMap((g) => g.items) ?? [];
+    expect(visualsItems.find((i) => i.key === "facilities_spatial")?.label).toBe("Facility drawings");
+    expect(visualsItems.map((i) => i.label)).not.toContain("Facilities");
+  });
+});
+
+describe("shouldShowNavGroupHeader", () => {
+  it("shows headers only for groups with two or more items", () => {
+    expect(shouldShowNavGroupHeader({ group: "Directory", items: [] as never[] })).toBe(false);
+    expect(
+      shouldShowNavGroupHeader({
+        group: "Planner",
+        items: [
+          {
+            key: "daily_planner",
+            href: "/planner",
+            label: "Daily Planner",
+            icon: "calendar",
+            navDomain: "My Role",
+            navGroup: "Planner",
+            navOrder: 1,
+          },
+        ],
+      }),
+    ).toBe(false);
+    expect(
+      shouldShowNavGroupHeader({
+        group: "Directory",
+        items: [
+          {
+            key: "ops_people",
+            href: "/recreation/people",
+            label: "People",
+            icon: "users",
+            navDomain: "My Role",
+            navGroup: "Directory",
+            navOrder: 30,
+          },
+          {
+            key: "ops_contacts",
+            href: "/recreation/contacts",
+            label: "Contacts",
+            icon: "users",
+            navDomain: "My Role",
+            navGroup: "Directory",
+            navOrder: 31,
+          },
+        ],
+      }),
+    ).toBe(true);
   });
 });

@@ -695,13 +695,6 @@ export function ProjectsApp() {
         icon={FolderKanban}
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <Link
-              href="/roadmap"
-              className={cn(SECONDARY_BTN, "inline-flex items-center gap-2 no-underline")}
-            >
-              <CalendarRange className="h-4 w-4" aria-hidden />
-              Roadmap
-            </Link>
             <button type="button" className={SECONDARY_BTN} onClick={() => setCreateCategoryOpen(true)}>
               <span className="inline-flex items-center gap-2">
                 <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />

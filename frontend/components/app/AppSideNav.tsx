@@ -47,7 +47,7 @@ import type { PlatformIconKey } from "@/config/platform/types";
 import { pulseSystemSidebarNav, type PulseSidebarIcon } from "@/lib/pulse-app";
 import { isPulseNavActive } from "@/lib/pulse-nav-active";
 import { logSidebarResolution } from "@/lib/rbac/debugResolvedAccess";
-import { buildNavigationTree } from "@/lib/navigation/build-navigation-tree";
+import { buildNavigationTree, shouldShowNavGroupHeader } from "@/lib/navigation/build-navigation-tree";
 import { DASHBOARD_SCOPE_LABEL } from "@/config/platform/dashboard-scope";
 import type { NavigationTreeDomain, NavigationTreeItem } from "@/lib/navigation/build-navigation-tree";
 import type { TenantNavIcon } from "@/config/platform/tenant-nav-registry";
@@ -429,6 +429,11 @@ function NavFlyoutPanel({
       <div className="flex flex-col">
         {domain.groups.map((group) => (
           <div key={group.group} role="presentation">
+            {shouldShowNavGroupHeader(group) ? (
+              <p className="px-3 pb-1 pt-2.5 text-[10px] font-semibold uppercase tracking-wide text-ds-muted">
+                {group.group}
+              </p>
+            ) : null}
             <ul className="flex flex-col" role="none">
               {group.items.map((item) => (
                 <li key={item.key} role="none">

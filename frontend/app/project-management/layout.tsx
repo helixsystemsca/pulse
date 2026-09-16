@@ -1,4 +1,5 @@
 import { AppLayout } from "@/components/app/AppLayout";
+import { PlanningHubLayoutClient } from "@/components/planning/PlanningHubLayoutClient";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -7,5 +8,9 @@ export const metadata: Metadata = {
 };
 
 export default function ProjectManagementLayout({ children }: { children: React.ReactNode }) {
-  return <AppLayout mainClassName="bg-ds-bg">{children}</AppLayout>;
+  return (
+    <AppLayout mainClassName="bg-ds-bg">
+      <PlanningHubLayoutClient>{children}</PlanningHubLayoutClient>
+    </AppLayout>
+  );
 }

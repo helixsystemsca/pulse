@@ -42,7 +42,7 @@ import type { NavDomain } from "@/config/platform/nav-domains";
 import type { PlatformIconKey } from "@/config/platform/types";
 import { pulseSystemSidebarNav, type PulseSidebarIcon } from "@/lib/pulse-app";
 import { isPulseNavActive } from "@/lib/pulse-nav-active";
-import { buildNavigationTree } from "@/lib/navigation/build-navigation-tree";
+import { buildNavigationTree, shouldShowNavGroupHeader } from "@/lib/navigation/build-navigation-tree";
 import type { NavigationTreeDomain } from "@/lib/navigation/build-navigation-tree";
 import type { TenantNavIcon } from "@/config/platform/tenant-nav-registry";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
@@ -215,8 +215,15 @@ export function AppMobileNavDrawer() {
                     </button>
                     {open ? (
                       <ul className="pb-2">
-                        {domain.groups.flatMap((group) =>
-                          group.items.map((item) => {
+                        {domain.groups.flatMap((group) => {
+                          const header = shouldShowNavGroupHeader(group) ? (
+                            <li key={`${group.group}-header`} className="px-11 pb-1 pt-2">
+                              <p className="text-[10px] font-semibold uppercase tracking-wide text-ds-muted">
+                                {group.group}
+                              </p>
+                            </li>
+                          ) : null;
+                          const links = group.items.map((item) => {
                             const active = isPulseNavActive(item.href, pathname);
                             return (
                               <li key={item.key}>
@@ -234,8 +241,9 @@ export function AppMobileNavDrawer() {
                                 </Link>
                               </li>
                             );
-                          }),
-                        )}
+                          });
+                          return header ? [header, ...links] : links;
+                        })}
                       </ul>
                     ) : null}
                   </li>

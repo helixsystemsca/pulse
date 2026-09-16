@@ -38,7 +38,7 @@ export function isPulseNavActive(href: string, pathname: string): boolean {
       pathname.startsWith("/training/")
     );
   if (href === "/team-management") {
-    return pathname === "/team-management";
+    return pathname === "/team-management" || pathname.startsWith("/team-management/");
   }
   if (href === "/team-management/people")
     return pathname === "/team-management/people" || pathname.startsWith("/team-management/people/");
@@ -79,7 +79,30 @@ export function isPulseNavActive(href: string, pathname: string): boolean {
     );
   if (href === "/equipment") return pathname === "/equipment" || pathname.startsWith("/equipment/");
   if (href === "/zones-devices/zones") return pathname.startsWith("/zones-devices");
-  if (href === "/projects") return pathname === "/projects" || pathname.startsWith("/projects/");
+  if (href === "/projects") {
+    return (
+      pathname === "/projects" ||
+      pathname.startsWith("/projects/") ||
+      pathname === "/roadmap" ||
+      pathname.startsWith("/roadmap/") ||
+      pathname === "/project-management" ||
+      pathname.startsWith("/project-management/") ||
+      pathname === "/planning" ||
+      pathname.startsWith("/planning/") ||
+      pathname === "/dashboard/pm-workspace" ||
+      pathname.startsWith("/dashboard/pm-workspace/") ||
+      pathname === "/pm/planning" ||
+      pathname.startsWith("/pm/planning/")
+    );
+  }
+  if (href === "/recreation/people") {
+    return (
+      pathname === "/recreation/people" ||
+      pathname.startsWith("/recreation/people/") ||
+      pathname === "/recreation/org-chart" ||
+      pathname.startsWith("/recreation/org-chart/")
+    );
+  }
   if (href === "/system") return pathname === "/system" || pathname.startsWith("/system/");
   if (href.startsWith("/drawings")) {
     const path = href.split("?")[0] ?? href;

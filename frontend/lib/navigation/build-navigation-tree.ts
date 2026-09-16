@@ -12,7 +12,7 @@ import {
   dashboardNavGroupSortIndex,
   type DashboardScope,
 } from "@/config/platform/dashboard-scope";
-import { getMasterFeatureByKey } from "@/config/platform/master-feature-registry";
+import { getMasterFeatureByKey, masterFeatureNavLabel } from "@/config/platform/master-feature-registry";
 import {
   NAV_DOMAIN_META,
   NAV_DOMAIN_ORDER,
@@ -70,7 +70,7 @@ export function attachRegistryMetadata(
     const navDomain = def?.navDomain ?? "Operations";
     const navGroup = def?.navGroup?.trim() || DEFAULT_NAV_GROUP;
     const navOrder = def?.navOrder ?? def?.sortOrder ?? 0;
-    const label = def?.navLabelOverride?.trim() || row.label;
+    const label = def ? masterFeatureNavLabel(def) : row.label;
     return {
       key: row.key,
       href: row.href,
@@ -145,4 +145,9 @@ export function buildNavigationTree(session: PulseAuthSession | null): Navigatio
 /** Flatten tree for debug tools and tests. */
 export function flattenNavigationTree(tree: readonly NavigationTreeDomain[]): NavigationTreeItem[] {
   return tree.flatMap((d) => d.groups.flatMap((g) => g.items));
+}
+
+/** Show a flyout subsection label when the group has more than one module. */
+export function shouldShowNavGroupHeader(group: NavigationTreeGroup): boolean {
+  return group.items.length >= 2;
 }

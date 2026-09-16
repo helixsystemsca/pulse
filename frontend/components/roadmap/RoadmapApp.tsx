@@ -199,7 +199,7 @@ export function RoadmapApp() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-var(--pulse-header-height)-2rem)] min-h-[560px] flex-col overflow-hidden rounded-2xl border border-ds-border/60 bg-ds-bg shadow-sm">
+    <div className="flex h-[calc(100vh-var(--pulse-header-height)-6.5rem)] min-h-[560px] flex-col overflow-hidden rounded-2xl border border-ds-border/60 bg-ds-bg shadow-sm">
       <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-ds-border/60 px-4 py-3">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
@@ -211,11 +211,11 @@ export function RoadmapApp() {
               </p>
             </div>
           </div>
-          <Link
+            <Link
             href="/projects"
             className="inline-flex items-center gap-1 rounded-lg border border-ds-border px-2.5 py-1 text-xs font-medium text-ds-muted hover:bg-ds-secondary hover:text-ds-foreground"
           >
-            Open Projects
+            Project list
             <ExternalLink className="h-3 w-3" />
           </Link>
         </div>

@@ -62,9 +62,9 @@ export const OPS_MODULES: readonly OpsModuleDef[] = [
   {
     entityType: "knowledge",
     key: "ops_knowledge",
-    label: "Knowledge Base",
+    label: "Ops Knowledge",
     singular: "Article",
-    description: "Searchable operational knowledge — facility notes, troubleshooting, lessons learned.",
+    description: "Searchable operational notes — facility notes, troubleshooting, lessons learned. Codes & Guidance is the regulatory library.",
     route: "/recreation/knowledge",
     icon: "book-open",
     fields: [
