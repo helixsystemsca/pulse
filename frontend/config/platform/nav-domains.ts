@@ -13,6 +13,7 @@ export const NAV_DOMAINS = [
   "Planning",
   "Operations",
   "My Role",
+  "Reference",
   "Communications",
   "Aquatics",
   "Reception",
@@ -36,6 +37,11 @@ export type NavDomainMeta = {
   label: string;
   /** Lucide key shared with master feature icons / AppSideNav rail map. */
   icon: MasterFeatureIcon;
+  /**
+   * When set, the rail/mobile domain control navigates here (Codes & Guidance home).
+   * Hover still opens the flyout so sibling reference items can be added later.
+   */
+  defaultHref?: string;
 };
 
 export const NAV_DOMAIN_META: Record<NavDomain, NavDomainMeta> = {
@@ -43,6 +49,12 @@ export const NAV_DOMAIN_META: Record<NavDomain, NavDomainMeta> = {
   Planning: { domain: "Planning", label: "Planning", icon: "calendar" },
   Operations: { domain: "Operations", label: "Operations", icon: "clipboard" },
   "My Role": { domain: "My Role", label: "Recreation", icon: "user-cog" },
+  Reference: {
+    domain: "Reference",
+    label: "Codes & Guidance",
+    icon: "scroll-text",
+    defaultHref: "/recreation/regulations",
+  },
   Communications: { domain: "Communications", label: "Communications", icon: "megaphone" },
   Aquatics: { domain: "Aquatics", label: "Aquatics", icon: "waves" },
   Reception: { domain: "Reception", label: "Reception", icon: "building" },
@@ -61,4 +73,9 @@ export function isNavDomain(value: string): value is NavDomain {
 
 export function navDomainSortIndex(domain: NavDomain): number {
   return NAV_DOMAIN_ORDER.indexOf(domain);
+}
+
+/** Direct rail destination for a domain that is a single product home (e.g. Codes & Guidance). */
+export function navDomainHomeHref(domain: NavDomain): string | undefined {
+  return NAV_DOMAIN_META[domain].defaultHref;
 }

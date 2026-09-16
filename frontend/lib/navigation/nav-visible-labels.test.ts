@@ -4,6 +4,7 @@ import {
   NAV_VISIBLE_MASTER_FEATURES,
   masterFeatureNavLabel,
 } from "@/config/platform/master-feature-registry";
+import { navDomainHomeHref } from "@/config/platform/nav-domains";
 import { buildNavigationTree, flattenNavigationTree } from "@/lib/navigation/build-navigation-tree";
 import type { PulseAuthSession } from "@/lib/pulse-session";
 
@@ -125,7 +126,16 @@ describe("nav-visible feature labels", () => {
     expect(tree.find((d) => d.domain === "My Role")?.label).toBe("Recreation");
     const codes = items.find((i) => i.key === "ops_regulations");
     expect(codes?.label).toBe("Codes & Guidance");
+    expect(codes?.navDomain).toBe("Reference");
     expect(codes?.navGroup).toBe("Compliance");
     expect(codes?.href).toBe("/recreation/regulations");
+    const reference = tree.find((d) => d.domain === "Reference");
+    expect(reference?.label).toBe("Codes & Guidance");
+    expect(reference?.groups.flatMap((g) => g.items.map((i) => i.key))).toEqual(["ops_regulations"]);
+    const recKeys = tree.find((d) => d.domain === "My Role")?.groups.flatMap((g) => g.items.map((i) => i.key)) ?? [];
+    expect(recKeys).not.toContain("ops_regulations");
+    const domainOrder = tree.map((d) => d.domain);
+    expect(domainOrder.indexOf("Reference")).toBeGreaterThan(domainOrder.indexOf("My Role"));
+    expect(navDomainHomeHref("Reference")).toBe("/recreation/regulations");
   });
 });

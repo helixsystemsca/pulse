@@ -4,7 +4,7 @@ Solo Recreation Operations Coordinator check after deploy. Reference only — no
 
 ## Find it
 1. Sign in on vernon.helixsystems.ca.
-2. Sidebar **Recreation → Compliance → Codes & Guidance** (rail label is Recreation; the flyout group is Compliance so the library is not buried under Docs). Deep link `/recreation/regulations` is unchanged.
+2. Left rail **Codes & Guidance** (Reference domain, immediately after Recreation). Click opens `/recreation/regulations`. Hover still lists Codes & Guidance. Phone menu: the same rail name is a direct link. Do not look under Docs.
 3. Confirm the amber disclaimer: Pulse does not reproduce code text and does not decide legal requirements.
 
 ## Browse & search

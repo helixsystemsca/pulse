@@ -305,6 +305,12 @@ describe("buildNavigationTree", () => {
     expect(myRoleKeys).not.toContain("ops_org_chart");
     expect(myRoleKeys).not.toContain("ops_team_development");
     expect(myRoleKeys).not.toContain("ops_knowledge_gaps");
+    expect(myRoleKeys).not.toContain("ops_regulations");
+
+    const referenceKeys =
+      tree.find((d) => d.domain === "Reference")?.groups.flatMap((g) => g.items.map((i) => i.key)) ?? [];
+    expect(referenceKeys).toEqual(["ops_regulations"]);
+    expect(tree.find((d) => d.domain === "Reference")?.label).toBe("Codes & Guidance");
 
     const teamKeys =
       tree.find((d) => d.domain === "Team Management")?.groups.flatMap((g) => g.items.map((i) => i.key)) ?? [];

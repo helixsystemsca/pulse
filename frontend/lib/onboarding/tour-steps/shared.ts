@@ -4,7 +4,7 @@ export const TOUR_STEP_SIDEBAR: TourStep = {
   target: '[data-tour="sidebar-navigation"]',
   title: "Sidebar",
   description:
-    "Open My Role, Assets, Operations, and Training from here. Each item has its own walkthrough the first time you visit.",
+    "Open Recreation, Codes & Guidance, Assets, Operations, and Training from here. Each item has its own walkthrough the first time you visit.",
   placement: "right",
 };
 
