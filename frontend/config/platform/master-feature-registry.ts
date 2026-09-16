@@ -248,7 +248,7 @@ export const MASTER_FEATURES: readonly MasterFeatureDef[] = [
     sortOrder: 100,
     navDomain: "Planning",
     navGroup: "Scheduling",
-    navOrder: 10,
+    navOrder: 5,
   },
   {
     key: "schedule_availability",
@@ -303,7 +303,7 @@ export const MASTER_FEATURES: readonly MasterFeatureDef[] = [
     sortOrder: 110,
     navDomain: "Planning",
     navGroup: "Projects",
-    navOrder: 10,
+    navOrder: 20,
   },
   {
     key: "roadmap",
