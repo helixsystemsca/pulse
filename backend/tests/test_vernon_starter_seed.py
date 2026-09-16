@@ -29,7 +29,15 @@ def test_regulatory_reference_seed_catalog_is_tenant_safe() -> None:
     assert "tsbc-ammonia-safety-awareness" in keys
     assert "tsbc-refrigeration-operator-certificate" in keys
     assert "tsbc-ice-facility-operator-certificate" in keys
+    assert "pebpvrsr-chief-engineer-definition-duties" in keys
+    assert "tsbc-secondary-coolant-overpressure" in keys
+    assert "tsbc-refrigeration-design-registration" in keys
     assert "interior-health-recreational-water" in keys
+    assert "bc-pool-regulation" in keys
+    assert "worksafebc-chlorine-toxic-process-gas" in keys
+    assert "worksafebc-chloramines-indoor-pools" in keys
+    assert "bc-guidelines-pool-design-operations" in keys
+    assert "bcrpa-poolsafebc-best-practices" in keys
     assert "bc-building-code-how-it-applies" in keys
     for card in REFERENCE_CARDS:
         assert "pulse_pointers" in card

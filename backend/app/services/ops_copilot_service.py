@@ -79,19 +79,19 @@ PROMPT_LIBRARY: list[dict[str, str]] = [
         "id": "ohs-worksafebc",
         "label": "OH&S / WorkSafeBC for rec facilities",
         "prompt": "What WorkSafeBC OH&S guidance applies to recreation facilities?",
-        "hint": "Codes & Guidance — public WorkSafeBC pages.",
+        "hint": "Codes & Guidance — public WorkSafeBC pages (OHS look-up, chlorine, chloramines, ammonia, WHMIS).",
     },
     {
         "id": "building-code",
         "label": "BC Building Code — where to look it up",
         "prompt": "How does the BC Building Code apply and where do I look it up?",
-        "hint": "Official provincial BC Codes pages — Pulse does not paste code text.",
+        "hint": "Official provincial BC Codes pages and City of Vernon Building Bylaw — Pulse does not paste code text.",
     },
     {
         "id": "interior-health-pools",
         "label": "Interior Health / pool requirements",
         "prompt": "What Interior Health pool code or aquatic requirements should I look at?",
-        "hint": "IH recreational water pages and the B.C. Pool Regulation on BC Laws.",
+        "hint": "IH recreational water permits, B.C. Pool Regulation on BC Laws, and Ministry pool guidelines — not ice arenas.",
     },
     {
         "id": "refrigeration-plant",

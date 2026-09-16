@@ -49,6 +49,20 @@ def test_tsbc_safety_order_and_certificate_queries_hit_new_cards() -> None:
     assert "tsbc-refrigeration-design-registration" in design["card_keys"]
 
 
+def test_pool_permit_and_chloramine_queries_hit_library() -> None:
+    permit = route_ops_ask("pool construction permit Interior Health")
+    assert "interior_health_pools" in permit["intents"]
+    assert "interior-health-recreational-water" in permit["card_keys"]
+    chloramine = route_ops_ask("chloramine indoor pool air")
+    assert "ohs" in chloramine["intents"]
+    assert "worksafebc-chloramines-indoor-pools" in chloramine["card_keys"]
+    chlorine = route_ops_ask("chlorine exposure at the pool")
+    assert "worksafebc-chlorine-toxic-process-gas" in chlorine["card_keys"]
+    building = route_ops_ask("building code accessibility recreation")
+    assert "building_code" in building["intents"]
+    assert "bc-building-code-how-it-applies" in building["card_keys"]
+
+
 def test_ohs_synonym_and_empty_query() -> None:
     assert "ohs" in match_intents("OH&S recreation")
     empty = route_ops_ask("   ")

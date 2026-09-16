@@ -140,6 +140,104 @@ TSBC_IB_DA_2020_01 = (
 TSBC_REFRIGERATION_DESIGN_REG = (
     "https://www.technicalsafetybc.ca/technologies/refrigeration/refrigeration-design-registration"
 )
+TSBC_AMUSEMENT_DEVICES = "https://www.technicalsafetybc.ca/technologies/amusement-devices"
+TSBC_AMUSEMENT_DEVICES_REGULATED = (
+    "https://www.technicalsafetybc.ca/technologies/amusement-devices/regulated-amusement-devices-in-bc"
+)
+
+# Interior Health / Ministry of Health — recreational water (pools).
+IH_REC_WATER_PERMITS = (
+    "https://www.interiorhealth.ca/health-and-wellness/environmental-health-and-hazards/"
+    "recreational-water-permits-and-resources"
+)
+IH_REC_WATER_SAFETY = "https://www.interiorhealth.ca/services/recreational-water-safety"
+IH_WHEN_CONSTRUCTION_PERMIT = (
+    "https://www.interiorhealth.ca/sites/default/files/PDFS/when-to-apply-for-construction-permit-for-pools.pdf"
+)
+IH_POOL_PERMIT_FORM = (
+    "https://www.interiorhealth.ca/sites/default/files/PDFS/pool-construction-application-permit-form.pdf"
+)
+IH_MINOR_POOL_WORKS = (
+    "https://www.interiorhealth.ca/sites/default/files/PDFS/guidance-for-minor-pool-works.pdf"
+)
+POOL_REG_BC_LAWS = "https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/296_2010"
+POOL_REG_CANLII = "https://www.canlii.org/en/bc/laws/regu/bc-reg-296-2010/latest/bc-reg-296-2010.html"
+PUBLIC_HEALTH_ACT_BC_LAWS = "https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/08028_01"
+MOH_REC_WATER = (
+    "https://www2.gov.bc.ca/gov/content/environment/air-land-water/water/water-quality/recreational-water-quality"
+)
+MOH_POOL_DESIGN_PDF = (
+    "https://www2.gov.bc.ca/assets/gov/environment/air-land-water/water/documents/"
+    "bc_guideline_for_pool_design_april_2025_v3_-_final.pdf"
+)
+MOH_POOL_OPERATIONS_PDF = (
+    "https://www2.gov.bc.ca/assets/gov/environment/air-land-water/water/documents/"
+    "bc_guideline_for_pool_operation_april_2025_v3_-_final.pdf"
+)
+MOH_POOL_SAFETY_PLAN_PDF = "https://www2.gov.bc.ca/assets/gov/health/forms/guide_and_pool_safety_plan.pdf"
+
+# WorkSafeBC — recreation-relevant OH&S.
+WSBC_OHS_SEARCHABLE = (
+    "https://www.worksafebc.com/en/law-policy/occupational-health-safety/searchable-ohs-regulation/"
+)
+WSBC_OHS_PART5 = (
+    "https://www.worksafebc.com/en/law-policy/occupational-health-safety/searchable-ohs-regulation/"
+    "ohs-regulation/part-05-chemical-and-biological-substances"
+)
+WSBC_OHS_PART6 = (
+    "https://www.worksafebc.com/en/law-policy/occupational-health-safety/searchable-ohs-regulation/"
+    "ohs-regulation/part-06-substance-specific-requirements"
+)
+WSBC_OHS_G6 = (
+    "https://www.worksafebc.com/en/law-policy/occupational-health-safety/searchable-ohs-regulation/"
+    "ohs-guidelines/guidelines-part-06"
+)
+WSBC_WHMIS = "https://www.worksafebc.com/en/health-safety/hazards-exposures/whmis"
+WSBC_AMMONIA_GUIDE = (
+    "https://www.worksafebc.com/en/resources/health-safety/books-guides/ammonia-in-refrigeration-systems?lang=en&direct"
+)
+WSBC_AMMONIA_ADVISORY = (
+    "https://www.worksafebc.com/en/resources/health-safety/risk-advisory/ammonia-exposure-during-storage-or-use?lang=en"
+)
+WSBC_AMMONIA_HAZARD = "https://www.worksafebc.com/en/health-safety/hazards-exposures/ammonia"
+WSBC_AMMONIA_CHECKLIST = (
+    "https://www.worksafebc.com/en/resources/health-safety/checklist/"
+    "anhydrous-ammonia-safety-industrial-refrigeration-systems-guide?lang=en"
+)
+WSBC_CHLORINE_ADVISORY = (
+    "https://www.worksafebc.com/en/resources/health-safety/risk-advisory/chlorine-exposure-during-storage-or-use"
+)
+WSBC_CHLORINE_SWP = "https://www.worksafebc.com/en/resources/health-safety/books-guides/safe-work-practices-chlorine"
+WSBC_CHLORAMINES_ARTICLE = (
+    "https://www.worksafebc.com/en/about-us/news-events/worksafe-magazine/articles/2025/summer/"
+    "controlling-chemical-exposure-in-pools"
+)
+WSBC_CHLORAMINES = "https://www.worksafebc.com/en/health-safety/hazards-exposures/chloramines"
+WSBC_CHLORAMINES_SWP = (
+    "https://www.worksafebc.com/en/resources/health-safety/books-guides/chloramines-safe-work-practices"
+)
+
+# Building / fire / industry practice.
+BC_CODES = "https://www2.gov.bc.ca/gov/content/industry/construction-industry/building-codes-standards/bc-codes"
+BC_CODES_RESOURCES = (
+    "https://www2.gov.bc.ca/gov/content/industry/construction-industry/building-codes-standards/"
+    "bc-codes/building-code-resources"
+)
+BC_CODES_2024 = (
+    "https://www2.gov.bc.ca/gov/content/industry/construction-industry/building-codes-standards/bc-codes/2024-bc-codes"
+)
+BC_CODES_ACCESSIBILITY = (
+    "https://www2.gov.bc.ca/gov/content/industry/construction-industry/building-codes-standards/"
+    "bc-codes/2024-bc-codes/accessibility"
+)
+VERNON_BUILDING_BYLAW_PDF = "https://www.vernon.ca/sites/default/files/docs/bylaws/5900_building_bylaw.pdf"
+VERNON_FIRE_BYLAW_PDF = "https://www.vernon.ca/sites/default/files/docs/bylaws/fire_services_bylaw_5635.pdf"
+VERNON_BYLAWS = "https://www.vernon.ca/government-services/bylaws"
+BCRPA_POOLSAFE_RESOURCES = "https://www.bcrpa.bc.ca/courses/poolsafe-bc/resources/"
+BCRPA_POOLSAFE_PDF = "https://www.bcrpa.bc.ca/media/48734/poolsafebc-best-practices-guide-web-pdf.pdf"
+CSA_Z614 = "https://www.csagroup.org/store/product/CSA%20Z614:20/"
+VERNON_PARKS_REC = "https://www.vernon.ca/parks-recreation"
+
 
 REFERENCE_CARDS: tuple[ReferenceCard, ...] = (
     {
@@ -363,22 +461,40 @@ REFERENCE_CARDS: tuple[ReferenceCard, ...] = (
         "authority": "WorkSafeBC",
         "regulation_name": "WorkSafeBC guide: Ammonia in Refrigeration Systems (points to OHS Regulation Parts 5 and 6)",
         "official_source_name": "WorkSafeBC — Ammonia in Refrigeration Systems",
-        "official_source_url": "https://www.worksafebc.com/en/resources/health-safety/books-guides/ammonia-in-refrigeration-systems?lang=en&direct",
+        "official_source_url": WSBC_AMMONIA_GUIDE,
         "extra_sources": [
-            "https://www.worksafebc.com/en/resources/health-safety/risk-advisory/ammonia-exposure-during-storage-or-use",
+            WSBC_AMMONIA_ADVISORY,
+            WSBC_AMMONIA_HAZARD,
+            WSBC_AMMONIA_CHECKLIST,
+            WSBC_OHS_PART6,
             TSBC_AMMONIA_AWARENESS,
             TSBC_SO_BP_2017_02,
         ],
-        "applicability": "Workplaces that use ammonia as a refrigerant, including ice rinks and similar recreation plants. Worker OH&S duties sit with the employer under the Workers Compensation Act / OHS Regulation — separate from TSBC plant qualification and from the Safety Order on public occupancies.",
+        "applicability": (
+            "Workplaces that use ammonia as a refrigerant. WorkSafeBC’s public risk advisory lists "
+            "public pools and ice rinks among those workplaces; the refrigeration guide lists ice "
+            "rinks, cold storage, food processing, and ice manufacturing. Worker OH&S duties sit "
+            "with the employer under the Workers Compensation Act / OHS Regulation — separate from "
+            "TSBC plant qualification and from the Safety Order on public occupancies. Pulse does "
+            "not decide whether Vernon’s ice plant is in scope of a given WorkSafeBC document."
+        ),
         "summary": (
-            "WorkSafeBC publishes a public guide for workplaces that use ammonia as a "
-            "refrigerant (ice rinks are listed among typical sites). The guide points employers "
-            "to the Occupational Health and Safety Regulation, including chemical / toxic process "
-            "gas themes (risk assessment, exposure control, emergency planning). It is guidance "
-            "that cites legal requirements — read the current OHS Regulation for the binding "
-            "text. TSBC’s ammonia awareness page is a separate technical-safety source (owner "
-            "monitoring, training, 24-hour incident reporting). This Pulse card does not reproduce "
-            "the WorkSafeBC guide, the OHS Regulation, or TSBC notices."
+            "WorkSafeBC’s public guide is written for workplaces that use ammonia as a refrigerant. "
+            "Ice rinks are listed among typical sites. Public points — confirm on the guide, the "
+            "risk advisory, and the searchable OHS Regulation; this is not a legal determination:\n"
+            "• Recreation angle: the ammonia risk advisory lists public pools and ice rinks, and "
+            "local government, among workplaces that may use ammonia as a refrigerant. The hazards "
+            "page likewise names ice rinks and ice manufacturing plants.\n"
+            "• Toxic process gas: the advisory points to OHS Regulation ss. 6.116–6.132 (risk "
+            "assessment, exposure control plan, procedures, enclosure, testing, ventilation, "
+            "emergency ventilation, shut-down, PPE, monitors/alarms, maintenance).\n"
+            "• Exposure control plan: the Regulation requires an exposure control plan meeting "
+            "s. 5.54. The guide also points to WHMIS (Part 5) and employer emergency planning.\n"
+            "• Companion checklist: WorkSafeBC publishes a public anhydrous-ammonia self-assessment "
+            "for industrial refrigeration. That landing page names food and beverage processing and "
+            "cold storage — use it as a finding aid, not as proof that it was written for Civic Arena.\n"
+            "• TSBC is a separate technical-safety source (owner monitoring, training, 24-hour "
+            "incident reporting). This Pulse card does not reproduce the guide or the regulation."
         ),
         "verification_status": "Reviewed",
         "review_date": _REVIEWED,
@@ -388,8 +504,12 @@ REFERENCE_CARDS: tuple[ReferenceCard, ...] = (
             "worksafebc",
             "ammonia",
             "ice plant",
+            "ice rink",
             "toxic process gas",
             "exposure control",
+            "section 5.54",
+            "6.116",
+            "anhydrous ammonia",
         ],
         "pulse_pointers": [
             {
@@ -400,6 +520,10 @@ REFERENCE_CARDS: tuple[ReferenceCard, ...] = (
             {"label": "Chemical spill — internal response", "match_title": "Chemical spill — internal response", "match_kind": "knowledge"},
             {"label": "Emergency Response hub", "href": "/recreation/emergency"},
             {"label": "Ice plant equipment", "href": "/equipment"},
+            {"label": "Arena facility profile", "href": "/recreation/facilities"},
+            {"label": "Refrigeration contractor pack", "href": "/recreation/contractors"},
+            {"label": "Work requests", "href": "/dashboard/maintenance"},
+            {"label": "Refrigeration / ice plant tickets", "href": "/training/compliance/workers?panel=certifications"},
         ],
     },
     {
@@ -410,18 +534,34 @@ REFERENCE_CARDS: tuple[ReferenceCard, ...] = (
         "authority": "WorkSafeBC",
         "regulation_name": "Occupational Health and Safety Regulation (and Workers Compensation Act OH&S provisions)",
         "official_source_name": "WorkSafeBC — searchable OHS Regulation",
-        "official_source_url": "https://www.worksafebc.com/en/law-policy/occupational-health-safety/searchable-ohs-regulation/",
+        "official_source_url": WSBC_OHS_SEARCHABLE,
         "extra_sources": [
+            WSBC_OHS_PART5,
+            WSBC_OHS_PART6,
+            WSBC_OHS_G6,
             "https://www.worksafebc.com/en",
         ],
-        "applicability": "All recreation workplaces under WorkSafeBC jurisdiction: arena, aquatic centre, community recreation centre, parks/playgrounds as workplaces for staff.",
+        "applicability": (
+            "All recreation workplaces under WorkSafeBC jurisdiction: arena, aquatic centre, "
+            "community recreation centre, and parks/playgrounds as workplaces for staff. This card "
+            "is a finding aid for the regulation — not a site-specific OH&S program."
+        ),
         "summary": (
-            "The OHS Regulation and the OH&S parts of the Workers Compensation Act are the "
-            "legal workplace safety rules WorkSafeBC inspects against. Recreation-relevant "
-            "themes typically include general conditions, emergency preparedness, WHMIS / "
-            "chemicals, toxic process gases (ammonia), and machinery. Pulse does not paste "
-            "regulation text. Use WorkSafeBC’s searchable regulation (and associated guidelines) "
-            "for current wording, then confirm how the City applies it on site."
+            "The OHS Regulation and the OH&S parts of the Workers Compensation Act are the legal "
+            "workplace safety rules WorkSafeBC inspects against. Pulse does not paste regulation "
+            "text. Use the searchable regulation (and associated guidelines) for current wording, "
+            "then confirm how the City applies it on site.\n"
+            "Recreation-relevant look-ups — confirm current numbering on WorkSafeBC:\n"
+            "• Part 5 (chemical and biological substances): WHMIS, hazardous products, exposure "
+            "control plans (s. 5.54 is the section WorkSafeBC’s chlorine and ammonia advisories "
+            "cite), and emergency-planning themes for hazardous substances.\n"
+            "• Part 6 (substance-specific requirements): toxic process gases at ss. 6.116–6.132 "
+            "(chlorine and ammonia are named on the public risk advisories). Guidelines G6.116–"
+            "G6.127 sit beside those sections.\n"
+            "• Other Parts (general conditions, emergency preparedness, machinery, confined "
+            "space) may also apply — search the regulation rather than relying on this card.\n"
+            "Pool public-health chemistry is Interior Health / the Pool Regulation. Ice-plant "
+            "qualification is TSBC. Those are parallel, not substitutes for OH&S."
         ),
         "verification_status": "Reviewed",
         "review_date": _REVIEWED,
@@ -432,10 +572,18 @@ REFERENCE_CARDS: tuple[ReferenceCard, ...] = (
             "occupational health",
             "workers compensation",
             "regulation",
+            "part 5",
+            "part 6",
+            "toxic process gas",
+            "section 5.54",
+            "worksafebc recreation",
         ],
         "pulse_pointers": [
             {"label": "Training / WHMIS tickets", "href": "/training/compliance/workers?panel=certifications"},
             {"label": "Emergency Response", "href": "/recreation/emergency"},
+            {"label": "Facility profiles", "href": "/recreation/facilities"},
+            {"label": "Work requests", "href": "/dashboard/maintenance"},
+            {"label": "Checklists", "href": "/recreation/checklists"},
         ],
     },
     {
@@ -445,18 +593,32 @@ REFERENCE_CARDS: tuple[ReferenceCard, ...] = (
         "classification": "Law/Regulation",
         "authority": "WorkSafeBC",
         "regulation_name": "OHS Regulation Part 5 — WHMIS and hazardous products (see searchable regulation)",
-        "official_source_name": "WorkSafeBC — searchable OHS Regulation (WHMIS / chemical agents)",
-        "official_source_url": "https://www.worksafebc.com/en/law-policy/occupational-health-safety/searchable-ohs-regulation/",
+        "official_source_name": "WorkSafeBC — WHMIS (Workplace Hazardous Materials Information System)",
+        "official_source_url": WSBC_WHMIS,
         "extra_sources": [
-            "https://www.worksafebc.com/en/health-safety/hazards-exposures/whmis",
+            WSBC_OHS_PART5,
+            WSBC_OHS_SEARCHABLE,
+            WSBC_CHLORINE_ADVISORY,
         ],
-        "applicability": "Pool chemical rooms, ice plant chemicals, cleaning products, and any hazardous products staff handle at recreation facilities.",
+        "applicability": (
+            "Pool chemical rooms, ice plant chemicals, cleaning products, and any hazardous "
+            "products staff handle at recreation facilities. WHMIS sits under OHS Regulation Part 5 "
+            "— it is not a substitute for Interior Health pool-water rules or for TSBC plant rules."
+        ),
         "summary": (
-            "WHMIS and broader chemical-agent rules live in the OHS Regulation (Part 5 themes: "
-            "labels, SDS, training, storage, flammables, emergency planning). WorkSafeBC also "
-            "hosts public WHMIS explainers. Confirm the current regulation and SDS for each "
-            "product on site. This card does not list chemical recipes, neutralization steps, "
-            "or copied SDS text."
+            "WHMIS is the workplace system for hazardous products (labels and safety data sheets). "
+            "WorkSafeBC’s public WHMIS page and OHS Regulation Part 5 are the places to confirm "
+            "current wording. Public points — confirm on those pages; Pulse does not copy SDS text "
+            "or chemical recipes:\n"
+            "• Each hazardous product needs a label and an SDS. A label identifies hazards and "
+            "precautions; an SDS has more detail. Employers must keep a WHMIS program, label "
+            "products, make SDSs available, and train workers.\n"
+            "• Training must meet ss. 5.6 and 5.7 of the OHS Regulation. WorkSafeBC does not "
+            "itself offer WHMIS certification and does not endorse one trainer over another.\n"
+            "• Recreation angle: pool disinfectant and pH-adjustment chemicals, ice-plant chemicals, "
+            "and custodial products are typical hazardous products on a rec site. Chlorine gas, "
+            "where used, is also a toxic process gas (see the chlorine risk-advisory card).\n"
+            "This card does not list neutralization steps, mixing instructions, or copied SDS text."
         ),
         "verification_status": "Reviewed",
         "review_date": _REVIEWED,
@@ -467,11 +629,16 @@ REFERENCE_CARDS: tuple[ReferenceCard, ...] = (
             "pool chemistry",
             "storage",
             "hazardous product",
+            "pool chemical",
+            "chlorine",
         ],
         "pulse_pointers": [
             {"label": "Chemical spill — internal response", "match_title": "Chemical spill — internal response", "match_kind": "procedure"},
             {"label": "Pool equipment contractor", "href": "/recreation/contractors"},
             {"label": "Daily water quality checks (internal PM)", "href": "/dashboard/pm-workspace"},
+            {"label": "Chemical controller asset", "href": "/equipment"},
+            {"label": "Training / WHMIS tickets", "href": "/training/compliance/workers?panel=certifications"},
+            {"label": "Work requests", "href": "/dashboard/maintenance"},
         ],
     },
     {
@@ -482,21 +649,41 @@ REFERENCE_CARDS: tuple[ReferenceCard, ...] = (
         "authority": "Province of British Columbia",
         "regulation_name": "British Columbia Building Code (current edition on the provincial BC Codes pages)",
         "official_source_name": "Province of B.C. — BC Codes (Building, Plumbing, Fire)",
-        "official_source_url": "https://www2.gov.bc.ca/gov/content/industry/construction-industry/building-codes-standards/bc-codes",
+        "official_source_url": BC_CODES,
         "extra_sources": [
-            "https://www2.gov.bc.ca/gov/content/industry/construction-industry/building-codes-standards/bc-codes/building-code-resources",
-            "https://www2.gov.bc.ca/gov/content/industry/construction-industry/building-codes-standards/bc-codes/2024-bc-codes",
-            "https://www.vernon.ca/sites/default/files/docs/bylaws/5900_building_bylaw.pdf",
+            BC_CODES_RESOURCES,
+            BC_CODES_2024,
+            BC_CODES_ACCESSIBILITY,
+            VERNON_BUILDING_BYLAW_PDF,
         ],
-        "applicability": "New construction, alterations, repairs, and change of use for recreation buildings. Existing buildings are generally not rebuilt to the current code unless work or a change of use triggers it — the authority having jurisdiction (City of Vernon building officials) applies the code to a specific project.",
+        "applicability": (
+            "New construction, alterations, repairs, demolitions, and change of use for recreation "
+            "buildings (arena, aquatic centre, CRC). Existing buildings are generally not rebuilt "
+            "to the current code unless work or a change of use triggers it — the authority having "
+            "jurisdiction (City of Vernon building officials) applies the code to a specific project. "
+            "Pulse does not paste Building Code text (copyrighted)."
+        ),
         "summary": (
             "The BC Building Code regulates how buildings are designed and constructed in B.C. "
             "(Vancouver has its own bylaw). Provincial pages explain that the codes are available "
             "from the official BC Codes site and that the Province does not give project-specific "
-            "opinions — local building officials do. Pulse does not paste Building Code text "
-            "(copyrighted). For a renovation, accessibility change, or occupancy question at a "
-            "Vernon recreation facility, use the official code and City of Vernon Building Bylaw "
-            "5900, and confirm with Building / Fire as needed."
+            "opinions — local building officials do. Public points from those government pages — "
+            "confirm current wording there; do not treat this as a code extract:\n"
+            "• Application: the provincial resources page states the Building and Plumbing Codes "
+            "apply when a building is being built, and to existing buildings when making changes "
+            "or changing their use. New work and parts affected by that work are in scope.\n"
+            "• Registered professionals: the same page states architects/engineers are always "
+            "required for complex buildings (Part 3 buildings in the Code) and sometimes for small "
+            "buildings (Part 9). Project-specific questions go to the City of Vernon, including "
+            "Building Bylaw 5900.\n"
+            "• Accessibility (2024 public summary for new commercial and public buildings and "
+            "their common spaces): power-operated doors on building and accessible washroom "
+            "entrances; an elevator in large two- and three-storey buildings; a full-sized changing "
+            "space in universal washrooms. The Code does not set furniture layout or building "
+            "operations. Pulse will not invent occupancy-group or article numbers beyond what "
+            "those public pages state.\n"
+            "For a renovation, accessibility change, or occupancy question at a Vernon recreation "
+            "facility, use the official code and the City, not this summary."
         ),
         "verification_status": "Reviewed",
         "review_date": _REVIEWED,
@@ -505,12 +692,17 @@ REFERENCE_CARDS: tuple[ReferenceCard, ...] = (
             "bc building code",
             "bcbc",
             "occupancy",
+            "assembly",
+            "accessibility",
             "alteration",
             "permit",
+            "part 3",
         ],
         "pulse_pointers": [
             {"label": "Facility profiles", "href": "/recreation/facilities"},
             {"label": "Planning hub", "href": "/recreation/planning"},
+            {"label": "Work requests", "href": "/dashboard/maintenance"},
+            {"label": "Contractors", "href": "/recreation/contractors"},
         ],
     },
     {
@@ -521,19 +713,37 @@ REFERENCE_CARDS: tuple[ReferenceCard, ...] = (
         "authority": "City of Vernon / Province of British Columbia",
         "regulation_name": "BC Fire Code (via provincial BC Codes) and City of Vernon Fire Services Bylaw 5635",
         "official_source_name": "City of Vernon — Fire Services Bylaw 5635 (adopts the Fire Code locally)",
-        "official_source_url": "https://www.vernon.ca/sites/default/files/docs/bylaws/fire_services_bylaw_5635.pdf",
+        "official_source_url": VERNON_FIRE_BYLAW_PDF,
         "extra_sources": [
-            "https://www2.gov.bc.ca/gov/content/industry/construction-industry/building-codes-standards/bc-codes",
-            "https://www.vernon.ca/government-services/bylaws",
+            BC_CODES,
+            VERNON_BYLAWS,
+            WSBC_CHLORINE_ADVISORY,
+            WSBC_AMMONIA_ADVISORY,
         ],
-        "applicability": "All recreation buildings: fire safety plans, exits, fire department access, storage of combustibles, and event/fireworks rules as the Fire Department applies them.",
+        "applicability": (
+            "All recreation buildings (arena, aquatic centre, CRC) as existing buildings and "
+            "during construction or events: fire safety plans, exits, fire-department access, "
+            "storage of combustibles, and hazardous-materials themes as Vernon Fire Rescue applies "
+            "them. Confirm the current bylaw PDF and the provincial Fire Code — Pulse does not "
+            "reproduce Fire Code text."
+        ),
         "summary": (
-            "The BC Fire Code is part of the provincial BC Codes package. City of Vernon Fire "
-            "Services Bylaw 5635 states that the current BC Fire Code is adopted and applicable "
-            "in the City. Typical recreation ops themes (confirm in the current code and with "
-            "Vernon Fire Rescue) include fire safety plans, exiting, and hazardous materials "
-            "notifications. Pulse does not reproduce Fire Code text. For an operational fire "
-            "response, use the internal Fire procedure in Pulse plus 911."
+            "The provincial BC Codes page describes the BC Fire Code as a provincial regulation on "
+            "fire safety for existing buildings and facilities and those under construction. City "
+            "of Vernon Fire Services Bylaw 5635 states that the current BC Fire Code is adopted "
+            "and applicable in the City (confirm in the posted bylaw PDF). Public points — confirm "
+            "with Vernon Fire Rescue and the official code:\n"
+            "• Recreation ops themes typically include fire safety plans, exiting, fire-department "
+            "access, combustibles storage, and event / fireworks rules as the Fire Department "
+            "applies them. Arenas, pools, and community halls are public assembly-style buildings "
+            "in ordinary municipal fire practice — this card does not assign a Building Code "
+            "occupancy group.\n"
+            "• WorkSafeBC’s chlorine and ammonia risk advisories note that the BC Fire Code and "
+            "Part 3 of the BC Building Code also place duties on employers for storage and handling "
+            "of flammable substances. That is a workplace pointer, not a substitute for the Fire "
+            "Code or the bylaw.\n"
+            "For an operational fire response, use the internal Fire procedure in Pulse plus 911. "
+            "This summary is not a fire-safety plan for Civic Arena or the aquatic centre."
         ),
         "verification_status": "Needs municipal confirmation",
         "review_date": _REVIEWED,
@@ -543,35 +753,67 @@ REFERENCE_CARDS: tuple[ReferenceCard, ...] = (
             "vernon fire",
             "bylaw 5635",
             "exits",
+            "assembly",
+            "arena",
+            "pool",
         ],
         "pulse_pointers": [
             {"label": "Fire — internal response", "match_title": "Fire — internal response", "match_kind": "procedure"},
             {"label": "Emergency contacts", "href": "/recreation/contacts"},
+            {"label": "Emergency Response hub", "href": "/recreation/emergency"},
+            {"label": "Facility profiles", "href": "/recreation/facilities"},
+            {"label": "Work requests", "href": "/dashboard/maintenance"},
         ],
     },
     {
         "key": "interior-health-recreational-water",
-        "title": "Interior Health — pools and recreational water",
+        "title": "Interior Health — recreational water permits and resources",
         "topic_category": "Interior Health / Pools",
         "classification": "Regulator guidance",
         "authority": "Interior Health",
-        "regulation_name": "Interior Health Environmental Public Health — recreational water / pool permits",
-        "official_source_name": "Interior Health — Recreational Water Safety",
-        "official_source_url": "https://www.interiorhealth.ca/services/recreational-water-safety",
+        "regulation_name": "Interior Health Environmental Public Health — recreational water / pool permits (Pool Regulation)",
+        "official_source_name": "Interior Health — Recreational Water Permits & Resources",
+        "official_source_url": IH_REC_WATER_PERMITS,
         "extra_sources": [
-            "https://www.interiorhealth.ca/services/environmental-health",
-            "https://www.interiorhealth.ca/sites/default/files/PDFS/when-to-apply-for-construction-permit-for-pools.pdf",
-            "https://www.interiorhealth.ca/sites/default/files/PDFS/pool-construction-application-permit-form.pdf",
+            IH_WHEN_CONSTRUCTION_PERMIT,
+            IH_POOL_PERMIT_FORM,
+            IH_MINOR_POOL_WORKS,
+            IH_REC_WATER_SAFETY,
+            MOH_REC_WATER,
+            TSBC_AMUSEMENT_DEVICES_REGULATED,
         ],
-        "applicability": "Vernon Aquatic Centre and any other public or commercial pool, hot tub, spray or wading pool in Interior Health’s region.",
+        "applicability": (
+            "Vernon Aquatic Centre and any other public or commercial pool, hot tub, spray or "
+            "wading pool in Interior Health’s region. The Pool Regulation does not govern ice "
+            "arenas — arena plants stay under TSBC / WorkSafeBC / building and fire as applicable. "
+            "This card is not a substitute for the facility’s current operating permit."
+        ),
         "summary": (
-            "Interior Health Environmental Public Health inspects and approves commercial pools "
-            "and hot tubs, and issues construction permits for public and commercial pools. IH "
-            "public PDFs explain that a construction permit is needed before building or altering "
-            "a public/commercial pool or spa, and that an operating permit is required before "
-            "opening. Construction vs operating contacts are listed on IH forms (engineering vs "
-            "EPH). This is a pointer to IH’s public pages — not a substitute for the facility’s "
-            "current operating permit or pool safety plan."
+            "Interior Health’s public permits page is the regional starting point for public and "
+            "commercial pools and hot tubs. Public points — confirm on the IH page and PDFs; "
+            "Pulse does not issue permits:\n"
+            "• Construction: IH says you must receive approval before constructing a new public "
+            "or commercial swimming pool or hot tub. The “when to apply” PDF says a construction "
+            "permit is needed before construction, installation, alteration, or renovation of a "
+            "public or commercial pool or spa. Public Health Engineers review against the Pool "
+            "Regulation and the B.C. Guidelines for Pool Design. Construction applications go to "
+            "EngineeringDirect@interiorhealth.ca (Penticton Protection Office is listed on the form).\n"
+            "• Operating: an operating permit is required before the pool is open for use. "
+            "Operating-permit applications go to EPHDirect@interiorhealth.ca. The construction/"
+            "operating form also asks whether the facility uses an approved drinking-water supply "
+            "— that is a public-health form question, not a full Drinking Water Protection Act "
+            "program card.\n"
+            "• Minor works: IH publishes guidance that some drain-cover, liner, or basin-refinish "
+            "work may be waived after PHE review — still submit the application; do not assume a "
+            "waiver.\n"
+            "• Operator courses listed on the IH page (contact EPH for current acceptance): BCRPA "
+            "Level I & II; Resident Managers' Training Institute CSPO; RFABC Level I & II and "
+            "Chlorine Safe Handling; BC Lifesaving Society; plus introductory training via the "
+            "regional EPH office.\n"
+            "• Waterslides: the IH construction form asks whether a waterslide is associated and "
+            "points some slides to BC Safety Authority / Elevating Devices Safety Regulation. "
+            "TSBC’s public amusement-device list includes waterslides over 3.03 m. That is TSBC "
+            "amusement-device permitting, not an Interior Health operating permit."
         ),
         "verification_status": "Reviewed",
         "review_date": _REVIEWED,
@@ -581,12 +823,22 @@ REFERENCE_CARDS: tuple[ReferenceCard, ...] = (
             "aquatic",
             "operating permit",
             "construction permit",
+            "pool permit",
             "hot tub",
             "eph",
+            "engineeringdirect",
+            "ephdirect",
+            "waterslide",
         ],
         "pulse_pointers": [
             {"label": "Aquatic facility profile", "href": "/recreation/facilities"},
             {"label": "Pool emergency — internal response", "match_title": "Drowning / pool emergency — internal response", "match_kind": "knowledge"},
+            {"label": "Daily water quality checks (internal PM)", "href": "/dashboard/pm-workspace"},
+            {"label": "Pool equipment / chemical controller", "href": "/equipment"},
+            {"label": "Pool contractors", "href": "/recreation/contractors"},
+            {"label": "Seasonal checklists", "href": "/recreation/checklists"},
+            {"label": "Work requests", "href": "/dashboard/maintenance"},
+            {"label": "Lifeguard / operator tickets", "href": "/training/compliance/workers?panel=certifications"},
         ],
     },
     {
@@ -596,19 +848,43 @@ REFERENCE_CARDS: tuple[ReferenceCard, ...] = (
         "classification": "Law/Regulation",
         "authority": "Province of British Columbia",
         "regulation_name": "Pool Regulation, B.C. Reg. 296/2010 (Public Health Act)",
-        "official_source_name": "BC Laws — Pool Regulation 296/2010",
-        "official_source_url": "https://www.bclaws.gov.bc.ca/civix/document/id/crbc/crbc/296_2010",
+        "official_source_name": "BC Laws — Pool Regulation, B.C. Reg. 296/2010",
+        "official_source_url": POOL_REG_BC_LAWS,
         "extra_sources": [
-            "https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/08028_01",
+            POOL_REG_CANLII,
+            PUBLIC_HEALTH_ACT_BC_LAWS,
+            IH_REC_WATER_PERMITS,
+            MOH_REC_WATER,
         ],
-        "applicability": "Public and commercial pools as defined in the regulation (swimming pools, hot tubs, spray and wading pools, with listed exceptions). Interior Health is the local health authority that administers this for Vernon.",
+        "applicability": (
+            "Public and commercial pools as defined in the regulation: swimming pools, hot tubs, "
+            "spray pools, and wading pools, with listed exceptions (private residential pools, "
+            "in-room hotel tubs, and other exclusions in s. 2). Interior Health is the local "
+            "health authority that administers this for Vernon. Ice arenas are not pools under "
+            "this regulation."
+        ),
         "summary": (
-            "The Pool Regulation is the provincial law for constructing and operating pools in "
-            "B.C. Public BC Laws text covers operating permits, pool safety plans, water quality "
-            "parameters, barriers, lifeguarding rules for public pools, and daily records. Pulse "
-            "does not copy those numerical limits or staffing tables here — open the current "
-            "regulation. Facility chemistry targets and EAPs in Pulse are internal operating "
-            "records, not a reprint of the regulation."
+            "The Pool Regulation (Public Health Act) is the provincial law for constructing and "
+            "operating pools in B.C. Pulse does not reprint the regulation. Public themes — "
+            "confirm current wording on BC Laws or CanLII:\n"
+            "• Construction permit (s. 5): do not construct (including repair, renovation, or "
+            "alteration) without a permit and sealed engineer/architect plans, unless a health "
+            "officer waives a minor or emergency repair.\n"
+            "• Operating permit (s. 6): required before operating; not transferable; post it; "
+            "expires on the stated date or one year. First issue / after construction needs a "
+            "professional statement of compliance and a pool safety plan (s. 13).\n"
+            "• Enclosure and rules (ss. 7–8): barrier with controlled access; posted rules "
+            "(illness, shower, running, fouling, child supervision, diving only in designated "
+            "areas).\n"
+            "• Water quality and maintenance (ss. 10–11): clarity, temperature, pH, alkalinity, "
+            "disinfectant, combined chlorine, circulation, suction/entrapment, lighting, slip "
+            "resistance, depth markings, safe chemical storage. Numerical limits live in s. 10 "
+            "and Schedule 3 — open the regulation; do not treat a Pulse PM as that table.\n"
+            "• Safety plan, supervision, records (ss. 13, 17–19): written plan, staff training, "
+            "annual review; public-pool lifeguard plus an additional trained person; daily "
+            "records of injuries, fecal/vomit events, chemicals added, and required tests.\n"
+            "Facility chemistry targets and EAPs in Pulse are internal operating records, not a "
+            "reprint of the regulation."
         ),
         "verification_status": "Reviewed",
         "review_date": _REVIEWED,
@@ -620,10 +896,17 @@ REFERENCE_CARDS: tuple[ReferenceCard, ...] = (
             "pool safety plan",
             "water quality",
             "public health act",
+            "pool permit",
+            "enclosure",
+            "296/2010",
         ],
         "pulse_pointers": [
             {"label": "Daily water quality checks (internal PM)", "href": "/dashboard/pm-workspace"},
             {"label": "Drowning / pool emergency — internal SOP", "match_title": "Drowning / pool emergency — internal response", "match_kind": "procedure"},
+            {"label": "Aquatic facility profile", "href": "/recreation/facilities"},
+            {"label": "Seasonal checklists", "href": "/recreation/checklists"},
+            {"label": "Lifeguard / operator tickets", "href": "/training/compliance/workers?panel=certifications"},
+            {"label": "Work requests", "href": "/dashboard/maintenance"},
         ],
     },
     {
@@ -633,33 +916,56 @@ REFERENCE_CARDS: tuple[ReferenceCard, ...] = (
         "classification": "Regulator guidance",
         "authority": "Interior Health / BC Laws",
         "regulation_name": "Pool Regulation water-quality duties + IH operating permit conditions",
-        "official_source_name": "BC Laws — Pool Regulation (pool water) plus Interior Health recreational water",
-        "official_source_url": "https://www.bclaws.gov.bc.ca/civix/document/id/crbc/crbc/296_2010",
+        "official_source_name": "BC Laws — Pool Regulation (pool water) plus Interior Health recreational water permits",
+        "official_source_url": POOL_REG_BC_LAWS,
         "extra_sources": [
-            "https://www.interiorhealth.ca/services/recreational-water-safety",
+            IH_REC_WATER_PERMITS,
+            MOH_POOL_OPERATIONS_PDF,
+            WSBC_CHLORAMINES_ARTICLE,
         ],
-        "applicability": "Vernon Aquatic Centre basins and spas on an Interior Health operating permit.",
+        "applicability": (
+            "Vernon Aquatic Centre basins and spas on an Interior Health operating permit. Public "
+            "health water-quality duties are in the Pool Regulation and any extra conditions on "
+            "the posted permit — not in Pulse. Indoor air / chloramines are a separate WorkSafeBC "
+            "workplace topic."
+        ),
         "summary": (
-            "Public health expectations for disinfectant, pH, clarity, and circulation are in "
-            "the Pool Regulation and in any extra conditions on the facility’s Interior Health "
-            "operating permit — not in Pulse. Use the regulation and the posted permit / pool "
-            "safety plan for numbers. Pulse daily water-quality PMs are internal checklists so "
-            "staff record what the site actually measures. Do not treat a Pulse PM as the legal "
-            "limit table."
+            "Public health expectations for disinfectant, pH, clarity, combined chlorine, "
+            "alkalinity, temperature, and circulation are in Pool Regulation s. 10 and Schedule 3, "
+            "and in any extra conditions on the facility’s Interior Health operating permit. Pulse "
+            "does not reprint those numerical limits. Public themes — confirm on BC Laws and the "
+            "permit:\n"
+            "• Testing frequency in the regulation includes twice-daily disinfectant, pH, and "
+            "combined chlorine checks, weekly alkalinity (and cyanuric acid if used), plus clarity "
+            "and design-flow circulation while the pool is in use.\n"
+            "• Combined chlorine in pool water is a public-health limit in s. 10. Airborne "
+            "chloramines at indoor pools are a WorkSafeBC workplace-air topic (no B.C. occupational "
+            "exposure limit; see the chloramines card) — do not mix the two tables.\n"
+            "• A health officer may impose different chemical requirements for a specified pool "
+            "(s. 10(3.1)). Use the posted permit / pool safety plan for the numbers that apply "
+            "here.\n"
+            "Pulse daily water-quality PMs are internal checklists so staff record what the site "
+            "actually measures. Do not treat a Pulse PM as the legal limit table."
         ),
         "verification_status": "Needs municipal confirmation",
         "review_date": _REVIEWED,
         "keywords": [
             "pool chemistry",
             "chlorine",
+            "combined chlorine",
+            "chloramine",
             "ph",
             "water quality",
             "aquatic",
             "interior health",
+            "schedule 3",
         ],
         "pulse_pointers": [
             {"label": "Daily water quality checks", "href": "/dashboard/pm-workspace"},
             {"label": "Chemical controller asset", "href": "/equipment"},
+            {"label": "Aquatic facility profile", "href": "/recreation/facilities"},
+            {"label": "Seasonal checklists", "href": "/recreation/checklists"},
+            {"label": "Work requests", "href": "/dashboard/maintenance"},
         ],
     },
     {
@@ -674,6 +980,7 @@ REFERENCE_CARDS: tuple[ReferenceCard, ...] = (
         "extra_sources": [
             "https://www2.gov.bc.ca/gov/content/industry/construction-industry/building-codes-standards/legislation/safety-standards",
             "https://www.technicalsafetybc.ca/technologies/electrical/installation-permits",
+            TSBC_AMUSEMENT_DEVICES,
         ],
         "applicability": "Electrical equipment and systems in recreation facilities. Installation work generally needs a licensed contractor, an FSR, and a permit. Vernon is not one of the Lower Mainland municipalities that issue their own electrical permits — confirm current jurisdiction on TSBC’s site.",
         "summary": (
@@ -706,16 +1013,23 @@ REFERENCE_CARDS: tuple[ReferenceCard, ...] = (
         "authority": "CSA Group",
         "regulation_name": "CSA Z614 — Children’s playground equipment and surfacing",
         "official_source_name": "CSA Group store — CSA Z614:20 (R2025)",
-        "official_source_url": "https://www.csagroup.org/store/product/CSA%20Z614:20/",
+        "official_source_url": CSA_Z614,
         "extra_sources": [
-            "https://www.vernon.ca/parks-recreation",
+            VERNON_PARKS_REC,
         ],
-        "applicability": "Outdoor public-use playgrounds (parks, recreation sites). Confirm whether City of Vernon Parks has adopted Z614 (or another inspection standard) as municipal policy — Pulse does not assume that.",
+        "applicability": (
+            "Outdoor public-use playgrounds (parks, recreation sites). Confirm whether City of "
+            "Vernon Parks has adopted Z614 (or another inspection standard) as municipal policy — "
+            "Pulse does not assume that. This is an industry-standard pointer, not a law card."
+        ),
         "summary": (
             "CSA Z614 is the Canadian industry standard for public-use playground equipment and "
             "surfacing. The standard is sold by CSA and is copyrighted — Pulse will not quote "
             "clauses, dimensions, or surfacing depths. Use the CSA publication and the City’s "
-            "parks inspection practice. Treat this card as a finding aid, not a playground audit."
+            "parks inspection practice. Treat this card as a finding aid, not a playground audit.\n"
+            "Playground sites are also workplaces for parks/recreation staff (WorkSafeBC OH&S). "
+            "Large dry slides that fall outside playground code may be TSBC amusement devices — "
+            "see TSBC’s regulated-amusement-device list, not this standard."
         ),
         "verification_status": "Needs municipal confirmation",
         "review_date": _REVIEWED,
@@ -729,6 +1043,8 @@ REFERENCE_CARDS: tuple[ReferenceCard, ...] = (
         "pulse_pointers": [
             {"label": "Facilities", "href": "/recreation/facilities"},
             {"label": "Inspections / logs", "href": "/dashboard/compliance"},
+            {"label": "Seasonal checklists", "href": "/recreation/checklists"},
+            {"label": "Work requests", "href": "/dashboard/maintenance"},
         ],
     },
     {
@@ -739,8 +1055,9 @@ REFERENCE_CARDS: tuple[ReferenceCard, ...] = (
         "authority": "City of Vernon recreation (internal) — with WorkSafeBC / TSBC public pages",
         "regulation_name": "Internal operating procedure (not a regulatory citation)",
         "official_source_name": "WorkSafeBC — ammonia refrigeration guide (emergency planning is in the OHS Regulation)",
-        "official_source_url": "https://www.worksafebc.com/en/resources/health-safety/books-guides/ammonia-in-refrigeration-systems?lang=en&direct",
+        "official_source_url": WSBC_AMMONIA_GUIDE,
         "extra_sources": [
+            WSBC_AMMONIA_ADVISORY,
             TSBC_SO_BP_2017_02,
             TSBC_AMMONIA_AWARENESS,
         ],
@@ -1323,6 +1640,249 @@ REFERENCE_CARDS: tuple[ReferenceCard, ...] = (
             {"label": "Ice plant equipment", "href": "/equipment"},
         ],
     },
+    {
+        "key": "worksafebc-chlorine-toxic-process-gas",
+        "title": "WorkSafeBC — chlorine as a toxic process gas (pools as workplaces)",
+        "topic_category": "OH&S",
+        "classification": "Regulator guidance",
+        "authority": "WorkSafeBC",
+        "regulation_name": "OHS Regulation ss. 6.116–6.132 (toxic process gases) and s. 5.54 (exposure control plan)",
+        "official_source_name": "WorkSafeBC — chlorine exposure during storage or use (risk advisory)",
+        "official_source_url": WSBC_CHLORINE_ADVISORY,
+        "extra_sources": [
+            WSBC_CHLORINE_SWP,
+            WSBC_OHS_PART6,
+            WSBC_OHS_G6,
+            BCRPA_POOLSAFE_RESOURCES,
+        ],
+        "applicability": (
+            "Workplaces that transport, store, or use chlorine, including public swimming pools "
+            "named on the advisory. Confirm whether Vernon Aquatic Centre uses chlorine gas, "
+            "hypochlorite, or another disinfectant — the toxic-process-gas sections apply to "
+            "chlorine as a process gas; hypochlorite handling still sits under WHMIS / Part 5. "
+            "This is workplace OH&S, not Interior Health pool-water chemistry."
+        ),
+        "summary": (
+            "WorkSafeBC’s public chlorine risk advisory warns that high chlorine-gas exposure can "
+            "cause immediate eye and lung injury or death. Public swimming pools are listed among "
+            "workplaces that may use chlorine as a disinfectant. Public points — confirm on the "
+            "advisory and the searchable regulation:\n"
+            "• OHS Regulation ss. 6.116–6.132 cover toxic process gases (one of which is chlorine): "
+            "risk assessment, exposure control plan, procedures, education, enclosure, testing, "
+            "ventilation, emergency ventilation, shut-down device, PPE, monitors/alarms, and "
+            "maintenance.\n"
+            "• Employers must implement an exposure control plan meeting s. 5.54.\n"
+            "• Guidelines G6.116–G6.127 sit beside those sections.\n"
+            "• The advisory also notes BC Fire Code and Part 3 BC Building Code duties for "
+            "storage/handling of flammable substances, and points to WorkSafeBC’s Chlorine safe "
+            "work practices book and the BCRPA PoolSafeBC Best Practices Guide (industry best "
+            "practice — not law).\n"
+            "Pulse does not reproduce those books. Record actual operator / chlorine-handling "
+            "tickets in certifications; keep SDS and the site exposure-control plan as the "
+            "operational sources of truth."
+        ),
+        "verification_status": "Reviewed",
+        "review_date": _REVIEWED,
+        "keywords": [
+            "chlorine",
+            "chlorine exposure",
+            "toxic process gas",
+            "pool",
+            "aquatic",
+            "exposure control",
+            "section 5.54",
+            "6.116",
+            "worksafebc",
+        ],
+        "pulse_pointers": [
+            {"label": "Chemical spill — internal response", "match_title": "Chemical spill — internal response", "match_kind": "procedure"},
+            {"label": "Aquatic facility profile", "href": "/recreation/facilities"},
+            {"label": "Pool equipment / chemical controller", "href": "/equipment"},
+            {"label": "Pool contractors", "href": "/recreation/contractors"},
+            {"label": "Training / WHMIS tickets", "href": "/training/compliance/workers?panel=certifications"},
+            {"label": "Work requests", "href": "/dashboard/maintenance"},
+            {"label": "Emergency Response hub", "href": "/recreation/emergency"},
+        ],
+    },
+    {
+        "key": "worksafebc-chloramines-indoor-pools",
+        "title": "WorkSafeBC — indoor pool air / chloramines",
+        "topic_category": "OH&S",
+        "classification": "Regulator guidance",
+        "authority": "WorkSafeBC",
+        "regulation_name": "WorkSafeBC guidance on airborne chloramines (no B.C. occupational exposure limit)",
+        "official_source_name": "WorkSafeBC Magazine — controlling chemical exposure in pools (Summer 2025)",
+        "official_source_url": WSBC_CHLORAMINES_ARTICLE,
+        "extra_sources": [
+            WSBC_CHLORAMINES,
+            WSBC_CHLORAMINES_SWP,
+            POOL_REG_BC_LAWS,
+        ],
+        "applicability": (
+            "Indoor aquatic workplaces (Vernon Aquatic Centre deck, mechanical rooms, and similar). "
+            "This is worker air quality under WorkSafeBC. Combined chlorine in the water remains a "
+            "Pool Regulation / Interior Health topic — do not treat this card as the public-health "
+            "limit table."
+        ),
+        "summary": (
+            "WorkSafeBC’s Summer 2025 magazine article (and the chloramines hazards page) treat "
+            "airborne chloramines (“combined chlorine”) as an indoor-pool workplace hazard. Public "
+            "points — confirm on those pages; this is not a legal determination:\n"
+            "• Chloramines form when chlorine or hypochlorite reacts with nitrogen (sweat, body "
+            "oils, cosmetics, dirt, urine, some cleaners) and off-gas from the water. Effects "
+            "described include eye/skin and respiratory irritation; long-term worker exposure may "
+            "contribute to occupational asthma.\n"
+            "• There is no occupational exposure limit in B.C. for chloramines in air. WorkSafeBC "
+            "recommends keeping airborne chloramines in indoor aquatic facilities below 0.35 mg/m³.\n"
+            "• Production rises with hotter water, bubbling/splashing features, and higher occupancy. "
+            "Controls described are both reducing production in the water and removing chloramines "
+            "from the air (ventilation / extraction). The article also discusses water testing, "
+            "HVAC, UV, and a written chloramine exposure-control plan as employer practice.\n"
+            "• Combined chlorine in pool water is still a public-health test in Pool Regulation "
+            "s. 10. Use that regulation for water limits; use this card for workplace air.\n"
+            "Pulse water-quality PMs do not measure airborne chloramines. Do not treat a Pulse "
+            "checklist as an air-monitoring program."
+        ),
+        "verification_status": "Reviewed",
+        "review_date": _REVIEWED,
+        "keywords": [
+            "chloramine",
+            "chloramines",
+            "combined chlorine",
+            "indoor pool",
+            "air quality",
+            "0.35",
+            "ventilation",
+            "worksafebc",
+            "pool",
+        ],
+        "pulse_pointers": [
+            {"label": "Daily water quality checks (internal PM)", "href": "/dashboard/pm-workspace"},
+            {"label": "Aquatic facility profile", "href": "/recreation/facilities"},
+            {"label": "Pool HVAC / equipment", "href": "/equipment"},
+            {"label": "Work requests", "href": "/dashboard/maintenance"},
+            {"label": "Seasonal checklists", "href": "/recreation/checklists"},
+            {"label": "Pool emergency — internal response", "match_title": "Drowning / pool emergency — internal response", "match_kind": "knowledge"},
+        ],
+    },
+    {
+        "key": "bc-guidelines-pool-design-operations",
+        "title": "B.C. Guidelines for Pool Design and Pool Operations (Ministry of Health)",
+        "topic_category": "Interior Health / Pools",
+        "classification": "Regulator guidance",
+        "authority": "B.C. Ministry of Health — Health Protection Branch",
+        "regulation_name": "B.C. Guidelines for Pool Design / Pool Operations (interpret the Pool Regulation; not a substitute for it)",
+        "official_source_name": "Province of B.C. — recreational water quality (pool design and operations guidelines)",
+        "official_source_url": MOH_REC_WATER,
+        "extra_sources": [
+            MOH_POOL_DESIGN_PDF,
+            MOH_POOL_OPERATIONS_PDF,
+            MOH_POOL_SAFETY_PLAN_PDF,
+            POOL_REG_BC_LAWS,
+            IH_REC_WATER_PERMITS,
+        ],
+        "applicability": (
+            "Designers, operators, and Interior Health reviewers of public/commercial pools and "
+            "hot tubs. The Ministry states these guidelines help interpret the Pool Regulation and "
+            "represent generally accepted minimum standards of safe practice — legislation prevails "
+            "if there is a discrepancy. Not ice arenas."
+        ),
+        "summary": (
+            "The Ministry of Health publishes B.C. Guidelines for Pool Design and B.C. Guidelines "
+            "for Pool Operations on the recreational water quality page (April 2025 PDFs at the "
+            "time this card was reviewed). Interior Health’s permits page also points operators "
+            "there. Public points — confirm on the Ministry page; Pulse does not reproduce the "
+            "guidelines:\n"
+            "• Design guideline: helps interpret the Pool Regulation for construction; IH Public "
+            "Health Engineers consider it when issuing construction permits. “Must” in the "
+            "guideline denotes a requirement of the Pool Regulation or another applicable code; "
+            "“should” is generally accepted practice.\n"
+            "• Operations guideline: operator permit, pool safety plan, water quality, and "
+            "qualified maintenance themes. It is not a substitute for a pool-operator course "
+            "(IH lists BCRPA, RFABC, and other courses).\n"
+            "• Pool safety plan: the Ministry also hosts a fillable Guide and Pool Safety Plan "
+            "and a basic plan template. The regulation still requires the operator’s own written "
+            "plan (s. 13).\n"
+            "Use the Pool Regulation for binding text and Interior Health for the Vernon permit "
+            "path. This card is not a design review and not an operator certificate."
+        ),
+        "verification_status": "Reviewed",
+        "review_date": _REVIEWED,
+        "keywords": [
+            "pool design",
+            "pool operations",
+            "pool operators",
+            "ministry of health",
+            "guidelines",
+            "pool safety plan",
+            "recreational water",
+            "interior health",
+        ],
+        "pulse_pointers": [
+            {"label": "Aquatic facility profile", "href": "/recreation/facilities"},
+            {"label": "Seasonal checklists", "href": "/recreation/checklists"},
+            {"label": "Daily water quality checks", "href": "/dashboard/pm-workspace"},
+            {"label": "Lifeguard / operator tickets", "href": "/training/compliance/workers?panel=certifications"},
+            {"label": "Work requests", "href": "/dashboard/maintenance"},
+        ],
+    },
+    {
+        "key": "bcrpa-poolsafebc-best-practices",
+        "title": "PoolSafeBC Best Practices Guide (BCRPA)",
+        "topic_category": "Chemicals",
+        "classification": "Best practice",
+        "authority": "BC Recreation and Parks Association",
+        "regulation_name": "PoolSafeBC Best Practices Guide (industry best practice — not law)",
+        "official_source_name": "BCRPA — PoolSafeBC course resources (Best Practices Guide)",
+        "official_source_url": BCRPA_POOLSAFE_RESOURCES,
+        "extra_sources": [
+            BCRPA_POOLSAFE_PDF,
+            WSBC_CHLORINE_ADVISORY,
+        ],
+        "applicability": (
+            "Aquatic centre staff and employers looking for industry practice on pool workplace "
+            "hazards (chemical safety, chlorine rooms, WHMIS, emergency prep). WorkSafeBC’s "
+            "chlorine risk advisory lists this guide as a related resource. It is not a statute "
+            "and not an Interior Health operating permit."
+        ),
+        "summary": (
+            "PoolSafeBC is BCRPA training for aquatic staff to recognize, evaluate, and control "
+            "hazards in a B.C. pool setting. The public resources page links a Best Practices "
+            "Guide covering rights and responsibilities, hazards, chemical safety, and emergency "
+            "preparation, including templates for risk assessments and exposure-control plans. "
+            "Public points — confirm on the BCRPA page:\n"
+            "• Classification in Pulse is Best practice, not Law/Regulation. The Workers "
+            "Compensation Act / OHS Regulation remain the legal workplace rules; the Pool "
+            "Regulation remains the public-health pool rules.\n"
+            "• WorkSafeBC’s chlorine storage/use advisory points employers to this guide alongside "
+            "WorkSafeBC’s own Chlorine safe work practices book.\n"
+            "• Course outline themes (chemical safety section) include toxic process gases, "
+            "chlorine-room entry/alarms, hypochlorites, bromine, treatment and testing chemicals, "
+            "WHMIS, and PPE/respirators — use the current BCRPA materials, not this summary, for "
+            "course content.\n"
+            "Pulse does not reproduce the guide. Record actual PoolSafeBC / operator tickets in "
+            "certifications."
+        ),
+        "verification_status": "Reviewed",
+        "review_date": _REVIEWED,
+        "keywords": [
+            "poolsafebc",
+            "bcrpa",
+            "best practice",
+            "pool chemical",
+            "chlorine",
+            "whmis",
+            "exposure control",
+            "aquatic",
+        ],
+        "pulse_pointers": [
+            {"label": "Training / WHMIS / operator tickets", "href": "/training/compliance/workers?panel=certifications"},
+            {"label": "Aquatic facility profile", "href": "/recreation/facilities"},
+            {"label": "Chemical spill — internal response", "match_title": "Chemical spill — internal response", "match_kind": "procedure"},
+            {"label": "Pool contractors", "href": "/recreation/contractors"},
+            {"label": "Work requests", "href": "/dashboard/maintenance"},
+        ],
+    },
 )
 
 
@@ -1355,11 +1915,22 @@ INTENT_SYNONYMS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ),
     (
         "ohs",
-        ("oh&s", "ohs", "occupational health", "worksafebc", "worksafe", "workers compensation"),
+        (
+            "oh&s",
+            "ohs",
+            "occupational health",
+            "worksafebc",
+            "worksafe",
+            "workers compensation",
+            "chloramine",
+            "chloramines",
+            "toxic process gas",
+            "worksafebc recreation",
+        ),
     ),
     (
         "building_code",
-        ("building code", "bc building code", "bcbc", "plumbing code"),
+        ("building code", "bc building code", "bcbc", "plumbing code", "assembly occupancy", "building accessibility"),
     ),
     (
         "interior_health_pools",
@@ -1370,6 +1941,10 @@ INTENT_SYNONYMS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "pool regulation",
             "aquatic code",
             "operating permit pool",
+            "pool permit",
+            "pool construction permit",
+            "pool operating permit",
+            "pool safety plan",
         ),
     ),
     (
@@ -1395,7 +1970,7 @@ INTENT_SYNONYMS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("fire", ("fire code", "fire safety plan", "vernon fire")),
     ("electrical", ("electrical safety", "electrical code", "electrical permit")),
     ("playground", ("playground", "csa z614", "playspace")),
-    ("chemicals", ("whmis", "chemical storage", "chemical handling", "sds")),
+    ("chemicals", ("whmis", "chemical storage", "chemical handling", "sds", "chlorine", "pool chemical")),
     ("emergency_ammonia", ("ammonia release", "ammonia emergency", "ammonia response")),
 )
 
@@ -1413,6 +1988,8 @@ INTENT_TO_CARD_KEYS: dict[str, tuple[str, ...]] = {
     "ohs": (
         "worksafebc-ohs-how-to-look-up",
         "worksafebc-ammonia-refrigeration",
+        "worksafebc-chlorine-toxic-process-gas",
+        "worksafebc-chloramines-indoor-pools",
         "worksafebc-whmis-chemicals",
     ),
     "building_code": ("bc-building-code-how-it-applies",),
@@ -1420,6 +1997,8 @@ INTENT_TO_CARD_KEYS: dict[str, tuple[str, ...]] = {
         "interior-health-recreational-water",
         "bc-pool-regulation",
         "pool-chemistry-public-health-angle",
+        "bc-guidelines-pool-design-operations",
+        "bcrpa-poolsafebc-best-practices",
     ),
     "refrigeration_plant": (
         "tsbc-ammonia-safety-awareness",
@@ -1439,7 +2018,13 @@ INTENT_TO_CARD_KEYS: dict[str, tuple[str, ...]] = {
     "fire": ("bc-fire-code-and-vernon-fire-bylaw",),
     "electrical": ("tsbc-electrical-safety",),
     "playground": ("playground-csa-z614",),
-    "chemicals": ("worksafebc-whmis-chemicals", "pool-chemistry-public-health-angle"),
+    "chemicals": (
+        "worksafebc-whmis-chemicals",
+        "worksafebc-chlorine-toxic-process-gas",
+        "worksafebc-chloramines-indoor-pools",
+        "pool-chemistry-public-health-angle",
+        "bcrpa-poolsafebc-best-practices",
+    ),
     "emergency_ammonia": (
         "emergency-ammonia-internal-plus-regulators",
         "tsbc-ammonia-public-occupancy",
