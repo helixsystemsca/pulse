@@ -10,7 +10,8 @@ VERNON_COMPANY_NAME_MARKERS: tuple[str, ...] = ("city of vernon",)
 VERNON_ADMIN_EMAILS: frozenset[str] = frozenset({"josh@vernon.ca"})
 RECREATION_OPS_FEATURE = "recreation_ops"
 DAILY_PLANNER_FEATURE = "daily_planner"
-VERNON_PINNED_FEATURES: tuple[str, ...] = (RECREATION_OPS_FEATURE, DAILY_PLANNER_FEATURE)
+FINANCE_FEATURE = "finance_asset_planning"
+VERNON_PINNED_FEATURES: tuple[str, ...] = (RECREATION_OPS_FEATURE, DAILY_PLANNER_FEATURE, FINANCE_FEATURE)
 #: Same-origin static file served by the Pulse SPA (`frontend/public/images/city-of-vernon-logo.svg`).
 VERNON_DEFAULT_LOGO_URL = "/images/city-of-vernon-logo.svg"
 #: Raster from the original seed — still served, but bootstrap rewrites to the SVG.

@@ -22,6 +22,7 @@ export const NAV_DOMAINS = [
   "Training",
   "Team Management",
   "Assets",
+  "Financial & Asset Planning",
   "Visuals",
   "Administration",
 ] as const;
@@ -63,6 +64,12 @@ export const NAV_DOMAIN_META: Record<NavDomain, NavDomainMeta> = {
   Training: { domain: "Training", label: "Training", icon: "book-open" },
   "Team Management": { domain: "Team Management", label: "Team Management", icon: "users" },
   Assets: { domain: "Assets", label: "Assets", icon: "package" },
+  "Financial & Asset Planning": {
+    domain: "Financial & Asset Planning",
+    label: "Financial & Asset Planning",
+    icon: "bar-chart-2",
+    defaultHref: "/finance",
+  },
   Visuals: { domain: "Visuals", label: "Maps", icon: "layers" },
   Administration: { domain: "Administration", label: "Administration", icon: "user-cog" },
 };

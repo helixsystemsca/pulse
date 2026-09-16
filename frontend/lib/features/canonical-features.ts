@@ -43,6 +43,7 @@ export const CANONICAL_PRODUCT_FEATURES = [
   "roadmap",
   "recreation_ops",
   "daily_planner",
+  "finance_asset_planning",
   "procedures",
   "standards_training",
   "standards_certifications",

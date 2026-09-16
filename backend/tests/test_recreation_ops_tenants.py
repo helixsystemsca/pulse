@@ -25,10 +25,12 @@ def test_vernon_admin_email_match() -> None:
 
 
 def test_vernon_pins_daily_planner() -> None:
-    from app.core.features.recreation_ops_tenants import DAILY_PLANNER_FEATURE, VERNON_PINNED_FEATURES
+    from app.core.features.recreation_ops_tenants import DAILY_PLANNER_FEATURE, FINANCE_FEATURE, VERNON_PINNED_FEATURES
 
     assert DAILY_PLANNER_FEATURE in VERNON_PINNED_FEATURES
     assert "recreation_ops" in VERNON_PINNED_FEATURES
+    assert FINANCE_FEATURE in VERNON_PINNED_FEATURES
+    assert FINANCE_FEATURE == "finance_asset_planning"
 
 
 def test_vernon_default_logo_seeded_when_empty() -> None:

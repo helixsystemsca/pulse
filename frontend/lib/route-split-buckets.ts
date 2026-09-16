@@ -43,6 +43,7 @@ export const PRODUCT_PATH_PREFIXES = [
   "/project-management",
   "/pm",
   "/equipment",
+  "/finance",
   "/devices",
   "/zones",
   "/dashboard",

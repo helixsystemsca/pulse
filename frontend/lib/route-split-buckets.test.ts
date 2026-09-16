@@ -82,6 +82,9 @@ describe("route-split-buckets", () => {
     expect(isMarketingPath("/login")).toBe(false);
 
     expect(isProductPath("/equipment/_param")).toBe(true);
+    expect(isProductPath("/finance")).toBe(true);
+    expect(isProductPath("/finance/_param")).toBe(true);
+    expect(isMarketingPath("/finance")).toBe(false);
     expect(isProductPath("/maintenance")).toBe(true);
     expect(isProductPath("/maintenance/work-orders")).toBe(true);
     expect(isProductPath("/system/companies/_param")).toBe(true);

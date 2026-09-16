@@ -64,6 +64,8 @@ RBAC_PERMISSION_SEED: tuple[tuple[str, str], ...] = (
     ("recreation_ops.manage", "Manage My Role"),
     ("daily_planner.view", "View Daily Operations Planner"),
     ("daily_planner.manage", "Manage Daily Operations Planner"),
+    ("finance_asset_planning.view", "View Financial & Asset Planning"),
+    ("finance_asset_planning.manage", "Manage Financial & Asset Planning (budgets, POs, invoices)"),
 )
 
 # Legacy `company_features` / `GLOBAL_SYSTEM_FEATURES` name → flat RBAC keys (bridge until grants-only).
@@ -136,6 +138,7 @@ FEATURE_TO_RBAC_PERMISSIONS: dict[str, tuple[str, ...]] = {
     "roadmap": ("roadmap.view", "roadmap.manage"),
     "recreation_ops": ("recreation_ops.view", "recreation_ops.manage"),
     "daily_planner": ("daily_planner.view", "daily_planner.manage"),
+    "finance_asset_planning": ("finance_asset_planning.view", "finance_asset_planning.manage"),
 }
 
 # RBAC key must only apply if the tenant contract includes this feature key (subset of GLOBAL / company_features).
@@ -201,4 +204,6 @@ RBAC_KEY_REQUIRES_COMPANY_FEATURE: dict[str, str | None] = {
     "recreation_ops.manage": "recreation_ops",
     "daily_planner.view": "daily_planner",
     "daily_planner.manage": "daily_planner",
+    "finance_asset_planning.view": "finance_asset_planning",
+    "finance_asset_planning.manage": "finance_asset_planning",
 }

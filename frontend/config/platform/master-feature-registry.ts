@@ -81,6 +81,54 @@ export type MasterFeatureDef = {
   navAlias?: boolean;
 };
 
+const FINANCE_NAV: readonly MasterFeatureDef[] = (
+  [
+    ["finance_budget_dashboard", "Budget Dashboard", "/finance/dashboard", "Overview", 10, 450],
+    ["finance_operating_actuals", "Actuals", "/finance/operating/actuals", "Operating Budget", 20, 451],
+    ["finance_operating_commitments", "Commitments", "/finance/operating/commitments", "Operating Budget", 30, 452],
+    ["finance_operating_forecast", "Forecast", "/finance/operating/forecast", "Operating Budget", 40, 453],
+    ["finance_operating_variance", "Variance", "/finance/operating/variance", "Operating Budget", 50, 454],
+    ["finance_capital_projects", "Capital projects", "/finance/capital/projects", "Capital Budget", 20, 455],
+    ["finance_capital_purchases", "Purchases", "/finance/capital/purchases", "Capital Budget", 30, 456],
+    ["finance_capital_replacements", "Replacements", "/finance/capital/replacements", "Capital Budget", 40, 457],
+    ["finance_lifecycle_replacement", "Replacement Forecast", "/finance/lifecycle/replacement", "Asset Lifecycle", 20, 458],
+    ["finance_lifecycle_service", "Service Forecast", "/finance/lifecycle/service", "Asset Lifecycle", 30, 459],
+    ["finance_lifecycle_cost", "Lifecycle Cost", "/finance/lifecycle/cost", "Asset Lifecycle", 40, 460],
+    ["finance_planner_current", "Current Year", "/finance/planner/current", "Budget Planner", 20, 461],
+    ["finance_planner_next", "Next Year", "/finance/planner/next-year", "Budget Planner", 30, 462],
+    ["finance_planner_long", "5–10 Year Forecast", "/finance/planner/long-range", "Budget Planner", 40, 463],
+    ["finance_scenario_replace", "Replace", "/finance/scenarios/replace", "Scenario Planning", 20, 464],
+    ["finance_scenario_repair", "Repair", "/finance/scenarios/repair", "Scenario Planning", 30, 465],
+    ["finance_scenario_defer", "Defer", "/finance/scenarios/defer", "Scenario Planning", 40, 466],
+    ["finance_scenario_compare", "Compare", "/finance/scenarios/compare", "Scenario Planning", 50, 467],
+    ["finance_procurement_quotes", "Quotes", "/finance/procurement/quotes", "Procurement", 20, 468],
+    ["finance_procurement_pos", "POs", "/finance/procurement/pos", "Procurement", 30, 469],
+    ["finance_procurement_invoices", "Invoices", "/finance/procurement/invoices", "Procurement", 40, 470],
+    ["finance_procurement_contracts", "Contracts", "/finance/procurement/contracts", "Procurement", 50, 471],
+    ["finance_deferred", "Deferred Maintenance", "/finance/deferred", "Deferred Maintenance", 10, 472],
+    ["finance_funding", "Funding Sources", "/finance/funding", "Funding Sources", 10, 473],
+    ["finance_assistant", "Budget Assistant", "/finance/assistant", "Budget Assistant", 10, 474],
+    ["finance_opportunities", "Budget Opportunities", "/finance/opportunities", "Opportunities", 10, 475],
+    ["finance_history", "Budget History", "/finance/history", "History & assumptions", 10, 476],
+    ["finance_assumptions", "Budget Assumptions", "/finance/assumptions", "History & assumptions", 20, 477],
+    ["finance_justifications", "Capital justifications", "/finance/justifications", "Justifications", 10, 478],
+    ["finance_alerts", "Alerts", "/finance/alerts", "Alerts", 10, 479],
+    ["finance_reports", "Reports", "/finance/reports", "Reports", 10, 480],
+  ] as const
+).map(([key, label, route, navGroup, navOrder, sortOrder]) => ({
+  key,
+  label,
+  icon: "bar-chart-2",
+  route,
+  feature: "finance_asset_planning",
+  rbacAnyOf: ["finance_asset_planning.view", "finance_asset_planning.manage"],
+  navVisible: true,
+  sortOrder,
+  navDomain: "Financial & Asset Planning",
+  navGroup,
+  navOrder,
+}));
+
 /**
  * Globally unique operational features — one row per product module or navigation alias.
  */
@@ -935,6 +983,8 @@ export const MASTER_FEATURES: readonly MasterFeatureDef[] = [
     navAlias: true,
   },
 
+  ...FINANCE_NAV,
+
   // —— Assets ——
   {
     key: "inventory",
@@ -1325,7 +1375,7 @@ export const MASTER_FEATURES: readonly MasterFeatureDef[] = [
     navGroup: "Configuration",
     navOrder: 90,
   },
-] as const;
+];
 
 const byKey = new Map(MASTER_FEATURES.map((f) => [f.key, f]));
 

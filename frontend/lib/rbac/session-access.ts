@@ -207,6 +207,13 @@ function classicNavGate(href: string): NavGate {
       rbacAnyOf: ["drawings.view", "arena_advertising.view"],
     };
   }
+  if (h === "/finance" || h.startsWith("/finance/")) {
+    return {
+      kind: "module",
+      companyModules: ["finance_asset_planning"],
+      rbacAnyOf: ["finance_asset_planning.view", "finance_asset_planning.manage"],
+    };
+  }
   const master = getMasterFeatureForPath(href) ?? getMasterFeatureForPath(h);
   if (master) {
     if (master.key === "equipment") {

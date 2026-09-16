@@ -86,6 +86,23 @@ describe("canAccessClassicNavHref", () => {
     expect(canAccessClassicNavHref(s, "/planner")).toBe(true);
     expect(canAccessClassicNavHref(s, "/planner/inbox")).toBe(true);
   });
+
+  it("allows Financial & Asset Planning hub and leaves", () => {
+    const s = session({
+      contract_features: ["finance_asset_planning"],
+      enabled_features: ["finance_asset_planning"],
+      rbac_permissions: ["finance_asset_planning.view"],
+    });
+    expect(canAccessClassicNavHref(s, "/finance")).toBe(true);
+    expect(canAccessClassicNavHref(s, "/finance/dashboard")).toBe(true);
+    expect(canAccessClassicNavHref(s, "/finance/procurement/pos")).toBe(true);
+    const denied = session({
+      contract_features: ["daily_planner"],
+      enabled_features: ["daily_planner"],
+      rbac_permissions: ["daily_planner.view"],
+    });
+    expect(canAccessClassicNavHref(denied, "/finance")).toBe(false);
+  });
 });
 
 describe("tenantSidebarNavItemsForLiveApp — training flashcards milestone", () => {
