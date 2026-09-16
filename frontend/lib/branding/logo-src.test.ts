@@ -13,6 +13,7 @@ import {
 import {
   CITY_OF_VERNON_LOGO_PNG_SRC,
   CITY_OF_VERNON_LOGO_SRC,
+  CITY_OF_VERNON_MARK_SRC,
 } from "@/lib/branding/platform-defaults";
 
 describe("logo-src", () => {
@@ -41,5 +42,7 @@ describe("logo-src", () => {
     expect(canonicalPublicLogoUrl(CITY_OF_VERNON_LOGO_SRC)).toBe(CITY_OF_VERNON_LOGO_SRC);
     expect(canonicalPublicLogoUrl("/api/v1/company/logo")).toBe("/api/v1/company/logo");
     expect(canonicalPublicLogoUrl("https://cdn.example/custom.png")).toBe("https://cdn.example/custom.png");
+    expect(isVernonStaticLogoUrl(CITY_OF_VERNON_MARK_SRC)).toBe(false);
+    expect(canonicalPublicLogoUrl(CITY_OF_VERNON_MARK_SRC)).toBe(CITY_OF_VERNON_MARK_SRC);
   });
 });
