@@ -13,8 +13,8 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-revision = "1056_finance_asset_planning"
-down_revision = "1055_facility_links"
+revision = "1057_finance_asset_planning"
+down_revision = "1056_hire_onboarding"
 branch_labels = None
 depends_on = None
 
