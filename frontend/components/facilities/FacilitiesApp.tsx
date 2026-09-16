@@ -224,7 +224,7 @@ export function FacilitiesApp() {
         icon={Building2}
         actions={
           canEdit ? (
-            <button type="button" onClick={openCreate} className={PRIMARY}>
+            <button type="button" onClick={openCreate} className={PRIMARY} data-tour="facilities-tour-create">
               <Plus className="mr-1.5 inline h-4 w-4" />
               Add facility
             </button>
@@ -243,12 +243,16 @@ export function FacilitiesApp() {
               placeholder="Search facilities…"
               value={q}
               onChange={(e) => setQ(e.target.value)}
+              data-tour="facilities-tour-search"
             />
           </div>
         </div>
 
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,28rem)]">
-          <div className={cn("rounded-xl border border-ds-border bg-ds-card overflow-hidden", showPanel && "hidden lg:block")}>
+          <div
+            className={cn("rounded-xl border border-ds-border bg-ds-card overflow-hidden", showPanel && "hidden lg:block")}
+            data-tour="facilities-tour-list"
+          >
             {loading ? (
               <div className="flex items-center gap-2 p-6 text-sm text-ds-muted">
                 <Loader2 className="h-4 w-4 animate-spin" /> Loading…
@@ -290,7 +294,10 @@ export function FacilitiesApp() {
             )}
           </div>
 
-          <div className={cn("rounded-xl border border-ds-border bg-ds-card p-4", !showPanel && "hidden lg:block")}>
+          <div
+            className={cn("rounded-xl border border-ds-border bg-ds-card p-4", !showPanel && "hidden lg:block")}
+            data-tour="facilities-tour-detail"
+          >
             {!showPanel ? (
               <p className="text-sm text-ds-muted">Select a facility or add a new one.</p>
             ) : (
@@ -391,7 +398,7 @@ export function FacilitiesApp() {
                 ) : null}
 
                 {!creating && selectedId ? (
-                  <div className="mt-4 space-y-3 border-t border-ds-border pt-4">
+                  <div className="mt-4 space-y-3 border-t border-ds-border pt-4" data-tour="facilities-tour-contents">
                     <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">
                       What this facility has
                     </p>
@@ -408,6 +415,7 @@ export function FacilitiesApp() {
                               <Link
                                 href={`/equipment?create=1&ops_facility_id=${encodeURIComponent(selectedId)}`}
                                 className="text-xs font-semibold text-ds-primary hover:underline"
+                                data-tour="facilities-tour-add-asset"
                               >
                                 Add asset
                               </Link>
