@@ -14,7 +14,7 @@ const FLYOUT_ITEM_DESCRIPTIONS: Partial<Record<string, string>> = {
   project_management: "PM timelines, dependencies, and cross-project delivery.",
   standards_routines: "Routine templates, daily assignments, and shift handoffs — not the same as recreation Checklists or Daily Planner.",
   daily_planner: "Today’s calendar. Inbox, Routine, and Analytics are tabs on this page.",
-  ops_regulations: "Editable codes and guidance cards with official public sources — not legal advice.",
+  ops_regulations: "TSBC / PEBPVRSR pointers, chief engineer duties, ammonia ice-plant rules — official public sources, not legal advice.",
   ops_knowledge: "Operational notes and lessons learned. Use Codes & Guidance for regulatory references.",
   ops_facilities: "Buildings you operate — link inventory and equipment to each facility.",
   ops_people: "Operational staff directory. Contacts and Org Chart are tabs on this hub; contractors stay separate.",

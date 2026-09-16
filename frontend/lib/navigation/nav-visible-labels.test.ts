@@ -123,5 +123,9 @@ describe("nav-visible feature labels", () => {
     expect(items.some((i) => i.key === "roadmap")).toBe(false);
     expect(items.some((i) => i.key === "project_management")).toBe(false);
     expect(tree.find((d) => d.domain === "My Role")?.label).toBe("Recreation");
+    const codes = items.find((i) => i.key === "ops_regulations");
+    expect(codes?.label).toBe("Codes & Guidance");
+    expect(codes?.navGroup).toBe("Compliance");
+    expect(codes?.href).toBe("/recreation/regulations");
   });
 });

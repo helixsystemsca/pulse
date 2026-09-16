@@ -584,8 +584,8 @@ export const MASTER_FEATURES: readonly MasterFeatureDef[] = [
     navVisible: true,
     sortOrder: 124,
     navDomain: "My Role",
-    navGroup: "Docs",
-    navOrder: 40,
+    navGroup: "Compliance",
+    navOrder: 38,
   },
   {
     key: "ops_facilities",

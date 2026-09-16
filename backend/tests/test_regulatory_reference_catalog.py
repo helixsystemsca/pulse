@@ -10,8 +10,12 @@ from app.core.regulatory_reference_catalog import (
     TSBC_AMMONIA_AWARENESS,
     TSBC_D_BP_2012_03,
     TSBC_D_BP_2024_01,
+    TSBC_D_BP_2025_02,
     TSBC_D_BP_2025_04,
+    TSBC_IB_DA_2020_01,
     TSBC_ICE_FACILITY_OPERATOR,
+    TSBC_REFRIGERATION_DESIGN_REG,
+    TSBC_REFRIGERATION_HOME,
     TSBC_REFRIGERATION_OPERATOR,
     TSBC_SO_BP_2017_02,
     VERIFICATION_STATUSES,
@@ -40,6 +44,10 @@ TSBC_CHIEF_AND_PLANT_KEYS = (
     "tsbc-ammonia-safety-awareness",
     "tsbc-refrigeration-operator-certificate",
     "tsbc-ice-facility-operator-certificate",
+    "pebpvrsr-chief-engineer-definition-duties",
+    "pebpvrsr-refrigeration-in-charge-classification",
+    "tsbc-secondary-coolant-overpressure",
+    "tsbc-refrigeration-design-registration",
     "worksafebc-ammonia-refrigeration",
     "emergency-ammonia-internal-plus-regulators",
     "safety-standards-act-overview",
@@ -88,6 +96,9 @@ def test_starter_topics_cover_josh_briefs() -> None:
         "ice facility operator",
         "general supervision",
         "safety order",
+        "secondary coolant",
+        "design registration",
+        "section 68",
     ):
         assert needle in blob, needle
 
@@ -140,6 +151,29 @@ def test_tsbc_chief_engineer_and_refrigeration_cards() -> None:
     ifo = catalog["tsbc-ice-facility-operator-certificate"]
     assert ifo["official_source_url"] == TSBC_ICE_FACILITY_OPERATOR
     assert ifo["topic_category"] == "Chief Engineer"
+
+    duties = catalog["pebpvrsr-chief-engineer-definition-duties"]
+    assert duties["official_source_url"] == PEBPVR_BC_LAWS
+    assert TSBC_REFRIGERATION_HOME in (duties.get("extra_sources") or [])
+    assert "s. 68" in duties["summary"]
+    assert "s. 69" in duties["summary"]
+    assert "does not decide" in duties["applicability"].lower()
+
+    classify = catalog["pebpvrsr-refrigeration-in-charge-classification"]
+    assert classify["official_source_url"] == PEBPVR_BC_LAWS
+    assert "B2L" in classify["summary"]
+    assert "44(2.1)" in classify["summary"]
+    assert "not legal advice" in classify["summary"].lower()
+
+    coolant = catalog["tsbc-secondary-coolant-overpressure"]
+    assert coolant["official_source_url"] == TSBC_D_BP_2025_02
+    assert "D-BP 2025-02" in coolant["regulation_name"]
+    assert "does not paste CSA B52" in coolant["summary"]
+
+    design = catalog["tsbc-refrigeration-design-registration"]
+    assert design["official_source_url"] == TSBC_IB_DA_2020_01
+    assert TSBC_REFRIGERATION_DESIGN_REG in (design.get("extra_sources") or [])
+    assert "s. 84" in design["summary"]
 
     assert "not legal advice" in DISCLAIMER.lower()
 

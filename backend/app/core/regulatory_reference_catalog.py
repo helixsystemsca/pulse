@@ -128,6 +128,18 @@ TSBC_REFRIGERATION_OPERATOR = (
 TSBC_ICE_FACILITY_OPERATOR = (
     "https://www.technicalsafetybc.ca/technologies/refrigeration/ice-facility-operator-certificate"
 )
+TSBC_REFRIGERATION_HOME = "https://www.technicalsafetybc.ca/technologies/refrigeration"
+TSBC_D_BP_2025_02 = (
+    "https://www.technicalsafetybc.ca/regulatory-resources/regulatory-notices/"
+    "directive-secondary-coolant-systems"
+)
+TSBC_IB_DA_2020_01 = (
+    "https://www.technicalsafetybc.ca/regulatory-resources/regulatory-notices/"
+    "information-bulletin-design-registration-refrigeration-plants-and-systems"
+)
+TSBC_REFRIGERATION_DESIGN_REG = (
+    "https://www.technicalsafetybc.ca/technologies/refrigeration/refrigeration-design-registration"
+)
 
 REFERENCE_CARDS: tuple[ReferenceCard, ...] = (
     {
@@ -1056,6 +1068,261 @@ REFERENCE_CARDS: tuple[ReferenceCard, ...] = (
             {"label": "Refrigeration contractor pack", "href": "/recreation/contractors"},
         ],
     },
+    {
+        "key": "pebpvrsr-chief-engineer-definition-duties",
+        "title": "PEBPVRSR — chief engineer definition, s.68–70 duties (pointer)",
+        "topic_category": "Chief Engineer",
+        "classification": "Law/Regulation",
+        "authority": "Province of British Columbia / Technical Safety BC",
+        "regulation_name": "Power Engineers, Boiler, Pressure Vessel and Refrigeration Safety Regulation (B.C. Reg. 104/2004) ss. 1, 68–70",
+        "official_source_name": "BC Laws — Power Engineers, Boiler, Pressure Vessel and Refrigeration Safety Regulation (B.C. Reg. 104/2004)",
+        "official_source_url": PEBPVR_BC_LAWS,
+        "extra_sources": [
+            TSBC_REFRIGERATION_HOME,
+            TSBC_D_BP_2012_03,
+            PEBPVR_CANLII,
+        ],
+        "applicability": (
+            "Owner-designated chief engineer, assistant chief engineer, shift engineer, and person "
+            "in charge for regulated plants on recreation sites, including the Civic Arena ice plant. "
+            "Pulse does not decide who is Vernon’s chief engineer."
+        ),
+        "summary": (
+            "This card points at the public PEBPVRSR text on BC Laws (and TSBC’s refrigeration "
+            "page, which lists that regulation). It is a finding aid — not legal advice and not a "
+            "substitute for the current section wording. Public hooks to open:\n"
+            "• Definition (s. 1): a chief engineer is a power engineer designated by the owner to "
+            "be responsible for operation and maintenance of a plant, and for ensuring that "
+            "regulated work in the plant is performed by appropriately qualified persons.\n"
+            "• s. 68 (chief engineer requirements): with written permission of a provincial safety "
+            "manager, a power engineer may at any one time be the chief engineer of a limited "
+            "number of plants (the current public text distinguishes heating-type plants from "
+            "refrigeration plants). If two or more power engineers are employed in a plant, the "
+            "owner or person in charge must designate one as chief engineer.\n"
+            "• s. 69: work that may affect operation and safety of the plant (including "
+            "refrigeration plant equipment) needs prior approval of the chief engineer, assistant "
+            "chief engineer, or the person in charge.\n"
+            "• s. 70: when the chief engineer is away from the plant, the owner designates a shift "
+            "engineer (certificate class not less than one class lower than that required for "
+            "chief engineer). TSBC D-BP 2012-03 interprets temporary absence — see the related "
+            "chief-engineer overview card.\n"
+            "Confirm current wording on BC Laws before relying on any of these points."
+        ),
+        "verification_status": "Reviewed",
+        "review_date": _REVIEWED,
+        "keywords": [
+            "chief engineer",
+            "chief engineer definition",
+            "chief engineer duties",
+            "chief engineer responsibilities",
+            "person in charge",
+            "shift engineer",
+            "assistant chief engineer",
+            "section 68",
+            "s.68",
+            "multi-plant",
+            "prior approval",
+            "section 69",
+            "section 70",
+            "pebpvrsr",
+            "tsbc",
+            "ice plant",
+        ],
+        "pulse_pointers": [
+            {"label": "Codes & Guidance library", "href": "/recreation/regulations"},
+            {"label": "Refrigeration / ice plant tickets", "href": "/training/compliance/workers?panel=certifications"},
+            {"label": "Ice plant equipment", "href": "/equipment"},
+            {"label": "Work requests", "href": "/dashboard/maintenance"},
+        ],
+    },
+    {
+        "key": "pebpvrsr-refrigeration-in-charge-classification",
+        "title": "PEBPVRSR — refrigeration in charge and A3/B2L capacity hooks (pointer)",
+        "topic_category": "Refrigeration / TSBC",
+        "classification": "Law/Regulation",
+        "authority": "Province of British Columbia / Technical Safety BC",
+        "regulation_name": "Power Engineers, Boiler, Pressure Vessel and Refrigeration Safety Regulation (B.C. Reg. 104/2004) — plant class / in-charge hooks",
+        "official_source_name": "BC Laws — Power Engineers, Boiler, Pressure Vessel and Refrigeration Safety Regulation (B.C. Reg. 104/2004)",
+        "official_source_url": PEBPVR_BC_LAWS,
+        "extra_sources": [
+            TSBC_REFRIGERATION_HOME,
+            TSBC_REFRIGERATION_OPERATOR,
+            TSBC_ICE_FACILITY_OPERATOR,
+            PEBPVR_CANLII,
+        ],
+        "applicability": (
+            "Arena ice plants and other regulated refrigeration plants. Classification depends on "
+            "refrigerant group (including A3 / B2L such as ammonia) and total prime-mover capacity. "
+            "Confirm the Civic Arena plant against the current regulation — Pulse will not calculate "
+            "Vernon’s class from this card."
+        ),
+        "summary": (
+            "PEBPVRSR classifies refrigeration plants and sets who may be in charge. Open the "
+            "current regulation on BC Laws; this is not legal advice and Pulse does not reproduce "
+            "CSA B52. Public hooks (confirm current wording and whether an exemption or special "
+            "status applies):\n"
+            "• s. 6 lists when a certificate of qualification is not required to operate certain "
+            "equipment, including a prime-mover capacity threshold for refrigerant groups A3, B2L, "
+            "B2 or B3 (ammonia is treated as B2L in that CSA grouping — read the regulation and "
+            "the adopted code for the current grouping).\n"
+            "• s. 44(2.1): a refrigeration plant requires a refrigeration operator or a "
+            "fourth-class or higher power engineer to be in charge.\n"
+            "• s. 46.1: refrigeration plant capacity is the total kW of connected prime-mover "
+            "nameplate ratings.\n"
+            "• Ice-facility operator provisions (including a 1,000 kW recreational-ice limit and "
+            "the need for a refrigeration operator or fourth-class+ person in charge) live in the "
+            "same regulation and on TSBC’s certificate pages.\n"
+            "Do not treat this card as a class calculator or a staffing plan for Vernon."
+        ),
+        "verification_status": "Reviewed",
+        "review_date": _REVIEWED,
+        "keywords": [
+            "in charge",
+            "person in charge",
+            "refrigeration operator",
+            "fourth class",
+            "4th class",
+            "plant classification",
+            "a3",
+            "b2l",
+            "ammonia",
+            "capacity",
+            "50 kw",
+            "ice facility operator",
+            "ice plant",
+            "pebpvrsr",
+            "tsbc",
+        ],
+        "pulse_pointers": [
+            {"label": "Refrigeration / ice plant tickets", "href": "/training/compliance/workers?panel=certifications"},
+            {"label": "Arena facility profile", "href": "/recreation/facilities"},
+            {"label": "Ice plant equipment", "href": "/equipment"},
+            {"label": "Work requests", "href": "/dashboard/maintenance"},
+        ],
+    },
+    {
+        "key": "tsbc-secondary-coolant-overpressure",
+        "title": "TSBC directive — secondary coolant systems (testing and overpressure)",
+        "topic_category": "Refrigeration / TSBC",
+        "classification": "Regulator guidance",
+        "authority": "Technical Safety BC",
+        "regulation_name": "TSBC Directive D-BP 2025-02 — Secondary Coolant Systems",
+        "official_source_name": "Technical Safety BC — Directive: Secondary Coolant Systems (D-BP 2025-02)",
+        "official_source_url": TSBC_D_BP_2025_02,
+        "extra_sources": [
+            TSBC_IB_DA_2020_01,
+            TSBC_REFRIGERATION_HOME,
+            PEBPVR_BC_LAWS,
+        ],
+        "applicability": (
+            "Regulated refrigeration systems that use a secondary coolant (brine / glycol loops on "
+            "ice plants and similar). The public directive describes Part B as applying to new "
+            "installations after CSA B52:23 adoption and to existing ammonia refrigeration systems "
+            "— confirm whether Vernon’s plant is in scope."
+        ),
+        "summary": (
+            "TSBC’s December 2025 public directive (D-BP 2025-02) clarifies secondary-coolant "
+            "testing, maintenance, and overpressure protection under PEBPVRSR. Public points — "
+            "confirm on the directive; Pulse does not paste CSA B52 clauses:\n"
+            "• Part A (testing and maintenance) is described as applying to existing and new "
+            "refrigeration systems. Owners establish testing practices proportionate to risk. For "
+            "toxic and/or flammable refrigerants (the page lists classes including B2L, which "
+            "includes ammonia), secondary-coolant testing is described as no less than twice per "
+            "year unless an alternative frequency is justified by a documented risk assessment.\n"
+            "• Refrigerant detected in the secondary coolant is to be reported to TSBC; analysis "
+            "records are retained (the page states a minimum retention period).\n"
+            "• Part B (overpressure protection) is described as applying to new installations after "
+            "adoption of CSA B52:23, existing ammonia refrigeration systems, and replaced/added "
+            "components connected to the secondary coolant. Uncertified systems address secondary-"
+            "coolant design during TSBC design registration (IB-DA 2020-01).\n"
+            "This card is not a Civic Arena testing schedule or a design specification."
+        ),
+        "verification_status": "Reviewed",
+        "review_date": _REVIEWED,
+        "keywords": [
+            "secondary coolant",
+            "overpressure",
+            "brine",
+            "glycol",
+            "heat exchanger",
+            "ammonia",
+            "ice plant",
+            "d-bp 2025-02",
+            "testing",
+            "tsbc",
+            "refrigeration",
+        ],
+        "pulse_pointers": [
+            {"label": "Ice plant equipment", "href": "/equipment"},
+            {"label": "Refrigeration contractor pack", "href": "/recreation/contractors"},
+            {"label": "Daily ice plant rounds (internal PM)", "href": "/dashboard/pm-workspace"},
+            {"label": "Work requests", "href": "/dashboard/maintenance"},
+        ],
+    },
+    {
+        "key": "tsbc-refrigeration-design-registration",
+        "title": "TSBC information bulletin — refrigeration plant design registration",
+        "topic_category": "Refrigeration / TSBC",
+        "classification": "Regulator guidance",
+        "authority": "Technical Safety BC",
+        "regulation_name": "TSBC Information Bulletin IB-DA 2020-01 — Design Registration of Refrigeration Plants and Systems",
+        "official_source_name": (
+            "Technical Safety BC — Information Bulletin: Design Registration of Refrigeration "
+            "Plants and Systems (IB-DA 2020-01)"
+        ),
+        "official_source_url": TSBC_IB_DA_2020_01,
+        "extra_sources": [
+            TSBC_REFRIGERATION_DESIGN_REG,
+            PEBPVR_BC_LAWS,
+            TSBC_REFRIGERATION_HOME,
+            TSBC_D_BP_2025_02,
+        ],
+        "applicability": (
+            "New, existing, or retrofit refrigeration system designs that must be registered before "
+            "installation, or when a modification changes the registered design. Arena ice-plant "
+            "alterations (chiller, piping, relief, secondary coolant) should be checked against this "
+            "bulletin and PEBPVRSR s. 84 — not decided in Pulse."
+        ),
+        "summary": (
+            "TSBC’s public information bulletin (IB-DA 2020-01, revision dated 31 December 2024) "
+            "explains that refrigeration system designs are registered under the Safety Standards "
+            "Act, PEBPVRSR (including s. 84), and the adopted CSA B52 / B51 codes. Public points "
+            "— confirm on the bulletin and TSBC’s refrigeration design-registration page; Pulse "
+            "does not paste CSA drawing lists:\n"
+            "• Designs are submitted to the Provincial Safety Manager, Engineering before "
+            "installation. Packages must be authenticated by a professional engineer (engineer of "
+            "record).\n"
+            "• Secondary-coolant designs on heat exchangers and associated piping must include "
+            "considerations on preventing over-pressurization (thermal expansion of trapped "
+            "secondary coolant, or refrigerant leaks into the secondary coolant).\n"
+            "• A P&ID of the plant, including the secondary coolant system, is among the materials "
+            "TSBC lists on the design-registration page.\n"
+            "Use the bulletin with a licensed designer for any Civic Arena plant change. This card "
+            "is not a permit application."
+        ),
+        "verification_status": "Reviewed",
+        "review_date": _REVIEWED,
+        "keywords": [
+            "design registration",
+            "ib-da 2020-01",
+            "refrigeration plant",
+            "secondary coolant",
+            "overpressure",
+            "professional engineer",
+            "section 84",
+            "s.84",
+            "ice plant",
+            "ammonia",
+            "tsbc",
+            "permit",
+        ],
+        "pulse_pointers": [
+            {"label": "Work requests", "href": "/dashboard/maintenance"},
+            {"label": "Refrigeration contractor pack", "href": "/recreation/contractors"},
+            {"label": "Planning hub", "href": "/recreation/planning"},
+            {"label": "Ice plant equipment", "href": "/equipment"},
+        ],
+    },
 )
 
 
@@ -1081,6 +1348,9 @@ INTENT_SYNONYMS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "assistant chief engineer",
             "refrigeration operator",
             "ice facility operator",
+            "chief engineer definition",
+            "chief engineer duties",
+            "section 68",
         ),
     ),
     (
@@ -1117,6 +1387,9 @@ INTENT_SYNONYMS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "general supervision",
             "risk assessed",
             "ammonia safety awareness",
+            "secondary coolant",
+            "design registration",
+            "ice plant requirements",
         ),
     ),
     ("fire", ("fire code", "fire safety plan", "vernon fire")),
@@ -1128,9 +1401,11 @@ INTENT_SYNONYMS: tuple[tuple[str, tuple[str, ...]], ...] = (
 
 INTENT_TO_CARD_KEYS: dict[str, tuple[str, ...]] = {
     "chief_engineer": (
+        "pebpvrsr-chief-engineer-definition-duties",
         "chief-engineer-plant-responsibility",
         "tsbc-refrigeration-operator-certificate",
         "tsbc-ice-facility-operator-certificate",
+        "pebpvrsr-refrigeration-in-charge-classification",
         "tsbc-plant-supervision-vicinity",
         "tsbc-ammonia-public-occupancy",
         "safety-standards-act-overview",
@@ -1147,11 +1422,15 @@ INTENT_TO_CARD_KEYS: dict[str, tuple[str, ...]] = {
         "pool-chemistry-public-health-angle",
     ),
     "refrigeration_plant": (
+        "tsbc-ammonia-safety-awareness",
+        "pebpvrsr-refrigeration-in-charge-classification",
+        "pebpvrsr-chief-engineer-definition-duties",
+        "tsbc-secondary-coolant-overpressure",
+        "tsbc-refrigeration-design-registration",
         "chief-engineer-plant-responsibility",
         "tsbc-plant-supervision-vicinity",
         "tsbc-ammonia-public-occupancy",
         "tsbc-general-supervision-risk-assessed",
-        "tsbc-ammonia-safety-awareness",
         "tsbc-refrigeration-operator-certificate",
         "tsbc-ice-facility-operator-certificate",
         "worksafebc-ammonia-refrigeration",
