@@ -2,8 +2,8 @@ import type { TourStep } from "@/lib/onboarding/tour-steps/types";
 import { tourSel } from "@/lib/onboarding/tour-target";
 
 /**
- * Anchors used by the current OpsModuleApp facilities page and the dedicated
- * FacilitiesApp (PR #18). Missing targets (empty CTA, contents, add-asset) skip.
+ * Anchors on FacilitiesApp. Contents / add-asset steps skip until a facility is open.
+ * Linked-records step skips — that graph was dropped when Facilities left OpsModuleApp.
  */
 export const FACILITIES_TOUR_STEPS: TourStep[] = [
   {
