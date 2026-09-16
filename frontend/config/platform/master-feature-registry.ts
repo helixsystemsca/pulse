@@ -583,9 +583,9 @@ export const MASTER_FEATURES: readonly MasterFeatureDef[] = [
     rbacAnyOf: ["recreation_ops.view", "recreation_ops.manage"],
     navVisible: true,
     sortOrder: 124,
-    navDomain: "My Role",
-    navGroup: "Docs",
-    navOrder: 40,
+    navDomain: "Reference",
+    navGroup: "Compliance",
+    navOrder: 1,
   },
   {
     key: "ops_facilities",

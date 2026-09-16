@@ -202,7 +202,7 @@ export const OPS_MODULES: readonly OpsModuleDef[] = [
     label: "Codes & Guidance",
     singular: "Reference card",
     description:
-      "Regulatory reference library — plain-language pointers to official public sources (not legal advice).",
+      "Regulatory reference library — TSBC ammonia / chief engineer / PEBPVRSR pointers to official public sources (not legal advice).",
     route: "/recreation/regulations",
     icon: "scroll-text",
     fields: [

@@ -43,6 +43,7 @@ import {
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import type { NavDomain } from "@/config/platform/nav-domains";
+import { navDomainHomeHref } from "@/config/platform/nav-domains";
 import type { PlatformIconKey } from "@/config/platform/types";
 import { pulseSystemSidebarNav, type PulseSidebarIcon } from "@/lib/pulse-app";
 import { isPulseNavActive } from "@/lib/pulse-nav-active";
@@ -209,7 +210,7 @@ function TenantDomainFlyoutNav({
   const flyoutId = useId();
   const flyoutBridge = useOnboardingFlyoutBridge();
   const shellRef = useRef<HTMLDivElement | null>(null);
-  const domainButtonRefs = useRef<Partial<Record<NavDomain, HTMLButtonElement>>>({});
+  const domainButtonRefs = useRef<Partial<Record<NavDomain, HTMLElement>>>({});
   const [hoverDomain, setHoverDomain] = useState<NavDomain | null>(null);
   const [pinnedDomain, setPinnedDomain] = useState<NavDomain | null>(null);
   const [flyoutAnchorTop, setFlyoutAnchorTop] = useState(0);
@@ -294,37 +295,21 @@ function TenantDomainFlyoutNav({
         const domainActive = domainNode.domain === routeActiveDomain;
         const flyoutOpen = openDomain === domainNode.domain;
         const Icon = railIcon(domainNode.icon);
-        return (
-          <button
-            key={domainNode.domain}
-            data-tour={`domain-rail-${navDomainTourSlug(domainNode.domain)}`}
-            ref={(el) => {
-              if (el) domainButtonRefs.current[domainNode.domain] = el;
-              else delete domainButtonRefs.current[domainNode.domain];
-            }}
-            type="button"
-            className={cn(
-              SIDENAV_ROW_BASE,
-              "group/domain bg-transparent text-left",
-              domainActive || flyoutOpen
-                ? SIDENAV_ROW_ACTIVE_HOVER
-                : cn("bg-transparent", SIDENAV_ROW_ACTIVE_HOVER_HOVER),
-              "focus-visible:ring-2 focus-visible:ring-[var(--ds-focus-ring)] focus-visible:ring-offset-0",
-            )}
-            aria-haspopup="menu"
-            aria-expanded={flyoutOpen}
-            aria-controls={flyoutOpen ? `${flyoutId}-${domainNode.domain}` : undefined}
-            onMouseEnter={() => openFlyoutForDomain(domainNode.domain)}
-            onFocus={() => openFlyoutForDomain(domainNode.domain)}
-            onClick={() => togglePin(domainNode.domain)}
-            onKeyDown={(e) => {
-              if (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                openFlyoutForDomain(domainNode.domain);
-                setPinnedDomain(domainNode.domain);
-              }
-            }}
-          >
+        const homeHref = navDomainHomeHref(domainNode.domain);
+        const rowClassName = cn(
+          SIDENAV_ROW_BASE,
+          "group/domain bg-transparent text-left",
+          domainActive || flyoutOpen
+            ? SIDENAV_ROW_ACTIVE_HOVER
+            : cn("bg-transparent", SIDENAV_ROW_ACTIVE_HOVER_HOVER),
+          "focus-visible:ring-2 focus-visible:ring-[var(--ds-focus-ring)] focus-visible:ring-offset-0",
+        );
+        const assignRef = (el: HTMLAnchorElement | HTMLButtonElement | null) => {
+          if (el) domainButtonRefs.current[domainNode.domain] = el;
+          else delete domainButtonRefs.current[domainNode.domain];
+        };
+        const inner = (
+          <>
             <span
               className={cn(
                 ICON_COL,
@@ -343,6 +328,48 @@ function TenantDomainFlyoutNav({
             >
               {domainNode.label}
             </span>
+          </>
+        );
+        if (homeHref) {
+          return (
+            <Link
+              key={domainNode.domain}
+              href={homeHref}
+              data-tour={`domain-rail-${navDomainTourSlug(domainNode.domain)}`}
+              ref={assignRef}
+              className={rowClassName}
+              aria-haspopup="menu"
+              aria-expanded={flyoutOpen}
+              aria-controls={flyoutOpen ? `${flyoutId}-${domainNode.domain}` : undefined}
+              onMouseEnter={() => openFlyoutForDomain(domainNode.domain)}
+              onFocus={() => openFlyoutForDomain(domainNode.domain)}
+            >
+              {inner}
+            </Link>
+          );
+        }
+        return (
+          <button
+            key={domainNode.domain}
+            data-tour={`domain-rail-${navDomainTourSlug(domainNode.domain)}`}
+            ref={assignRef}
+            type="button"
+            className={rowClassName}
+            aria-haspopup="menu"
+            aria-expanded={flyoutOpen}
+            aria-controls={flyoutOpen ? `${flyoutId}-${domainNode.domain}` : undefined}
+            onMouseEnter={() => openFlyoutForDomain(domainNode.domain)}
+            onFocus={() => openFlyoutForDomain(domainNode.domain)}
+            onClick={() => togglePin(domainNode.domain)}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                openFlyoutForDomain(domainNode.domain);
+                setPinnedDomain(domainNode.domain);
+              }
+            }}
+          >
+            {inner}
           </button>
         );
       })}

@@ -39,6 +39,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import type { NavDomain } from "@/config/platform/nav-domains";
+import { navDomainHomeHref } from "@/config/platform/nav-domains";
 import type { PlatformIconKey } from "@/config/platform/types";
 import { pulseSystemSidebarNav, type PulseSidebarIcon } from "@/lib/pulse-app";
 import { isPulseNavActive } from "@/lib/pulse-nav-active";
@@ -193,6 +194,27 @@ export function AppMobileNavDrawer() {
                 const open = expandedDomain === domain.domain;
                 const Icon = navIcon(domain.icon);
                 const domainActive = domain.domain === routeDomain;
+                const homeHref = navDomainHomeHref(domain.domain);
+                const itemCount = domain.groups.reduce((n, g) => n + g.items.length, 0);
+                if (homeHref && itemCount <= 1) {
+                  return (
+                    <li key={domain.domain} className="border-b border-ds-border/60 last:border-b-0">
+                      <Link
+                        href={homeHref}
+                        onClick={closeSidebar}
+                        className={cn(
+                          "flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold",
+                          domainActive
+                            ? "bg-[var(--ds-accent)] text-white"
+                            : "text-ds-foreground hover:bg-ds-secondary",
+                        )}
+                      >
+                        <Icon className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
+                        <span className="min-w-0 flex-1">{domain.label}</span>
+                      </Link>
+                    </li>
+                  );
+                }
                 return (
                   <li key={domain.domain} className="border-b border-ds-border/60 last:border-b-0">
                     <button

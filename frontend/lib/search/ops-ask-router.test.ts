@@ -119,6 +119,11 @@ describe("routeOpsAsk — intent to route", () => {
     expect(routeOpsAsk("building code", vernonAdmin()).copilotPromptId).toBe("building-code");
     expect((topHref("refrigeration operator") ?? "").split("?")[0]).toBe("/recreation/regulations");
     expect((topHref("ammonia safety order") ?? "").split("?")[0]).toBe("/recreation/regulations");
+    expect((topHref("ammonia") ?? "").split("?")[0]).toBe("/recreation/regulations");
+    expect((topHref("tsbc") ?? "").split("?")[0]).toBe("/recreation/regulations");
+    expect((topHref("ice plant") ?? "").split("?")[0]).toBe("/recreation/regulations");
+    expect((topHref("chief engineer") ?? "").split("?")[0]).toBe("/recreation/regulations");
+    expect((topHref("secondary coolant") ?? "").split("?")[0]).toBe("/recreation/regulations");
   });
 
   it("still sends ammonia emergency to Emergency Response, not the library as primary", () => {
@@ -130,6 +135,9 @@ describe("routeOpsAsk — intent to route", () => {
     expect((topHref("ammonia safety order") ?? "").split("?")[0]).toBe("/recreation/regulations");
     expect((topHref("refrigeration operator") ?? "").split("?")[0]).toBe("/recreation/regulations");
     expect((topHref("chief engineer responsibilities") ?? "").split("?")[0]).toBe("/recreation/regulations");
+    expect((topHref("ammonia") ?? "").split("?")[0]).toBe("/recreation/regulations");
+    expect((topHref("ice plant") ?? "").split("?")[0]).toBe("/recreation/regulations");
+    expect((topHref("tsbc") ?? "").split("?")[0]).toBe("/recreation/regulations");
   });
 
   it("maps “add facility” to the facility create screen", () => {

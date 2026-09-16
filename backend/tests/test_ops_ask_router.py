@@ -13,6 +13,11 @@ def test_example_questions_route_to_library() -> None:
         "refrigeration operator certificate": "chief_engineer",
         "ammonia safety awareness": "refrigeration_plant",
         "general supervision": "refrigeration_plant",
+        "ammonia": "refrigeration_plant",
+        "tsbc": "refrigeration_plant",
+        "ice plant": "refrigeration_plant",
+        "secondary coolant": "refrigeration_plant",
+        "chief engineer definition": "chief_engineer",
     }
     for query, intent in cases.items():
         route = route_ops_ask(query)
@@ -34,6 +39,14 @@ def test_tsbc_safety_order_and_certificate_queries_hit_new_cards() -> None:
     assert "tsbc-ice-facility-operator-certificate" in ifo["card_keys"]
     special = route_ops_ask("risk assessed plant registration MAN-4000")
     assert "tsbc-general-supervision-risk-assessed" in special["card_keys"]
+    duties = route_ops_ask("chief engineer definition section 68")
+    assert "pebpvrsr-chief-engineer-definition-duties" in duties["card_keys"]
+    classify = route_ops_ask("refrigeration plant A3 B2L in charge")
+    assert "pebpvrsr-refrigeration-in-charge-classification" in classify["card_keys"]
+    coolant = route_ops_ask("secondary coolant overpressure")
+    assert "tsbc-secondary-coolant-overpressure" in coolant["card_keys"]
+    design = route_ops_ask("refrigeration plant design registration")
+    assert "tsbc-refrigeration-design-registration" in design["card_keys"]
 
 
 def test_ohs_synonym_and_empty_query() -> None:
