@@ -3,7 +3,9 @@
 import { displayStandardShiftCode, standardShiftByCode } from "@/lib/schedule/shift-definition-catalog";
 import { ASSIGNMENT_CODE_CHIP } from "@/lib/schedule/schedule-semantic-styles";
 import { formatTimeString } from "@/lib/schedule/time-format";
-import type { ScheduleSettings, Shift, Zone } from "@/lib/schedule/types";
+import { evaluateShiftAssignmentAlarms } from "@/lib/schedule/assignment-eligibility";
+import type { ScheduleSettings, Shift, Worker, Zone } from "@/lib/schedule/types";
+import { AssignmentTrainingAlarmBadge } from "../AssignmentTrainingAlarmBadge";
 import { deriveOperationalBadges } from "./assignment-badges";
 import { OperationalBadgeStack } from "./OperationalBadgeStack";
 
@@ -32,22 +34,27 @@ function buildTooltip(params: {
 export function AssignmentCard({
   shift,
   workerName,
+  worker,
   zone,
   settings,
   compact = true,
+  shiftDefinitions,
   onOpen,
 }: {
   shift: Shift;
   workerName: string;
+  worker?: Worker | null;
   zone: Zone | undefined;
   settings: ScheduleSettings;
   compact?: boolean;
+  shiftDefinitions?: Array<{ id: string; code: string; cert_requirements?: unknown }>;
   onOpen?: () => void;
 }) {
   const zoneLabel = zone?.label ?? "—";
   const code = displayStandardShiftCode(shift);
   const badges = deriveOperationalBadges(shift);
   const tip = buildTooltip({ code, shift, zoneLabel, workerName, settings });
+  const trainingAlarms = evaluateShiftAssignmentAlarms(shift, worker ?? null, shiftDefinitions);
 
   return (
     <button
@@ -68,6 +75,7 @@ export function AssignmentCard({
             {workerName}
           </p>
           <div className="mt-0.5 flex min-w-0 items-center gap-0.5">
+            <AssignmentTrainingAlarmBadge alarms={trainingAlarms} size="compact" />
             <OperationalBadgeStack codes={badges} />
           </div>
         </div>

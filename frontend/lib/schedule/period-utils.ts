@@ -49,3 +49,8 @@ export function findUnpublishedMayPeriod<T extends { start_date: string; status:
 ): T | undefined {
   return periods.find((p) => p.start_date.slice(5, 7) === "05" && p.status !== "published");
 }
+
+/** May auto-publish is a local/dev convenience only — never surprise-publish in production. */
+export function mayPeriodAutopublishEnabled(nodeEnv: string | undefined = process.env.NODE_ENV): boolean {
+  return nodeEnv !== "production";
+}

@@ -3,6 +3,7 @@
  */
 
 import { formatLocalDate } from "@/lib/schedule/calendar";
+import { parseCertRequirements } from "@/lib/schedule/assignment-eligibility";
 import { sessionPrimaryRole } from "@/lib/pulse-roles";
 import { isFlexDeploymentWorker } from "@/lib/schedule/worker-scheduling-model";
 import type {
@@ -42,7 +43,8 @@ export type PulseShiftApi = {
   project_id?: string | null;
   project_name?: string | null;
   task_priority?: string | null;
-  required_certifications?: string[] | null;
+  required_certifications?: unknown[] | null;
+  accepts_any_certification?: boolean | null;
   staffing_alarms?: Array<{ code: string; severity: string; label: string; kind?: string }> | null;
 };
 
@@ -71,6 +73,8 @@ export type PulseWorkerApi = {
     status?: string;
   }>;
   completed_training?: string[];
+  home_facility_id?: string | null;
+  facility_id?: string | null;
   availability?: Record<string, unknown>;
   employment_type?: string | null;
   recurring_shifts?: PulseRecurringShiftApi[] | null;
@@ -142,6 +146,7 @@ export function pulseWorkersToSchedule(workers: PulseWorkerApi[]): Worker[] {
         status: r.status,
       })),
       completedTraining: w.completed_training?.filter(Boolean),
+      homeFacilityId: w.home_facility_id || w.facility_id || null,
       availability: (w.availability ?? undefined) as Worker["availability"],
       employmentType,
       recurringShifts: isFlexDeploymentWorker({ employmentType })
@@ -189,7 +194,11 @@ export function pulseShiftToSchedule(row: PulseShiftApi, fallbackZoneId: string)
     projectName: row.project_name ?? undefined,
     taskTitle: row.display_label ?? undefined,
     taskPriority: tp,
-    required_certifications: row.required_certifications?.filter(Boolean) ?? undefined,
+    required_certifications: (() => {
+      const codes = parseCertRequirements(row.required_certifications).map((r) => r.code);
+      return codes.length ? codes : undefined;
+    })(),
+    accepts_any_certification: row.accepts_any_certification === true ? true : undefined,
     staffingAlarms: row.staffing_alarms ?? undefined,
   };
 }

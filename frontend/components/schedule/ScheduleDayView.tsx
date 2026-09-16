@@ -24,8 +24,7 @@ import {
 import { flushSync } from "react-dom";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
-import type { EmployeeDailyAvailabilityEntry } from "@/lib/schedule/employee-availability-types";
-import { evaluateWorkerDrop, type WorkerDayHighlight } from "@/lib/schedule/worker-drag-highlights";
+import { evaluateWorkerDrop, type WorkerDayHighlight, type WorkerDropEvalOpts } from "@/lib/schedule/worker-drag-highlights";
 import { formatTimeRange } from "@/lib/schedule/time-format";
 import type {
   ScheduleDragSession,
@@ -84,10 +83,7 @@ type Props = {
   onShiftDragSessionEnd: () => void;
   /** Projects that cover this calendar day (coloured top strip, same tints as month view). */
   dayProjectBar?: { id: string; name: string; tintClass: string }[] | null;
-  dropAvailabilityOpts?: {
-    employeeAvailabilityIndex?: Record<string, EmployeeDailyAvailabilityEntry[]>;
-    useDailyAvailability?: boolean;
-  };
+  dropAvailabilityOpts?: WorkerDropEvalOpts;
   /** Area assignments require a published schedule. */
   dailyAssignmentsEnabled?: boolean;
   shiftDefinitions?: Array<{ id: string; code: string; cert_requirements?: unknown }>;

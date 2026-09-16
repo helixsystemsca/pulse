@@ -2,8 +2,12 @@
 
 from datetime import datetime, timedelta, timezone
 
+from types import SimpleNamespace
+
 from app.services.schedule_assignment_eligibility import (
+    apply_training_fields_to_shift_out,
     build_worker_credential_state,
+    cert_requirements_accepts_any,
     evaluate_assignment_training,
     normalize_credential_code,
     parse_cert_requirements,
@@ -15,6 +19,9 @@ def test_normalize_synonyms_and_codes() -> None:
     assert normalize_credential_code("pool operator level 1") == "P1"
     assert normalize_credential_code("FA") == "FA"
     assert normalize_credential_code("  first aid ") == "FA"
+    assert normalize_credential_code("national lifeguard") == "NLS"
+    assert normalize_credential_code("NLS") == "NLS"
+    assert normalize_credential_code("Lifeguard") == "NLS"
 
 
 def test_parse_mixed_requirement_shapes() -> None:
@@ -76,8 +83,35 @@ def test_accepts_any_passes_when_one_code_is_qualified() -> None:
 
 
 def test_staffing_alarm_label_accepts_dict_or_object() -> None:
-    from types import SimpleNamespace
-
     assert staffing_alarm_label({"label": "Missing P1"}) == "Missing P1"
     assert staffing_alarm_label(SimpleNamespace(label="FA expired")) == "FA expired"
     assert staffing_alarm_label({}) == ""
+
+
+def test_any_of_requirements_are_or_not_and() -> None:
+    raw = [{"any_of": ["P1", "NLS"]}]
+    assert cert_requirements_accepts_any(raw) is True
+    reqs = parse_cert_requirements(raw)
+    worker = build_worker_credential_state(legacy_codes=["NLS"])
+    assert evaluate_assignment_training(reqs, worker, accepts_any=True) == []
+
+
+def test_enrich_preserves_facility_scoped_shape() -> None:
+    definition = SimpleNamespace(cert_requirements=[{"code": "P1", "facility_id": "pool"}])
+    out = SimpleNamespace(facility_id="pool", accepts_any_certification=False)
+    worker = build_worker_credential_state()
+    enriched = apply_training_fields_to_shift_out(out, definition=definition, worker_state=worker)
+    assert enriched.accepts_any_certification is False
+    assert enriched.required_certifications == [{"code": "P1", "facility_id": "pool"}]
+    assert len(enriched.staffing_alarms) == 1
+
+
+def test_enrich_evaluates_accepts_any_from_definition() -> None:
+    definition = SimpleNamespace(cert_requirements=[{"any_of": ["P1", "NLS"]}])
+    out = SimpleNamespace(facility_id="pool", accepts_any_certification=False)
+    worker = build_worker_credential_state(legacy_codes=["NLS"])
+    enriched = apply_training_fields_to_shift_out(out, definition=definition, worker_state=worker)
+    assert enriched.accepts_any_certification is True
+    assert enriched.staffing_alarms == []
+    assert "P1" in enriched.required_certifications
+    assert "NLS" in enriched.required_certifications

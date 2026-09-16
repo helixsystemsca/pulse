@@ -236,7 +236,8 @@ class ShiftOut(BaseModel):
     generated_by: Optional[str] = None
     confidence_score: Optional[float] = None
     recommendation_reason: Optional[str] = None
-    required_certifications: list[str] = Field(default_factory=list)
+    required_certifications: list[Any] = Field(default_factory=list)
+    accepts_any_certification: bool = False
     staffing_alarms: list[StaffingAlarmOut] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}

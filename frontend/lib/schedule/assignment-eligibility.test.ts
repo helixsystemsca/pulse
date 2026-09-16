@@ -36,6 +36,13 @@ describe("normalizeCredentialCode", () => {
     expect(normalizeCredentialCode("pool operator level 1")).toBe("P1");
     expect(normalizeCredentialCode("First Aid")).toBe("FA");
   });
+
+  it("maps NLS / National Lifeguard free-text to NLS", () => {
+    expect(normalizeCredentialCode("NLS")).toBe("NLS");
+    expect(normalizeCredentialCode("national lifeguard")).toBe("NLS");
+    expect(normalizeCredentialCode("Lifeguard")).toBe("NLS");
+    expect(normalizeCredentialCode("NLS Pool")).toBe("NLS");
+  });
 });
 
 describe("parseCertRequirements", () => {
@@ -45,6 +52,11 @@ describe("parseCertRequirements", () => {
       { code: "P1", facilityId: null },
       { code: "FA", facilityId: "fac-1" },
     ]);
+  });
+
+  it("flattens any_of wrappers", () => {
+    const reqs = parseCertRequirements([{ any_of: ["P1", "NLS"] }]);
+    expect(reqs.map((r) => r.code)).toEqual(["P1", "NLS"]);
   });
 });
 
@@ -98,6 +110,14 @@ describe("evaluateShiftAssignmentAlarms", () => {
     const alarms = evaluateShiftAssignmentAlarms(
       shift({ required_certifications: ["P1", "FA"] }),
       worker({ certifications: ["P1", "FA"] }),
+    );
+    expect(alarms).toEqual([]);
+  });
+
+  it("treats National Lifeguard free-text as NLS", () => {
+    const alarms = evaluateShiftAssignmentAlarms(
+      shift({ required_certifications: ["NLS"] }),
+      worker({ certifications: ["National Lifeguard"] }),
     );
     expect(alarms).toEqual([]);
   });

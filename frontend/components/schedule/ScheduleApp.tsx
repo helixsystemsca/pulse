@@ -65,14 +65,16 @@ import {
 } from "@/lib/schedule/employee-availability-api";
 import type { EmployeeDailyAvailabilityEntry } from "@/lib/schedule/employee-availability-types";
 import { evaluateShiftAssignmentAlarms, parseCertRequirements } from "@/lib/schedule/assignment-eligibility";
-import { buildWorkerDragHighlightMap, evaluateWorkerDrop } from "@/lib/schedule/worker-drag-highlights";
+import { resolveScheduleAssignFacilityId } from "@/lib/schedule/assign-facility";
+import { buildWorkerDragHighlightMap, evaluateWorkerDrop, mergedPlacementRequiredCerts } from "@/lib/schedule/worker-drag-highlights";
 import {
   ensureShiftOnServerForAssignment,
+  persistScheduleShiftMove,
   persistScheduleShiftToServer,
+  buildScheduleShiftPersistPayload,
 } from "@/lib/schedule/persist-shift";
 import {
   isPulseApiShiftId,
-  localDateTimeToIso,
   pulseShiftsToSchedule,
   pulseWorkersToSchedule,
   pulseZonesToSchedule,
@@ -122,7 +124,6 @@ import { Card } from "@/components/pulse/Card";
 import { ScheduleWeekView } from "./ScheduleWeekView";
 import { ScheduleDraftPanel, type DraftResult } from "./ScheduleDraftPanel";
 import { SchedulePeriodModal, type SchedulePeriodLite } from "./SchedulePeriodModal";
-import { findUnpublishedMayPeriod } from "@/lib/schedule/period-utils";
 import {
   ScheduleToolbar,
   type ScheduleContentFilter,
@@ -556,35 +557,13 @@ export function ScheduleApp() {
         for (const s of toUpdate) {
           await apiFetch(`/api/v1/pulse/schedule/shifts/${s.id}`, {
             method: "PATCH",
-            json: {
-              assigned_user_id: s.workerId,
-              starts_at: localDateTimeToIso(s.date, s.startTime),
-              ends_at: localDateTimeToIso(s.date, s.endTime),
-              facility_id: s.zoneId || null,
-              shift_type: s.shiftType,
-              shift_definition_id: s.shiftDefinitionId || null,
-              shift_code: s.shiftCode || null,
-              requires_supervisor: !!s.requires_supervisor,
-              requires_ticketed: false,
-              department_slug: scheduleDepartmentSlug,
-            },
+            json: buildScheduleShiftPersistPayload(s, scheduleDepartmentSlug),
           });
         }
         for (const s of toCreate) {
           await apiFetch("/api/v1/pulse/schedule/shifts", {
             method: "POST",
-            json: {
-              assigned_user_id: s.workerId,
-              starts_at: localDateTimeToIso(s.date, s.startTime),
-              ends_at: localDateTimeToIso(s.date, s.endTime),
-              facility_id: s.zoneId || null,
-              shift_type: s.shiftType,
-              shift_definition_id: s.shiftDefinitionId || null,
-              shift_code: s.shiftCode || null,
-              requires_supervisor: !!s.requires_supervisor,
-              requires_ticketed: false,
-              department_slug: scheduleDepartmentSlug,
-            },
+            json: buildScheduleShiftPersistPayload(s, scheduleDepartmentSlug),
           });
         }
         await reloadPulseSchedule();
@@ -610,15 +589,7 @@ export function ScheduleApp() {
   const reloadActivePeriod = useCallback(async () => {
     if (!hydrated || !canEdit || !isApiMode()) return;
     try {
-      let periods = await apiFetch<SchedulePeriodLite[]>(`/api/v1/pulse/schedule/periods`);
-      const mayDraft = findUnpublishedMayPeriod(periods);
-      if (mayDraft) {
-        await apiFetch(`/api/v1/pulse/schedule/periods/${mayDraft.id}`, {
-          method: "PATCH",
-          json: { status: "published" },
-        });
-        periods = await apiFetch<SchedulePeriodLite[]>(`/api/v1/pulse/schedule/periods`);
-      }
+      const periods = await apiFetch<SchedulePeriodLite[]>(`/api/v1/pulse/schedule/periods`);
       const start = visibleDatesForScheduleMerge[0];
       const end = visibleDatesForScheduleMerge[visibleDatesForScheduleMerge.length - 1];
       if (start && end) {
@@ -709,6 +680,7 @@ export function ScheduleApp() {
       placementDropWindow,
       employeeAvailabilityIndex,
       showAvailabilityOverlay,
+      { shiftDefinitions, placementBand },
     );
   }, [
     dragSession,
@@ -723,14 +695,18 @@ export function ScheduleApp() {
     placementDropWindow,
     employeeAvailabilityIndex,
     showAvailabilityOverlay,
+    shiftDefinitions,
+    placementBand,
   ]);
 
   const dropAvailabilityOpts = useMemo(
     () => ({
       employeeAvailabilityIndex,
       useDailyAvailability: showAvailabilityOverlay,
+      shiftDefinitions,
+      placementBand,
     }),
-    [employeeAvailabilityIndex, showAvailabilityOverlay],
+    [employeeAvailabilityIndex, showAvailabilityOverlay, shiftDefinitions, placementBand],
   );
 
   const weekDates = useMemo(() => weekDatesFromSunday(focusDate), [focusDate]);
@@ -926,22 +902,22 @@ export function ScheduleApp() {
       try {
         await apiFetch(`/api/v1/pulse/schedule/shifts/${draft.id}`, {
           method: "PATCH",
-          json: {
-            assigned_user_id: draft.workerId,
-            starts_at: localDateTimeToIso(draft.date, draft.startTime),
-            ends_at: localDateTimeToIso(draft.date, draft.endTime),
-            facility_id: draft.zoneId || null,
-            shift_type: draft.shiftType,
-            requires_supervisor: !!draft.requires_supervisor,
-            requires_ticketed: false,
-          },
+          json: buildScheduleShiftPersistPayload(
+            {
+              ...draft,
+              id: draft.id,
+              workerId: draft.workerId,
+              eventType: draft.eventType ?? "work",
+            } as Shift,
+            scheduleDepartmentSlug,
+          ),
         });
         await reloadPulseSchedule();
-      } catch {
-        /* keep local fallthrough */
+        setShiftModal(null);
+        return;
+      } catch (e) {
+        setScheduleToast(e instanceof Error ? e.message : "Could not save shift. Changes are kept locally.");
       }
-      setShiftModal(null);
-      return;
     }
     if (draft.id) {
       updateShift(draft.id, {
@@ -979,19 +955,32 @@ export function ScheduleApp() {
       if (mode === "duplicate" && sh.shiftKind === "project_task") {
         return;
       }
+      if (mode === "duplicate") {
+        const { id: _id, ...rest } = sh;
+        void _id;
+        const created = addShift({
+          ...rest,
+          date: targetDate,
+          uiFlags: { isNew: true },
+        });
+        if (isApiMode() && created.workerId && created.eventType === "work") {
+          void persistCreatedShift(created);
+        }
+        return;
+      }
       if (mode === "move" && isApiMode() && sh.workerId && sh.eventType === "work") {
         const moved = { ...sh, date: targetDate };
         if (sh.date === targetDate && isPulseApiShiftId(shiftId)) return;
         updateShift(shiftId, { date: targetDate, uiFlags: { ...sh.uiFlags, isUpdated: true } });
-        try {
-          const serverId = await persistScheduleShiftToServer(moved, scheduleDepartmentSlug);
-          if (serverId && serverId !== shiftId) {
-            replaceShiftId(shiftId, serverId, { date: targetDate, uiFlags: undefined });
-          } else if (serverId) {
+        const result = await persistScheduleShiftMove(moved, scheduleDepartmentSlug);
+        if (result.ok) {
+          if (result.serverId && result.serverId !== shiftId) {
+            replaceShiftId(shiftId, result.serverId, { date: targetDate, uiFlags: undefined });
+          } else if (result.serverId) {
             updateShift(shiftId, { date: targetDate, uiFlags: undefined });
           }
-        } catch {
-          /* local update already applied */
+        } else {
+          setScheduleToast(result.error);
         }
         return;
       }
@@ -1005,6 +994,7 @@ export function ScheduleApp() {
     },
     [
       addShift,
+      persistCreatedShift,
       replaceShiftId,
       scheduleDepartmentSlug,
       scheduleMod.settings.enforceMaxHours,
@@ -1050,20 +1040,23 @@ export function ScheduleApp() {
       let start: string;
       let end: string;
       let shiftType: Shift["shiftType"];
-      let requiredCerts: string[] | undefined;
       if (placementBand === "template") {
         start = rule?.start ?? settings.workDayStart;
         end = rule?.end ?? settings.workDayEnd;
         shiftType = inferShiftTypeFromStart(start);
-        requiredCerts = rule?.requiredCertifications?.filter(Boolean);
       } else {
         const win = defaultWindowForShiftBand(placementBand);
         start = win.start;
         end = win.end;
         shiftType = placementBand;
-        requiredCerts = undefined;
       }
-      const zoneId = zones[0]?.id ?? shiftsForView[0]?.zoneId ?? "";
+      const zoneId = resolveScheduleAssignFacilityId({
+        workerId: w.id,
+        zones,
+        shifts: shiftsForView,
+        facilityFilterIds,
+        homeFacilityId: w.homeFacilityId,
+      });
       if (!zoneId) {
         setScheduleToast("Add a schedule facility in Settings before assigning workers.");
         return;
@@ -1082,8 +1075,10 @@ export function ScheduleApp() {
 
       const code = inferStandardShiftCode(start, end);
       const def = matchShiftDefinition(shiftDefinitions, { code, band: shiftType, start, end });
-      const fromDef = def ? parseCertRequirements(def.cert_requirements).map((r) => r.code) : [];
-      const mergedReqs = [...new Set([...(requiredCerts ?? []), ...fromDef])];
+      const mergedReqs = mergedPlacementRequiredCerts(w, targetDate, settings, placementDropWindow, {
+        shiftDefinitions,
+        placementBand,
+      });
 
       const created = addShift({
         workerId: w.id,
@@ -1125,6 +1120,7 @@ export function ScheduleApp() {
       timeOffBlocks,
       workers,
       zones,
+      facilityFilterIds,
     ],
   );
 
@@ -1192,8 +1188,17 @@ export function ScheduleApp() {
         });
       }
 
-      const zoneId = zones[0]?.id ?? shiftsForView[0]?.zoneId ?? "";
-      if (!zoneId) return;
+      const zoneId = resolveScheduleAssignFacilityId({
+        workerId: w.id,
+        zones,
+        shifts: shiftsForView,
+        facilityFilterIds,
+        homeFacilityId: w.homeFacilityId,
+      });
+      if (!zoneId) {
+        setScheduleToast("Add a schedule facility in Settings before assigning workers.");
+        return;
+      }
 
       const dayAssignments = shifts.filter(
         (s) =>
@@ -1284,6 +1289,7 @@ export function ScheduleApp() {
       updateShift,
       workers,
       zones,
+      facilityFilterIds,
     ],
   );
 
@@ -1507,8 +1513,14 @@ export function ScheduleApp() {
 
   if (!hydrated) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center text-sm text-gray-500 dark:text-gray-400">
-        Loading schedule…
+      <div className="flex min-h-[40vh] flex-col gap-3 p-4" aria-busy="true" aria-label="Loading schedule">
+        <div className="h-10 w-48 animate-pulse rounded-md bg-pulseShell-elevated" />
+        <div className="h-9 w-full max-w-3xl animate-pulse rounded-md bg-pulseShell-elevated" />
+        <div className="grid flex-1 grid-cols-7 gap-2">
+          {Array.from({ length: 14 }, (_, i) => (
+            <div key={i} className="h-24 animate-pulse rounded-md bg-pulseShell-elevated" />
+          ))}
+        </div>
       </div>
     );
   }
