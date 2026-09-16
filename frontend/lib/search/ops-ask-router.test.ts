@@ -124,6 +124,10 @@ describe("routeOpsAsk — intent to route", () => {
     expect((topHref("ice plant") ?? "").split("?")[0]).toBe("/recreation/regulations");
     expect((topHref("chief engineer") ?? "").split("?")[0]).toBe("/recreation/regulations");
     expect((topHref("secondary coolant") ?? "").split("?")[0]).toBe("/recreation/regulations");
+    expect((topHref("pool permit") ?? "").split("?")[0]).toBe("/recreation/regulations");
+    expect((topHref("chloramine") ?? "").split("?")[0]).toBe("/recreation/regulations");
+    expect((topHref("chlorine exposure") ?? "").split("?")[0]).toBe("/recreation/regulations");
+    expect((topHref("worksafebc recreation") ?? "").split("?")[0]).toBe("/recreation/regulations");
   });
 
   it("still sends ammonia emergency to Emergency Response, not the library as primary", () => {
