@@ -90,6 +90,45 @@ async def test_dashboard_available_formula_example(
     why = " ".join(e["why"] for e in combined["explanations"] if e["label"] == "Available")
     assert "125000.00" in why and "47250.00" in why and "32000.00" in why
     assert combined["available"] != combined["approved"] - combined["actual"]
+    monthly = dash.json()["monthly_actuals"]
+    assert len(monthly) == 12
+    assert abs(sum(m["actual"] for m in monthly) - 47250.0) < 0.01
+    assert isinstance(dash.json()["upcoming_expenditures"], list)
+    assert isinstance(dash.json()["upcoming_capital"], list)
+
+
+@pytest.mark.asyncio
+async def test_void_invoice_restores_po_commitment(
+    client: AsyncClient, db_session: AsyncSession, seeded_tenant
+) -> None:
+    token = await _admin_token(db_session, seeded_tenant)
+    headers = _headers(token)
+    await _approve_operating(client, headers, 125000)
+    po = await client.post(
+        "/api/v1/finance/purchase-orders",
+        headers=headers,
+        json={"amount": 20000, "status": "issued", "vendor_name": "Parts"},
+    )
+    po_id = po.json()["id"]
+    inv = await client.post(
+        "/api/v1/finance/invoices",
+        headers=headers,
+        json={"amount": 5000, "status": "posted", "po_id": po_id},
+    )
+    inv_id = inv.json()["id"]
+    voided = await client.patch(
+        f"/api/v1/finance/invoices/{inv_id}",
+        headers=headers,
+        json={"status": "void"},
+    )
+    assert voided.status_code == 200, voided.text
+    listed = await client.get("/api/v1/finance/purchase-orders", headers=headers)
+    row = next(p for p in listed.json()["items"] if p["id"] == po_id)
+    assert row["remaining_commitment"] == 20000.0
+    assert row["status"] == "issued"
+    dash = await client.get("/api/v1/finance/dashboard", headers=headers)
+    assert dash.json()["combined"]["actual"] == 0.0
+    assert dash.json()["combined"]["committed"] == 20000.0
 
 
 @pytest.mark.asyncio
@@ -151,6 +190,30 @@ async def test_funding_crud_and_history_keeps_original(
 
 
 @pytest.mark.asyncio
+async def test_posted_invoice_appends_actual_history(
+    client: AsyncClient, db_session: AsyncSession, seeded_tenant
+) -> None:
+    token = await _admin_token(db_session, seeded_tenant)
+    headers = _headers(token)
+    await _approve_operating(client, headers, 5000)
+    await client.post(
+        "/api/v1/finance/invoices",
+        headers=headers,
+        json={"amount": 250, "status": "posted", "vendor_name": "Salt"},
+    )
+    hist = await client.get("/api/v1/finance/history", headers=headers)
+    items = hist.json()["items"]
+    kinds = [row["version_kind"] for row in items]
+    assert "ORIGINAL" in kinds
+    assert "ACTUAL" in kinds
+    actual_row = next(r for r in items if r["version_kind"] == "ACTUAL")
+    assert actual_row["actual_total"] == 250.0
+    assert actual_row["approved_total"] == 5000.0
+    originals = [r for r in items if r["version_kind"] == "ORIGINAL"]
+    assert originals, "ORIGINAL must remain after ACTUAL snapshots"
+
+
+@pytest.mark.asyncio
 async def test_replacement_and_pm_forecast_feed(
     client: AsyncClient, db_session: AsyncSession, seeded_tenant
 ) -> None:
@@ -207,6 +270,10 @@ async def test_replacement_and_pm_forecast_feed(
     assert svc.status_code == 200, svc.text
     d30 = svc.json()["windows"]["d30"]
     assert any(row["service"] == "Compressor oil sample" and row["cost"] == 500.0 for row in d30)
+    assert "1" in repl.json()["views"]
+    assert "10" in repl.json()["views"]
+    plant = next(i for i in repl.json()["items"] if i["name"] == "Civic Arena ice plant")
+    assert plant["next_service"]["name"] == "Compressor oil sample"
 
 
 @pytest.mark.asyncio

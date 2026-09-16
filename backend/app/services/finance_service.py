@@ -514,6 +514,12 @@ async def replacement_forecast(
         .scalars()
         .all()
     }
+    pm_by_eq: dict[str, list[PmTask]] = {}
+    for task in (
+        await db.execute(select(PmTask).where(PmTask.company_id == company_id))
+    ).scalars().all():
+        if task.equipment_id:
+            pm_by_eq.setdefault(str(task.equipment_id), []).append(task)
     by_year: dict[int, list[dict[str, Any]]] = {}
     items: list[dict[str, Any]] = []
     this_year = money(0)
@@ -542,8 +548,30 @@ async def replacement_forecast(
             "type": eq.type,
             "facility_id": eq.ops_facility_id,
             "profile_id": prof.id if prof else None,
+            "condition": prof.condition if prof else None,
+            "criticality": prof.criticality if prof else None,
             **calc.as_dict(),
         }
+        tasks = pm_by_eq.get(str(eq.id), [])
+        next_task = min((t for t in tasks if t.next_due_at), key=lambda t: t.next_due_at, default=None)
+        last_task = max((t for t in tasks if t.last_completed_at), key=lambda t: t.last_completed_at, default=None)
+        row["next_service"] = (
+            {
+                "name": next_task.name,
+                "due": next_task.next_due_at.date().isoformat() if next_task.next_due_at else None,
+                "cost": _f(next_task.estimated_cost),
+            }
+            if next_task
+            else None
+        )
+        row["last_service"] = (
+            {
+                "name": last_task.name if last_task else None,
+                "completed": last_task.last_completed_at.isoformat() if last_task and last_task.last_completed_at else None,
+            }
+            if last_task
+            else None
+        )
         items.append(row)
         yr = calc.planned_replacement_year
         if yr:
@@ -742,7 +770,10 @@ async def dashboard(db: AsyncSession, company_id: str, *, actor_id: str | None =
         "combined": combined.as_dict(),
         "yoy_actual": yoy_change(combined.actual, prior_actual),
         "deferred_maintenance": {"count": deferred["open_count"], "cost": deferred["open_cost"]},
-        "upcoming_replacements": _fix_dashboard_replacements(repl, fy.year),
+        "upcoming_replacements": _dashboard_replacements(repl, fy.year),
+        "upcoming_expenditures": _upcoming_expenditures(svc),
+        "upcoming_capital": _upcoming_capital(repl, cap_item_rows, fy.year),
+        "monthly_actuals": await _monthly_actuals(db, company_id, fy),
         "service_forecast": {
             "year_forecast": svc["year_forecast"],
             "d30": svc["window_totals"].get("d30", 0),
@@ -779,6 +810,14 @@ async def build_alerts(db: AsyncSession, company_id: str, **ctx: Any) -> list[di
     this_year_repl = money(repl.get("this_year_cost") or 0)
     if this_year_repl >= money(10000):
         add("major_upcoming", "warning", "Major upcoming capital", f"Replacements in {fy.year} total {this_year_repl}.", "/finance/lifecycle/replacement")
+    if this_year_repl > capital.approved:
+        add(
+            "capital_gap",
+            "warning",
+            "Capital gap",
+            f"This year's replacement forecast {this_year_repl} exceeds approved capital {capital.approved}.",
+            "/finance/planner/long-range",
+        )
     near = [i for i in repl.get("items") or [] if i.get("remaining_useful_life_years") is not None and i["remaining_useful_life_years"] <= 1]
     if near:
         add("replacement_approaching", "warning", "Replacement approaching", f"{len(near)} asset(s) have a year or less of remaining useful life.", "/finance/lifecycle/replacement")
@@ -832,9 +871,78 @@ async def _capital_over_approved(db: AsyncSession, company_id: str) -> list[FinC
     return over
 
 
-async def _fix_dashboard_replacements(repl: dict[str, Any], year: int) -> dict[str, Any]:
+def _dashboard_replacements(repl: dict[str, Any], year: int) -> dict[str, Any]:
     bucket = repl.get("by_year", {}).get(str(year), {})
     return {"this_year_cost": repl.get("this_year_cost", 0), "count": bucket.get("count", 0)}
+
+
+def _upcoming_expenditures(svc: dict[str, Any]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for horizon in ("overdue", "d30", "d60", "d90"):
+        for item in svc.get("windows", {}).get(horizon) or []:
+            rows.append({**item, "horizon": horizon})
+    return rows
+
+
+def _upcoming_capital(repl: dict[str, Any], items: list[FinCapitalItem], year: int) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for asset in repl.get("items") or []:
+        if asset.get("planned_replacement_year") == year:
+            rows.append(
+                {
+                    "kind": "replacement",
+                    "name": asset.get("name"),
+                    "year": year,
+                    "amount": asset.get("replacement_cost_at_year") or 0,
+                    "origin": "forecast",
+                    "why": "Replacement year from useful life / planned year.",
+                }
+            )
+    for item in items:
+        if item.start_year == year or (not item.start_year and item.end_year == year):
+            rows.append(
+                {
+                    "kind": item.kind,
+                    "name": item.name,
+                    "year": item.start_year or year,
+                    "amount": _f(item.estimated_cost or item.approved_amount),
+                    "origin": "user_input",
+                    "why": "Capital item planned to start this fiscal year.",
+                }
+            )
+    return rows
+
+
+async def _monthly_actuals(db: AsyncSession, company_id: str, fy: FinFiscalYear) -> list[dict[str, Any]]:
+    invoices = list(
+        (
+            await db.execute(
+                select(FinInvoice).where(
+                    FinInvoice.company_id == company_id,
+                    FinInvoice.status.in_(tuple(POSTED_INVOICE)),
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    months = {f"{fy.year}-{m:02d}": money(0) for m in range(1, 13)}
+    for inv in invoices:
+        d = inv.invoice_date or (inv.posted_at.date() if inv.posted_at else None)
+        if d is None or d < fy.starts_on or d > fy.ends_on:
+            continue
+        key = f"{d.year}-{d.month:02d}"
+        if key in months:
+            months[key] = money(months[key] + money(inv.amount))
+    return [
+        {
+            "month": key,
+            "actual": _f(amt),
+            "origin": "system",
+            "why": "Posted invoices dated in this month (invoice_date, else posted_at).",
+        }
+        for key, amt in months.items()
+    ]
 
 
 async def operating_detail(db: AsyncSession, company_id: str, view: str) -> dict[str, Any]:
@@ -898,10 +1006,16 @@ async def operating_detail(db: AsyncSession, company_id: str, view: str) -> dict
         .scalars()
         .all()
     )
+    unused = [l for l in lines if l["unused"]]
+    overruns = [l for l in lines if l["overrun"]]
     return {
         "view": view,
         "dashboard": snap["operating"],
+        "yoy_actual": snap["yoy_actual"],
+        "monthly": snap.get("monthly_actuals") or [],
         "lines": lines,
+        "overruns": overruns,
+        "unused": unused,
         "invoices": [_d(x) for x in invoices] if view in ("actuals", "variance") else [],
         "commitments": [_d(x) for x in pos] if view in ("commitments", "variance") else [],
         "why": {
@@ -930,18 +1044,52 @@ async def capital_detail(db: AsyncSession, company_id: str, view: str) -> dict[s
             approved=item.approved_amount or item.estimated_cost,
             actual=actual,
             committed=committed,
-            forecast_remaining=0,
+            forecast_remaining=max(Decimal("0"), money(item.estimated_cost) - actual - committed),
             kind="capital",
             label=item.name,
         )
         project = await db.get(PulseProject, item.project_id) if item.project_id else None
         eq = await db.get(FacilityEquipment, item.equipment_id) if item.equipment_id else None
+        funding = await db.get(FinFundingSource, item.funding_source_id) if item.funding_source_id else None
+        quotes = list(
+            (
+                await db.execute(
+                    select(FinQuote).where(FinQuote.company_id == company_id, FinQuote.capital_item_id == item.id)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        pos_rows = list(
+            (
+                await db.execute(
+                    select(FinPurchaseOrder).where(
+                        FinPurchaseOrder.company_id == company_id, FinPurchaseOrder.capital_item_id == item.id
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        inv_rows = list(
+            (
+                await db.execute(
+                    select(FinInvoice).where(FinInvoice.company_id == company_id, FinInvoice.capital_item_id == item.id)
+                )
+            )
+            .scalars()
+            .all()
+        )
         out.append(
             {
                 **_d(item),
                 "position": pos.as_dict(),
                 "project_name": project.name if project else None,
                 "asset_name": eq.name if eq else None,
+                "funding_source_name": funding.name if funding else None,
+                "quotes": [_d(q) for q in quotes],
+                "purchase_orders": [_d(p) for p in pos_rows],
+                "invoices": [_d(i) for i in inv_rows],
                 "why": "Live approved / actual / committed / remaining from this capital item's POs and invoices. Linked Pulse project is schedule/tasks — not a second budget.",
             }
         )
@@ -996,8 +1144,46 @@ async def next_year_builder(db: AsyncSession, company_id: str) -> dict[str, Any]
             "origin": "user_input",
             "why": "Unfunded register items. Include only if you intend to fund them next year.",
         },
+        {
+            "label": "Planned capital items starting next year",
+            "amount": _f(
+                sum(
+                    (
+                        money(i.estimated_cost)
+                        for i in (
+                            (
+                                await db.execute(
+                                    select(FinCapitalItem).where(FinCapitalItem.company_id == company_id)
+                                )
+                            )
+                            .scalars()
+                            .all()
+                        )
+                        if (i.start_year or 0) == next_year
+                    ),
+                    money(0),
+                )
+            ),
+            "origin": "user_input",
+            "why": "Capital items whose start_year is next year.",
+        },
     ]
-    total = money(sum((money(c["amount"]) for c in candidates), money(0)))
+    for c in candidates:
+        c["include_in_suggested"] = c["label"] in {
+            "Inflated current-year actuals",
+            f"Replacements due {next_year}",
+            "Open deferred maintenance",
+            "Planned capital items starting next year",
+        }
+        c["why"] = (
+            c["why"]
+            + (
+                " Included in the suggested total."
+                if c["include_in_suggested"]
+                else " Shown as a source — not added on top of inflated actuals (that would double-count)."
+            )
+        )
+    total = money(sum((money(c["amount"]) for c in candidates if c.get("include_in_suggested")), money(0)))
     return {
         "current_year": fy.year,
         "next_year": next_year,
@@ -1038,11 +1224,42 @@ async def long_range(db: AsyncSession, company_id: str) -> dict[str, Any]:
                     {"origin": "user_input", "label": item.name, "amount": share, "why": "Estimated cost spread across planned years."}
                 )
     peak = max(matrix.items(), key=lambda kv: kv[1]["total"]) if matrix else (str(fy.year), {"total": 0})
+    funding_rows = list(
+        (await db.execute(select(FinFundingSource).where(FinFundingSource.company_id == company_id))).scalars().all()
+    )
+    funding_total = money(sum((money(f.amount_available) for f in funding_rows), money(0)))
+    gaps = []
+    for y, v in matrix.items():
+        if v["total"] <= 0:
+            continue
+        named = money(
+            sum(
+                (
+                    money(i.estimated_cost)
+                    for i in items
+                    if i.funding_source_id
+                    and (i.start_year or fy.year) <= int(y) <= (i.end_year or i.start_year or fy.year)
+                ),
+                money(0),
+            )
+        )
+        gaps.append(
+            {
+                "year": y,
+                "required": v["total"],
+                "funding_named": _f(named),
+                "gap": _f(money(max(Decimal("0"), money(v["total"]) - named))),
+                "why": "Required is replacement + capital items. Named funding is estimated cost on items that already have a funding source. Pulse does not invent a grant.",
+            }
+        )
     return {
         "years": years,
         "matrix": matrix,
         "peak_year": peak[0],
         "peak_amount": peak[1]["total"],
+        "pressure_years": [y for y, v in matrix.items() if v["total"] > 0],
+        "funding_available": _f(funding_total),
+        "gaps": gaps,
         "assumptions": _d(assume),
         "why": "5–10 year capital pressure from replacement forecasts plus planned capital items. Funding gaps appear where a year has cost and no funding source assigned.",
     }
@@ -1203,6 +1420,8 @@ async def reports_csv(db: AsyncSession, company_id: str) -> str:
             ("projected_year_end", "forecast"),
         ):
             lines.append(f"{key},{field},{pos[field]},{origin},{pos['formula']}")
+    for row in snap.get("monthly_actuals") or []:
+        lines.append(f"monthly,{row['month']},{row['actual']},system,{row['why']}")
     return "\n".join(lines) + "\n"
 
 
@@ -1251,7 +1470,23 @@ async def list_entity(db: AsyncSession, company_id: str, entity: str) -> list[di
             .scalars()
             .all()
         )
-        return [_d(r) for r in rows]
+        out = []
+        for r in rows:
+            snap = r.snapshot or {}
+            lines = snap.get("lines") or []
+            approved = snap.get("approved")
+            if approved is None:
+                approved = sum((float(x.get("approved_amount") or 0) for x in lines), 0.0)
+            out.append(
+                {
+                    **_d(r),
+                    "approved_total": approved,
+                    "actual_total": snap.get("actual"),
+                    "committed_total": snap.get("committed"),
+                    "available_total": snap.get("available"),
+                }
+            )
+        return out
     if entity == "assumptions":
         fy = await ensure_defaults(db, company_id)
         assume = await _assumptions(db, company_id, fy)
@@ -1370,6 +1605,37 @@ async def _snapshot_budget(db: AsyncSession, company_id: str, budget_id: str, ki
     )
 
 
+async def _snapshot_actual_position(db: AsyncSession, company_id: str) -> None:
+    """ORIGINAL is never overwritten. Each posted invoice appends an ACTUAL snapshot."""
+    fy = await ensure_defaults(db, company_id)
+    budgets = await _budgets_for_year(db, company_id, fy.id)
+    actual = await _sum_invoices(db, company_id, start=fy.starts_on, end=fy.ends_on)
+    committed = await _sum_commitments(db, company_id)
+    approved = money(0)
+    target: FinBudget | None = next((b for b in budgets if b.kind == "operating"), None)
+    for b in budgets:
+        approved += await _approved_for_kind(db, [b], b.kind)
+    if target is None:
+        return
+    pos = budget_position(approved=approved, actual=actual, committed=committed, forecast_remaining=0)
+    db.add(
+        FinBudgetHistory(
+            id=_id(),
+            company_id=company_id,
+            budget_id=target.id,
+            version_kind="ACTUAL",
+            snapshot={
+                "actual": _f(actual),
+                "committed": _f(committed),
+                "approved": _f(approved),
+                "available": _f(pos.available),
+                "formula": "available = approved − actual − committed",
+            },
+            note="Posted invoice — ACTUAL snapshot. ORIGINAL and REVISED rows are kept.",
+        )
+    )
+
+
 async def create_po(db: AsyncSession, company_id: str, data: dict[str, Any], *, actor_id: str | None) -> dict[str, Any]:
     year = date.today().year
     n = int(
@@ -1480,6 +1746,7 @@ async def _post_invoice_effects(db: AsyncSession, inv: FinInvoice) -> None:
     inv.posted_at = _now()
     if inv.status == "paid" and inv.paid_at is None:
         inv.paid_at = _now()
+    await _snapshot_actual_position(db, inv.company_id)
 
 
 async def _void_invoice_effects(db: AsyncSession, inv: FinInvoice) -> None:

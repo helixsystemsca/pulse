@@ -26,6 +26,16 @@ export type FinanceDashboard = {
   yoy_actual: { current: number; prior: number; delta: number; percent: number | null; why: string };
   deferred_maintenance: { count: number; cost: number };
   upcoming_replacements: { this_year_cost: number; count: number };
+  upcoming_expenditures: {
+    asset?: string | null;
+    service?: string;
+    due?: string;
+    cost: number;
+    horizon: string;
+    budget_status?: string;
+  }[];
+  upcoming_capital: { kind: string; name: string; year: number; amount: number; origin: string; why: string }[];
+  monthly_actuals: { month: string; actual: number; origin: string; why: string }[];
   service_forecast: { year_forecast: number; d30: number; d90: number; missing_cost_count: number };
   contracts_annual: number;
   alerts: { kind: string; severity: string; title: string; why: string; href: string }[];

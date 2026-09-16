@@ -254,6 +254,30 @@ function CrudList({
   );
 }
 
+function MonthlyBars({ rows }: { rows: { month: string; actual: number }[] }) {
+  if (!rows.length) return null;
+  const max = Math.max(...rows.map((r) => r.actual), 1);
+  return (
+    <div>
+      <h2 className="mb-2 text-sm font-semibold text-ds-foreground">Monthly actuals</h2>
+      <div className="grid grid-cols-12 gap-1 rounded-md border border-ds-border bg-ds-card p-3">
+        {rows.map((r) => (
+          <div key={r.month} className="flex flex-col items-center gap-1" title={`${r.month}: ${formatMoney(r.actual)}`}>
+            <div className="flex h-16 w-full items-end">
+              <div
+                className="w-full rounded-sm bg-ds-primary"
+                style={{ height: `${Math.max(4, (r.actual / max) * 100)}%` }}
+              />
+            </div>
+            <span className="text-[10px] text-ds-muted">{r.month.slice(5)}</span>
+          </div>
+        ))}
+      </div>
+      <p className="mt-1 text-xs text-ds-muted">Posted invoices by month. Open POs are not shown here.</p>
+    </div>
+  );
+}
+
 function Hub({ dash }: { dash: FinanceDashboard | null }) {
   const links = Object.values(FINANCE_LEAVES);
   return (
@@ -348,6 +372,38 @@ export function FinanceWorkspace({ slug }: { slug?: string[] }) {
             <Card label="Deferred cost" value={formatMoney(dash.deferred_maintenance.cost)} origin="user input" />
             <Card label="Replacements this year" value={formatMoney(dash.upcoming_replacements.this_year_cost)} origin="forecast" />
             <Card label="PM 90-day forecast" value={formatMoney(dash.service_forecast.d90)} origin="forecast" />
+            <Card label="% spent" value={`${dash.combined.percent_spent}%`} origin="system" why="Actual ÷ approved." />
+            <Card label="% committed" value={`${dash.combined.percent_committed}%`} origin="system" why="Remaining PO ÷ approved." />
+          </div>
+          <MonthlyBars rows={dash.monthly_actuals || []} />
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div>
+              <h2 className="mb-2 text-sm font-semibold text-ds-foreground">Upcoming expenditures (90 days)</h2>
+              <QuietTable
+                headers={["Horizon", "Asset", "Service", "Due", "Cost", "Budget"]}
+                rows={(dash.upcoming_expenditures || []).map((r) => [
+                  r.horizon,
+                  r.asset ?? "—",
+                  r.service ?? "—",
+                  r.due ?? "—",
+                  formatMoney(r.cost),
+                  r.budget_status ?? "—",
+                ])}
+              />
+            </div>
+            <div>
+              <h2 className="mb-2 text-sm font-semibold text-ds-foreground">Upcoming capital</h2>
+              <QuietTable
+                headers={["Kind", "Name", "Year", "Amount", "Origin"]}
+                rows={(dash.upcoming_capital || []).map((r) => [
+                  r.kind,
+                  r.name,
+                  r.year,
+                  formatMoney(r.amount),
+                  r.origin,
+                ])}
+              />
+            </div>
           </div>
           {dash.alerts.length ? (
             <div className="space-y-2">
@@ -513,6 +569,15 @@ function OperatingViews({ path, dash }: { path: string; dash: FinanceDashboard }
       {loading ? <p className="text-sm text-ds-muted">Loading…</p> : null}
       {error ? <p className="text-sm text-red-700">{error}</p> : null}
       <p className="text-sm text-ds-muted">{String(data?.why ?? "")}</p>
+      {data?.yoy_actual ? (
+        <p className="text-sm text-ds-muted">
+          Year-over-year actuals {formatMoney(Number((data.yoy_actual as { delta?: number }).delta || 0))} (
+          {(data.yoy_actual as { percent?: number | null }).percent ?? "—"}%).
+        </p>
+      ) : null}
+      <MonthlyBars
+        rows={((data?.monthly as { month: string; actual: number }[]) || dash.monthly_actuals || []) as { month: string; actual: number }[]}
+      />
       <QuietTable
         headers={["Category", "Approved", "Actual", "Committed", "Available", "Overrun"]}
         rows={lines.map((l) => {
@@ -564,12 +629,13 @@ function CapitalViews({ path }: { path: string }) {
       {loading ? <p className="text-sm text-ds-muted">Loading…</p> : null}
       {error ? <p className="text-sm text-red-700">{error}</p> : null}
       <QuietTable
-        headers={["Name", "Asset / project", "Approved", "Actual", "Committed", "Available", "Years"]}
+        headers={["Name", "Asset / project", "Funding", "Approved", "Actual", "Committed", "Available", "Years"]}
         rows={items.map((i) => {
           const pos = (i.position || {}) as BudgetPosition;
           return [
             String(i.name ?? ""),
             [i.asset_name, i.project_name].filter(Boolean).join(" · ") || "—",
+            String(i.funding_source_name ?? "—"),
             formatMoney(pos.approved),
             formatMoney(pos.actual),
             formatMoney(pos.committed),
@@ -590,6 +656,10 @@ function CapitalViews({ path }: { path: string }) {
           { key: "end_year", label: "End year", type: "number" },
           { key: "priority", label: "Priority" },
           { key: "justification", label: "Justification" },
+          { key: "equipment_id", label: "Equipment id" },
+          { key: "project_id", label: "Pulse project id" },
+          { key: "funding_source_id", label: "Funding source id" },
+          { key: "pm_impact", label: "PM impact" },
         ]}
       />
     </div>
@@ -600,6 +670,7 @@ function LifecycleViews({ path }: { path: string }) {
   const endpoint =
     path === "lifecycle/service" ? "lifecycle/service" : path === "lifecycle/cost" ? "lifecycle/cost" : "lifecycle/replacement";
   const { data, loading, error } = useLoad(() => fetchFinance(endpoint), [endpoint]);
+  const [horizon, setHorizon] = useState("5");
   if (loading) return <p className="text-sm text-ds-muted">Loading…</p>;
   if (error) return <p className="text-sm text-red-700">{error}</p>;
   if (endpoint === "lifecycle/service") {
@@ -626,12 +697,32 @@ function LifecycleViews({ path }: { path: string }) {
     );
   }
   const items = ((data?.items as Record<string, unknown>[]) ?? []) as Record<string, unknown>[];
+  const views = (data?.views || {}) as Record<string, Record<string, { count: number; cost: number }>>;
+  const cutoff = Number(horizon);
+  const yearNow = new Date().getFullYear();
+  const filtered = items.filter((i) => {
+    const yr = Number(i.planned_replacement_year || 0);
+    return !yr || yr <= yearNow + cutoff;
+  });
   return (
     <div className="space-y-3">
       <p className="text-sm text-ds-muted">{String(data?.why ?? "")}</p>
+      <div className="flex flex-wrap gap-2">
+        {["1", "2", "3", "5", "10"].map((h) => (
+          <button
+            key={h}
+            type="button"
+            onClick={() => setHorizon(h)}
+            className={`rounded-md border px-2 py-1 text-xs ${horizon === h ? "border-ds-primary bg-ds-secondary font-semibold" : "border-ds-border"}`}
+          >
+            {h}-year
+            {views[h] ? ` · ${formatMoney(Object.values(views[h]).reduce((s, v) => s + (v.cost || 0), 0))}` : ""}
+          </button>
+        ))}
+      </div>
       <QuietTable
-        headers={["Asset", "Age", "RUL", "Replace year", "Cost now", "Cost at year", "Lifecycle to date", "Criticality"]}
-        rows={items.map((i) => [
+        headers={["Asset", "Age", "RUL", "Replace year", "Cost now", "Cost at year", "Lifecycle to date", "Next service", "Criticality"]}
+        rows={filtered.map((i) => [
           String(i.name ?? ""),
           i.age_years ?? "—",
           i.remaining_useful_life_years ?? "—",
@@ -639,7 +730,8 @@ function LifecycleViews({ path }: { path: string }) {
           formatMoney(Number(i.replacement_cost_now || 0)),
           formatMoney(Number(i.replacement_cost_at_year || 0)),
           formatMoney(Number(i.lifecycle_cost_to_date || 0)),
-          String(i.factors ? "" : i.criticality ?? "—") || String((i as { criticality?: string }).criticality ?? "—"),
+          String((i.next_service as { name?: string; due?: string } | undefined)?.due ?? "—"),
+          String(i.criticality ?? "—"),
         ])}
       />
       <AssetProfileForm />
@@ -840,6 +932,23 @@ function AssistantView() {
         <div className="rounded-md border border-ds-border bg-ds-card p-4 text-sm">
           <p className="leading-relaxed">{String(answer.answer)}</p>
           <p className="mt-2 text-xs text-ds-muted">{String(answer.disclaimer)}</p>
+          {Array.isArray(answer.citations) ? (
+            <ul className="mt-3 list-disc pl-5 text-xs text-ds-muted">
+              {(answer.citations as { title?: string; href?: string; detail?: string }[]).map((c) => (
+                <li key={String(c.href) + String(c.title)}>
+                  <Link href={String(c.href || "/finance/dashboard")} className="underline">
+                    {String(c.title)}
+                  </Link>
+                  {c.detail ? ` — ${c.detail}` : ""}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {answer.numbers ? (
+            <pre className="mt-3 overflow-auto rounded border border-ds-border bg-ds-secondary p-2 text-[11px]">
+              {JSON.stringify(answer.numbers, null, 2)}
+            </pre>
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -880,6 +989,20 @@ function JsonView({ path, moneyKeys }: { path: string; moneyKeys?: string[] }) {
           headers={["Year", "Replacements", "Capital items", "Total"]}
           rows={Object.entries(matrix).map(([y, v]) => [y, formatMoney(v.replacements), formatMoney(v.capital_items), formatMoney(v.total)])}
         />
+        {Array.isArray(data.gaps) && (data.gaps as { year: string; required: number; funding_named: number; gap: number }[]).length ? (
+          <div>
+            <h3 className="mb-2 text-sm font-semibold">Funding gaps</h3>
+            <QuietTable
+              headers={["Year", "Required", "Named funding", "Gap"]}
+              rows={(data.gaps as { year: string; required: number; funding_named: number; gap: number }[]).map((g) => [
+                g.year,
+                formatMoney(g.required),
+                formatMoney(g.funding_named),
+                formatMoney(g.gap),
+              ])}
+            />
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -894,8 +1017,16 @@ function HistoryView() {
   if (error) return <p className="text-sm text-red-700">{error}</p>;
   return (
     <QuietTable
-      headers={["When", "Kind", "Note"]}
-      rows={items.map((i) => [String(i.created_at ?? ""), String(i.version_kind ?? ""), String(i.note ?? "")])}
+      headers={["When", "Kind", "Approved", "Actual", "Committed", "Available", "Note"]}
+      rows={items.map((i) => [
+        String(i.created_at ?? ""),
+        String(i.version_kind ?? ""),
+        formatMoney(Number(i.approved_total ?? (i.snapshot as { approved?: number } | undefined)?.approved || 0)),
+        formatMoney(Number(i.actual_total ?? (i.snapshot as { actual?: number } | undefined)?.actual || 0)),
+        formatMoney(Number(i.committed_total ?? (i.snapshot as { committed?: number } | undefined)?.committed || 0)),
+        formatMoney(Number(i.available_total ?? (i.snapshot as { available?: number } | undefined)?.available || 0)),
+        String(i.note ?? ""),
+      ])}
     />
   );
 }
