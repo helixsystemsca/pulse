@@ -1490,6 +1490,11 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
     justify-content: stretch;
   }
 
+  /**
+   * Work-request KPI cells — one quiet paper surface with a muted status rail.
+   * Semantic color lives on the rail + value (`--ds-warning` / `--ds-success` / `--ds-danger`);
+   * no pastel fills, candy shadows, or per-tile brand gradients.
+   */
   .ops-kpi-tile {
     display: flex;
     min-height: 0;
@@ -1498,19 +1503,19 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
     flex-direction: column;
     align-items: stretch;
     justify-content: flex-start;
-    border-radius: 0.75rem;
-    border: 1px solid rgb(226 232 240 / 0.9);
-    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    border-radius: 0.5rem;
+    border: 1px solid color-mix(in srgb, var(--ds-palette-iron-grey) 12%, transparent);
+    border-left-width: 3px;
+    border-left-color: var(--ops-kpi-accent, color-mix(in srgb, var(--ds-palette-iron-grey) 28%, transparent));
+    background: var(--ds-surface-elevated);
     padding: 0.4rem 0.45rem 0.5rem;
-    box-shadow:
-      0 1px 0 rgb(255 255 255) inset, 0 2px 5px rgb(15 23 42 / 0.05), 0 8px 18px -10px rgb(15 23 42 / 0.09);
+    box-shadow: none;
     position: relative;
     overflow: hidden;
     transition:
       width 280ms ease,
       height 280ms ease,
-      padding 280ms ease,
-      box-shadow 280ms ease;
+      padding 280ms ease;
   }
   /** Square KPI cards — fixed px size (see WORK_REQUESTS_KPI_CELL_PX). */
   .ops-kpi-tile--grid {
@@ -1520,11 +1525,23 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
     flex: 1;
     min-width: 0;
     min-height: 0;
-    padding: 0.45rem 0.5rem 0.5rem;
+    padding: 0.4rem 0.45rem 0.45rem;
   }
   .ops-kpi-tile--centered {
     align-items: center;
     justify-content: space-between;
+  }
+  .ops-kpi-tile__label {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    text-align: center;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    line-height: 1.25;
+    letter-spacing: 0.01em;
+    text-transform: none;
+    color: var(--ds-text-secondary);
   }
   .ops-kpi-tile__value {
     font-size: clamp(1.35rem, 52cqi, 2.35rem);
@@ -1538,107 +1555,55 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    border-radius: 1rem;
-    border: 1px solid rgb(226 232 240 / 0.9);
-    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    border-radius: 0.5rem;
+    border: 1px solid color-mix(in srgb, var(--ds-palette-iron-grey) 12%, transparent);
+    border-left-width: 3px;
+    border-left-color: var(--ops-kpi-accent, color-mix(in srgb, var(--ds-palette-iron-grey) 28%, transparent));
+    background: var(--ds-surface-elevated);
     padding: 0.75rem 0.5rem;
-    box-shadow:
-      0 1px 0 rgb(255 255 255) inset, 0 2px 5px rgb(15 23 42 / 0.05), 0 10px 24px -10px rgb(15 23 42 / 0.1);
+    box-shadow: none;
     position: relative;
     overflow: hidden;
   }
-  .ops-kpi-tile::after,
-  .ops-kpi-pill::after {
-    content: "";
-    position: absolute;
-    left: 12%;
-    right: 12%;
-    bottom: 0;
-    height: 3px;
-    border-radius: 999px 999px 0 0;
-    background: var(--ops-kpi-accent, var(--ds-accent));
-    opacity: 0.85;
-  }
+  .ops-kpi-tile--warning,
+  .ops-kpi-pill--warning,
   .ops-kpi-tile--amber,
   .ops-kpi-pill--amber {
     --ops-kpi-accent: var(--ds-warning);
-    background: linear-gradient(180deg, #ffedd5 0%, #fff7ed 32%, #ffffff 70%, #fafafa 100%);
-    box-shadow:
-      0 1px 0 rgb(255 255 255) inset, 0 2px 5px rgb(245 158 11 / 0.08), 0 10px 24px -10px rgb(15 23 42 / 0.1);
   }
+  .ops-kpi-tile--success,
+  .ops-kpi-pill--success,
   .ops-kpi-tile--teal,
   .ops-kpi-pill--teal {
-    --ops-kpi-accent: var(--ds-palette-verdigris);
-    background: linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--ds-palette-verdigris) 18%, #ffffff) 0%,
-      color-mix(in srgb, var(--ds-palette-verdigris) 8%, #f8fafc) 38%,
-      #ffffff 72%,
-      #fafafa 100%
-    );
-    box-shadow:
-      0 1px 0 rgb(255 255 255) inset, 0 2px 5px color-mix(in srgb, var(--ds-palette-verdigris) 14%, transparent),
-      0 10px 24px -10px rgb(15 23 42 / 0.1);
+    --ops-kpi-accent: var(--ds-success);
   }
+  .ops-kpi-tile--danger,
+  .ops-kpi-pill--danger,
   .ops-kpi-tile--lobster,
   .ops-kpi-pill--lobster {
-    --ops-kpi-accent: #e85d6f;
-    background: linear-gradient(
-      180deg,
-      color-mix(in srgb, #e85d6f 16%, #ffffff) 0%,
-      color-mix(in srgb, #e85d6f 7%, #fff1f2) 34%,
-      #ffffff 70%,
-      #fafafa 100%
-    );
-    box-shadow:
-      0 1px 0 rgb(255 255 255) inset, 0 2px 5px rgb(232 93 111 / 0.1), 0 10px 24px -10px rgb(15 23 42 / 0.1);
+    --ops-kpi-accent: var(--ds-danger);
+    background: color-mix(in srgb, var(--ds-danger) 6%, var(--ds-surface-elevated));
   }
   .ops-kpi-tile--neutral,
   .ops-kpi-pill--neutral {
-    --ops-kpi-accent: color-mix(in srgb, var(--ds-text-primary) 28%, transparent);
-    border-color: rgb(226 232 240 / 0.75);
-    background: linear-gradient(
-      180deg,
-      rgb(255 255 255 / 0.82) 0%,
-      rgb(248 250 252 / 0.72) 45%,
-      rgb(241 245 249 / 0.65) 100%
-    );
-    backdrop-filter: blur(10px);
-    box-shadow:
-      0 1px 0 rgb(255 255 255 / 0.9) inset, 0 1px 4px rgb(15 23 42 / 0.05), 0 6px 16px -8px rgb(15 23 42 / 0.08);
-  }
-  .ops-kpi-tile--neutral::after,
-  .ops-kpi-pill--neutral::after {
-    opacity: 0.45;
+    --ops-kpi-accent: color-mix(in srgb, var(--ds-palette-iron-grey) 32%, transparent);
   }
   .ops-kpi-tile--accent,
   .ops-kpi-pill--accent {
     --ops-kpi-accent: var(--ds-accent);
-    background: linear-gradient(180deg, #dbeafe 0%, #eff6ff 32%, #ffffff 70%, #fafafa 100%);
-    box-shadow:
-      0 1px 0 rgb(255 255 255) inset, 0 2px 5px rgb(56 189 248 / 0.1), 0 10px 24px -10px rgb(15 23 42 / 0.1);
   }
   .dark .ops-kpi-tile,
   .dark .ops-kpi-pill {
-    border-color: rgb(255 255 255 / 0.1);
-    background: linear-gradient(
-      180deg,
-      color-mix(in srgb, #0f172a 96%, transparent) 0%,
-      color-mix(in srgb, #0f172a 92%, #1e293b) 72%,
-      color-mix(in srgb, var(--ops-kpi-accent, var(--ds-accent)) 14%, #0f172a) 100%
-    );
-    box-shadow: 0 1px 2px rgb(0 0 0 / 0.28), 0 8px 20px -10px rgb(0 0 0 / 0.38);
+    border-color: color-mix(in srgb, var(--ds-text-primary) 12%, transparent);
+    border-left-color: var(--ops-kpi-accent, color-mix(in srgb, var(--ds-text-primary) 28%, transparent));
+    background: color-mix(in srgb, var(--ds-surface-elevated) 88%, transparent);
+    box-shadow: none;
   }
-  .dark .ops-kpi-tile--neutral,
-  .dark .ops-kpi-pill--neutral {
-    border-color: rgb(255 255 255 / 0.1);
-    background: linear-gradient(
-      180deg,
-      rgb(30 41 59 / 0.55) 0%,
-      rgb(15 23 42 / 0.62) 55%,
-      rgb(15 23 42 / 0.72) 100%
-    );
-    box-shadow: 0 1px 0 rgb(255 255 255 / 0.06) inset, 0 4px 14px -6px rgb(0 0 0 / 0.35);
+  .dark .ops-kpi-tile--danger,
+  .dark .ops-kpi-pill--danger,
+  .dark .ops-kpi-tile--lobster,
+  .dark .ops-kpi-pill--lobster {
+    background: color-mix(in srgb, var(--ds-danger) 10%, var(--ds-surface-elevated));
   }
 
   .ops-widget-jump {
