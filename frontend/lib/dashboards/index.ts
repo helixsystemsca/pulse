@@ -14,4 +14,11 @@ export {
   writePersonalDashboardHomepageOverride,
   type DashboardHomepagePreference,
 } from "@/lib/dashboards/homepage";
-export { KIOSK_AUTO_REFRESH_MS, KIOSK_PRESENTATION_CLASS, kioskRefreshIntervalMs } from "@/lib/dashboards/kiosk";
+export {
+  KIOSK_AUTO_REFRESH_MS,
+  KIOSK_PAGE_DWELL_MS,
+  KIOSK_PRESENTATION_CLASS,
+  kioskPageDwellMs,
+  kioskPageOffsets,
+  kioskRefreshIntervalMs,
+} from "@/lib/dashboards/kiosk";

@@ -7,8 +7,8 @@ export const metadata: Metadata = {
 };
 
 /**
- * Minimal shell — no app chrome. Fills the viewport so the body does not scroll; each kiosk page
- * owns internal scrolling (e.g. dashboard grid) when content exceeds one screen.
+ * Minimal shell — no app chrome. Fills the viewport so the body does not scroll. Operations
+ * kiosk pages auto-advance the widget grid; other kiosks own any internal paging.
  */
 export default function KioskLayout({ children }: { children: React.ReactNode }) {
   return (

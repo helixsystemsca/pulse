@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { apiFetch, classifyApiFailure, isApiMode } from "@/lib/api";
 import { useHydratedClock } from "@/hooks/useHydratedClock";
+import { useKioskAutoPager } from "@/hooks/useKioskAutoPager";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { pulseApp, pulseAppHref, pulseTenantNav } from "@/lib/pulse-app";
 import { catalogPage } from "@/lib/dashboardPageWidgetCatalog";
@@ -136,10 +137,15 @@ const OPS_WIDGET_CONTRACT: Record<string, readonly string[]> = {
   [REC_OPS_AUTHORITY_WIDGET_ID]: ["recreation_ops"],
 };
 
-function opsWidgetAllowed(session: PulseAuthSession | null, widgetId: string): boolean {
+function opsWidgetAllowed(
+  session: PulseAuthSession | null,
+  widgetId: string,
+  opts?: { kiosk?: boolean },
+): boolean {
   const required = OPS_WIDGET_CONTRACT[widgetId];
   if (!required?.length) return true;
-  if (!session) return false;
+  // Wall displays often have a token but no interactive session — keep the full demo/live grid.
+  if (!session) return Boolean(opts?.kiosk);
   return tenantHasAnyCompanyModule(session, required);
 }
 
@@ -1203,6 +1209,7 @@ function DashboardBody({
   customConfigsRef.current = customConfigs;
   const [layoutHydrated, setLayoutHydrated] = useState(false);
   const { width, containerRef, mounted } = useContainerWidth({ initialWidth: 1200 });
+  const kioskPager = useKioskAutoPager(isKiosk && mounted, containerRef);
 
   const widgetRegistry = useMemo(() => {
     const workforceCardShell = "ops-dash-inner-card flex min-h-0 flex-1 flex-col gap-2";
@@ -1488,9 +1495,9 @@ function DashboardBody({
   const allWidgetKeys = useMemo(() => {
     return Object.keys(widgetRegistry).filter((k) => {
       if ((widgetRegistry as Record<string, unknown>)[k] == null) return false;
-      return opsWidgetAllowed(session ?? null, k);
+      return opsWidgetAllowed(session ?? null, k, { kiosk: isKiosk });
     });
-  }, [widgetRegistry, session]);
+  }, [widgetRegistry, session, isKiosk]);
 
   /** Stable while the set of built-in widget ids is unchanged — avoids re-hydrating layout on every `model` tick. */
   const builtinWidgetIdsSignature = [...allWidgetKeys].sort().join("|");
@@ -1559,6 +1566,10 @@ function DashboardBody({
       let merged = sanitizeWorkspaceLayout(nextLayout, validIds);
       merged = mergeMissingDefaults(merged, validIds, !loadedFromStorage);
       merged = ensurePinnedWorkspaceWidgets(merged, validIds);
+      if (workspaceLayoutIsEmpty(merged) && !isDeptDashboard) {
+        merged = mergeMissingDefaults(sanitizeWorkspaceLayout(defaultLayout, validIds), validIds, true);
+        merged = ensurePinnedWorkspaceWidgets(merged, validIds);
+      }
 
       if (cancelled) return;
       setLayout(merged);
@@ -1578,28 +1589,28 @@ function DashboardBody({
     return () => {
       cancelled = true;
     };
-  }, [builtinWidgetIdsSignature, dashboardContext, defaultLayout]);
+  }, [builtinWidgetIdsSignature, dashboardContext, defaultLayout, isDeptDashboard]);
 
   const persistLayout = useCallback(
     (next: WorkspaceLayout) => {
-      if (!layoutHydrated) return;
+      if (!layoutHydrated || isKiosk || readOnly) return;
       saveDashboardLayoutBundle(dashboardContext, {
         version: DASHBOARD_LAYOUT_STORAGE_VERSION,
         layout: next,
         customWidgets: customConfigsRef.current,
       });
     },
-    [dashboardContext, layoutHydrated],
+    [dashboardContext, isKiosk, layoutHydrated, readOnly],
   );
 
   useEffect(() => {
-    if (!layoutHydrated) return;
+    if (!layoutHydrated || isKiosk || readOnly) return;
     saveDashboardLayoutBundle(dashboardContext, {
       version: DASHBOARD_LAYOUT_STORAGE_VERSION,
       layout,
       customWidgets: customConfigs,
     });
-  }, [customConfigs, dashboardContext, layout, layoutHydrated]);
+  }, [customConfigs, dashboardContext, isKiosk, layout, layoutHydrated, readOnly]);
 
   const layoutKeys = useMemo(() => new Set(allWorkspaceWidgetIds(layout)), [layout]);
   const availableToAdd = useMemo(() => allWidgetKeys.filter((k) => !layoutKeys.has(k)), [allWidgetKeys, layoutKeys]);
@@ -1706,6 +1717,16 @@ function DashboardBody({
             >
               {now ? `${dateInBc(now)} · ${timeInBc(now)}` : "\u00a0"}
             </p>
+            {isKiosk && kioskPager.total > 1 ? (
+              <p
+                className="text-[10px] font-bold uppercase tracking-[0.14em] text-ds-muted tabular-nums"
+                aria-live="polite"
+                data-kiosk-page={kioskPager.page}
+                data-kiosk-pages={kioskPager.total}
+              >
+                Screen {kioskPager.page} of {kioskPager.total}
+              </p>
+            ) : null}
             <OpsHeaderWeather className="shrink-0" />
           </div>
         </div>
@@ -1808,7 +1829,8 @@ function DashboardBody({
         ref={containerRef as any}
         className={cn(
           "pulse-dashboard-grid flex min-h-0 min-w-0 flex-col",
-          isKiosk && "min-h-0 flex-1 overflow-y-auto overscroll-contain",
+          isKiosk &&
+            "min-h-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
           editMode && "pulse-dashboard-edit",
           isDeptDashboard && workspaceLayoutIsEmpty(layout) && !editMode && "hidden",
         )}
