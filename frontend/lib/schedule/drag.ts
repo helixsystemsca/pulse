@@ -172,3 +172,33 @@ export function attachWorkerDragPreview(e: { dataTransfer: DataTransfer }, worke
   e.dataTransfer.setDragImage(el, 12, 12);
   requestAnimationFrame(() => el.remove());
 }
+
+/** Drag overlay / lock UI must always return to this state. */
+export type ScheduleDragEndedState = {
+  dragSession: null;
+  trashHovering: false;
+};
+
+export function scheduleDragEndedState(): ScheduleDragEndedState {
+  return { dragSession: null, trashHovering: false };
+}
+
+/**
+ * Escape, dragend, and window blur always mean the HTML5 drag is over.
+ * Successful drops also fire `dragend`; invalid/cancelled drops do too — callers
+ * should clear session state for every match, not only `dropEffect === "none"`.
+ */
+export function isScheduleDragCancelEvent(e: { type: string; key?: string }): boolean {
+  if (e.type === "keydown" || e.type === "keyup") return e.key === "Escape";
+  return e.type === "dragend" || e.type === "blur";
+}
+
+/**
+ * Calendar/week cells stay `pointer-events-auto` for the whole drag so the source
+ * chip still receives `dragend`. Do not switch cells to `none` while the trash
+ * zone is hovered — that ancestor `none` is a known Chrome HTML5 bug that leaves
+ * `dragSession` stuck. Ignore calendar drops via handler guards instead.
+ */
+export function scheduleCalendarCellPointerClass(scheduleDragLock: boolean): string {
+  return scheduleDragLock ? "pointer-events-auto" : "";
+}

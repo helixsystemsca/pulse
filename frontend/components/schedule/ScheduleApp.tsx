@@ -36,7 +36,11 @@ import {
 import { operationalScheduleDateKeyFromDate } from "@/lib/schedule/operational-schedule-day";
 import { evaluateCoverageRules } from "@/lib/schedule/coverage-rules";
 import { mergeDeploymentBadgeOverlays } from "@/lib/schedule/deployment-overlay";
-import type { PaletteDragPayload } from "@/lib/schedule/drag";
+import {
+  isScheduleDragCancelEvent,
+  scheduleDragEndedState,
+  type PaletteDragPayload,
+} from "@/lib/schedule/drag";
 import {
   defaultWindowForShiftBand,
   inferShiftTypeFromStart,
@@ -243,6 +247,11 @@ export function ScheduleApp() {
   const [draftResult, setDraftResult] = useState<DraftResult | null>(null);
   const [buildingDraft, setBuildingDraft] = useState(false);
   const [trashHovering, setTrashHovering] = useState(false);
+  const endDragSession = useCallback(() => {
+    const ended = scheduleDragEndedState();
+    setDragSession(ended.dragSession);
+    setTrashHovering(ended.trashHovering);
+  }, []);
   const [deleteToast, setDeleteToast] = useState<string | null>(null);
   const { phase: savePhase, run: runSaveSubmit } = useAsyncSubmitPhase();
   const [activePeriod, setActivePeriod] = useState<SchedulePeriodLite | null>(null);
@@ -935,6 +944,8 @@ export function ScheduleApp() {
 
   const handleShiftMove = useCallback(
     async (shiftId: string, targetDate: string, mode: "move" | "duplicate") => {
+      // Clear before shift rows remount; HTML5 dragend is lost if the source unmounts.
+      endDragSession();
       if (!shiftDragEnabled) return;
       const sh = shiftsForView.find((s) => s.id === shiftId);
       if (!sh) return;
@@ -994,6 +1005,7 @@ export function ScheduleApp() {
     },
     [
       addShift,
+      endDragSession,
       persistCreatedShift,
       replaceShiftId,
       scheduleDepartmentSlug,
@@ -1006,6 +1018,7 @@ export function ScheduleApp() {
 
   const handleWorkerDrop = useCallback(
     (workerId: string, targetDate: string, availabilityOverrideReason?: string | null) => {
+      endDragSession();
       const w = workers.find((x) => x.id === workerId);
       if (!w) return;
       const trimmedOverride =
@@ -1102,11 +1115,11 @@ export function ScheduleApp() {
       }
       void persistCreatedShift(created);
       setPickedWorkerId(null);
-      setDragSession(null);
     },
     [
       addShift,
       canPublishSchedule,
+      endDragSession,
       persistCreatedShift,
       shiftDefinitions,
       placementBand,
@@ -1332,8 +1345,7 @@ export function ScheduleApp() {
 
   const handlePaletteDrop = useCallback(
     (workerId: string, targetDate: string, payload: PaletteDragPayload) => {
-      setDragSession(null);
-      setTrashHovering(false);
+      endDragSession();
 
       const w = workers.find((x) => x.id === workerId);
       if (!w) return;
@@ -1383,6 +1395,7 @@ export function ScheduleApp() {
       canPublishSchedule,
       commitPaletteShiftAssignment,
       dropAvailabilityOpts,
+      endDragSession,
       paletteShiftCatalog,
       placementDropWindow,
       settings,
@@ -1498,6 +1511,35 @@ export function ScheduleApp() {
     }
     return () => document.body.classList.remove("schedule-shift-dragging");
   }, [scheduleDragLock]);
+
+  useEffect(() => {
+    if (!dragSession) return;
+    let dropTimer: number | undefined;
+    const onDragEnd = (e: Event) => {
+      if (isScheduleDragCancelEvent({ type: e.type })) endDragSession();
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!isScheduleDragCancelEvent({ type: e.type, key: e.key })) return;
+      e.preventDefault();
+      setPickedWorkerId(null);
+      endDragSession();
+    };
+    const onDrop = () => {
+      window.clearTimeout(dropTimer);
+      dropTimer = window.setTimeout(() => endDragSession(), 0);
+    };
+    document.addEventListener("dragend", onDragEnd, true);
+    document.addEventListener("drop", onDrop, true);
+    document.addEventListener("keydown", onKeyDown, true);
+    window.addEventListener("blur", onDragEnd);
+    return () => {
+      window.clearTimeout(dropTimer);
+      document.removeEventListener("dragend", onDragEnd, true);
+      document.removeEventListener("drop", onDrop, true);
+      document.removeEventListener("keydown", onKeyDown, true);
+      window.removeEventListener("blur", onDragEnd);
+    };
+  }, [dragSession, endDragSession]);
 
   useEffect(() => {
     if (!deleteToast) return;
@@ -1747,7 +1789,7 @@ export function ScheduleApp() {
                         className="rounded-md border border-amber-700/40 bg-white px-2 py-1 text-xs font-semibold dark:bg-slate-900"
                         onClick={() => {
                           setPickedWorkerId(null);
-                          setDragSession(null);
+                          endDragSession();
                         }}
                       >
                         Cancel
@@ -1782,10 +1824,7 @@ export function ScheduleApp() {
                           placementBand={placementBand}
                           onPlacementBandChange={setPlacementBand}
                           onDragSessionStart={setDragSession}
-                          onDragSessionEnd={() => {
-                            setDragSession(null);
-                            setTrashHovering(false);
-                          }}
+                          onDragSessionEnd={endDragSession}
                           onPickWorker={pickWorker}
                           pickedWorkerId={pickedWorkerId}
                           coarsePointer={coarsePointer}
@@ -1800,10 +1839,7 @@ export function ScheduleApp() {
                         shiftDefinitions={shiftDefinitions}
                         onShiftDefinitionsChange={setShiftDefinitions}
                         onDragSessionStart={(p) => setDragSession({ kind: "palette", ...p })}
-                        onDragSessionEnd={() => {
-                          setDragSession(null);
-                          setTrashHovering(false);
-                        }}
+                        onDragSessionEnd={endDragSession}
                       />
                       <ScheduleLegendPanel
                         shiftTypes={shiftTypes}
@@ -1875,10 +1911,7 @@ export function ScheduleApp() {
                       pickedWorkerId={pickedWorkerId}
                       onWorkerDrop={(workerId) => handleWorkerDrop(workerId, focusDate)}
                       onShiftDragSessionStart={setDragSession}
-                      onShiftDragSessionEnd={() => {
-                        setDragSession(null);
-                        setTrashHovering(false);
-                      }}
+                      onShiftDragSessionEnd={endDragSession}
                       dayProjectBar={dayProjectBar}
                       dailyAssignmentsEnabled={scheduleWorkflow.assignmentsEnabled}
                     />
@@ -1913,10 +1946,7 @@ export function ScheduleApp() {
                     shiftDefinitions={shiftDefinitions}
                     onWorkerDropRejected={(msg) => setScheduleToast(msg)}
                     onShiftDragSessionStart={setDragSession}
-                    onShiftDragSessionEnd={() => {
-                      setDragSession(null);
-                      setTrashHovering(false);
-                    }}
+                    onShiftDragSessionEnd={endDragSession}
                     onOpenWorkerAttendance={
                       canPublishSchedule ? (p) => setWorkerAttendanceModal(p) : undefined
                     }
@@ -1954,10 +1984,7 @@ export function ScheduleApp() {
                     shiftDefinitions={shiftDefinitions}
                     onWorkerDropRejected={(msg) => setScheduleToast(msg)}
                     onShiftDragSessionStart={setDragSession}
-                    onShiftDragSessionEnd={() => {
-                      setDragSession(null);
-                      setTrashHovering(false);
-                    }}
+                    onShiftDragSessionEnd={endDragSession}
                     onOpenWorkerAttendance={
                       canPublishSchedule ? (p) => setWorkerAttendanceModal(p) : undefined
                     }
@@ -2156,8 +2183,7 @@ export function ScheduleApp() {
           } else {
             deleteShift(id);
           }
-          setDragSession(null);
-          setTrashHovering(false);
+          endDragSession();
           const removed = shiftsForView.find((s) => s.id === id);
           const remaining = shiftsForView.filter((s) => s.id !== id);
           const tip =

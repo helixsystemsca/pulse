@@ -11,6 +11,7 @@ import {
   readWorkerDragPayload,
   resolveShiftDropPayload,
   resolveWorkerDropPayload,
+  scheduleCalendarCellPointerClass,
   scheduleCalendarDragOverAccepts,
   type PaletteDragPayload,
 } from "@/lib/schedule/drag";
@@ -140,11 +141,7 @@ export function ScheduleWeekView({
   }, [shifts]);
 
   const label = weekRangeLabel(weekDates);
-  const cellPointer = scheduleDragLock
-    ? calendarDropsDisabled
-      ? "pointer-events-none"
-      : "pointer-events-auto"
-    : "";
+  const cellPointer = scheduleCalendarCellPointerClass(scheduleDragLock);
 
   return (
     <div
@@ -283,15 +280,23 @@ export function ScheduleWeekView({
                       }
                       triggerShake(date);
                       onWorkerDropRejected?.(ev.tooltip ?? "Cannot schedule this placement.");
+                      onShiftDragSessionEnd();
                       return;
                     }
                   }
                   onWorkerDrop(wp.workerId, date);
                   return;
                 }
-                if (!shiftDragEnabled) return;
+                if (!shiftDragEnabled) {
+                  onShiftDragSessionEnd();
+                  return;
+                }
                 const p = resolveShiftDropPayload(e.dataTransfer, dragSession);
-                if (p) onShiftMove(p.shiftId, date, p.duplicate ? "duplicate" : "move");
+                if (p) {
+                  onShiftMove(p.shiftId, date, p.duplicate ? "duplicate" : "move");
+                  return;
+                }
+                onShiftDragSessionEnd();
               }}
             >
               {hlLayer ? (

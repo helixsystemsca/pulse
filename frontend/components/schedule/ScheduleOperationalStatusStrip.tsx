@@ -191,12 +191,22 @@ export function ScheduleOperationalStatusStrip({
     );
   } else if (period.kind === "empty" && period.allowCreate !== false) {
     periodLabel = "No active period";
-    periodSub = onManagePeriod ? (
-      <button type="button" onClick={onManagePeriod} className="font-medium text-[var(--ds-accent)] hover:underline">
-        Create scheduling period
-      </button>
-    ) : (
-      "Create a period to collect availability"
+    periodSub = (
+      <span>
+        Save and Publish need an active period. Create one, or open period settings to select an existing period.
+        {onManagePeriod ? (
+          <>
+            {" · "}
+            <button
+              type="button"
+              onClick={onManagePeriod}
+              className="font-medium text-[var(--ds-accent)] hover:underline"
+            >
+              Create or select period
+            </button>
+          </>
+        ) : null}
+      </span>
     );
   }
 
@@ -263,7 +273,9 @@ export function ScheduleOperationalStatusStrip({
             ? "Save changes before publishing"
             : scheduleStatusLabel === "Published"
               ? "Operationally active"
-              : "Live view"
+              : scheduleStatusLabel === "No period"
+                ? "Create or select a period to save and publish"
+                : "Live view"
         }
       />
       <StatCell

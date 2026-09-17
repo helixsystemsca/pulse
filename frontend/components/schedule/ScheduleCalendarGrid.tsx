@@ -16,6 +16,7 @@ import {
   readWorkerDragPayload,
   resolveShiftDropPayload,
   resolveWorkerDropPayload,
+  scheduleCalendarCellPointerClass,
   scheduleCalendarDragOverAccepts,
   type PaletteDragPayload,
 } from "@/lib/schedule/drag";
@@ -157,11 +158,7 @@ export function ScheduleCalendarGrid({
     return m;
   }, [shifts]);
 
-  const cellPointer = scheduleDragLock
-    ? calendarDropsDisabled
-      ? "pointer-events-none"
-      : "pointer-events-auto"
-    : "";
+  const cellPointer = scheduleCalendarCellPointerClass(scheduleDragLock);
 
   return (
     <div
@@ -322,17 +319,23 @@ export function ScheduleCalendarGrid({
                       }
                       triggerShake(c.date);
                       onWorkerDropRejected?.(ev.tooltip ?? "Cannot schedule this placement.");
+                      onShiftDragSessionEnd();
                       return;
                     }
                   }
                   onWorkerDrop(wp.workerId, c.date);
                   return;
                 }
-                if (!shiftDragEnabled) return;
+                if (!shiftDragEnabled) {
+                  onShiftDragSessionEnd();
+                  return;
+                }
                 const p = resolveShiftDropPayload(e.dataTransfer, dragSession);
                 if (p) {
                   onShiftMove(p.shiftId, c.date, p.duplicate ? "duplicate" : "move");
+                  return;
                 }
+                onShiftDragSessionEnd();
               }}
             >
               {hlLayer ? (
