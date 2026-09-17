@@ -13,6 +13,7 @@ from app.core.auth.security import create_access_token
 from app.core.features.cache import clear_all
 from app.models.domain import User, UserRole
 from app.models.pulse_models import PulseWorkRequest
+from app.models.planner_models import PlannerTask
 from app.services.planner import planner_service as svc
 from app.services.planner.planner_service import _minutes_of
 
@@ -77,8 +78,11 @@ async def test_place_on_today_places_inbox_tasks_without_resetting_day(
         {"title": "Pool shutdown SOP", "estimated_minutes": 45, "priority": "high"},
     )
 
-    blocks = await svc.place_inbox_on_day(db_session, cid, uid, DAY, task_ids=[str(task.id)])
+    result = await svc.place_inbox_on_day(db_session, cid, uid, DAY, task_ids=[str(task.id)])
+    blocks = result.blocks
     placed = [b for b in blocks if str(b.task_id) == str(task.id)]
+    assert result.placed_count == 1
+    assert "Placed 1 task" in result.message
     assert placed, [b.title for b in blocks]
     assert placed[0].block_type == "task"
     assert placed[0].title == "Pool shutdown SOP"
@@ -232,11 +236,87 @@ async def test_place_on_today_http_endpoint(
         json={"date": DAY.isoformat(), "task_ids": [task_id]},
     )
     assert placed.status_code == 200, placed.text
-    timeline = placed.json()["timeline"]
+    body = placed.json()
+    timeline = body["timeline"]
     assert any(row.get("task_id") == task_id for row in timeline)
+    assert body["placed_count"] == 1
+    assert task_id in body["placed_task_ids"]
+    assert "Placed 1 task" in body["message"]
     generate = await client.post(
         f"/api/v1/planner/day/generate?date={DAY.isoformat()}",
         headers=headers,
     )
     assert generate.status_code == 200, generate.text
     assert any(row.get("block_type") == "open" for row in generate.json()["timeline"])
+    deleted = await client.delete(f"/api/v1/planner/tasks/{task_id}", headers=headers)
+    assert deleted.status_code == 204, deleted.text
+
+
+@pytest.mark.asyncio
+async def test_place_on_today_explains_when_nothing_to_place(
+    db_session: AsyncSession, seeded_tenant
+) -> None:
+    cid, uid = _ids(seeded_tenant)
+    await svc.generate_hour_template(db_session, cid, uid, DAY)
+    empty = await svc.place_inbox_on_day(
+        db_session, cid, uid, DAY, task_ids=["00000000-0000-0000-0000-000000000000"]
+    )
+    assert empty.placed_count == 0
+    assert "No schedulable tasks" in empty.message
+
+    blocked = await svc.create_task(
+        db_session, cid, uid, {"title": "Waiting on contractor", "estimated_minutes": 30}
+    )
+    blocked.status = "blocked"
+    await db_session.flush()
+    skipped = await svc.place_inbox_on_day(db_session, cid, uid, DAY, task_ids=[str(blocked.id)])
+    assert skipped.placed_count == 0
+    assert "No schedulable tasks" in skipped.message
+
+
+@pytest.mark.asyncio
+async def test_place_on_today_explains_when_day_is_full(
+    db_session: AsyncSession, seeded_tenant
+) -> None:
+    cid, uid = _ids(seeded_tenant)
+    await svc.generate_hour_template(db_session, cid, uid, DAY)
+    start = 8 * 60 + 30
+    for i in range(8):
+        await svc.create_block(
+            db_session,
+            cid,
+            uid,
+            {
+                "date": DAY,
+                "start_time": time((start + i * 60) // 60, (start + i * 60) % 60),
+                "end_time": time((start + (i + 1) * 60) // 60, (start + (i + 1) * 60) % 60),
+                "title": f"Locked meeting {i + 1}",
+                "block_type": "meeting",
+            },
+        )
+    task = await svc.create_task(
+        db_session, cid, uid, {"title": "QA inbox task - reversible", "estimated_minutes": 30}
+    )
+    result = await svc.place_inbox_on_day(db_session, cid, uid, DAY, task_ids=[str(task.id)])
+    assert result.placed_count == 0
+    assert "full" in result.message.lower()
+    assert "QA inbox task - reversible" in result.unplaced_titles
+
+
+@pytest.mark.asyncio
+async def test_delete_inbox_task_restores_open_capacity(
+    db_session: AsyncSession, seeded_tenant
+) -> None:
+    cid, uid = _ids(seeded_tenant)
+    await svc.generate_hour_template(db_session, cid, uid, DAY)
+    task = await svc.create_task(
+        db_session, cid, uid, {"title": "QA inbox task - reversible", "estimated_minutes": 30}
+    )
+    placed = await svc.place_inbox_on_day(db_session, cid, uid, DAY, task_ids=[str(task.id)])
+    assert placed.placed_count == 1
+    await svc.delete_task(db_session, cid, uid, str(task.id))
+    remaining = await svc._day_blocks(db_session, cid, uid, DAY)
+    assert all(str(b.task_id) != str(task.id) for b in remaining)
+    assert any(b.block_type == "open" and b.title == "Open" for b in remaining)
+    gone = await db_session.get(PlannerTask, task.id)
+    assert gone is None

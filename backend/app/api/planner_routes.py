@@ -27,6 +27,7 @@ from app.schemas.planner import (
     PlannerInterruptionOut,
     PlannerMoveIn,
     PlannerPlaceIn,
+    PlannerPlaceOut,
     PlannerRoutineIn,
     PlannerRoutineOut,
     PlannerRoutinePatchIn,
@@ -319,20 +320,25 @@ async def generate_day(
     return payload
 
 
-@router.post("/day/place", response_model=PlannerDayOut)
+@router.post("/day/place", response_model=PlannerPlaceOut)
 async def place_day(
     payload: PlannerPlaceIn,
     db: Db,
     actor: Actor,
     _: Editor,
-) -> PlannerDayOut:
+) -> PlannerPlaceOut:
     cid, uid = _cid(actor), _uid(actor)
     try:
-        await svc.place_inbox_on_day(db, cid, uid, payload.plan_date, task_ids=payload.task_ids)
+        placed = await svc.place_inbox_on_day(db, cid, uid, payload.plan_date, task_ids=payload.task_ids)
     except (ValueError, svc.PlannerConflict) as e:
         _raise_planner(e)
-    data = await svc.get_day(db, cid, uid, payload.plan_date, generate_if_empty=False)
-    payload_out = PlannerDayOut.model_validate(data)
+    data = await svc.get_day(db, cid, uid, payload.plan_date or placed.date, generate_if_empty=False)
+    data["placed_count"] = placed.placed_count
+    data["unplaced_count"] = placed.unplaced_count
+    data["unplaced_titles"] = placed.unplaced_titles
+    data["placed_task_ids"] = placed.placed_task_ids
+    data["message"] = placed.message
+    payload_out = PlannerPlaceOut.model_validate(data)
     await db.commit()
     return payload_out
 

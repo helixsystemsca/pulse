@@ -5,7 +5,7 @@ import { CalendarDays, Settings } from "lucide-react";
 import { PageBody } from "@/components/ui/PageBody";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { DayCalendar } from "@/components/planner/DayCalendar";
-import { PlannerChrome } from "@/components/planner/PlannerChrome";
+import { PlannerChrome, PlannerToast } from "@/components/planner/PlannerChrome";
 import { PlannerSettingsModal } from "@/components/planner/PlannerSettingsModal";
 import { clockFromMinutes, freeGaps, isCapacityBlock, minutesFromClock } from "@/lib/planner/dayCalendar";
 import {
@@ -22,11 +22,11 @@ import {
   fetchSettings,
   generateDay,
   hhmm,
-  isoDate,
   moveBlock,
   patchBlock,
   patchCategory,
   patchSettings,
+  plannerToday,
   shiftIsoDate,
   startInterruption,
   startTask,
@@ -72,12 +72,13 @@ function hasOpenCapacity(day: PlannerDay): boolean {
 }
 
 export default function PlannerTodayPage() {
-  const [date, setDate] = useState(isoDate(new Date()));
+  const [date, setDate] = useState(plannerToday());
   const [day, setDay] = useState<PlannerDay | null>(null);
   const [cats, setCats] = useState<PlannerCategory[]>([]);
   const [settings, setSettings] = useState<PlannerSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
   const [quick, setQuick] = useState("");
   const [quickCat, setQuickCat] = useState("");
   const [busy, setBusy] = useState(false);
@@ -113,6 +114,12 @@ export default function PlannerTodayPage() {
     setLoading(true);
     void reload();
   }, [reload]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const handle = window.setTimeout(() => setToast(null), 5000);
+    return () => window.clearTimeout(handle);
+  }, [toast]);
 
   const nowId = day?.now?.id ?? null;
   const nextId = day?.next?.id ?? null;
@@ -177,6 +184,7 @@ export default function PlannerTodayPage() {
       />
       <PageBody>
         <PlannerChrome />
+        <PlannerToast message={toast} />
         {error ? (
           <div className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">
             <p>{error}</p>
@@ -200,6 +208,9 @@ export default function PlannerTodayPage() {
             </div>
             <p className="mt-1 text-sm text-ds-muted">
               {day?.day_label} · {hhmm(day?.work_start)}–{hhmm(day?.work_end)} · {day?.completion_pct ?? 0}% complete
+              {day && day.timeline.length > 0 && day.timeline.every((block) => isCapacityBlock(block))
+                ? " — Open is unused capacity, not unfinished work"
+                : ""}
             </p>
           </div>
           <form onSubmit={onQuickAdd} data-tour="planner-quick-add" className="flex min-w-[16rem] flex-1 flex-wrap items-end gap-2">
@@ -290,6 +301,7 @@ export default function PlannerTodayPage() {
                 nextId={nextId}
                 disabled={busy}
                 onMove={(id, start, end) => run(() => moveBlock(id, start, end))}
+                onConflict={(message) => setToast(message)}
                 onAdd={(start, end, title, categoryId) =>
                   run(() =>
                     createBlock({

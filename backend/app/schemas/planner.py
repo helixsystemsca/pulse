@@ -305,6 +305,16 @@ class PlannerDayOut(BaseModel):
     metrics: dict[str, Any] = Field(default_factory=dict)
 
 
+class PlannerPlaceOut(PlannerDayOut):
+    """Day board plus placement feedback for Inbox → Place on today."""
+
+    placed_count: int = 0
+    unplaced_count: int = 0
+    unplaced_titles: list[str] = Field(default_factory=list)
+    placed_task_ids: list[str] = Field(default_factory=list)
+    message: str = ""
+
+
 class PlannerAnalyticsOut(BaseModel):
     range_label: str
     start: date

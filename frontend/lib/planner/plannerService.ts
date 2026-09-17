@@ -176,6 +176,23 @@ export function isoDate(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+export const PLANNER_TZ = "America/Vancouver";
+
+/** Calendar date in the planner timezone (America/Vancouver), not the browser or UTC clock. */
+export function plannerToday(timeZone = PLANNER_TZ): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const y = parts.find((p) => p.type === "year")?.value;
+  const m = parts.find((p) => p.type === "month")?.value;
+  const d = parts.find((p) => p.type === "day")?.value;
+  if (y && m && d) return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  return isoDate(new Date());
+}
+
 export function shiftIsoDate(iso: string, days: number): string {
   const [y, m, d] = iso.split("-").map(Number);
   const dt = new Date(y, (m || 1) - 1, d || 1);
@@ -262,6 +279,14 @@ export async function unblockTask(id: string): Promise<PlannerTask> {
   return apiFetch<PlannerTask>(`${BASE}/tasks/${id}/unblock`, { method: "POST" });
 }
 
+export async function deletePlannerTask(id: string): Promise<void> {
+  await apiFetch(`${BASE}/tasks/${id}`, { method: "DELETE" });
+}
+
+export async function archivePlannerTask(id: string): Promise<PlannerTask> {
+  return patchTask(id, { status: "cancelled" });
+}
+
 export async function fetchDay(date?: string): Promise<PlannerDay> {
   const suffix = date ? `?date=${date}` : "";
   return apiFetch<PlannerDay>(`${BASE}/day${suffix}`);
@@ -272,10 +297,18 @@ export async function generateDay(date?: string): Promise<PlannerDay> {
   return apiFetch<PlannerDay>(`${BASE}/day/generate${suffix}`, { method: "POST" });
 }
 
-export async function placeOnToday(opts?: { date?: string; task_ids?: string[] }): Promise<PlannerDay> {
-  return apiFetch<PlannerDay>(`${BASE}/day/place`, {
+export type PlannerPlaceResult = PlannerDay & {
+  placed_count: number;
+  unplaced_count: number;
+  unplaced_titles: string[];
+  placed_task_ids: string[];
+  message: string;
+};
+
+export async function placeOnToday(opts?: { date?: string; task_ids?: string[] }): Promise<PlannerPlaceResult> {
+  return apiFetch<PlannerPlaceResult>(`${BASE}/day/place`, {
     method: "POST",
-    json: { date: opts?.date, task_ids: opts?.task_ids },
+    json: { date: opts?.date ?? plannerToday(), task_ids: opts?.task_ids },
   });
 }
 

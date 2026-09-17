@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import re
 import uuid
+from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
 from typing import Any, Optional
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -61,6 +62,7 @@ _COLOR_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
 logger = logging.getLogger(__name__)
 IMMOVABLE_BLOCK_TYPES = frozenset({"meeting", "interruption"})
 PLANNED_WORK_BLOCK_TYPES = frozenset({"task", "routine"})
+SCHEDULABLE_TASK_STATUSES = frozenset({"not_started", "in_progress", "deferred"})
 DEFAULT_INTERRUPTION_MINUTES = 30
 
 
@@ -107,6 +109,19 @@ def _time_from_min(total: int) -> time:
 
 class PlannerConflict(ValueError):
     """The requested block times collide with another block or working hours."""
+
+
+@dataclass
+class PlaceInboxResult:
+    """Outcome of Place on today — always returns a message, even when nothing moved."""
+
+    blocks: list[PlannerScheduleBlock]
+    date: date
+    placed_count: int
+    unplaced_count: int
+    unplaced_titles: list[str] = field(default_factory=list)
+    placed_task_ids: list[str] = field(default_factory=list)
+    message: str = ""
 
 
 def _is_open_capacity(block: PlannerScheduleBlock) -> bool:
@@ -569,9 +584,24 @@ async def patch_task(
 
 async def delete_task(db: AsyncSession, company_id: str, user_id: str, task_id: str) -> None:
     row = await db.get(PlannerTask, task_id)
-    if row and row.company_id == company_id and row.user_id == user_id:
-        await db.delete(row)
-        await db.flush()
+    if not row or row.company_id != company_id or row.user_id != user_id:
+        return
+    blocks = await db.execute(
+        select(PlannerScheduleBlock).where(
+            PlannerScheduleBlock.company_id == company_id,
+            PlannerScheduleBlock.user_id == user_id,
+            PlannerScheduleBlock.task_id == task_id,
+        )
+    )
+    for block in blocks.scalars().all():
+        block.task_id = None
+        block.title = "Open"
+        block.block_type = "open"
+        block.locked = False
+        block.status = "scheduled"
+        block.generated_by_scheduler = True
+    await db.delete(row)
+    await db.flush()
 
 
 async def _open_time_entry(db: AsyncSession, company_id: str, user_id: str, task_id: str | None) -> PlannerTimeEntry:
@@ -992,6 +1022,25 @@ async def generate_schedule(
     return await _day_blocks(db, company_id, user_id, day)
 
 
+def _place_result(
+    *,
+    blocks: list[PlannerScheduleBlock],
+    day: date,
+    placed_ids: list[str],
+    unplaced_titles: list[str],
+    message: str,
+) -> PlaceInboxResult:
+    return PlaceInboxResult(
+        blocks=blocks,
+        date=day,
+        placed_count=len(placed_ids),
+        unplaced_count=len(unplaced_titles),
+        unplaced_titles=unplaced_titles,
+        placed_task_ids=placed_ids,
+        message=message,
+    )
+
+
 async def place_inbox_on_day(
     db: AsyncSession,
     company_id: str,
@@ -999,7 +1048,7 @@ async def place_inbox_on_day(
     day: date | None = None,
     *,
     task_ids: list[str] | None = None,
-) -> list[PlannerScheduleBlock]:
+) -> PlaceInboxResult:
     """Place ready inbox tasks onto today by shrinking Open capacity — does not reset the day."""
     await ensure_defaults(db, company_id, user_id)
     day = _parse_date(day)
@@ -1013,14 +1062,73 @@ async def place_inbox_on_day(
         existing = await generate_hour_template(db, company_id, user_id, day)
 
     already = {str(b.task_id) for b in existing if b.task_id}
-    wanted = {str(tid) for tid in task_ids} if task_ids else None
+
+    if task_ids:
+        candidates: list[PlannerTask] = []
+        seen: set[str] = set()
+        for tid in task_ids:
+            key = str(tid)
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            row = await db.get(PlannerTask, key)
+            if row and row.company_id == company_id and row.user_id == user_id:
+                candidates.append(row)
+        if not candidates:
+            return _place_result(
+                blocks=existing,
+                day=day,
+                placed_ids=[],
+                unplaced_titles=[],
+                message="No schedulable tasks to place (those items were not in the inbox).",
+            )
+    else:
+        candidates = [
+            t
+            for t in await list_tasks(db, company_id, user_id)
+            if t.status in SCHEDULABLE_TASK_STATUSES
+        ]
+
+    already_here = [t for t in candidates if str(t.id) in already]
     ready = [
         t
-        for t in await list_tasks(db, company_id, user_id)
-        if t.status in {"not_started", "in_progress", "deferred"}
-        and str(t.id) not in already
-        and (wanted is None or str(t.id) in wanted)
+        for t in candidates
+        if t.status in SCHEDULABLE_TASK_STATUSES and str(t.id) not in already
     ]
+    not_ready = [
+        t
+        for t in candidates
+        if t.status not in SCHEDULABLE_TASK_STATUSES and str(t.id) not in already
+    ]
+
+    occupied = [
+        (_minutes_of(b.start_time), _minutes_of(b.end_time))
+        for b in existing
+        if not _is_open_capacity(b)
+    ]
+    capacity = free_gaps(_minutes_of(settings.work_start), _minutes_of(settings.work_end), occupied)
+    if not ready:
+        if already_here and not not_ready:
+            n = len(already_here)
+            msg = f"{n} task{'s' if n != 1 else ''} already on {day.isoformat()}."
+        else:
+            msg = "No schedulable tasks to place (need not started, in progress, or deferred)."
+        return _place_result(
+            blocks=existing,
+            day=day,
+            placed_ids=[],
+            unplaced_titles=[t.title for t in (not_ready or already_here)],
+            message=msg,
+        )
+    if not capacity:
+        return _place_result(
+            blocks=existing,
+            day=day,
+            placed_ids=[],
+            unplaced_titles=[t.title for t in ready],
+            message="Today is full. Shorten a planned block to make 15 minutes of Open capacity.",
+        )
+
     engine_tasks = [
         EngineTask(
             id=str(t.id),
@@ -1037,17 +1145,6 @@ async def place_inbox_on_day(
         )
         for t in ready
     ]
-
-    occupied = [
-        (_minutes_of(b.start_time), _minutes_of(b.end_time))
-        for b in existing
-        if not _is_open_capacity(b)
-    ]
-    capacity = free_gaps(_minutes_of(settings.work_start), _minutes_of(settings.work_end), occupied)
-    if not engine_tasks:
-        return existing
-    if not capacity:
-        raise PlannerConflict("No Open capacity left today. Shorten a block to make room.")
 
     cfg = EngineConfig(
         work_start_min=_minutes_of(settings.work_start),
@@ -1085,13 +1182,31 @@ async def place_inbox_on_day(
                 locked=False,
                 generated_by_scheduler=True,
                 status="in_progress"
-                if any(t.id == pb.task_id and t.status == "in_progress" for t in ready)
+                if any(str(t.id) == pb.task_id and t.status == "in_progress" for t in ready)
                 else "scheduled",
             )
         )
     await db.flush()
     await persist_daily_metrics(db, company_id, user_id, day)
-    return await _day_blocks(db, company_id, user_id, day)
+    blocks = await _day_blocks(db, company_id, user_id, day)
+    placed_ids = [pb.task_id for pb in planned if pb.task_id]
+    unplaced = [t.title for t in ready if str(t.id) not in set(placed_ids)]
+    if placed_ids:
+        n = len(placed_ids)
+        msg = f"Placed {n} task{'s' if n != 1 else ''} on {day.isoformat()}."
+        if unplaced:
+            msg += f" {len(unplaced)} did not fit remaining Open capacity."
+        msg += " Open Today to see the calendar."
+    else:
+        msg = "Today is full. Shorten a planned block to make 15 minutes of Open capacity."
+        unplaced = [t.title for t in ready]
+    return _place_result(
+        blocks=blocks,
+        day=day,
+        placed_ids=placed_ids,
+        unplaced_titles=unplaced,
+        message=msg,
+    )
 
 
 async def _day_blocks(
@@ -1136,6 +1251,7 @@ async def get_day(
             task_id=str(b.task_id) if b.task_id else None,
         )
         for b in blocks
+        if not _is_open_capacity(b)
     ]
     cur, nxt = current_and_next(engine_blocks, now_min if now_min >= 0 else 24 * 60)
     cur_out = next((x for x in timeline if x["task_id"] == (cur.task_id if cur else None) and cur and _minutes_of(x["start_time"]) == cur.start_min), None)

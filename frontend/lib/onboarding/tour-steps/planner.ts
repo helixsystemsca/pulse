@@ -39,14 +39,14 @@ export const PLANNER_TODAY_TOUR_STEPS: TourStep[] = [
     target: '[data-tour="planner-quick-add"]',
     title: "Add into Open capacity",
     description:
-      "Type a title, pick a category, and Add. Pulse splits an Open block to make room. Open is unused capacity, not a full day.",
+      "Type a title, pick a category, and Add. Pulse splits a labeled Open block to make room. Open is unused capacity, not a full day.",
     placement: "bottom",
   },
   {
     target: '[data-tour="planner-calendar"]',
     title: "Day calendar",
     description:
-      "Drag a planned block to move it. Pull the top or bottom edge to resize. Locked meetings and interruptions stay put. Open ranges show + Add block.",
+      "Drag a planned block to move it. Pull the top or bottom edge to resize. Dropping onto another planned block shows a conflict message. Locked meetings and interruptions stay put. Open hours stay labeled — click one to add work.",
     placement: "right",
   },
   {
@@ -103,14 +103,14 @@ export const PLANNER_INBOX_TOUR_STEPS: TourStep[] = [
     target: '[data-tour="planner-capture"]',
     title: "New task",
     description:
-      "Name, category, priority, and estimate. Source can be project, PM, inspection, and similar. Add to inbox stores it. Place on today fits ready tasks onto Open capacity without resetting the day.",
+      "Name, category, priority, and estimate. Source can be project, PM, inspection, and similar. Add to inbox stores it. Place on today fits ready tasks onto Open capacity without resetting the day, and tells you if nothing could be placed.",
     placement: "top",
   },
   {
     target: '[data-tour="planner-task-list"]',
     title: "Open work",
     description:
-      "Search and filter by status. Start, Complete, or Block from the row. Blocked work stays visible so it is not forgotten.",
+      "Search and filter by status. Place on today, Start, Complete, Block, Archive, or Delete from the row. Blocked work stays visible so it is not forgotten.",
     placement: "top",
   },
 ];
