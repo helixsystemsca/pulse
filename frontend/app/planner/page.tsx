@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { DayCalendar } from "@/components/planner/DayCalendar";
 import { PlannerChrome } from "@/components/planner/PlannerChrome";
 import { PlannerSettingsModal } from "@/components/planner/PlannerSettingsModal";
-import { clockFromMinutes, freeGaps, minutesFromClock } from "@/lib/planner/dayCalendar";
+import { clockFromMinutes, freeGaps, isCapacityBlock, minutesFromClock } from "@/lib/planner/dayCalendar";
 import {
   DELAY_REASON_LABELS,
   closeoutDay,
@@ -56,13 +56,19 @@ function minsLabel(n: number): string {
 function firstGap(day: PlannerDay): { start: string; end: string } | null {
   const start = minutesFromClock(day.work_start);
   const end = minutesFromClock(day.work_end);
-  const occupied = day.timeline.map((block) => ({
-    start: minutesFromClock(block.start_time),
-    end: minutesFromClock(block.end_time),
-  }));
+  const occupied = day.timeline
+    .filter((block) => !isCapacityBlock(block))
+    .map((block) => ({
+      start: minutesFromClock(block.start_time),
+      end: minutesFromClock(block.end_time),
+    }));
   const gap = freeGaps(start, end, occupied)[0];
   if (!gap) return null;
   return { start: clockFromMinutes(gap.start), end: clockFromMinutes(Math.min(gap.end, gap.start + 60)) };
+}
+
+function hasOpenCapacity(day: PlannerDay): boolean {
+  return day.timeline.some((block) => isCapacityBlock(block));
 }
 
 export default function PlannerTodayPage() {
@@ -79,6 +85,8 @@ export default function PlannerTodayPage() {
   const [emergencyOpen, setEmergencyOpen] = useState(false);
   const [emReason, setEmReason] = useState("emergency");
   const [emNotes, setEmNotes] = useState("");
+  const [emCreateWr, setEmCreateWr] = useState(false);
+  const [emDuration, setEmDuration] = useState("workday");
   const [meetingTitle, setMeetingTitle] = useState("");
   const [meetingStart, setMeetingStart] = useState("08:30");
   const [meetingEnd, setMeetingEnd] = useState("09:00");
@@ -128,7 +136,7 @@ export default function PlannerTodayPage() {
     if (!title || !day) return;
     const gap = firstGap(day);
     if (!gap) {
-      setError("Condense existing blocks to free a 15-minute gap, then add a new block.");
+      setError("No Open capacity left. Shorten a planned block to make 15 minutes, then add work.");
       return;
     }
     await run(async () => {
@@ -138,6 +146,7 @@ export default function PlannerTodayPage() {
         end_time: gap.end,
         title,
         category_id: quickCat || null,
+        block_type: "task",
       });
       setQuick("");
     });
@@ -169,7 +178,12 @@ export default function PlannerTodayPage() {
       <PageBody>
         <PlannerChrome />
         {error ? (
-          <p className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>
+          <div className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">
+            <p>{error}</p>
+            <button type="button" className={`${btnGhost} mt-2`} onClick={() => void reload()}>
+              Retry
+            </button>
+          </div>
         ) : null}
 
         <div className="flex flex-wrap items-end justify-between gap-3">
@@ -190,7 +204,7 @@ export default function PlannerTodayPage() {
           </div>
           <form onSubmit={onQuickAdd} data-tour="planner-quick-add" className="flex min-w-[16rem] flex-1 flex-wrap items-end gap-2">
             <label className="min-w-[12rem] flex-1">
-              <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-ds-muted">Add into a gap</span>
+              <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-ds-muted">Add into Open capacity</span>
               <input
                 className={inputClass}
                 placeholder="Review ammonia plant inspection report"
@@ -228,11 +242,43 @@ export default function PlannerTodayPage() {
           </div>
         ) : null}
 
-        {loading || !day ? (
+        {loading ? (
           <p className="text-sm text-ds-muted">Loading…</p>
+        ) : !day ? (
+          <div className="rounded-xl border border-ds-border bg-ds-card p-4">
+            <p className="text-sm text-ds-foreground">This day could not be loaded.</p>
+            <p className="mt-1 text-sm text-ds-muted">Check your connection, then retry. If it is empty, start the hour template.</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button type="button" className={btnPrimary} onClick={() => void reload()}>
+                Retry
+              </button>
+              <button type="button" className={btnGhost} onClick={() => void run(() => generateDay(date))}>
+                Start hour template
+              </button>
+            </div>
+          </div>
         ) : (
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(18rem,0.7fr)]">
             <div className="space-y-3">
+              {day.timeline.length === 0 ? (
+                <div className="rounded-xl border border-ds-border bg-ds-card p-4">
+                  <p className="font-medium text-ds-foreground">No blocks on this day yet.</p>
+                  <p className="mt-1 text-sm text-ds-muted">
+                    Start the 8:30–4:30 hour template (Open capacity), then add work or place inbox tasks.
+                  </p>
+                  <button type="button" className={`${btnPrimary} mt-3`} disabled={busy} onClick={() => void run(() => generateDay(date))}>
+                    Start hour template
+                  </button>
+                </div>
+              ) : hasOpenCapacity(day) ? (
+                <p className="rounded-lg border border-ds-border bg-ds-card px-3 py-2 text-sm text-ds-muted">
+                  Open blocks are unused capacity. Quick-add, + Add block, or Inbox → Place on today will fill them without resetting the day.
+                </p>
+              ) : !firstGap(day) ? (
+                <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
+                  The day is full. Shorten a planned block to make 15 minutes of Open capacity, then add work.
+                </p>
+              ) : null}
               <div data-tour="planner-calendar">
               <DayCalendar
                 date={date}
@@ -252,6 +298,7 @@ export default function PlannerTodayPage() {
                       end_time: end,
                       title,
                       category_id: categoryId,
+                      block_type: title.trim() && title.trim().toLowerCase() !== "open" ? "task" : "open",
                     }),
                   )
                 }
@@ -336,7 +383,7 @@ export default function PlannerTodayPage() {
 
               <section data-tour="planner-meeting" className="rounded-xl border border-ds-border bg-ds-card p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">Add meeting (internal calendar)</p>
-                <p className="mt-1 text-xs text-ds-muted">Needs an open gap. Condense blocks first if the slot is full.</p>
+                <p className="mt-1 text-xs text-ds-muted">Inserts into Open capacity. Locked on the calendar so it cannot be dragged.</p>
                 <div className="mt-2 space-y-2">
                   <input className={inputClass} placeholder="Capital projects meeting" value={meetingTitle} onChange={(e) => setMeetingTitle(e.target.value)} />
                   <div className="grid grid-cols-2 gap-2">
@@ -367,7 +414,7 @@ export default function PlannerTodayPage() {
                 <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">Daily review</p>
                 <ul className="mt-2 space-y-1 text-sm text-ds-foreground">
                   <li>Completed: {day.metrics.completed_count}</li>
-                  <li>Completion: {day.completion_pct}%</li>
+                  <li>Completion: {day.completion_pct}% of planned work (task blocks — Open, meetings, and interruptions do not count)</li>
                   <li>Delayed: {day.metrics.delayed_count}</li>
                   <li>Blocked: {day.metrics.blocked_count}</li>
                   <li>Reactive interruptions: {minsLabel(day.metrics.interruption_minutes)}</li>
@@ -413,7 +460,10 @@ export default function PlannerTodayPage() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
             <div className="w-full max-w-md rounded-xl border border-ds-border bg-ds-card p-4 shadow-xl">
               <h3 className="text-lg font-semibold">Emergency / Interruption</h3>
-              <p className="mt-1 text-sm text-ds-muted">Pauses the current task and records the interruption.</p>
+              <p className="mt-1 text-sm text-ds-muted">Pauses the current task and records the interruption. Does not count as poor performance.</p>
+              <a href="/recreation/emergency" className="mt-2 inline-block text-sm font-medium text-ds-primary hover:underline">
+                Open Emergency Response
+              </a>
               <label className="mt-3 block text-xs font-medium uppercase tracking-wide text-ds-muted">Reason</label>
               <select className={inputClass} value={emReason} onChange={(e) => setEmReason(e.target.value)}>
                 {Object.entries(DELAY_REASON_LABELS).map(([k, v]) => (
@@ -424,6 +474,23 @@ export default function PlannerTodayPage() {
               </select>
               <label className="mt-3 block text-xs font-medium uppercase tracking-wide text-ds-muted">Notes</label>
               <input className={inputClass} value={emNotes} onChange={(e) => setEmNotes(e.target.value)} placeholder="Pool chemical issue" />
+              <label className="mt-3 block text-xs font-medium uppercase tracking-wide text-ds-muted">Duration</label>
+              <select className={inputClass} value={emDuration} onChange={(e) => setEmDuration(e.target.value)}>
+                <option value="workday">Until end of workday</option>
+                <option value="30">30 minutes</option>
+                <option value="60">1 hour</option>
+                <option value="90">90 minutes</option>
+                <option value="120">2 hours</option>
+              </select>
+              <label className="mt-3 flex items-start gap-2 text-sm text-ds-foreground">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={emCreateWr}
+                  onChange={(e) => setEmCreateWr(e.target.checked)}
+                />
+                <span>Create a work request for this interruption (continues even if work-request create fails)</span>
+              </label>
               <div className="mt-4 flex justify-end gap-2">
                 <button type="button" className={btnGhost} onClick={() => setEmergencyOpen(false)}>
                   Cancel
@@ -433,11 +500,28 @@ export default function PlannerTodayPage() {
                   className={btnDanger}
                   disabled={busy}
                   onClick={() =>
-                    void run(async () => {
-                      await startInterruption({ reason: emReason, notes: emNotes || undefined });
-                      setEmergencyOpen(false);
-                      setEmNotes("");
-                    })
+                    void (async () => {
+                      setBusy(true);
+                      try {
+                        const duration_minutes = emDuration === "workday" ? undefined : Number(emDuration);
+                        const row = await startInterruption({
+                          reason: emReason,
+                          notes: emNotes || undefined,
+                          create_work_request: emCreateWr,
+                          duration_minutes,
+                        });
+                        setEmergencyOpen(false);
+                        setEmNotes("");
+                        setEmCreateWr(false);
+                        setEmDuration("workday");
+                        await reload();
+                        if (row.work_request_warning) setError(row.work_request_warning);
+                      } catch (e) {
+                        setError(e instanceof Error ? e.message : "Action failed");
+                      } finally {
+                        setBusy(false);
+                      }
+                    })()
                   }
                 >
                   Start interruption

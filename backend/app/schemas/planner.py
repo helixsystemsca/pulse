@@ -228,11 +228,17 @@ class PlannerCalendarEventOut(BaseModel):
     notes: Optional[str] = None
 
 
+class PlannerPlaceIn(BaseModel):
+    date: Optional[date] = None
+    task_ids: Optional[list[str]] = None
+
+
 class PlannerInterruptionIn(BaseModel):
     reason: str = "emergency"
     notes: Optional[str] = None
     category_id: Optional[str] = None
     create_work_request: bool = False
+    duration_minutes: Optional[int] = None
 
 
 class PlannerInterruptionOut(BaseModel):
@@ -245,6 +251,9 @@ class PlannerInterruptionOut(BaseModel):
     end_time: Optional[datetime] = None
     duration_minutes: Optional[int] = None
     paused_task_id: Optional[str] = None
+    create_work_request: bool = False
+    work_request_id: Optional[str] = None
+    work_request_warning: Optional[str] = None
 
 
 class PlannerDeferIn(BaseModel):
@@ -265,6 +274,7 @@ class PlannerBlockCreateIn(BaseModel):
     title: str = "Open"
     category_id: Optional[str] = None
     block_type: str = "open"
+    task_id: Optional[str] = None
 
 
 class PlannerBlockPatchIn(BaseModel):

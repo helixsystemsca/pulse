@@ -13,6 +13,7 @@ from app.services.planner.scheduling_engine import (
     current_and_next,
     free_gaps,
     hour_template_slots,
+    place_into_open_slots,
     score_task,
     snap_minutes,
     subtract_intervals,
@@ -176,3 +177,24 @@ def test_free_gaps_appear_after_condensing() -> None:
 def test_snap_minutes_to_quarter_hour() -> None:
     assert snap_minutes(8 * 60 + 37) == 8 * 60 + 30
     assert snap_minutes(8 * 60 + 38) == 8 * 60 + 45
+
+
+def test_place_into_open_slots_splits_merged_hour_template() -> None:
+    work_start, work_end = 8 * 60 + 30, 16 * 60 + 30
+    tasks = [
+        _task(id="sop", title="Pool shutdown SOP", priority="high", estimated_minutes=90),
+        _task(id="email", title="Vendor email", priority="low", estimated_minutes=30),
+    ]
+    planned = place_into_open_slots(
+        today=TODAY,
+        tasks=tasks,
+        open_slots=[(work_start, work_end)],
+        cfg=EngineConfig(work_start_min=work_start, work_end_min=work_end),
+    )
+    by_task = {b.task_id: b for b in planned if b.task_id}
+    assert "sop" in by_task
+    assert by_task["sop"].end_min - by_task["sop"].start_min == 90
+    assert "email" in by_task
+    leftover = [b for b in planned if b.block_type == "open"]
+    assert leftover
+    assert sum(b.end_min - b.start_min for b in leftover) == (work_end - work_start) - 120

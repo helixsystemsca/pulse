@@ -255,6 +255,46 @@ def _pick_task(
     return eligible[0]
 
 
+def place_into_open_slots(
+    *,
+    today: date,
+    tasks: list[EngineTask],
+    open_slots: list[tuple[int, int]],
+    cfg: EngineConfig | None = None,
+    already_used: set[str] | None = None,
+) -> list[PlannedBlock]:
+    """Fill Open/free capacity with scored inbox tasks. Leftover time stays Open.
+
+    Adjacent slots should be merged by the caller so a task can span what used to be
+    multiple hour-template Open blocks.
+    """
+    cfg = cfg or EngineConfig()
+    planned: list[PlannedBlock] = []
+    used: set[str] = set(already_used or [])
+    work_span = max(1, cfg.work_end_min - cfg.work_start_min)
+    for start, end in sorted(open_slots, key=lambda pair: (pair[0], pair[1])):
+        if end - start < SNAP_MINUTES:
+            continue
+        _fill_slot(
+            start,
+            end,
+            block_type="open",
+            category=None,
+            routine_id=None,
+            routine_name=None,
+            require_category=False,
+            locked=False,
+            tasks=tasks,
+            used=used,
+            today=today,
+            planned=planned,
+            cfg=cfg,
+            work_span=work_span,
+        )
+    planned.sort(key=lambda b: (b.start_min, b.end_min, b.title))
+    return planned
+
+
 def _fill_slot(
     start: int,
     end: int,

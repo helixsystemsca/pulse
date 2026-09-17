@@ -10,9 +10,9 @@ import {
   completeTask,
   createTask,
   fetchCategories,
-  fetchEmailSuggestions,
+  fetchMeta,
   fetchTasks,
-  generateDay,
+  placeOnToday,
   startTask,
   type PlannerCategory,
   type PlannerTask,
@@ -49,19 +49,21 @@ export default function PlannerInboxPage() {
   const [status, setStatus] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [emailProvider, setEmailProvider] = useState<string | null>(null);
   const [emailCount, setEmailCount] = useState(0);
 
   const reload = useCallback(async () => {
     setError(null);
     try {
-      const [c, t, email] = await Promise.all([
+      const [c, t, meta] = await Promise.all([
         fetchCategories(),
         fetchTasks({ q: q || undefined, status: status || undefined }),
-        fetchEmailSuggestions(),
+        fetchMeta(),
       ]);
       setCats(c);
       setTasks(t);
-      setEmailCount(email.length);
+      setEmailProvider(meta.email_provider);
+      setEmailCount(0);
       setForm((f) => ({ ...f, category_id: f.category_id || c[0]?.id || "" }));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load inbox");
@@ -105,6 +107,49 @@ export default function PlannerInboxPage() {
     }
   }
 
+  async function capturePayload() {
+    return {
+      title: form.title.trim(),
+      description: form.description || undefined,
+      category_id: form.category_id || undefined,
+      priority: form.priority,
+      estimated_minutes: Number(form.estimated_minutes) || 30,
+      due_date: form.due_date || undefined,
+      deadline: form.deadline || undefined,
+      source_type: form.source_type,
+      project_id: form.project_id || undefined,
+      asset_id: form.asset_id || undefined,
+      person_label: form.person_label || undefined,
+      recurrence: form.recurrence || undefined,
+      notes: form.notes || undefined,
+      tags: form.tags
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+    };
+  }
+
+  async function onPlaceToday() {
+    setBusy(true);
+    setError(null);
+    try {
+      let ids: string[] = [];
+      if (form.title.trim()) {
+        const created = await createTask(await capturePayload());
+        ids = [created.id];
+        setForm((f) => ({ ...emptyForm, category_id: f.category_id }));
+      } else {
+        ids = tasks.filter((t) => t.status === "not_started" || t.status === "deferred" || t.status === "in_progress").map((t) => t.id);
+      }
+      await placeOnToday({ task_ids: ids.length ? ids : undefined });
+      await reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not place on today");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -116,11 +161,14 @@ export default function PlannerInboxPage() {
         <PlannerChrome />
         {error ? <p className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p> : null}
 
-        <section data-tour="planner-email" className="rounded-xl border border-dashed border-ds-border bg-ds-card p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">Potential tasks from email</p>
+        <section data-tour="planner-email" className="rounded-xl border border-ds-border bg-ds-card px-4 py-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">Email suggestions</p>
           <p className="mt-1 text-sm text-ds-muted">
-            Email connectors are not connected. Suggestions will appear here for review — never auto-created.
-            {emailCount ? ` ${emailCount} pending.` : ""}
+            {emailProvider
+              ? emailCount
+                ? `${emailCount} candidate${emailCount === 1 ? "" : "s"} ready for review — nothing is created automatically.`
+                : "Mailbox connected. No suggested tasks right now."
+              : "Mailbox not connected. Suggestions stay off until Outlook or Gmail is linked."}
           </p>
         </section>
 
@@ -203,7 +251,7 @@ export default function PlannerInboxPage() {
             <button type="submit" className={btnPrimary} disabled={busy}>
               Add to inbox
             </button>
-            <button type="button" className={btnGhost} disabled={busy} onClick={() => void generateDay()}>
+            <button type="button" className={btnGhost} disabled={busy} onClick={() => void onPlaceToday()}>
               Place on today
             </button>
           </div>
@@ -235,6 +283,17 @@ export default function PlannerInboxPage() {
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-1">
+                  <button
+                    type="button"
+                    className={btnGhost}
+                    onClick={() =>
+                      void placeOnToday({ task_ids: [t.id] })
+                        .then(() => reload())
+                        .catch((err) => setError(err instanceof Error ? err.message : "Could not place on today"))
+                    }
+                  >
+                    Place on today
+                  </button>
                   <button type="button" className={btnGhost} onClick={() => void startTask(t.id).then(() => reload())}>
                     Start
                   </button>

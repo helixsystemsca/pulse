@@ -45,6 +45,16 @@ export function freeGaps(
   return gaps;
 }
 
+/** Open blocks are unused capacity, not real work — they can be split to insert items. */
+export function isCapacityBlock(block: { block_type: string; locked?: boolean }): boolean {
+  return block.block_type === "open" && !block.locked;
+}
+
+/** Locked, meeting, and interruption blocks must not drag or resize. */
+export function isImmovableBlock(block: { locked?: boolean; block_type: string }): boolean {
+  return Boolean(block.locked) || block.block_type === "meeting" || block.block_type === "interruption";
+}
+
 export function nearestValidRange(
   desiredStart: number,
   duration: number,

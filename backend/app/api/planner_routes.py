@@ -26,6 +26,7 @@ from app.schemas.planner import (
     PlannerInterruptionIn,
     PlannerInterruptionOut,
     PlannerMoveIn,
+    PlannerPlaceIn,
     PlannerRoutineIn,
     PlannerRoutineOut,
     PlannerRoutinePatchIn,
@@ -318,6 +319,27 @@ async def generate_day(
     return payload
 
 
+@router.post("/day/place", response_model=PlannerDayOut)
+async def place_day(
+    db: Db,
+    actor: Actor,
+    _: Editor,
+    body: PlannerPlaceIn | None = None,
+    date_value: Optional[date] = Query(None, alias="date"),
+) -> PlannerDayOut:
+    cid, uid = _cid(actor), _uid(actor)
+    payload_body = body or PlannerPlaceIn()
+    day = payload_body.date or date_value
+    try:
+        await svc.place_inbox_on_day(db, cid, uid, day, task_ids=payload_body.task_ids)
+    except (ValueError, svc.PlannerConflict) as e:
+        _raise_planner(e)
+    data = await svc.get_day(db, cid, uid, day, generate_if_empty=False)
+    payload = PlannerDayOut.model_validate(data)
+    await db.commit()
+    return payload
+
+
 @router.post("/day/accept")
 async def accept_day(
     db: Db,
@@ -415,9 +437,9 @@ async def lock_block(
 async def start_interruption(
     body: PlannerInterruptionIn, db: Db, actor: Actor, _: Editor
 ) -> PlannerInterruptionOut:
-    row = await svc.start_interruption(db, _cid(actor), _uid(actor), body.model_dump())
+    row, extras = await svc.start_interruption(db, _cid(actor), _uid(actor), body.model_dump())
     await db.commit()
-    return PlannerInterruptionOut.model_validate(row)
+    return PlannerInterruptionOut.model_validate(svc.serialize_interruption(row, extras))
 
 
 @router.post("/interruptions/{interruption_id}/end", response_model=PlannerInterruptionOut)

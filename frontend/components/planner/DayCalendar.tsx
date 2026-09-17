@@ -10,6 +10,8 @@ import {
   clockFromMinutes,
   contrastText,
   freeGaps,
+  isCapacityBlock,
+  isImmovableBlock,
   minutesFromClock,
   nearestValidRange,
   snapMinutes,
@@ -89,7 +91,10 @@ export function DayCalendar({
   const viewStart = Math.min(workA, ...local.map((block) => rangeOf(block).start), workA);
   const viewEnd = Math.max(workB, ...local.map((block) => rangeOf(block).end), workB);
   const height = Math.max(PX_PER_MINUTE * (viewEnd - viewStart), 120);
-  const gaps = useMemo(() => freeGaps(workA, workB, local.map(rangeOf)), [local, workA, workB]);
+  const gaps = useMemo(
+    () => freeGaps(workA, workB, local.filter((block) => !isCapacityBlock(block)).map(rangeOf)),
+    [local, workA, workB],
+  );
 
   const todayIso = useMemo(() => {
     const now = new Date();
@@ -180,7 +185,7 @@ export function DayCalendar({
   }, []);
 
   function startDrag(e: React.PointerEvent, block: PlannerBlock, mode: DragMode) {
-    if (disabled) return;
+    if (disabled || isImmovableBlock(block)) return;
     e.preventDefault();
     e.stopPropagation();
     movedRef.current = false;
@@ -197,7 +202,7 @@ export function DayCalendar({
     <div className="overflow-hidden rounded-xl border border-ds-border bg-ds-card">
       <div className="flex items-center justify-between border-b border-ds-border px-4 py-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">Day calendar</p>
-        <p className="text-xs text-ds-muted">Drag to move · handles resize · 15 min grid</p>
+        <p className="text-xs text-ds-muted">Drag planned work · locked items stay put · Open is + Add capacity</p>
       </div>
       <div className="relative overflow-x-auto">
         <div className="relative min-w-[28rem]" style={{ height }}>
@@ -251,17 +256,19 @@ export function DayCalendar({
                   style={{ top, height: Math.max(h, 18) }}
                 >
                   + Add block
+                  <span className="ml-1 hidden sm:inline">· Open capacity</span>
                 </button>
               );
             })}
 
-            {local.map((block) => {
+            {local.filter((block) => !isCapacityBlock(block)).map((block) => {
               const range = rangeOf(block);
               const top = (range.start - viewStart) * PX_PER_MINUTE;
               const h = Math.max((range.end - range.start) * PX_PER_MINUTE, 18);
               const color = block.category_color || (block.block_type === "meeting" ? "#64748b" : "#94a3b8");
               const text = contrastText(color);
               const selected = selectedId === block.id;
+              const immovable = isImmovableBlock(block);
               return (
                 <div
                   key={block.id}
@@ -284,28 +291,33 @@ export function DayCalendar({
                     background: color,
                     color: text,
                     borderColor: color,
-                    cursor: disabled ? "default" : "grab",
+                    cursor: disabled || immovable ? "default" : "grab",
                   }}
                 >
-                  <button
-                    type="button"
-                    aria-label="Resize start"
-                    className="absolute inset-x-0 top-0 z-10 h-2 cursor-ns-resize"
-                    onPointerDown={(e) => startDrag(e, block, "resize-start")}
-                  />
-                  <button
-                    type="button"
-                    aria-label="Resize end"
-                    className="absolute inset-x-0 bottom-0 z-10 h-2 cursor-ns-resize"
-                    onPointerDown={(e) => startDrag(e, block, "resize-end")}
-                  />
+                  {immovable ? null : (
+                    <>
+                      <button
+                        type="button"
+                        aria-label="Resize start"
+                        className="absolute inset-x-0 top-0 z-10 h-2 cursor-ns-resize"
+                        onPointerDown={(e) => startDrag(e, block, "resize-start")}
+                      />
+                      <button
+                        type="button"
+                        aria-label="Resize end"
+                        className="absolute inset-x-0 bottom-0 z-10 h-2 cursor-ns-resize"
+                        onPointerDown={(e) => startDrag(e, block, "resize-end")}
+                      />
+                    </>
+                  )}
                   <div className="pointer-events-none px-2 py-1">
                     <p className="text-[10px] font-medium uppercase tracking-wide opacity-80">
                       {hhmm(block.start_time)}–{hhmm(block.end_time)}
                       {nowId === block.id ? " · now" : nextId === block.id ? " · next" : ""}
+                      {immovable ? " · locked" : ""}
                     </p>
                     <p className="truncate text-sm font-semibold leading-tight">{block.title}</p>
-                    <p className="truncate text-[11px] opacity-80">{block.category_name ?? "No category"}</p>
+                    <p className="truncate text-[11px] opacity-80">{block.category_name ?? block.block_type}</p>
                   </div>
                 </div>
               );

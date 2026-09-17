@@ -98,6 +98,9 @@ export type PlannerInterruption = {
   end_time: string | null;
   duration_minutes: number | null;
   paused_task_id: string | null;
+  create_work_request?: boolean;
+  work_request_id?: string | null;
+  work_request_warning?: string | null;
 };
 
 export type PlannerDay = {
@@ -269,6 +272,14 @@ export async function generateDay(date?: string): Promise<PlannerDay> {
   return apiFetch<PlannerDay>(`${BASE}/day/generate${suffix}`, { method: "POST" });
 }
 
+export async function placeOnToday(opts?: { date?: string; task_ids?: string[] }): Promise<PlannerDay> {
+  const qs = opts?.date ? `?date=${opts.date}` : "";
+  return apiFetch<PlannerDay>(`${BASE}/day/place${qs}`, {
+    method: "POST",
+    json: { date: opts?.date, task_ids: opts?.task_ids },
+  });
+}
+
 export async function acceptDay(date?: string): Promise<void> {
   const suffix = date ? `?date=${date}` : "";
   await apiFetch(`${BASE}/day/accept${suffix}`, { method: "POST" });
@@ -290,6 +301,7 @@ export async function createBlock(body: {
   title?: string;
   category_id?: string | null;
   block_type?: string;
+  task_id?: string;
 }): Promise<PlannerBlock> {
   return apiFetch<PlannerBlock>(`${BASE}/blocks`, { method: "POST", json: body });
 }
@@ -309,7 +321,13 @@ export async function lockBlock(id: string, locked = true): Promise<void> {
   await apiFetch(`${BASE}/blocks/${id}/lock?locked=${locked}`, { method: "POST" });
 }
 
-export async function startInterruption(body: { reason: string; notes?: string; category_id?: string; create_work_request?: boolean }): Promise<PlannerInterruption> {
+export async function startInterruption(body: {
+  reason: string;
+  notes?: string;
+  category_id?: string;
+  create_work_request?: boolean;
+  duration_minutes?: number;
+}): Promise<PlannerInterruption> {
   return apiFetch<PlannerInterruption>(`${BASE}/interruptions`, { method: "POST", json: body });
 }
 

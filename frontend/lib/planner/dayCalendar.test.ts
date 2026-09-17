@@ -3,6 +3,8 @@ import {
   applyResize,
   clockFromMinutes,
   freeGaps,
+  isCapacityBlock,
+  isImmovableBlock,
   minutesFromClock,
   nearestValidRange,
   snapMinutes,
@@ -29,6 +31,19 @@ describe("day calendar geometry", () => {
     const gaps = freeGaps(workStart, workEnd, occupied);
     expect(gaps[0]).toEqual({ start: workStart + 90, end: workEnd });
     expect(gaps[0].end - gaps[0].start).toBeGreaterThanOrEqual(15);
+  });
+
+  it("treats Open blocks as capacity, not occupancy", () => {
+    expect(isCapacityBlock({ block_type: "open", locked: false })).toBe(true);
+    expect(isCapacityBlock({ block_type: "open", locked: true })).toBe(false);
+    expect(isCapacityBlock({ block_type: "task" })).toBe(false);
+  });
+
+  it("refuses drag of locked, meeting, and interruption blocks", () => {
+    expect(isImmovableBlock({ locked: true, block_type: "task" })).toBe(true);
+    expect(isImmovableBlock({ locked: false, block_type: "meeting" })).toBe(true);
+    expect(isImmovableBlock({ locked: false, block_type: "interruption" })).toBe(true);
+    expect(isImmovableBlock({ locked: false, block_type: "task" })).toBe(false);
   });
 
   it("moves a block into the nearest non-overlapping 15-minute slot", () => {
