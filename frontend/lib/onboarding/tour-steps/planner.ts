@@ -19,7 +19,7 @@ export const PLANNER_TODAY_TOUR_STEPS: TourStep[] = [
     target: '[data-tour="planner-emergency"]',
     title: "Emergency / interruption",
     description:
-      "Use this when the day breaks. It pauses the current task, records why, and does not treat operational emergencies as poor performance.",
+      "Use this when the day breaks. It pauses the current task, records why, can open Emergency Response, and can create a work request without blocking the interruption.",
     placement: "left",
   },
   {
@@ -37,16 +37,16 @@ export const PLANNER_TODAY_TOUR_STEPS: TourStep[] = [
   },
   {
     target: '[data-tour="planner-quick-add"]',
-    title: "Add into a gap",
+    title: "Add into Open capacity",
     description:
-      "Type a title, pick a category, and Add. Pulse drops a block into the first free 15-minute gap. If the day is packed, shorten a block first.",
+      "Type a title, pick a category, and Add. Pulse splits a labeled Open block to make room. Open is unused capacity, not a full day.",
     placement: "bottom",
   },
   {
     target: '[data-tour="planner-calendar"]',
     title: "Day calendar",
     description:
-      "Drag a block to move it. Pull the top or bottom edge to resize. Everything snaps to 15 minutes and will not overlap. Empty gaps show + Add block.",
+      "Drag a planned block to move it. Pull the top or bottom edge to resize. Dropping onto another planned block shows a conflict message. Locked meetings and interruptions stay put. Open hours stay labeled — click one to add work.",
     placement: "right",
   },
   {
@@ -72,14 +72,14 @@ export const PLANNER_TODAY_TOUR_STEPS: TourStep[] = [
     target: '[data-tour="planner-meeting"]',
     title: "Insert a meeting",
     description:
-      "Creates an internal calendar event and a locked meeting block. Outlook/Google are not connected. The slot must be free—condense first if needed.",
+      "Creates an internal calendar event and a locked meeting block. Outlook/Google are not connected. Meetings insert into Open capacity and cannot be dragged.",
     placement: "left",
   },
   {
     target: '[data-tour="planner-closeout"]',
     title: "Daily review",
     description:
-      "End-of-day counts: completed, delayed, blocked, interruptions, meetings, and strategic time. Save notes here so Analytics has a record.",
+      "End-of-day counts: completed planned work, delayed, blocked, interruptions, meetings, and strategic time. Completion % is task/planned work only — Open blocks do not count. Save notes here so Analytics has a record.",
     placement: "left",
   },
 ];
@@ -96,21 +96,21 @@ export const PLANNER_INBOX_TOUR_STEPS: TourStep[] = [
     target: '[data-tour="planner-email"]',
     title: "Email suggestions",
     description:
-      "When an email connector exists, candidate tasks appear here for you to accept. Nothing is created automatically. Until a connector is on, this stays empty.",
+      "Labeled when a mailbox is not connected so the panel does not look broken. When a connector exists, candidate tasks appear here for you to accept — never auto-created.",
     placement: "bottom",
   },
   {
     target: '[data-tour="planner-capture"]',
     title: "New task",
     description:
-      "Name, category, priority, and estimate. Source can be project, PM, inspection, and similar. Add to inbox stores it; Place on today also tries to fit it on the calendar.",
+      "Name, category, priority, and estimate. Source can be project, PM, inspection, and similar. Add to inbox stores it. Place on today fits ready tasks onto Open capacity without resetting the day, and tells you if nothing could be placed.",
     placement: "top",
   },
   {
     target: '[data-tour="planner-task-list"]',
     title: "Open work",
     description:
-      "Search and filter by status. Start, Complete, or Block from the row. Blocked work stays visible so it is not forgotten.",
+      "Search and filter by status. Place on today, Start, Complete, Block, Archive, or Delete from the row. Blocked work stays visible so it is not forgotten.",
     placement: "top",
   },
 ];

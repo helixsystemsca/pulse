@@ -228,11 +228,20 @@ class PlannerCalendarEventOut(BaseModel):
     notes: Optional[str] = None
 
 
+class PlannerPlaceIn(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    # Field cannot be named `date` — with from __future__ import annotations it shadows datetime.date.
+    plan_date: Optional[date] = Field(default=None, alias="date")
+    task_ids: Optional[list[str]] = None
+
+
 class PlannerInterruptionIn(BaseModel):
     reason: str = "emergency"
     notes: Optional[str] = None
     category_id: Optional[str] = None
     create_work_request: bool = False
+    duration_minutes: Optional[int] = None
 
 
 class PlannerInterruptionOut(BaseModel):
@@ -245,6 +254,9 @@ class PlannerInterruptionOut(BaseModel):
     end_time: Optional[datetime] = None
     duration_minutes: Optional[int] = None
     paused_task_id: Optional[str] = None
+    create_work_request: bool = False
+    work_request_id: Optional[str] = None
+    work_request_warning: Optional[str] = None
 
 
 class PlannerDeferIn(BaseModel):
@@ -265,6 +277,7 @@ class PlannerBlockCreateIn(BaseModel):
     title: str = "Open"
     category_id: Optional[str] = None
     block_type: str = "open"
+    task_id: Optional[str] = None
 
 
 class PlannerBlockPatchIn(BaseModel):
@@ -290,6 +303,16 @@ class PlannerDayOut(BaseModel):
     timeline: list[PlannerScheduleBlockOut] = Field(default_factory=list)
     open_interruption: Optional[PlannerInterruptionOut] = None
     metrics: dict[str, Any] = Field(default_factory=dict)
+
+
+class PlannerPlaceOut(PlannerDayOut):
+    """Day board plus placement feedback for Inbox → Place on today."""
+
+    placed_count: int = 0
+    unplaced_count: int = 0
+    unplaced_titles: list[str] = Field(default_factory=list)
+    placed_task_ids: list[str] = Field(default_factory=list)
+    message: str = ""
 
 
 class PlannerAnalyticsOut(BaseModel):

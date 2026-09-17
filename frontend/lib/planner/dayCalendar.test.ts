@@ -3,10 +3,15 @@ import {
   applyResize,
   clockFromMinutes,
   freeGaps,
+  isCapacityBlock,
+  isImmovableBlock,
   minutesFromClock,
   nearestValidRange,
+  occupancyForDrag,
+  intendedMoveConflicts,
   snapMinutes,
 } from "@/lib/planner/dayCalendar";
+import { plannerToday } from "@/lib/planner/plannerService";
 
 describe("day calendar geometry", () => {
   it("snaps to 15-minute increments", () => {
@@ -31,6 +36,42 @@ describe("day calendar geometry", () => {
     expect(gaps[0].end - gaps[0].start).toBeGreaterThanOrEqual(15);
   });
 
+  it("treats Open blocks as capacity, not occupancy", () => {
+    expect(isCapacityBlock({ block_type: "open", locked: false })).toBe(true);
+    expect(isCapacityBlock({ block_type: "open", locked: true })).toBe(false);
+    expect(isCapacityBlock({ block_type: "task" })).toBe(false);
+  });
+
+  it("excludes Open from drag occupancy so work can move into capacity", () => {
+    const occupied = occupancyForDrag(
+      [
+        { id: "work", block_type: "task", start_time: "08:30", end_time: "09:15" },
+        { id: "open", block_type: "open", start_time: "09:15", end_time: "10:30" },
+      ],
+      "work",
+    );
+    expect(occupied).toEqual([]);
+    expect(intendedMoveConflicts({ start: 9 * 60 + 15, end: 10 * 60 }, occupied)).toBe(false);
+  });
+
+  it("flags a conflict when the intended drop overlaps planned work", () => {
+    const occupied = occupancyForDrag(
+      [
+        { id: "left", block_type: "task", start_time: "08:30", end_time: "09:15" },
+        { id: "right", block_type: "task", start_time: "09:15", end_time: "10:30" },
+      ],
+      "left",
+    );
+    expect(intendedMoveConflicts({ start: 9 * 60, end: 9 * 60 + 45 }, occupied)).toBe(true);
+  });
+
+  it("refuses drag of locked, meeting, and interruption blocks", () => {
+    expect(isImmovableBlock({ locked: true, block_type: "task" })).toBe(true);
+    expect(isImmovableBlock({ locked: false, block_type: "meeting" })).toBe(true);
+    expect(isImmovableBlock({ locked: false, block_type: "interruption" })).toBe(true);
+    expect(isImmovableBlock({ locked: false, block_type: "task" })).toBe(false);
+  });
+
   it("moves a block into the nearest non-overlapping 15-minute slot", () => {
     const workStart = 8 * 60 + 30;
     const workEnd = 16 * 60 + 30;
@@ -52,5 +93,9 @@ describe("day calendar geometry", () => {
     );
     expect(next.end).toBe(11 * 60);
     expect(next.start).toBe(original.start);
+  });
+
+  it("formats planner today as YYYY-MM-DD in America/Vancouver", () => {
+    expect(plannerToday("America/Vancouver")).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });

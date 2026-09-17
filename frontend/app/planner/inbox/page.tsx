@@ -4,15 +4,18 @@ import { useCallback, useEffect, useState } from "react";
 import { ListChecks } from "lucide-react";
 import { PageBody } from "@/components/ui/PageBody";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { PlannerChrome } from "@/components/planner/PlannerChrome";
+import { PlannerChrome, PlannerToast } from "@/components/planner/PlannerChrome";
 import {
+  archivePlannerTask,
   blockTask,
   completeTask,
   createTask,
+  deletePlannerTask,
   fetchCategories,
-  fetchEmailSuggestions,
+  fetchMeta,
   fetchTasks,
-  generateDay,
+  placeOnToday,
+  plannerToday,
   startTask,
   type PlannerCategory,
   type PlannerTask,
@@ -48,20 +51,24 @@ export default function PlannerInboxPage() {
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [onTodayIds, setOnTodayIds] = useState<Set<string>>(new Set());
+  const [emailProvider, setEmailProvider] = useState<string | null>(null);
   const [emailCount, setEmailCount] = useState(0);
 
   const reload = useCallback(async () => {
     setError(null);
     try {
-      const [c, t, email] = await Promise.all([
+      const [c, t, meta] = await Promise.all([
         fetchCategories(),
         fetchTasks({ q: q || undefined, status: status || undefined }),
-        fetchEmailSuggestions(),
+        fetchMeta(),
       ]);
       setCats(c);
       setTasks(t);
-      setEmailCount(email.length);
+      setEmailProvider(meta.email_provider);
+      setEmailCount(0);
       setForm((f) => ({ ...f, category_id: f.category_id || c[0]?.id || "" }));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load inbox");
@@ -71,6 +78,12 @@ export default function PlannerInboxPage() {
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const handle = window.setTimeout(() => setToast(null), 5000);
+    return () => window.clearTimeout(handle);
+  }, [toast]);
 
   async function onCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -105,6 +118,75 @@ export default function PlannerInboxPage() {
     }
   }
 
+  async function capturePayload() {
+    return {
+      title: form.title.trim(),
+      description: form.description || undefined,
+      category_id: form.category_id || undefined,
+      priority: form.priority,
+      estimated_minutes: Number(form.estimated_minutes) || 30,
+      due_date: form.due_date || undefined,
+      deadline: form.deadline || undefined,
+      source_type: form.source_type,
+      project_id: form.project_id || undefined,
+      asset_id: form.asset_id || undefined,
+      person_label: form.person_label || undefined,
+      recurrence: form.recurrence || undefined,
+      notes: form.notes || undefined,
+      tags: form.tags
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+    };
+  }
+
+  async function runPlace(ids?: string[]) {
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await placeOnToday({
+        date: plannerToday(),
+        task_ids: ids?.length ? ids : undefined,
+      });
+      if (result.placed_task_ids?.length) {
+        setOnTodayIds((prev) => {
+          const next = new Set(prev);
+          for (const id of result.placed_task_ids) next.add(id);
+          return next;
+        });
+      }
+      setToast(result.message || (result.placed_count ? "Placed on today." : "Nothing was placed."));
+      await reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not place on today");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onPlaceToday() {
+    let ids: string[] = [];
+    if (form.title.trim()) {
+      setBusy(true);
+      setError(null);
+      try {
+        const created = await createTask(await capturePayload());
+        ids = [created.id];
+        setForm((f) => ({ ...emptyForm, category_id: f.category_id }));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Create failed");
+        setBusy(false);
+        return;
+      }
+      setBusy(false);
+    } else {
+      ids = tasks
+        .filter((t) => t.status === "not_started" || t.status === "deferred" || t.status === "in_progress")
+        .map((t) => t.id);
+    }
+    await runPlace(ids.length ? ids : undefined);
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -114,13 +196,17 @@ export default function PlannerInboxPage() {
       />
       <PageBody>
         <PlannerChrome />
+        <PlannerToast message={toast} />
         {error ? <p className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p> : null}
 
-        <section data-tour="planner-email" className="rounded-xl border border-dashed border-ds-border bg-ds-card p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">Potential tasks from email</p>
+        <section data-tour="planner-email" className="rounded-xl border border-ds-border bg-ds-card px-4 py-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">Email suggestions</p>
           <p className="mt-1 text-sm text-ds-muted">
-            Email connectors are not connected. Suggestions will appear here for review — never auto-created.
-            {emailCount ? ` ${emailCount} pending.` : ""}
+            {emailProvider
+              ? emailCount
+                ? `${emailCount} candidate${emailCount === 1 ? "" : "s"} ready for review — nothing is created automatically.`
+                : "Mailbox connected. No suggested tasks right now."
+              : "Mailbox not connected. Suggestions stay off until Outlook or Gmail is linked."}
           </p>
         </section>
 
@@ -203,7 +289,7 @@ export default function PlannerInboxPage() {
             <button type="submit" className={btnPrimary} disabled={busy}>
               Add to inbox
             </button>
-            <button type="button" className={btnGhost} disabled={busy} onClick={() => void generateDay()}>
+            <button type="button" className={btnGhost} disabled={busy} onClick={() => void onPlaceToday()}>
               Place on today
             </button>
           </div>
@@ -229,26 +315,60 @@ export default function PlannerInboxPage() {
                   <p className="font-medium text-ds-foreground">{t.title}</p>
                   <p className="text-xs text-ds-muted">
                     {t.category_name} · {t.priority} · {t.estimated_minutes} min · {t.status}
+                    {onTodayIds.has(t.id) ? " · on today" : ""}
                     {t.delay_count ? ` · delayed ${t.delay_count}×` : ""}
                     {t.project_id ? ` · project ${t.project_id}` : ""}
                     {t.asset_id ? ` · asset ${t.asset_id}` : ""}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-1">
-                  <button type="button" className={btnGhost} onClick={() => void startTask(t.id).then(() => reload())}>
+                  <button
+                    type="button"
+                    className={btnGhost}
+                    disabled={busy}
+                    onClick={() => void runPlace([t.id])}
+                  >
+                    Place on today
+                  </button>
+                  <button type="button" className={btnGhost} disabled={busy} onClick={() => void startTask(t.id).then(() => reload())}>
                     Start
                   </button>
-                  <button type="button" className={btnGhost} onClick={() => void completeTask(t.id).then(() => reload())}>
+                  <button type="button" className={btnGhost} disabled={busy} onClick={() => void completeTask(t.id).then(() => reload())}>
                     Complete
                   </button>
                   <button
                     type="button"
                     className={btnGhost}
+                    disabled={busy}
                     onClick={() =>
                       void blockTask(t.id, { blocker_type: "waiting_on_person", description: "Blocked from inbox" }).then(() => reload())
                     }
                   >
                     Block
+                  </button>
+                  <button
+                    type="button"
+                    className={btnGhost}
+                    disabled={busy}
+                    onClick={() =>
+                      void archivePlannerTask(t.id)
+                        .then(() => reload())
+                        .catch((err) => setError(err instanceof Error ? err.message : "Could not archive"))
+                    }
+                  >
+                    Archive
+                  </button>
+                  <button
+                    type="button"
+                    className={btnGhost}
+                    disabled={busy}
+                    onClick={() =>
+                      void deletePlannerTask(t.id)
+                        .then(() => reload())
+                        .catch((err) => setError(err instanceof Error ? err.message : "Could not delete"))
+                    }
+                  >
+                    Delete
                   </button>
                 </div>
               </div>

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { PlannerBlock, PlannerCategory } from "@/lib/planner/plannerService";
-import { hhmm } from "@/lib/planner/plannerService";
+import { hhmm, plannerToday } from "@/lib/planner/plannerService";
 import {
   PX_PER_MINUTE,
   SNAP_MINUTES,
@@ -10,8 +10,12 @@ import {
   clockFromMinutes,
   contrastText,
   freeGaps,
+  isCapacityBlock,
+  isImmovableBlock,
+  intendedMoveConflicts,
   minutesFromClock,
   nearestValidRange,
+  occupancyForDrag,
   snapMinutes,
   ticks,
   type MinuteRange,
@@ -24,6 +28,7 @@ type DragState = {
   mode: DragMode;
   originY: number;
   original: MinuteRange;
+  lastY: number;
 };
 
 type AddDraft = {
@@ -35,10 +40,6 @@ type AddDraft = {
 
 function rangeOf(block: PlannerBlock): MinuteRange {
   return { start: minutesFromClock(block.start_time), end: minutesFromClock(block.end_time) };
-}
-
-function othersOf(blocks: PlannerBlock[], id: string): MinuteRange[] {
-  return blocks.filter((block) => block.id !== id).map(rangeOf);
 }
 
 export function DayCalendar({
@@ -54,6 +55,7 @@ export function DayCalendar({
   onAdd,
   onPatch,
   onDelete,
+  onConflict,
 }: {
   date: string;
   workStart: string;
@@ -67,6 +69,7 @@ export function DayCalendar({
   onAdd: (start: string, end: string, title: string, categoryId: string | null) => Promise<void> | void;
   onPatch: (id: string, body: { title?: string; category_id?: string | null }) => Promise<void> | void;
   onDelete: (id: string) => Promise<void> | void;
+  onConflict?: (message: string) => void;
 }) {
   const [local, setLocal] = useState(blocks);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -89,24 +92,32 @@ export function DayCalendar({
   const viewStart = Math.min(workA, ...local.map((block) => rangeOf(block).start), workA);
   const viewEnd = Math.max(workB, ...local.map((block) => rangeOf(block).end), workB);
   const height = Math.max(PX_PER_MINUTE * (viewEnd - viewStart), 120);
-  const gaps = useMemo(() => freeGaps(workA, workB, local.map(rangeOf)), [local, workA, workB]);
+  const gaps = useMemo(
+    () => freeGaps(workA, workB, local.map(rangeOf)),
+    [local, workA, workB],
+  );
 
-  const todayIso = useMemo(() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  }, []);
+  const todayIso = useMemo(() => plannerToday(), []);
   const nowMin = useMemo(() => {
     if (date !== todayIso) return null;
-    const n = new Date();
-    return n.getHours() * 60 + n.getMinutes();
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Vancouver",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(new Date());
+    const hour = Number(parts.find((part) => part.type === "hour")?.value || 0);
+    const minute = Number(parts.find((part) => part.type === "minute")?.value || 0);
+    return hour * 60 + minute;
   }, [date, todayIso]);
 
   function applyDrag(clientY: number) {
     const drag = dragRef.current;
     if (!drag) return;
     const delta = snapMinutes((clientY - drag.originY) / PX_PER_MINUTE);
+    drag.lastY = clientY;
     setLocal((current) => {
-      const occupied = othersOf(current, drag.id);
+      const occupied = occupancyForDrag(current, drag.id);
       let nextRange: MinuteRange | null = null;
       if (drag.mode === "move") {
         nextRange = nearestValidRange(
@@ -156,7 +167,20 @@ export function DayCalendar({
     const block = localRef.current.find((row) => row.id === drag.id);
     if (!block) return;
     const next = rangeOf(block);
-    if (next.start === drag.original.start && next.end === drag.original.end) return;
+    if (next.start === drag.original.start && next.end === drag.original.end) {
+      if (drag.mode === "move") {
+        const delta = snapMinutes((drag.lastY - drag.originY) / PX_PER_MINUTE);
+        const desired = {
+          start: drag.original.start + delta,
+          end: drag.original.end + delta,
+        };
+        const occupied = occupancyForDrag(localRef.current, drag.id);
+        if (Math.abs(delta) >= SNAP_MINUTES && intendedMoveConflicts(desired, occupied)) {
+          onConflict?.("That slot is already taken by another planned block.");
+        }
+      }
+      return;
+    }
     await onMove(block.id, clockFromMinutes(next.start), clockFromMinutes(next.end));
   }
   applyDragRef.current = applyDrag;
@@ -180,7 +204,7 @@ export function DayCalendar({
   }, []);
 
   function startDrag(e: React.PointerEvent, block: PlannerBlock, mode: DragMode) {
-    if (disabled) return;
+    if (disabled || isImmovableBlock(block)) return;
     e.preventDefault();
     e.stopPropagation();
     movedRef.current = false;
@@ -189,6 +213,7 @@ export function DayCalendar({
       mode,
       originY: e.clientY,
       original: rangeOf(block),
+      lastY: e.clientY,
     };
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   }
@@ -197,7 +222,7 @@ export function DayCalendar({
     <div className="overflow-hidden rounded-xl border border-ds-border bg-ds-card">
       <div className="flex items-center justify-between border-b border-ds-border px-4 py-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">Day calendar</p>
-        <p className="text-xs text-ds-muted">Drag to move · handles resize · 15 min grid</p>
+        <p className="text-xs text-ds-muted">Drag planned work · Open is labeled capacity you can add into · locked items stay put</p>
       </div>
       <div className="relative overflow-x-auto">
         <div className="relative min-w-[28rem]" style={{ height }}>
@@ -251,6 +276,7 @@ export function DayCalendar({
                   style={{ top, height: Math.max(h, 18) }}
                 >
                   + Add block
+                  <span className="ml-1 hidden sm:inline">· Open capacity</span>
                 </button>
               );
             })}
@@ -259,9 +285,35 @@ export function DayCalendar({
               const range = rangeOf(block);
               const top = (range.start - viewStart) * PX_PER_MINUTE;
               const h = Math.max((range.end - range.start) * PX_PER_MINUTE, 18);
+              if (isCapacityBlock(block)) {
+                return (
+                  <button
+                    key={block.id}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() =>
+                      setAddDraft({
+                        start: range.start,
+                        end: Math.min(range.end, range.start + 60),
+                        title: "",
+                        categoryId: categories[0]?.id || "",
+                      })
+                    }
+                    className="absolute inset-x-3 z-[1] flex flex-col items-center justify-center rounded-lg border border-dashed border-ds-border bg-ds-bg/80 px-2 text-ds-muted hover:border-ds-primary hover:bg-ds-secondary/40 hover:text-ds-foreground"
+                    style={{ top, height: h }}
+                  >
+                    <span className="text-[10px] font-medium uppercase tracking-wide">
+                      {hhmm(block.start_time)}–{hhmm(block.end_time)}
+                    </span>
+                    <span className="text-sm font-semibold leading-tight">Open</span>
+                    <span className="text-[11px]">+ Add into this hour</span>
+                  </button>
+                );
+              }
               const color = block.category_color || (block.block_type === "meeting" ? "#64748b" : "#94a3b8");
               const text = contrastText(color);
               const selected = selectedId === block.id;
+              const immovable = isImmovableBlock(block);
               return (
                 <div
                   key={block.id}
@@ -284,28 +336,33 @@ export function DayCalendar({
                     background: color,
                     color: text,
                     borderColor: color,
-                    cursor: disabled ? "default" : "grab",
+                    cursor: disabled || immovable ? "default" : "grab",
                   }}
                 >
-                  <button
-                    type="button"
-                    aria-label="Resize start"
-                    className="absolute inset-x-0 top-0 z-10 h-2 cursor-ns-resize"
-                    onPointerDown={(e) => startDrag(e, block, "resize-start")}
-                  />
-                  <button
-                    type="button"
-                    aria-label="Resize end"
-                    className="absolute inset-x-0 bottom-0 z-10 h-2 cursor-ns-resize"
-                    onPointerDown={(e) => startDrag(e, block, "resize-end")}
-                  />
+                  {immovable ? null : (
+                    <>
+                      <button
+                        type="button"
+                        aria-label="Resize start"
+                        className="absolute inset-x-0 top-0 z-10 h-2 cursor-ns-resize"
+                        onPointerDown={(e) => startDrag(e, block, "resize-start")}
+                      />
+                      <button
+                        type="button"
+                        aria-label="Resize end"
+                        className="absolute inset-x-0 bottom-0 z-10 h-2 cursor-ns-resize"
+                        onPointerDown={(e) => startDrag(e, block, "resize-end")}
+                      />
+                    </>
+                  )}
                   <div className="pointer-events-none px-2 py-1">
                     <p className="text-[10px] font-medium uppercase tracking-wide opacity-80">
                       {hhmm(block.start_time)}–{hhmm(block.end_time)}
                       {nowId === block.id ? " · now" : nextId === block.id ? " · next" : ""}
+                      {immovable ? " · locked" : ""}
                     </p>
                     <p className="truncate text-sm font-semibold leading-tight">{block.title}</p>
-                    <p className="truncate text-[11px] opacity-80">{block.category_name ?? "No category"}</p>
+                    <p className="truncate text-[11px] opacity-80">{block.category_name ?? block.block_type}</p>
                   </div>
                 </div>
               );

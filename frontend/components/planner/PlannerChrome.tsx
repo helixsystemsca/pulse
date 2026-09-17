@@ -31,3 +31,15 @@ export function PlannerChrome() {
     </nav>
   );
 }
+
+export function PlannerToast({ message }: { message: string | null }) {
+  if (!message) return null;
+  return (
+    <div
+      role="status"
+      className="fixed bottom-6 left-1/2 z-[250] max-w-md -translate-x-1/2 rounded-md border border-ds-border bg-ds-card px-4 py-3 text-sm font-medium text-ds-foreground shadow-lg"
+    >
+      {message}
+    </div>
+  );
+}

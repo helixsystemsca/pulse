@@ -45,6 +45,32 @@ export function freeGaps(
   return gaps;
 }
 
+/** Open blocks are unused capacity, not real work — they can be split to insert items. */
+export function isCapacityBlock(block: { block_type: string; locked?: boolean }): boolean {
+  return block.block_type === "open" && !block.locked;
+}
+
+export function occupancyForDrag(
+  blocks: Array<{ id: string; block_type: string; locked?: boolean; start_time: string; end_time: string }>,
+  excludeId: string,
+): MinuteRange[] {
+  return blocks
+    .filter((block) => block.id !== excludeId && !isCapacityBlock(block))
+    .map((block) => ({
+      start: minutesFromClock(block.start_time),
+      end: minutesFromClock(block.end_time),
+    }));
+}
+
+export function intendedMoveConflicts(desired: MinuteRange, occupied: MinuteRange[]): boolean {
+  return occupied.some((other) => rangesOverlap(desired.start, desired.end, other.start, other.end));
+}
+
+/** Locked, meeting, and interruption blocks must not drag or resize. */
+export function isImmovableBlock(block: { locked?: boolean; block_type: string }): boolean {
+  return Boolean(block.locked) || block.block_type === "meeting" || block.block_type === "interruption";
+}
+
 export function nearestValidRange(
   desiredStart: number,
   duration: number,

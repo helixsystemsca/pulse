@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import logging
 import re
 import uuid
+from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
 from typing import Any, Optional
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -47,14 +49,21 @@ from app.services.planner.scheduling_engine import (
     at_risk_tasks,
     build_day,
     current_and_next,
+    free_gaps,
     hour_template_slots,
     minutes_to_hhmm,
+    place_into_open_slots,
     snap_minutes,
     weekday_offset,
 )
 
 TZ_NAME = "America/Vancouver"
 _COLOR_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
+logger = logging.getLogger(__name__)
+IMMOVABLE_BLOCK_TYPES = frozenset({"meeting", "interruption"})
+PLANNED_WORK_BLOCK_TYPES = frozenset({"task", "routine"})
+SCHEDULABLE_TASK_STATUSES = frozenset({"not_started", "in_progress", "deferred"})
+DEFAULT_INTERRUPTION_MINUTES = 30
 
 
 def _tz() -> ZoneInfo:
@@ -100,6 +109,37 @@ def _time_from_min(total: int) -> time:
 
 class PlannerConflict(ValueError):
     """The requested block times collide with another block or working hours."""
+
+
+@dataclass
+class PlaceInboxResult:
+    """Outcome of Place on today — always returns a message, even when nothing moved."""
+
+    blocks: list[PlannerScheduleBlock]
+    date: date
+    placed_count: int
+    unplaced_count: int
+    unplaced_titles: list[str] = field(default_factory=list)
+    placed_task_ids: list[str] = field(default_factory=list)
+    message: str = ""
+
+
+def _is_open_capacity(block: PlannerScheduleBlock) -> bool:
+    return block.block_type == "open" and not block.locked
+
+
+def _is_immovable(block: PlannerScheduleBlock) -> bool:
+    if block.locked:
+        return True
+    return block.block_type in IMMOVABLE_BLOCK_TYPES
+
+
+def _is_planned_work(block: PlannerScheduleBlock) -> bool:
+    if block.block_type in {"open", "meeting", "interruption"}:
+        return False
+    if block.task_id:
+        return True
+    return block.block_type in PLANNED_WORK_BLOCK_TYPES
 
 
 def _snap_time(value: time) -> time:
@@ -334,8 +374,8 @@ def serialize_block(
     }
 
 
-def serialize_interruption(row: PlannerInterruption) -> dict[str, Any]:
-    return {
+def serialize_interruption(row: PlannerInterruption, extras: dict[str, Any] | None = None) -> dict[str, Any]:
+    payload = {
         "id": str(row.id),
         "reason": row.reason,
         "notes": row.notes,
@@ -343,7 +383,13 @@ def serialize_interruption(row: PlannerInterruption) -> dict[str, Any]:
         "end_time": row.end_time,
         "duration_minutes": row.duration_minutes,
         "paused_task_id": str(row.paused_task_id) if row.paused_task_id else None,
+        "create_work_request": bool(row.create_work_request),
+        "work_request_id": None,
+        "work_request_warning": None,
     }
+    if extras:
+        payload.update(extras)
+    return payload
 
 
 async def get_settings(db: AsyncSession, company_id: str, user_id: str) -> PlannerSettings:
@@ -538,9 +584,24 @@ async def patch_task(
 
 async def delete_task(db: AsyncSession, company_id: str, user_id: str, task_id: str) -> None:
     row = await db.get(PlannerTask, task_id)
-    if row and row.company_id == company_id and row.user_id == user_id:
-        await db.delete(row)
-        await db.flush()
+    if not row or row.company_id != company_id or row.user_id != user_id:
+        return
+    blocks = await db.execute(
+        select(PlannerScheduleBlock).where(
+            PlannerScheduleBlock.company_id == company_id,
+            PlannerScheduleBlock.user_id == user_id,
+            PlannerScheduleBlock.task_id == task_id,
+        )
+    )
+    for block in blocks.scalars().all():
+        block.task_id = None
+        block.title = "Open"
+        block.block_type = "open"
+        block.locked = False
+        block.status = "scheduled"
+        block.generated_by_scheduler = True
+    await db.delete(row)
+    await db.flush()
 
 
 async def _open_time_entry(db: AsyncSession, company_id: str, user_id: str, task_id: str | None) -> PlannerTimeEntry:
@@ -961,6 +1022,193 @@ async def generate_schedule(
     return await _day_blocks(db, company_id, user_id, day)
 
 
+def _place_result(
+    *,
+    blocks: list[PlannerScheduleBlock],
+    day: date,
+    placed_ids: list[str],
+    unplaced_titles: list[str],
+    message: str,
+) -> PlaceInboxResult:
+    return PlaceInboxResult(
+        blocks=blocks,
+        date=day,
+        placed_count=len(placed_ids),
+        unplaced_count=len(unplaced_titles),
+        unplaced_titles=unplaced_titles,
+        placed_task_ids=placed_ids,
+        message=message,
+    )
+
+
+async def place_inbox_on_day(
+    db: AsyncSession,
+    company_id: str,
+    user_id: str,
+    day: date | None = None,
+    *,
+    task_ids: list[str] | None = None,
+) -> PlaceInboxResult:
+    """Place ready inbox tasks onto today by shrinking Open capacity — does not reset the day."""
+    await ensure_defaults(db, company_id, user_id)
+    day = _parse_date(day)
+    settings = await get_settings(db, company_id, user_id)
+    cats = await _categories(db, company_id)
+    cat_by_id = _cat_map(cats)
+    slug_to_id = {c.slug: str(c.id) for c in cats}
+
+    existing = await _day_blocks(db, company_id, user_id, day)
+    if not existing:
+        existing = await generate_hour_template(db, company_id, user_id, day)
+
+    already = {str(b.task_id) for b in existing if b.task_id}
+
+    if task_ids:
+        candidates: list[PlannerTask] = []
+        seen: set[str] = set()
+        for tid in task_ids:
+            key = str(tid)
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            row = await db.get(PlannerTask, key)
+            if row and row.company_id == company_id and row.user_id == user_id:
+                candidates.append(row)
+        if not candidates:
+            return _place_result(
+                blocks=existing,
+                day=day,
+                placed_ids=[],
+                unplaced_titles=[],
+                message="No schedulable tasks to place (those items were not in the inbox).",
+            )
+    else:
+        candidates = [
+            t
+            for t in await list_tasks(db, company_id, user_id)
+            if t.status in SCHEDULABLE_TASK_STATUSES
+        ]
+
+    already_here = [t for t in candidates if str(t.id) in already]
+    ready = [
+        t
+        for t in candidates
+        if t.status in SCHEDULABLE_TASK_STATUSES and str(t.id) not in already
+    ]
+    not_ready = [
+        t
+        for t in candidates
+        if t.status not in SCHEDULABLE_TASK_STATUSES and str(t.id) not in already
+    ]
+
+    occupied = [
+        (_minutes_of(b.start_time), _minutes_of(b.end_time))
+        for b in existing
+        if not _is_open_capacity(b)
+    ]
+    capacity = free_gaps(_minutes_of(settings.work_start), _minutes_of(settings.work_end), occupied)
+    if not ready:
+        if already_here and not not_ready:
+            n = len(already_here)
+            msg = f"{n} task{'s' if n != 1 else ''} already on {day.isoformat()}."
+        else:
+            msg = "No schedulable tasks to place (need not started, in progress, or deferred)."
+        return _place_result(
+            blocks=existing,
+            day=day,
+            placed_ids=[],
+            unplaced_titles=[t.title for t in (not_ready or already_here)],
+            message=msg,
+        )
+    if not capacity:
+        return _place_result(
+            blocks=existing,
+            day=day,
+            placed_ids=[],
+            unplaced_titles=[t.title for t in ready],
+            message="Today is full. Shorten a planned block to make 15 minutes of Open capacity.",
+        )
+
+    engine_tasks = [
+        EngineTask(
+            id=str(t.id),
+            title=t.title,
+            category_slug=cat_by_id[str(t.category_id)].slug if str(t.category_id) in cat_by_id else "operations",
+            priority=t.priority,
+            priority_score=t.priority_score,
+            estimated_minutes=t.estimated_minutes,
+            due_date=t.due_date,
+            deadline=t.deadline,
+            delay_count=t.delay_count,
+            waiting_days=max(0, (day - t.created_at.date()).days) if t.created_at else 0,
+            status=t.status,
+        )
+        for t in ready
+    ]
+
+    cfg = EngineConfig(
+        work_start_min=_minutes_of(settings.work_start),
+        work_end_min=_minutes_of(settings.work_end),
+        category_targets={str(k): float(v) for k, v in (settings.category_targets or {}).items()},
+        weights={str(k): int(v) for k, v in (settings.scheduler_weights or {}).items()} or dict(DEFAULT_WEIGHTS),
+        adaptive_durations=await _adaptive_durations(db, company_id, user_id, bool(settings.adaptive_scheduling)),
+    )
+    planned = place_into_open_slots(
+        today=day,
+        tasks=engine_tasks,
+        open_slots=capacity,
+        cfg=cfg,
+        already_used=already,
+    )
+
+    for block in existing:
+        if _is_open_capacity(block):
+            await db.delete(block)
+    await db.flush()
+
+    for pb in planned:
+        cat_id = slug_to_id.get(pb.category_slug or "")
+        db.add(
+            PlannerScheduleBlock(
+                company_id=company_id,
+                user_id=user_id,
+                date=day,
+                start_time=_time_from_min(pb.start_min),
+                end_time=_time_from_min(pb.end_min),
+                task_id=pb.task_id,
+                category_id=cat_id,
+                title=pb.title,
+                block_type=pb.block_type,
+                locked=False,
+                generated_by_scheduler=True,
+                status="in_progress"
+                if any(str(t.id) == pb.task_id and t.status == "in_progress" for t in ready)
+                else "scheduled",
+            )
+        )
+    await db.flush()
+    await persist_daily_metrics(db, company_id, user_id, day)
+    blocks = await _day_blocks(db, company_id, user_id, day)
+    placed_ids = [pb.task_id for pb in planned if pb.task_id]
+    unplaced = [t.title for t in ready if str(t.id) not in set(placed_ids)]
+    if placed_ids:
+        n = len(placed_ids)
+        msg = f"Placed {n} task{'s' if n != 1 else ''} on {day.isoformat()}."
+        if unplaced:
+            msg += f" {len(unplaced)} did not fit remaining Open capacity."
+        msg += " Open Today to see the calendar."
+    else:
+        msg = "Today is full. Shorten a planned block to make 15 minutes of Open capacity."
+        unplaced = [t.title for t in ready]
+    return _place_result(
+        blocks=blocks,
+        day=day,
+        placed_ids=placed_ids,
+        unplaced_titles=unplaced,
+        message=msg,
+    )
+
+
 async def _day_blocks(
     db: AsyncSession, company_id: str, user_id: str, day: date
 ) -> list[PlannerScheduleBlock]:
@@ -1003,6 +1251,7 @@ async def get_day(
             task_id=str(b.task_id) if b.task_id else None,
         )
         for b in blocks
+        if not _is_open_capacity(b)
     ]
     cur, nxt = current_and_next(engine_blocks, now_min if now_min >= 0 else 24 * 60)
     cur_out = next((x for x in timeline if x["task_id"] == (cur.task_id if cur else None) and cur and _minutes_of(x["start_time"]) == cur.start_min), None)
@@ -1076,8 +1325,16 @@ async def persist_daily_metrics(
     tasks = {}
     if task_ids:
         tasks = {str(t.id): t for t in (await db.execute(select(PlannerTask).where(PlannerTask.id.in_(task_ids)))).scalars().all()}
-    completed = sum(1 for t in tasks.values() if t.status == "complete")
-    scheduled = sum(1 for b in blocks if b.block_type == "task")
+    completed = 0
+    planned = [b for b in blocks if _is_planned_work(b)]
+    scheduled = len(planned)
+    for b in planned:
+        if b.status == "complete":
+            completed += 1
+            continue
+        task = tasks.get(str(b.task_id)) if b.task_id else None
+        if task is not None and task.status == "complete":
+            completed += 1
     blocked = sum(1 for t in tasks.values() if t.status == "blocked")
     hist = list(
         (
@@ -1121,6 +1378,7 @@ async def persist_daily_metrics(
         ).scalars().all()
     )
     interrupt_min = sum(int(i.duration_minutes or 0) for i in ints)
+    # Planned work only: Open capacity, meetings, and interruptions do not move the meter.
     pct = round((completed / scheduled) * 100, 1) if scheduled else 0.0
     row = (
         await db.execute(
@@ -1174,7 +1432,7 @@ async def closeout_day(
 
 async def start_interruption(
     db: AsyncSession, company_id: str, user_id: str, body: dict[str, Any]
-) -> PlannerInterruption:
+) -> tuple[PlannerInterruption, dict[str, Any]]:
     current = (
         await db.execute(
             select(PlannerTask).where(
@@ -1200,16 +1458,40 @@ async def start_interruption(
     )
     db.add(row)
     await db.flush()
+
+    extras: dict[str, Any] = {"work_request_id": None, "work_request_warning": None}
+    if row.create_work_request:
+        wr_id, warning = await _try_create_interruption_work_request(
+            db, company_id, user_id, row.reason, row.notes
+        )
+        extras["work_request_id"] = wr_id
+        extras["work_request_warning"] = warning
+
     now = _now()
-    start_t = time(now.hour, now.minute)
-    end_t = _time_from_min(min(24 * 60 - 1, _minutes_of(start_t) + 1))
+    settings = await get_settings(db, company_id, user_id)
+    start_min = snap_minutes(_minutes_of(time(now.hour, now.minute)))
+    work_end = _minutes_of(settings.work_end)
+    requested = body.get("duration_minutes")
+    if requested is not None:
+        try:
+            dur = max(SNAP_MINUTES, snap_minutes(int(requested)))
+        except (TypeError, ValueError):
+            dur = DEFAULT_INTERRUPTION_MINUTES
+        end_min = start_min + dur
+    elif work_end >= start_min + SNAP_MINUTES:
+        end_min = work_end
+    else:
+        end_min = start_min + DEFAULT_INTERRUPTION_MINUTES
+    end_min = min(24 * 60 - 1, max(start_min + SNAP_MINUTES, end_min))
+
+    await _carve_open_capacity(db, company_id, user_id, now.date(), start_min, end_min)
     db.add(
         PlannerScheduleBlock(
             company_id=company_id,
             user_id=user_id,
             date=now.date(),
-            start_time=start_t,
-            end_time=end_t,
+            start_time=_time_from_min(start_min),
+            end_time=_time_from_min(end_min),
             interruption_id=str(row.id),
             category_id=body.get("category_id"),
             title=(body.get("notes") or body.get("reason") or "Emergency").replace("_", " ").title(),
@@ -1220,7 +1502,42 @@ async def start_interruption(
         )
     )
     await db.flush()
-    return row
+    return row, extras
+
+
+async def _try_create_interruption_work_request(
+    db: AsyncSession,
+    company_id: str,
+    user_id: str,
+    reason: str,
+    notes: str | None,
+) -> tuple[str | None, str | None]:
+    """Create a Pulse work request for an interruption. Failures are warnings only."""
+    try:
+        from app.models.pulse_models import PulseWorkOrderType, PulseWorkRequest, PulseWorkRequestPriority
+        from app.modules.work_requests.work_order_number import allocate_work_order_number
+
+        title = (notes or reason or "Emergency interruption").replace("_", " ").strip()
+        if not title:
+            title = "Emergency interruption"
+        wo_num = await allocate_work_order_number(db, company_id)
+        wr = PulseWorkRequest(
+            company_id=company_id,
+            work_order_number=wo_num,
+            title=title[:255],
+            description=notes,
+            category="emergency",
+            priority=PulseWorkRequestPriority.high if reason == "emergency" else PulseWorkRequestPriority.medium,
+            created_by_user_id=user_id,
+            assigned_user_id=user_id,
+            work_order_type=PulseWorkOrderType.issue,
+        )
+        db.add(wr)
+        await db.flush()
+        return str(wr.id), None
+    except Exception as exc:  # noqa: BLE001 — interruption must still start
+        logger.warning("Planner interruption work request failed: %s", exc)
+        return None, "Work request could not be created. The interruption still started."
 
 
 async def end_interruption(
@@ -1277,13 +1594,61 @@ async def _occupied_ranges(
     user_id: str,
     day: date,
     exclude_id: str | None = None,
+    *,
+    ignore_open: bool = False,
 ) -> list[tuple[int, int]]:
     out: list[tuple[int, int]] = []
     for block in await _day_blocks(db, company_id, user_id, day):
         if exclude_id and str(block.id) == exclude_id:
             continue
+        if ignore_open and _is_open_capacity(block):
+            continue
         out.append((_minutes_of(block.start_time), _minutes_of(block.end_time)))
     return out
+
+
+async def _carve_open_capacity(
+    db: AsyncSession,
+    company_id: str,
+    user_id: str,
+    day: date,
+    start_min: int,
+    end_min: int,
+) -> None:
+    """Shrink/split Open blocks so ``[start_min, end_min)`` is free."""
+    leftovers: list[tuple[int, int, PlannerScheduleBlock]] = []
+    for block in await _day_blocks(db, company_id, user_id, day):
+        if not _is_open_capacity(block):
+            continue
+        a = _minutes_of(block.start_time)
+        b = _minutes_of(block.end_time)
+        if not _ranges_overlap(start_min, end_min, a, b):
+            continue
+        left = (a, min(b, start_min))
+        right = (max(a, end_min), b)
+        if left[1] - left[0] >= SNAP_MINUTES:
+            leftovers.append((left[0], left[1], block))
+        if right[1] - right[0] >= SNAP_MINUTES:
+            leftovers.append((right[0], right[1], block))
+        await db.delete(block)
+    await db.flush()
+    for a, b, src in leftovers:
+        db.add(
+            PlannerScheduleBlock(
+                company_id=company_id,
+                user_id=user_id,
+                date=day,
+                start_time=_time_from_min(a),
+                end_time=_time_from_min(b),
+                title="Open",
+                block_type="open",
+                category_id=src.category_id,
+                locked=False,
+                generated_by_scheduler=True,
+                status="scheduled",
+            )
+        )
+    await db.flush()
 
 
 def _validated_range(
@@ -1333,10 +1698,11 @@ async def create_block(
     start_min, end_min = _validated_range(
         start,
         end,
-        await _occupied_ranges(db, company_id, user_id, day),
+        await _occupied_ranges(db, company_id, user_id, day, ignore_open=True),
         settings.work_start,
         settings.work_end,
     )
+    await _carve_open_capacity(db, company_id, user_id, day, start_min, end_min)
     category_id = body.get("category_id")
     if category_id:
         cat = await db.get(PlannerCategory, category_id)
@@ -1346,6 +1712,22 @@ async def create_block(
     if block_type not in {"open", "task", "meeting"}:
         block_type = "open"
     title = str(body.get("title") or "Open").strip() or "Open"
+    if block_type == "open" and title.lower() != "open":
+        block_type = "task"
+    task_id = body.get("task_id")
+    if block_type == "task" and not task_id:
+        task = await create_task(
+            db,
+            company_id,
+            user_id,
+            {
+                "title": title,
+                "category_id": category_id,
+                "estimated_minutes": max(SNAP_MINUTES, end_min - start_min),
+                "source_type": "manual",
+            },
+        )
+        task_id = str(task.id)
     row = PlannerScheduleBlock(
         company_id=company_id,
         user_id=user_id,
@@ -1356,7 +1738,7 @@ async def create_block(
         block_type=block_type,
         category_id=category_id,
         calendar_event_id=body.get("calendar_event_id"),
-        task_id=body.get("task_id"),
+        task_id=task_id,
         locked=block_type == "meeting",
         generated_by_scheduler=False,
         status="scheduled",
@@ -1376,13 +1758,20 @@ async def patch_block(
     start = body["start_time"] if "start_time" in body and body["start_time"] is not None else row.start_time
     end = body["end_time"] if "end_time" in body and body["end_time"] is not None else row.end_time
     if "start_time" in body or "end_time" in body:
+        if _is_immovable(row):
+            raise PlannerConflict("Locked, meeting, and interruption blocks cannot be moved")
+        ignore_open = not _is_open_capacity(row)
         start_min, end_min = _validated_range(
             start,
             end,
-            await _occupied_ranges(db, company_id, user_id, row.date, exclude_id=str(row.id)),
+            await _occupied_ranges(
+                db, company_id, user_id, row.date, exclude_id=str(row.id), ignore_open=ignore_open
+            ),
             settings.work_start,
             settings.work_end,
         )
+        if ignore_open:
+            await _carve_open_capacity(db, company_id, user_id, row.date, start_min, end_min)
         row.start_time = _time_from_min(start_min)
         row.end_time = _time_from_min(end_min)
         row.generated_by_scheduler = False
@@ -1438,16 +1827,23 @@ async def move_block(
     row = await db.get(PlannerScheduleBlock, block_id)
     if not row or row.company_id != company_id or row.user_id != user_id:
         raise ValueError("Block not found")
+    if _is_immovable(row):
+        raise PlannerConflict("Locked, meeting, and interruption blocks cannot be moved")
     settings = await get_settings(db, company_id, user_id)
     duration = max(SNAP_MINUTES, _minutes_of(row.end_time) - _minutes_of(row.start_time))
     resolved_end = end or _time_from_min(_minutes_of(start) + duration)
+    ignore_open = not _is_open_capacity(row)
     start_min, end_min = _validated_range(
         start,
         resolved_end,
-        await _occupied_ranges(db, company_id, user_id, row.date, exclude_id=str(row.id)),
+        await _occupied_ranges(
+            db, company_id, user_id, row.date, exclude_id=str(row.id), ignore_open=ignore_open
+        ),
         settings.work_start,
         settings.work_end,
     )
+    if ignore_open:
+        await _carve_open_capacity(db, company_id, user_id, row.date, start_min, end_min)
     prev = row.start_time
     row.start_time = _time_from_min(start_min)
     row.end_time = _time_from_min(end_min)
