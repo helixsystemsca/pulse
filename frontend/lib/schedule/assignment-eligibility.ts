@@ -26,6 +26,17 @@ const CERT_SYNONYMS: Record<string, string> = {
   WHMIS: "WHMIS",
   FORKLIFT: "FORKLIFT",
   "FORKLIFT OPERATOR": "FORKLIFT",
+  NLS: "NLS",
+  NL: "NLS",
+  LIFEGUARD: "NLS",
+  LIFEGUARDING: "NLS",
+  "LIFE GUARD": "NLS",
+  "NATIONAL LIFEGUARD": "NLS",
+  "NATIONAL LIFEGUARD SERVICE": "NLS",
+  "NATIONAL LIFESAVING": "NLS",
+  "NLS POOL": "NLS",
+  "NLS WATERFRONT": "NLS",
+  "NATIONAL LIFEGUARD POOL": "NLS",
 };
 
 export type WorkerCredentialStatus = "valid" | "expired" | "no_expiry";
@@ -64,9 +75,41 @@ export function normalizeCredentialCode(raw: string | null | undefined): string 
   return CERT_SYNONYMS[key] ?? (key.includes(" ") ? key.replace(/ /g, "_") : key);
 }
 
+function expandCertRequirementItems(raw: unknown): unknown[] {
+  const items = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  const out: unknown[] = [];
+  for (const item of items) {
+    if (item && typeof item === "object" && !Array.isArray(item)) {
+      const o = item as Record<string, unknown>;
+      const anyOf = o.any_of ?? o.anyOf;
+      if (Array.isArray(anyOf)) {
+        out.push(...anyOf);
+        continue;
+      }
+    }
+    out.push(item);
+  }
+  return out;
+}
+
+export function certRequirementsAcceptAny(raw: unknown): boolean {
+  if (!raw) return false;
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    const o = raw as Record<string, unknown>;
+    if (o.accepts_any === true || o.acceptsAny === true || o.match === "any") return true;
+    if (Array.isArray(o.any_of) || Array.isArray(o.anyOf)) return true;
+  }
+  const items = Array.isArray(raw) ? raw : [raw];
+  return items.some((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return false;
+    const o = item as Record<string, unknown>;
+    return o.accepts_any === true || o.acceptsAny === true || o.match === "any" || Array.isArray(o.any_of) || Array.isArray(o.anyOf);
+  });
+}
+
 export function parseCertRequirements(raw: unknown): CertRequirement[] {
   if (!raw) return [];
-  const items = Array.isArray(raw) ? raw : [raw];
+  const items = expandCertRequirementItems(raw);
   const out: CertRequirement[] = [];
   const seen = new Set<string>();
   for (const item of items) {
@@ -231,9 +274,19 @@ export function evaluateShiftAssignmentAlarms(
   if (shift.eventType !== "work" || !shift.workerId || !worker) return [];
   const required = requiredCertsForShift(shift, definitions);
   if (!required.length) return [];
+  let defAcceptsAny = false;
+  if (definitions?.length) {
+    const byId = shift.shiftDefinitionId
+      ? definitions.find((d) => d.id === shift.shiftDefinitionId)
+      : undefined;
+    const byCode = shift.shiftCode
+      ? definitions.find((d) => d.code.trim().toUpperCase() === shift.shiftCode!.trim().toUpperCase())
+      : undefined;
+    defAcceptsAny = certRequirementsAcceptAny((byId ?? byCode)?.cert_requirements);
+  }
   return evaluateAssignmentTraining(required, buildWorkerCredentialState(worker), {
     facilityId: shift.zoneId,
-    acceptsAny: shift.accepts_any_certification === true,
+    acceptsAny: shift.accepts_any_certification === true || defAcceptsAny,
   });
 }
 

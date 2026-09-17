@@ -16,11 +16,11 @@ import {
   readWorkerDragPayload,
   resolveShiftDropPayload,
   resolveWorkerDropPayload,
+  scheduleCalendarCellPointerClass,
   scheduleCalendarDragOverAccepts,
   type PaletteDragPayload,
 } from "@/lib/schedule/drag";
-import type { EmployeeDailyAvailabilityEntry } from "@/lib/schedule/employee-availability-types";
-import { evaluateWorkerDrop, type WorkerDayHighlight } from "@/lib/schedule/worker-drag-highlights";
+import { evaluateWorkerDrop, type WorkerDayHighlight, type WorkerDropEvalOpts } from "@/lib/schedule/worker-drag-highlights";
 import type {
   ScheduleDragSession,
   ScheduleRoleDefinition,
@@ -74,10 +74,7 @@ type Props = {
   onOpenWorkerAttendance?: (payload: { workerId: string; date: string; label: string }) => void;
   onPaletteDrop?: (workerId: string, date: string, payload: PaletteDragPayload) => void;
   onRemoveOperationalBadge?: (workerId: string, date: string, code: string) => void;
-  dropAvailabilityOpts?: {
-    employeeAvailabilityIndex?: Record<string, EmployeeDailyAvailabilityEntry[]>;
-    useDailyAvailability?: boolean;
-  };
+  dropAvailabilityOpts?: WorkerDropEvalOpts;
   shiftDefinitions?: Array<{ id: string; code: string; cert_requirements?: unknown }>;
 };
 
@@ -161,11 +158,7 @@ export function ScheduleCalendarGrid({
     return m;
   }, [shifts]);
 
-  const cellPointer = scheduleDragLock
-    ? calendarDropsDisabled
-      ? "pointer-events-none"
-      : "pointer-events-auto"
-    : "";
+  const cellPointer = scheduleCalendarCellPointerClass(scheduleDragLock);
 
   return (
     <div
@@ -326,17 +319,23 @@ export function ScheduleCalendarGrid({
                       }
                       triggerShake(c.date);
                       onWorkerDropRejected?.(ev.tooltip ?? "Cannot schedule this placement.");
+                      onShiftDragSessionEnd();
                       return;
                     }
                   }
                   onWorkerDrop(wp.workerId, c.date);
                   return;
                 }
-                if (!shiftDragEnabled) return;
+                if (!shiftDragEnabled) {
+                  onShiftDragSessionEnd();
+                  return;
+                }
                 const p = resolveShiftDropPayload(e.dataTransfer, dragSession);
                 if (p) {
                   onShiftMove(p.shiftId, c.date, p.duplicate ? "duplicate" : "move");
+                  return;
                 }
+                onShiftDragSessionEnd();
               }}
             >
               {hlLayer ? (

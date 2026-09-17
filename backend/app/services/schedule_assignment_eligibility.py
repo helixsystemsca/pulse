@@ -40,6 +40,17 @@ _CERT_SYNONYMS: dict[str, str] = {
     "WHMIS": "WHMIS",
     "FORKLIFT": "FORKLIFT",
     "FORKLIFT OPERATOR": "FORKLIFT",
+    "NLS": "NLS",
+    "NL": "NLS",
+    "LIFEGUARD": "NLS",
+    "LIFEGUARDING": "NLS",
+    "LIFE GUARD": "NLS",
+    "NATIONAL LIFEGUARD": "NLS",
+    "NATIONAL LIFEGUARD SERVICE": "NLS",
+    "NATIONAL LIFESAVING": "NLS",
+    "NLS POOL": "NLS",
+    "NLS WATERFRONT": "NLS",
+    "NATIONAL LIFEGUARD POOL": "NLS",
 }
 
 CERT_LABELS: dict[str, str] = {
@@ -50,6 +61,7 @@ CERT_LABELS: dict[str, str] = {
     "FA": "First Aid",
     "WHMIS": "WHMIS",
     "FORKLIFT": "Forklift operator",
+    "NLS": "National Lifeguard",
 }
 
 
@@ -80,10 +92,42 @@ class CertRequirement:
         return str(self.facility_id) == str(facility_id)
 
 
+def _expand_cert_requirement_items(raw: Any) -> list[Any]:
+    items = raw if isinstance(raw, list) else ([raw] if raw is not None else [])
+    out: list[Any] = []
+    for item in items:
+        if isinstance(item, dict):
+            any_of = item.get("any_of") or item.get("anyOf")
+            if isinstance(any_of, list):
+                out.extend(any_of)
+                continue
+        out.append(item)
+    return out
+
+
+def cert_requirements_accepts_any(raw: Any) -> bool:
+    if not raw:
+        return False
+    if isinstance(raw, dict):
+        if raw.get("accepts_any") is True or raw.get("acceptsAny") is True or raw.get("match") == "any":
+            return True
+        if isinstance(raw.get("any_of") or raw.get("anyOf"), list):
+            return True
+    items = raw if isinstance(raw, list) else [raw]
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        if item.get("accepts_any") is True or item.get("acceptsAny") is True or item.get("match") == "any":
+            return True
+        if isinstance(item.get("any_of") or item.get("anyOf"), list):
+            return True
+    return False
+
+
 def parse_cert_requirements(raw: Any) -> list[CertRequirement]:
     if not raw:
         return []
-    items = raw if isinstance(raw, list) else [raw]
+    items = _expand_cert_requirement_items(raw)
     out: list[CertRequirement] = []
     seen: set[tuple[str, str]] = set()
     for item in items:
@@ -414,17 +458,22 @@ def apply_training_fields_to_shift_out(
     worker_state: WorkerCredentialState | None,
 ) -> Any:
     """Attach required_certifications + staffing_alarms onto a ShiftOut-like object."""
-    reqs = parse_cert_requirements(getattr(definition, "cert_requirements", None) if definition else None)
+    raw = getattr(definition, "cert_requirements", None) if definition else None
+    reqs = parse_cert_requirements(raw)
     facility_id = getattr(out, "facility_id", None)
-    codes = applicable_requirement_codes(reqs, facility_id)
+    accepts_any = bool(getattr(out, "accepts_any_certification", False)) or cert_requirements_accepts_any(raw)
+    applicable = [r for r in reqs if r.applies_to_facility(facility_id)]
     alarms = (
-        evaluate_assignment_training(reqs, worker_state, facility_id=facility_id)
+        evaluate_assignment_training(
+            reqs, worker_state, facility_id=facility_id, accepts_any=accepts_any
+        )
         if worker_state is not None
         else []
     )
     updates = {
-        "required_certifications": codes,
+        "required_certifications": serialize_cert_requirements(applicable),
         "staffing_alarms": [a.as_dict() for a in alarms],
+        "accepts_any_certification": accepts_any,
     }
     if hasattr(out, "model_copy"):
         return out.model_copy(update=updates)

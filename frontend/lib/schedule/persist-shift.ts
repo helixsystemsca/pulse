@@ -10,6 +10,13 @@ type ShiftCreateResult = { shift: PulseShiftApi };
 
 export type EnsureShiftOnServerResult = { id: string } | { error: string };
 
+export const SHIFT_MOVE_SAVE_FAILED =
+  "Move did not save. The board is updated locally — use Save changes to retry.";
+
+export type PersistShiftMoveResult =
+  | { ok: true; serverId: string | null }
+  | { ok: false; error: string };
+
 /**
  * Create or update a workforce shift on the Pulse API so routine assignment and work-queue calls succeed.
  * Materializes recurring-template (ephemeral) rows when the schedule is published.
@@ -36,6 +43,20 @@ export async function persistScheduleShiftToServer(
   } catch (e) {
     const { message } = parseClientApiError(e);
     throw new Error(message || "Could not register shift on the server.");
+  }
+}
+
+/** Persist a moved shift; on failure keep local pending flags so Save changes can retry. */
+export async function persistScheduleShiftMove(
+  shift: Shift,
+  departmentSlug: string | undefined,
+): Promise<PersistShiftMoveResult> {
+  try {
+    const serverId = await persistScheduleShiftToServer(shift, departmentSlug);
+    return { ok: true, serverId };
+  } catch (e) {
+    const error = e instanceof Error && e.message.trim() ? e.message : SHIFT_MOVE_SAVE_FAILED;
+    return { ok: false, error };
   }
 }
 

@@ -8,6 +8,7 @@ export const CERT_CODE_LABELS: Readonly<Record<string, string>> = {
   P2: "Pool Operator Level 2",
   P4: "4th Class Power Engineer",
   FA: "First Aid",
+  NLS: "National Lifeguard",
 };
 
 export function certificationLabel(code: string): string {

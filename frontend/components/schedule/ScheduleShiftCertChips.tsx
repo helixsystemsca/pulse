@@ -14,6 +14,7 @@ const orderedCodes = (req: string[]): string[] => {
   push("P2");
   push("P4");
   push("FA");
+  push("NLS");
   for (const c of u) {
     if (!out.includes(c)) out.push(c);
   }

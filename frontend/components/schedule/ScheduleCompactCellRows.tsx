@@ -210,7 +210,7 @@ export function ScheduleCompactCellRows({
             title={tip || undefined}
             className={`w-full rounded-lg text-left shadow-sm transition-colors hover:brightness-[0.97] ${
               summary ? "px-1 py-px text-[10px] leading-tight" : "px-1.5 py-1.5 text-[11px] leading-snug"
-            } ${anyAuto ? "opacity-[0.92]" : ""} ${canDrag ? "cursor-grab active:cursor-grabbing" : "cursor-default"} ${chipLocked ? "pointer-events-none" : ""} ${cardCls} ${openCls} ${
+            } ${anyAuto ? "opacity-[0.92]" : ""} ${canDrag ? "cursor-grab active:cursor-grabbing pointer-events-auto" : "cursor-default"} ${chipLocked ? "pointer-events-none" : ""} ${cardCls} ${openCls} ${
               paletteWorkerId && onPaletteDrop && dragSession?.kind === "palette" ? "ring-1 ring-inset ring-sky-400/50" : ""
             } ${trainingAlarms.length ? "ring-2 ring-inset ring-amber-500" : ""}`}
             onDragOver={(e) => {
@@ -252,7 +252,9 @@ export function ScheduleCompactCellRows({
               attachShiftDragPreview(e, dup);
               flushSync(() => onShiftDragSessionStart({ kind: "shift", shiftId: s.id, duplicate: dup }));
             }}
-            onDragEnd={onShiftDragSessionEnd}
+            onDragEnd={() => {
+              onShiftDragSessionEnd();
+            }}
           >
             <div className="min-w-0">
               {summary ? (

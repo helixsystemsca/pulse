@@ -191,7 +191,7 @@ export function ScheduleWorkerPanel({
                             rosterDragEnabled
                               ? "cursor-grab border border-transparent bg-[color-mix(in_srgb,var(--ds-success)_8%,var(--ds-surface-primary))] hover:border-ds-border active:cursor-grabbing dark:bg-[color-mix(in_srgb,var(--ds-success)_10%,var(--ds-surface-secondary))]"
                               : "cursor-default opacity-60"
-                          } ${!eligible ? "border-amber-400/80 bg-amber-50/80 dark:bg-amber-950/30" : ""} ${
+                          } ${rosterDragEnabled ? "pointer-events-auto" : ""} ${!eligible ? "border-amber-400/80 bg-amber-50/80 dark:bg-amber-950/30" : ""} ${
                             pickedWorkerId === w.id ? "ring-2 ring-amber-500" : ""
                           } ${coarsePointer && rosterDragEnabled ? "cursor-pointer" : ""}`}
                           style={rosterDragEnabled && !coarsePointer ? { touchAction: "none" } : undefined}
@@ -208,7 +208,9 @@ export function ScheduleWorkerPanel({
                             attachWorkerDragPreview(e, w.name);
                             flushSync(() => onDragSessionStart({ kind: "worker", workerId: w.id }));
                           }}
-                          onDragEnd={onDragSessionEnd}
+                          onDragEnd={() => {
+                            onDragSessionEnd();
+                          }}
                           onKeyDown={(e) => {
                             if (!rosterDragEnabled) return;
                             if (e.key === "Enter" || e.key === " ") {

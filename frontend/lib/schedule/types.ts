@@ -76,6 +76,8 @@ export interface Worker {
   }>;
   /** Completed training names from the worker record. */
   completedTraining?: string[];
+  /** Home / linked schedule facility when the roster provides one. */
+  homeFacilityId?: string | null;
   /** Templates used to auto-fill workforce shifts for visible calendar dates. */
   recurringShifts?: RecurringShiftRule[];
 }

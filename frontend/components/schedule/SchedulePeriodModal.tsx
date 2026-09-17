@@ -9,6 +9,7 @@ import {
   boundsForScheduleMonth,
   defaultCreateScheduleMonth,
   isMayScheduleMonth,
+  mayPeriodAutopublishEnabled,
   scheduleMonthFromStartDate,
 } from "@/lib/schedule/period-utils";
 
@@ -81,7 +82,7 @@ export function SchedulePeriodModal({ open, onClose, onSaved, existing }: Props)
 
         if (existing) {
           await apiFetch(`/api/v1/pulse/schedule/periods/${existing.id}`, { method: "PATCH", json });
-          if (isMayScheduleMonth(periodMonth) && existing.status !== "published") {
+          if (mayPeriodAutopublishEnabled() && isMayScheduleMonth(periodMonth) && existing.status !== "published") {
             await apiFetch(`/api/v1/pulse/schedule/periods/${existing.id}`, {
               method: "PATCH",
               json: { status: "published" },
@@ -92,7 +93,7 @@ export function SchedulePeriodModal({ open, onClose, onSaved, existing }: Props)
             method: "POST",
             json,
           });
-          if (isMayScheduleMonth(periodMonth)) {
+          if (mayPeriodAutopublishEnabled() && isMayScheduleMonth(periodMonth)) {
             await apiFetch(`/api/v1/pulse/schedule/periods/${created.id}`, {
               method: "PATCH",
               json: { status: "published" },
@@ -143,9 +144,9 @@ export function SchedulePeriodModal({ open, onClose, onSaved, existing }: Props)
 
         <Field label="Period month" type="month" value={periodMonth} onChange={setPeriodMonth} />
 
-        {isMayScheduleMonth(periodMonth) ? (
-          <p className="text-xs text-emerald-800 dark:text-emerald-200">
-            May periods are marked published so you can test shift assignments.
+        {mayPeriodAutopublishEnabled() && isMayScheduleMonth(periodMonth) ? (
+          <p className="text-xs text-ds-muted">
+            In this environment, May periods are marked published so assignment testing can proceed.
           </p>
         ) : null}
 

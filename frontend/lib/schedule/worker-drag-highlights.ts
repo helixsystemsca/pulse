@@ -1,14 +1,16 @@
 import { mondayOfCalendarWeek, parseLocalDate } from "@/lib/schedule/calendar";
 import { evaluateAvailabilityCell } from "@/lib/schedule/availability-layer";
 import type { EmployeeDailyAvailabilityEntry } from "@/lib/schedule/employee-availability-types";
-import { normalizeWeekdayKey, weekdayKeyFromIso } from "@/lib/schedule/recurring";
+import { matchShiftDefinition, type ScheduleShiftDefinitionRow } from "@/lib/schedule/palette-config";
+import { inferShiftTypeFromStart, normalizeWeekdayKey, weekdayKeyFromIso } from "@/lib/schedule/recurring";
+import { inferStandardShiftCode } from "@/lib/schedule/shift-definition-catalog";
 import {
   buildWorkerCredentialState,
   evaluateAssignmentTraining,
   parseCertRequirements,
   type AssignmentAlarm,
 } from "@/lib/schedule/assignment-eligibility";
-import type { ScheduleSettings, Shift, TimeOffBlock, Worker } from "@/lib/schedule/types";
+import type { SchedulePlacementBand, ScheduleSettings, Shift, TimeOffBlock, Worker } from "@/lib/schedule/types";
 
 export type WorkerDayHighlightTone = "good" | "warning" | "invalid" | "neutral" | "pickup";
 
@@ -16,6 +18,17 @@ export type WorkerDayHighlight = {
   tone: WorkerDayHighlightTone;
   tooltip?: string;
 };
+
+export type PlacementCertContext = {
+  shiftDefinitions?: ScheduleShiftDefinitionRow[];
+  placementBand?: SchedulePlacementBand;
+};
+
+export type WorkerDropEvalOpts = {
+  treatRestrictionsAsSatisfied?: boolean;
+  employeeAvailabilityIndex?: Record<string, EmployeeDailyAvailabilityEntry[]>;
+  useDailyAvailability?: boolean;
+} & PlacementCertContext;
 
 function shiftLengthHours(startTime: string, endTime: string): number {
   const [shh, smm] = startTime.split(":").map(Number);
@@ -58,6 +71,26 @@ function proposedSlot(worker: Worker, date: string, settings: ScheduleSettings):
   return { start, end, requiredCerts };
 }
 
+/** Same cert merge as worker drop: recurring template (when band is template) + matched shift definition. */
+export function mergedPlacementRequiredCerts(
+  worker: Worker,
+  date: string,
+  settings: ScheduleSettings,
+  placementWindow?: { start: string; end: string } | null,
+  ctx?: PlacementCertContext,
+): string[] {
+  const band = ctx?.placementBand ?? "template";
+  const slot = placementWindow ?? proposedSlot(worker, date, settings);
+  const requiredCerts = band === "template" ? proposedSlot(worker, date, settings).requiredCerts : [];
+  const shiftType = band === "template" ? inferShiftTypeFromStart(slot.start) : band;
+  const code = inferStandardShiftCode(slot.start, slot.end);
+  const def = ctx?.shiftDefinitions?.length
+    ? matchShiftDefinition(ctx.shiftDefinitions, { code, band: shiftType, start: slot.start, end: slot.end })
+    : null;
+  const fromDef = def ? parseCertRequirements(def.cert_requirements).map((r) => r.code) : [];
+  return [...new Set([...requiredCerts, ...fromDef])];
+}
+
 function firstTrainingAlarm(worker: Worker, required: string[]): { missing?: string; expired?: string } | null {
   if (!required.length) return null;
   const alarms = evaluateAssignmentTraining(parseCertRequirements(required), buildWorkerCredentialState(worker));
@@ -81,6 +114,7 @@ export function buildWorkerDragHighlightMap(
   placementWindow?: { start: string; end: string } | null,
   employeeAvailabilityIndex?: Record<string, EmployeeDailyAvailabilityEntry[]>,
   useDailyAvailability = true,
+  placementCerts?: PlacementCertContext,
 ): Record<string, WorkerDayHighlight> {
   const map: Record<string, WorkerDayHighlight> = {};
   const maxH = settings.staffing.maxHoursPerWorkerPerWeek || 48;
@@ -118,7 +152,7 @@ export function buildWorkerDragHighlightMap(
       continue;
     }
 
-    const { requiredCerts } = proposedSlot(worker, date, settings);
+    const requiredCerts = mergedPlacementRequiredCerts(worker, date, settings, placementWindow, placementCerts);
     const train = firstTrainingAlarm(worker, requiredCerts);
     const proposedH = shiftLengthHours(slot.start, slot.end);
     const weekH = weeklyWorkHoursForWorker(shifts, worker.id, date);
@@ -152,11 +186,7 @@ export function evaluateWorkerDrop(
   settings: ScheduleSettings,
   timeOffBlocks: TimeOffBlock[],
   placementWindow?: { start: string; end: string } | null,
-  opts?: {
-    treatRestrictionsAsSatisfied?: boolean;
-    employeeAvailabilityIndex?: Record<string, EmployeeDailyAvailabilityEntry[]>;
-    useDailyAvailability?: boolean;
-  },
+  opts?: WorkerDropEvalOpts,
 ): { ok: boolean; tooltip?: string; needsManagerOverride?: boolean; trainingAlarms?: AssignmentAlarm[] } {
   const slot = placementWindow ?? proposedSlot(worker, targetDate, settings);
   const ev = evaluateAvailabilityCell(
@@ -179,7 +209,7 @@ export function evaluateWorkerDrop(
     };
   }
 
-  const { requiredCerts } = proposedSlot(worker, targetDate, settings);
+  const requiredCerts = mergedPlacementRequiredCerts(worker, targetDate, settings, placementWindow, opts);
   const trainingAlarms = evaluateAssignmentTraining(
     parseCertRequirements(requiredCerts),
     buildWorkerCredentialState(worker),

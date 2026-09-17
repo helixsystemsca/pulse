@@ -3,7 +3,7 @@
 import { flushSync } from "react-dom";
 import { parseLocalDate } from "@/lib/schedule/calendar";
 import { evaluateAvailabilityCell } from "@/lib/schedule/availability-layer";
-import { attachWorkerDragPreview, readWorkerDragPayload, setWorkerDragData } from "@/lib/schedule/drag";
+import { attachWorkerDragPreview, resolveWorkerDropPayload, setWorkerDragData } from "@/lib/schedule/drag";
 import { workerHighlightOverlayClass } from "@/lib/schedule/drag-highlight-classes";
 import type { WorkerDayHighlight } from "@/lib/schedule/worker-drag-highlights";
 import type { ScheduleDragSession, ScheduleSettings, Shift, TimeOffBlock, Worker, Zone } from "@/lib/schedule/types";
@@ -123,7 +123,7 @@ export function ScheduleEmployeeWeekGrid({
                       onDrop={(e) => {
                         e.preventDefault();
                         if (scheduleDragLock || !rosterDragEnabled) return;
-                        const wp = readWorkerDragPayload(e.dataTransfer);
+                        const wp = resolveWorkerDropPayload(e.dataTransfer, dragSession);
                         if (!wp || wp.workerId !== worker.id) return;
                         onWorkerDrop(worker.id, date);
                       }}
@@ -138,6 +138,7 @@ export function ScheduleEmployeeWeekGrid({
                                 key={s.id}
                                 shift={s}
                                 workerName={worker.name}
+                                worker={worker}
                                 zone={zoneMap.get(s.zoneId)}
                                 settings={settings}
                                 onOpen={() => onSelectShift(s)}

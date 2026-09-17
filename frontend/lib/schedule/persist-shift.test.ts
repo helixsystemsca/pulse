@@ -32,4 +32,22 @@ describe("buildScheduleShiftPersistPayload", () => {
     const payload = buildScheduleShiftPersistPayload({ ...shift, shiftCode: "D2" }, "recreation");
     expect(payload.shift_code).toBe("D2");
   });
+
+  it("rolls overnight 22:00–06:00 so ends_at is the next calendar day", () => {
+    const payload = buildScheduleShiftPersistPayload(
+      { ...shift, startTime: "22:00", endTime: "06:00" },
+      "recreation",
+    );
+    const start = new Date(payload.starts_at);
+    const end = new Date(payload.ends_at);
+    expect(end.getTime()).toBeGreaterThan(start.getTime());
+    expect((end.getTime() - start.getTime()) / 3_600_000).toBeCloseTo(8, 5);
+  });
+
+  it("keeps same-day windows on the same local date", () => {
+    const payload = buildScheduleShiftPersistPayload(shift, "recreation");
+    const start = new Date(payload.starts_at);
+    const end = new Date(payload.ends_at);
+    expect((end.getTime() - start.getTime()) / 3_600_000).toBeCloseTo(8, 5);
+  });
 });

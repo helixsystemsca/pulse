@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  isScheduleDragCancelEvent,
   resolvePaletteDropPayload,
   resolveShiftDropPayload,
   resolveWorkerDropPayload,
+  scheduleCalendarCellPointerClass,
+  scheduleDragEndedState,
   setWorkerDragData,
   WORKER_DRAG_MIME,
 } from "./drag";
@@ -41,6 +44,25 @@ describe("resolvePaletteDropPayload", () => {
   it("uses session for palette drops", () => {
     const session: ScheduleDragSession = { kind: "palette", paletteKind: "shift", code: "D2" };
     expect(resolvePaletteDropPayload(fakeDt([]), session)).toEqual({ paletteKind: "shift", code: "D2" });
+  });
+});
+
+describe("schedule drag session clear", () => {
+  it("always nulls session and trash hover on end/cancel", () => {
+    expect(scheduleDragEndedState()).toEqual({ dragSession: null, trashHovering: false });
+  });
+
+  it("treats dragend, blur, and Escape as session-clear events", () => {
+    expect(isScheduleDragCancelEvent({ type: "dragend" })).toBe(true);
+    expect(isScheduleDragCancelEvent({ type: "blur" })).toBe(true);
+    expect(isScheduleDragCancelEvent({ type: "keydown", key: "Escape" })).toBe(true);
+    expect(isScheduleDragCancelEvent({ type: "keydown", key: "Enter" })).toBe(false);
+    expect(isScheduleDragCancelEvent({ type: "drop" })).toBe(false);
+  });
+
+  it("keeps calendar cells pointer-events auto while locked (including trash hover)", () => {
+    expect(scheduleCalendarCellPointerClass(true)).toBe("pointer-events-auto");
+    expect(scheduleCalendarCellPointerClass(false)).toBe("");
   });
 });
 
