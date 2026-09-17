@@ -321,23 +321,20 @@ async def generate_day(
 
 @router.post("/day/place", response_model=PlannerDayOut)
 async def place_day(
+    payload: PlannerPlaceIn,
     db: Db,
     actor: Actor,
     _: Editor,
-    body: PlannerPlaceIn | None = None,
-    date_value: Optional[date] = Query(None, alias="date"),
 ) -> PlannerDayOut:
     cid, uid = _cid(actor), _uid(actor)
-    payload_body = body or PlannerPlaceIn()
-    day = payload_body.date or date_value
     try:
-        await svc.place_inbox_on_day(db, cid, uid, day, task_ids=payload_body.task_ids)
+        await svc.place_inbox_on_day(db, cid, uid, payload.plan_date, task_ids=payload.task_ids)
     except (ValueError, svc.PlannerConflict) as e:
         _raise_planner(e)
-    data = await svc.get_day(db, cid, uid, day, generate_if_empty=False)
-    payload = PlannerDayOut.model_validate(data)
+    data = await svc.get_day(db, cid, uid, payload.plan_date, generate_if_empty=False)
+    payload_out = PlannerDayOut.model_validate(data)
     await db.commit()
-    return payload
+    return payload_out
 
 
 @router.post("/day/accept")

@@ -273,8 +273,7 @@ export async function generateDay(date?: string): Promise<PlannerDay> {
 }
 
 export async function placeOnToday(opts?: { date?: string; task_ids?: string[] }): Promise<PlannerDay> {
-  const qs = opts?.date ? `?date=${opts.date}` : "";
-  return apiFetch<PlannerDay>(`${BASE}/day/place${qs}`, {
+  return apiFetch<PlannerDay>(`${BASE}/day/place`, {
     method: "POST",
     json: { date: opts?.date, task_ids: opts?.task_ids },
   });

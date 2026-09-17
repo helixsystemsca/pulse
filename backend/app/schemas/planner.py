@@ -229,7 +229,10 @@ class PlannerCalendarEventOut(BaseModel):
 
 
 class PlannerPlaceIn(BaseModel):
-    date: Optional[date] = None
+    model_config = ConfigDict(populate_by_name=True)
+
+    # Field cannot be named `date` — with from __future__ import annotations it shadows datetime.date.
+    plan_date: Optional[date] = Field(default=None, alias="date")
     task_ids: Optional[list[str]] = None
 
 
